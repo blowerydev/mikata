@@ -1,0 +1,18 @@
+{
+  "name": "playground",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build"
+  },
+  "dependencies": {
+    "@mikata/reactivity": "workspace:*",
+    "@mikata/runtime": "workspace:*",
+    "@mikata/store": "workspace:*"
+  },
+  "devDependencies": {
+    "@mikata/compiler": "workspace:*",
+    "vite": "^6.0.0"
+  }
+}

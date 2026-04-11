@@ -1,0 +1,737 @@
+# Mikata
+
+> Mikata is a reactive UI framework for building web applications. It uses fine-grained reactivity (signals + reactive proxies), compiles JSX to direct DOM operations (no virtual DOM), and runs component functions exactly once (setup pattern). It is NOT React, Vue, or SolidJS — do not use patterns from those frameworks.
+
+## Core Mental Model
+
+- **Components run once.** A component function is a setup function, not a render function. It executes once to create DOM nodes and set up reactive bindings. It is never called again.
+- **No virtual DOM.** JSX compiles to `document.createElement` calls + reactive effects that update specific DOM properties. There is no diffing or reconciliation of a virtual tree.
+- **Fine-grained reactivity.** When a signal changes, only the specific DOM text node or attribute bound to it updates. The component function does not re-run.
+- **Signals are [getter, setter] tuples.** Not `.value` (Vue), not `setState` (React), not `[get, set]` accessors. The getter is a function call: `count()` not `count.value` or `count`.
+- **Reactive proxies for objects.** Use `reactive()` for objects/arrays. Reads and writes are tracked automatically at the property level. No need for signals for every nested field.
+
+## Packages
+
+- `@mikata/reactivity` — signals, computed, reactive proxies, effects, scopes, batching
+- `@mikata/runtime` — DOM rendering, components, control flow, context, lifecycle, portals, form bindings, error boundaries
+- `@mikata/store` — createStore, derived, createSelector, createQuery, createMutation
+- `@mikata/compiler` — Vite/Babel plugin that transforms JSX to runtime calls
+- `mikata` — umbrella re-export of all packages
+
+---
+
+## Reactivity API (`@mikata/reactivity`)
+
+### signal(initialValue) → [getter, setter]
+
+Creates a reactive primitive. The getter is a function. The setter accepts a value or an updater function.
+
+```tsx
+const [count, setCount] = signal(0);
+
+count()          // read: 0
+setCount(5)      // write: set to 5
+setCount(c => c + 1)  // write: updater function
+```
+
+WRONG patterns:
+```tsx
+// WRONG: No .value property
+const count = signal(0);
+count.value  // Does not exist
+
+// WRONG: Getter is a function call, not a property
+count  // Returns the getter function itself, not the value
+```
+
+### computed(fn) → getter
+
+Creates a lazy, cached derived value. Only recomputes when dependencies change AND when read. Returns a getter function (same shape as a signal getter).
+
+```tsx
+const [count, setCount] = signal(0);
+const doubled = computed(() => count() * 2);
+
+doubled()  // 0
+setCount(5);
+doubled()  // 10
+```
+
+Computed values must be pure — no signal writes or side effects inside computed.
+
+### reactive(object) → proxy
+
+Creates a deeply reactive proxy around an object or array. Reads are tracked, writes trigger subscribers. Nested objects are lazily wrapped.
+
+```tsx
+const state = reactive({ count: 0, user: { name: 'Alice' }, items: ['a'] });
+
+state.count++           // triggers effects reading state.count
+state.user.name = 'Bob' // triggers effects reading state.user.name
+state.items.push('b')   // triggers effects reading state.items
+```
+
+Use `reactive()` for objects with many fields. Use `signal()` for standalone primitive values.
+
+### effect(fn) → dispose
+
+Creates a side effect that re-runs when any reactive value read inside `fn` changes. Returns a dispose function. The optional return value of `fn` is a cleanup function.
+
+```tsx
+const [count, setCount] = signal(0);
+
+const dispose = effect(() => {
+  console.log('Count is:', count());
+  // Optional: return cleanup
+  return () => console.log('cleaning up');
+});
+
+setCount(1);  // logs "cleaning up" then "Count is: 1"
+dispose();    // stops the effect
+```
+
+Effects are scheduled via microtask by default (auto-batched). Multiple synchronous writes coalesce into a single effect run.
+
+### renderEffect(fn) → dispose
+
+Same as `effect()` but runs at render priority (before user effects). Used internally by the compiler for DOM-updating effects. Prefer `effect()` in application code.
+
+### batch(fn)
+
+Explicitly group multiple mutations. Effects are deferred until the batch completes. Note: synchronous writes are already auto-batched via microtask scheduling. Use `batch()` only when you need explicit control.
+
+```tsx
+batch(() => {
+  setFirstName('John');
+  setLastName('Doe');
+  // Effects run once after both writes
+});
+```
+
+### untrack(fn)
+
+Read reactive values without subscribing. The effect will not re-run when untracked values change.
+
+```tsx
+effect(() => {
+  const id = userId();              // tracked — effect re-runs when userId changes
+  const name = untrack(() => userName()); // NOT tracked — changes to userName are ignored
+});
+```
+
+### on(deps, fn, options?) → effectFn
+
+Explicit dependency declaration. Tracks `deps` but runs `fn` untracked. Use inside `effect()`.
+
+```tsx
+effect(on(
+  () => userId(),
+  (id, prevId) => {
+    console.log(`User changed from ${prevId} to ${id}`);
+    // Can read other signals here without tracking them
+  },
+  { defer: true }  // skip initial run
+));
+```
+
+### createScope(fn) → scope
+
+Creates a reactive scope. All effects created inside `fn` are owned by the scope and disposed when `scope.dispose()` is called.
+
+```tsx
+const scope = createScope(() => {
+  effect(() => { /* ... */ });
+  effect(() => { /* ... */ });
+});
+
+scope.dispose();  // disposes both effects
+```
+
+### onCleanup(fn)
+
+Register a cleanup function on the current scope. Called when the scope is disposed (component unmounted).
+
+```tsx
+function MyComponent() {
+  const timer = setInterval(() => { /* ... */ }, 1000);
+  onCleanup(() => clearInterval(timer));
+  // ...
+}
+```
+
+### flushSync()
+
+Synchronously flush all pending effects. Used when you need effects to run immediately rather than on the next microtask.
+
+### isSignal(value) → boolean
+
+Returns true if the value is a signal getter function.
+
+### isReactive(value) → boolean
+
+Returns true if the value is a reactive proxy.
+
+### toRaw(proxy) → object
+
+Returns the raw (non-reactive) underlying object from a reactive proxy.
+
+### Type exports
+
+- `Signal<T>` — `[ReadSignal<T>, WriteSignal<T>]`
+- `ReadSignal<T>` — getter function type
+- `WriteSignal<T>` — setter function type
+- `Scope` — reactive scope type
+- `ReactiveNode` — internal dependency graph node type
+
+---
+
+## Runtime API (`@mikata/runtime`)
+
+### render(component, container) → dispose
+
+Mount a component tree into a container element. Returns a dispose function.
+
+```tsx
+const dispose = render(() => <App />, document.getElementById('root')!);
+// Later: dispose() to unmount
+```
+
+### Components
+
+Components are plain functions that return a DOM Node. They run once (setup pattern). Each component gets its own reactive scope.
+
+```tsx
+function Counter() {
+  const [count, setCount] = signal(0);
+
+  return (
+    <div>
+      <p>{count()}</p>
+      <button onClick={() => setCount(c => c + 1)}>+1</button>
+    </div>
+  );
+}
+```
+
+WRONG patterns:
+```tsx
+// WRONG: Do not use hooks or re-rendering patterns from React
+function Counter() {
+  const [count, setCount] = useState(0);  // useState does not exist
+  // ...
+}
+
+// WRONG: Do not use .value from Vue
+const count = ref(0);  // ref() does not exist
+count.value++;
+
+// WRONG: Components are NOT called multiple times
+function Counter() {
+  console.log('this only logs once, not on every update');
+  // ...
+}
+```
+
+### show(when, render, fallback?) → Node
+
+Conditional rendering. `when` is a reactive getter. `render` receives the truthy value (enables type narrowing). `fallback` is optional.
+
+```tsx
+show(
+  () => user(),
+  (user) => <Profile user={user} />,
+  () => <LoginPage />
+)
+```
+
+This is NOT a component like React's ternary or SolidJS's `<Show>`. It's a function that returns a Node.
+
+### each(list, render, fallback?, options?) → Node
+
+Keyed list rendering with reconciliation.
+
+```tsx
+each(
+  () => items(),
+  (item, index) => <Card item={item} />,
+  () => <EmptyState />,
+  { key: (item) => item.id }
+)
+```
+
+- `list` is a reactive getter returning an array
+- `render` receives each item and a reactive index getter
+- `fallback` renders when the list is empty
+- `options.key` provides a key function (defaults to reference identity)
+
+This is NOT `<For>` or `Array.map()`. It's a function that manages DOM nodes with proper keyed reconciliation.
+
+### switchMatch(value, cases) → Node
+
+Pattern matching for rendering. TypeScript enforces exhaustive matching when the value is a union type.
+
+```tsx
+switchMatch(
+  () => status(),
+  {
+    loading: () => <Spinner />,
+    error: () => <ErrorIcon />,
+    success: () => <CheckMark />,
+    default: () => <Unknown />,  // optional default case
+  }
+)
+```
+
+### createContext(defaultValue?) → Context
+
+Create a named context for dependency injection through the component tree.
+
+```tsx
+const ThemeContext = createContext<'light' | 'dark'>('light');
+```
+
+### provide(context, value)
+
+Provide a value for a context in the current component scope. Must be called inside a component setup function.
+
+```tsx
+function App() {
+  provide(ThemeContext, 'dark');
+  return <Child />;
+}
+```
+
+### inject(context) → value
+
+Inject a value from the nearest ancestor that provides this context. Falls back to the context's default value.
+
+```tsx
+function ThemedButton() {
+  const theme = inject(ThemeContext);  // 'dark'
+  return <button class={theme}>Click</button>;
+}
+```
+
+### onMount(fn)
+
+Register a callback to run after the component is mounted to the DOM. Runs once.
+
+```tsx
+function MyComponent() {
+  onMount(() => {
+    console.log('Component is in the DOM');
+  });
+  // ...
+}
+```
+
+### onCleanup(fn)
+
+Register a cleanup function that runs when the component is unmounted. Re-exported from `@mikata/reactivity`.
+
+```tsx
+function MyComponent() {
+  const timer = setInterval(() => { /* ... */ }, 1000);
+  onCleanup(() => clearInterval(timer));
+  // ...
+}
+```
+
+### createRef() → Ref
+
+Create a mutable ref for capturing a DOM element. The ref is both an object with `.current` and a callable function (usable as a ref callback).
+
+```tsx
+const inputRef = createRef<HTMLInputElement>();
+
+// Use in JSX:
+<input ref={inputRef} />
+
+// Access later:
+onMount(() => inputRef.current?.focus());
+```
+
+### model(getter, setter, type?) → props
+
+Two-way form bindings. Returns an object of props to spread onto a form element.
+
+```tsx
+const [name, setName] = signal('');
+const [agreed, setAgreed] = signal(false);
+const [age, setAge] = signal(0);
+const [color, setColor] = signal('red');
+
+<input {...model(name, setName)} />
+<input type="checkbox" {...model(agreed, setAgreed, 'checkbox')} />
+<input type="number" {...model(age, setAge, 'number')} />
+<select {...model(color, setColor, 'select')}>
+  <option value="red">Red</option>
+  <option value="blue">Blue</option>
+</select>
+```
+
+Supported types: `'text'` (default), `'checkbox'`, `'radio'`, `'number'`, `'select'`.
+
+### portal(render, target) → Node
+
+Render content into a different DOM subtree. Returns a comment placeholder in the original position.
+
+```tsx
+portal(
+  () => <Modal>Content</Modal>,
+  document.body           // or a CSS selector: '#modal-root'
+)
+```
+
+### ErrorBoundary
+
+Catches errors thrown during child rendering and displays a fallback UI with a reset function.
+
+```tsx
+<ErrorBoundary
+  fallback={(error, reset) => (
+    <div>
+      <p>Error: {error.message}</p>
+      <button onClick={reset}>Retry</button>
+    </div>
+  )}
+>
+  <RiskyComponent />
+</ErrorBoundary>
+```
+
+### CSS class and style syntax
+
+Class accepts strings, objects, or arrays:
+
+```tsx
+<div class="static" />
+<div class={{ active: isActive(), hidden: !visible() }} />
+<div class={['base', { highlight: selected() }]} />
+```
+
+Style accepts strings or camelCase objects:
+
+```tsx
+<div style="color: red" />
+<div style={{ color: 'red', fontSize: '14px', backgroundColor: bg() }} />
+```
+
+---
+
+## Store API (`@mikata/store`)
+
+### createStore(initial) → [state, setState]
+
+Higher-level reactive state management. Returns a read-only proxy and a `setState` function. Direct mutation throws in dev mode.
+
+```tsx
+const [store, setStore] = createStore({
+  user: { name: 'Alice' },
+  todos: [],
+});
+
+// Updater function (mutable draft):
+setStore(s => { s.user.name = 'Bob'; });
+
+// Partial update:
+setStore({ user: { ...store.user, name: 'Bob' } });
+```
+
+WRONG:
+```tsx
+store.user.name = 'Bob';  // Throws in dev mode — use setState
+```
+
+### derived(fn) → getter
+
+Alias for `computed()`, named for discoverability in store contexts.
+
+```tsx
+const [store] = createStore({ items: [1, 2, 3] });
+const total = derived(() => store.items.reduce((a, b) => a + b, 0));
+total()  // 6
+```
+
+### createSelector(source, equals?) → (item) => boolean
+
+Efficient O(1) selection tracking for lists. Only the previously-selected and newly-selected items are notified.
+
+```tsx
+const [selectedId, setSelectedId] = signal(1);
+const isSelected = createSelector(() => selectedId());
+
+// In a list item — only re-runs for the specific item that changes selection:
+effect(() => {
+  if (isSelected(item.id)) {
+    // this item is selected
+  }
+});
+```
+
+### createQuery(options) → QueryResult
+
+Reactive async data fetching with caching, loading/error states, abort, and retry.
+
+```tsx
+const user = createQuery({
+  key: () => userId(),  // reactive — re-fetches when key changes
+  fn: async (id, { signal }) => {
+    const res = await fetch(`/api/users/${id}`, { signal });
+    return res.json();
+  },
+  staleTime: 30_000,   // ms before data is considered stale
+  retry: 3,            // retry count on failure (default: 3)
+  enabled: () => !!userId(),  // reactive condition
+  initialData: undefined,
+});
+
+user.data()       // T | undefined
+user.error()      // Error | null
+user.status()     // 'idle' | 'loading' | 'error' | 'success'
+user.isLoading()  // boolean
+user.isError()    // boolean
+user.isSuccess()  // boolean
+user.isFetching() // boolean (true during refetch even with stale data)
+user.refetch()    // manual refetch, returns Promise
+```
+
+### createMutation(options) → MutationResult
+
+For write operations with lifecycle callbacks.
+
+```tsx
+const saveUser = createMutation({
+  fn: async (userData) => {
+    const res = await fetch('/api/users', { method: 'POST', body: JSON.stringify(userData) });
+    return res.json();
+  },
+  onSuccess: (data, variables) => { /* ... */ },
+  onError: (error, variables) => { /* ... */ },
+  onSettled: (data, error, variables) => { /* ... */ },
+});
+
+saveUser.mutate({ name: 'Alice' });
+saveUser.data()      // T | undefined
+saveUser.error()     // Error | null
+saveUser.status()    // 'idle' | 'loading' | 'error' | 'success'
+saveUser.isLoading() // boolean
+saveUser.reset()     // reset to idle state
+```
+
+---
+
+## Compiler Transform (`@mikata/compiler`)
+
+The Vite/Babel plugin transforms JSX into direct DOM operations. You write standard `.tsx` files.
+
+What the user writes:
+```tsx
+function Greet({ name }) {
+  return <h1 class="title">Hello, {name}!</h1>;
+}
+```
+
+What the compiler outputs (approximately):
+```tsx
+function Greet(_props) {
+  const { name } = _destructureProps(_props, ['name']);
+  const _el = _createElement('h1');
+  _setProp(_el, 'class', 'title');
+  _insert(_el, () => `Hello, ${name}!`);
+  return _el;
+}
+```
+
+Key transform rules:
+- Static elements → `_createElement` + `_setProp`
+- Dynamic text `{expr()}` → `_insert` with reactive effect
+- Event handlers `onClick={fn}` → `addEventListener`
+- Components `<Foo bar={x} />` → `_createComponent(Foo, { get bar() { return x } })`
+- Props destructuring → `_destructureProps` preserving getter-based reactivity
+- Fragments `<>...</>` → `_createFragment`
+- Spread `{...props}` → `_spread`
+
+---
+
+## Common Patterns
+
+### Counter
+
+```tsx
+function Counter() {
+  const [count, setCount] = signal(0);
+  const doubled = computed(() => count() * 2);
+
+  return (
+    <div>
+      <p>Count: {count()} | Doubled: {doubled()}</p>
+      <button onClick={() => setCount(c => c + 1)}>+1</button>
+      <button onClick={() => setCount(0)}>Reset</button>
+    </div>
+  );
+}
+```
+
+### Todo List
+
+```tsx
+function TodoApp() {
+  const state = reactive({ todos: [], input: '' });
+
+  function addTodo() {
+    if (!state.input.trim()) return;
+    state.todos = [...state.todos, { id: Date.now(), text: state.input, done: false }];
+    state.input = '';
+  }
+
+  return (
+    <div>
+      <input
+        {...model(() => state.input, v => state.input = v)}
+        onKeyDown={e => e.key === 'Enter' && addTodo()}
+      />
+      <button onClick={addTodo}>Add</button>
+      {each(
+        () => state.todos,
+        (todo) => (
+          <div class={{ done: todo.done }}>
+            <input
+              type="checkbox"
+              checked={todo.done}
+              onChange={() => { todo.done = !todo.done; }}
+            />
+            <span>{todo.text}</span>
+          </div>
+        ),
+        () => <p>No todos yet.</p>,
+        { key: t => t.id }
+      )}
+    </div>
+  );
+}
+```
+
+### Data Fetching
+
+```tsx
+function UserProfile() {
+  const [userId, setUserId] = signal(1);
+
+  const user = createQuery({
+    key: () => userId(),
+    fn: async (id, { signal }) => {
+      const res = await fetch(`/api/users/${id}`, { signal });
+      return res.json();
+    },
+  });
+
+  return (
+    <div>
+      {show(
+        () => user.isLoading(),
+        () => <p>Loading...</p>
+      )}
+      {show(
+        () => user.data(),
+        (data) => <p>Name: {data.name}</p>
+      )}
+      {show(
+        () => user.error(),
+        (err) => <p>Error: {err.message}</p>
+      )}
+      <button onClick={() => setUserId(id => id + 1)}>Next User</button>
+    </div>
+  );
+}
+```
+
+### Context (Theme)
+
+```tsx
+const ThemeCtx = createContext<'light' | 'dark'>('light');
+
+function App() {
+  provide(ThemeCtx, 'dark');
+  return <ThemedChild />;
+}
+
+function ThemedChild() {
+  const theme = inject(ThemeCtx);
+  return <div class={`theme-${theme}`}>Themed content</div>;
+}
+```
+
+### Modal with Portal
+
+```tsx
+function ModalDemo() {
+  const [open, setOpen] = signal(false);
+
+  return (
+    <div>
+      <button onClick={() => setOpen(true)}>Open Modal</button>
+      {show(
+        () => open(),
+        () => portal(
+          () => (
+            <div class="overlay" onClick={() => setOpen(false)}>
+              <div class="modal" onClick={e => e.stopPropagation()}>
+                <h2>Modal Title</h2>
+                <p>This renders in document.body, not in the component tree.</p>
+                <button onClick={() => setOpen(false)}>Close</button>
+              </div>
+            </div>
+          ),
+          document.body
+        )
+      )}
+    </div>
+  );
+}
+```
+
+---
+
+## Critical Differences from Other Frameworks
+
+### vs React
+- Components run once, not on every render. There is no re-rendering.
+- No `useState`, `useEffect`, `useMemo`, `useCallback`, `useRef`. Use `signal`, `effect`, `computed`, `createRef`.
+- No hooks rules (call order doesn't matter, can use in conditions/loops).
+- No dependency arrays. Dependencies are tracked automatically.
+- `signal()` returns `[getter, setter]` where getter is a function call, not a state variable.
+- No JSX key prop on list items — use `each()` with a `key` option instead.
+- No virtual DOM, no reconciliation of component trees.
+
+### vs Vue (Composition API)
+- No `.value`. Signal getter is a function call: `count()` not `count.value`.
+- No `ref()` for reactive primitives — use `signal()`.
+- No `watch()` or `watchEffect()` — use `effect()` or `on()`.
+- No `<template>` or SFC format — plain `.tsx` files.
+- No `v-if`, `v-for`, `v-model` directives — use `show()`, `each()`, `model()`.
+- `computed()` returns a getter function, not a ref.
+
+### vs SolidJS
+- Control flow uses functions (`show`, `each`, `switchMatch`), not components (`<Show>`, `<For>`, `<Switch>`/`<Match>`).
+- Props destructuring works (compiler transforms it to preserve reactivity).
+- `reactive()` provides deep proxy tracking (like Vue), not just store-level tracking.
+- `model()` for form bindings (Solid has no built-in equivalent).
+- `portal()` is a function, not a `<Portal>` component.
+
+---
+
+## Project Structure
+
+```
+mikata/
+  packages/
+    reactivity/    # @mikata/reactivity — signals, computed, reactive, effects, scopes
+    runtime/       # @mikata/runtime — DOM rendering, components, control flow, context
+    compiler/      # @mikata/compiler — Vite plugin + Babel JSX transform
+    store/         # @mikata/store — createStore, createQuery, createMutation
+    mikata/        # mikata — umbrella re-exports
+  playground/      # Vite dev app for testing
+```
+
+Tooling: pnpm workspaces, tsup (build), vitest (test), TypeScript strict mode.
