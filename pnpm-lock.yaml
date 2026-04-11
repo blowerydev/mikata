@@ -76,6 +76,18 @@ importers:
       '@mikata/store':
         specifier: workspace:*
         version: link:../store
+      '@mikata/testing':
+        specifier: workspace:*
+        version: link:../testing
+
+  packages/testing:
+    dependencies:
+      '@mikata/reactivity':
+        specifier: workspace:*
+        version: link:../reactivity
+      '@mikata/runtime':
+        specifier: workspace:*
+        version: link:../runtime
 
   playground:
     dependencies:

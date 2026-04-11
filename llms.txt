@@ -16,6 +16,7 @@
 - `@mikata/runtime` — DOM rendering, components, control flow, context, lifecycle, portals, form bindings, error boundaries
 - `@mikata/store` — createStore, derived, createSelector, createQuery, createMutation
 - `@mikata/compiler` — Vite/Babel plugin that transforms JSX to runtime calls
+- `@mikata/testing` — testing utilities: renderComponent, fireEvent, waitForUpdate, query helpers
 - `mikata` — umbrella re-export of all packages
 
 ---
@@ -521,6 +522,90 @@ saveUser.reset()     // reset to idle state
 
 ---
 
+## Testing API (`@mikata/testing`)
+
+### renderComponent(Comp, props?) → RenderResult
+
+Render a component into a detached container for testing. Returns query helpers and a dispose function.
+
+```tsx
+import { renderComponent, fireEvent, flush, waitForUpdate } from '@mikata/testing';
+
+const { text, get, query, getAll, findByText, html, dispose } = renderComponent(Counter, { initial: 0 });
+
+expect(text()).toContain('Count: 0');
+fireEvent.click(get('button'));
+flush();
+expect(text()).toContain('Count: 1');
+dispose(); // cleanup
+```
+
+### renderContent(fn) → RenderResult
+
+Render raw DOM content (not a component) for testing control flow, portals, etc.
+
+```tsx
+const { text, dispose } = renderContent(() =>
+  show(
+    () => loggedIn(),
+    () => <Dashboard />,
+    () => <Login />
+  )
+);
+flush();
+expect(text()).toBe('Login');
+dispose();
+```
+
+### RenderResult
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `text()` | `string` | `container.textContent` |
+| `html()` | `string` | `container.innerHTML` |
+| `get(selector)` | `HTMLElement` | Query by CSS selector, throws if not found |
+| `query(selector)` | `HTMLElement \| null` | Query by CSS selector, returns null if not found |
+| `getAll(selector)` | `HTMLElement[]` | All elements matching selector |
+| `findByText(text, selector?)` | `HTMLElement \| null` | Find element by text content (partial match) |
+| `findAllByText(text, selector?)` | `HTMLElement[]` | Find all elements by text content |
+| `container` | `HTMLElement` | The container element |
+| `dispose()` | `void` | Unmount and clean up |
+
+### fireEvent
+
+Dispatch DOM events on elements with convenience methods:
+
+```tsx
+fireEvent.click(button);
+fireEvent.input(input, { target: { value: 'hello' } });
+fireEvent.change(checkbox, { target: { checked: true } });
+fireEvent.keyDown(input, { key: 'Enter' });
+fireEvent(element, 'custom-event');
+```
+
+Available: `click`, `dblclick`, `input`, `change`, `keyDown`, `keyUp`, `keyPress`, `focus`, `blur`, `submit`.
+
+### flush()
+
+Synchronously flush all pending reactive updates.
+
+```tsx
+setCount(5);
+flush();
+expect(text()).toBe('5');
+```
+
+### waitForUpdate()
+
+Flush + wait one microtask. Use when you need async effects to settle (e.g., `onMount`).
+
+```tsx
+setCount(5);
+await waitForUpdate();
+```
+
+---
+
 ## Compiler Transform (`@mikata/compiler`)
 
 The Vite/Babel plugin transforms JSX into direct DOM operations. You write standard `.tsx` files.
@@ -730,6 +815,7 @@ mikata/
     runtime/       # @mikata/runtime — DOM rendering, components, control flow, context
     compiler/      # @mikata/compiler — Vite plugin + Babel JSX transform
     store/         # @mikata/store — createStore, createQuery, createMutation
+    testing/       # @mikata/testing — renderComponent, fireEvent, flush, waitForUpdate
     mikata/        # mikata — umbrella re-exports
   playground/      # Vite dev app for testing
 ```

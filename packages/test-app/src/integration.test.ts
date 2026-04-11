@@ -3,7 +3,7 @@
  * with simulated AJAX calls.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   signal,
   computed,
@@ -50,6 +50,13 @@ import {
   createQuery,
   createMutation,
 } from '@mikata/store';
+import {
+  renderComponent,
+  renderContent,
+  fireEvent,
+  flush,
+  waitForUpdate,
+} from '@mikata/testing';
 import {
   fetchUsers,
   fetchUser,
@@ -399,7 +406,7 @@ describe('DOM rendering — createElement, props, insert', () => {
 
     expect(el.textContent).toBe('Hello, World!');
     setName('Mikata');
-    flushSync();
+    flush();
     expect(el.textContent).toBe('Hello, Mikata!');
   });
 
@@ -412,7 +419,7 @@ describe('DOM rendering — createElement, props, insert', () => {
 
     expect(el.className).toBe('inactive');
     setActive(true);
-    flushSync();
+    flush();
     expect(el.className).toBe('active');
   });
 });
@@ -430,16 +437,15 @@ describe('Components — setup functions with props', () => {
       return el;
     }
 
-    const container = _createElement('div');
-    const node = _createComponent(Greeting, {
+    const { text, dispose } = renderComponent(Greeting, {
       get name() { return name(); },
-    });
-    container.appendChild(node);
+    } as any);
 
-    expect(container.textContent).toBe('Hello, Alice!');
+    expect(text()).toBe('Hello, Alice!');
     setName('Bob');
-    flushSync();
-    expect(container.textContent).toBe('Hello, Bob!');
+    flush();
+    expect(text()).toBe('Hello, Bob!');
+    dispose();
   });
 
   it('props destructuring preserves reactivity', () => {
@@ -452,17 +458,16 @@ describe('Components — setup functions with props', () => {
       return el;
     }
 
-    const container = _createElement('div');
-    const node = _createComponent(Counter, {
+    const { text, dispose } = renderComponent(Counter, {
       get count() { return count(); },
       label: 'Count',
-    });
-    container.appendChild(node);
+    } as any);
 
-    expect(container.textContent).toBe('Count: 0');
+    expect(text()).toBe('Count: 0');
     setCount(5);
-    flushSync();
-    expect(container.textContent).toBe('Count: 5');
+    flush();
+    expect(text()).toBe('Count: 5');
+    dispose();
   });
 
   it('mergeProps preserves getters', () => {
@@ -485,82 +490,86 @@ describe('Components — setup functions with props', () => {
 describe('Control flow — show, each, switchMatch', () => {
   it('show() toggles between branches', () => {
     const [loggedIn, setLoggedIn] = signal(false);
-    const container = _createElement('div');
 
-    const node = show(
-      () => loggedIn(),
-      () => { const el = _createElement('span'); el.textContent = 'Dashboard'; return el; },
-      () => { const el = _createElement('span'); el.textContent = 'Login'; return el; }
+    const { text, dispose } = renderContent(() =>
+      show(
+        () => loggedIn(),
+        () => { const el = _createElement('span'); el.textContent = 'Dashboard'; return el; },
+        () => { const el = _createElement('span'); el.textContent = 'Login'; return el; }
+      )
     );
-    container.appendChild(node);
-    flushSync();
+    flush();
 
-    expect(container.textContent).toBe('Login');
+    expect(text()).toBe('Login');
     setLoggedIn(true);
-    flushSync();
-    expect(container.textContent).toBe('Dashboard');
+    flush();
+    expect(text()).toBe('Dashboard');
+    dispose();
   });
 
   it('show() passes narrowed value to render', () => {
     const [user, setUser] = signal<User | null>(null);
-    const container = _createElement('div');
 
-    const node = show(
-      () => user(),
-      (u) => { const el = _createElement('span'); el.textContent = u.name; return el; },
-      () => { const el = _createElement('span'); el.textContent = 'No user'; return el; }
+    const { text, dispose } = renderContent(() =>
+      show(
+        () => user(),
+        (u) => { const el = _createElement('span'); el.textContent = u.name; return el; },
+        () => { const el = _createElement('span'); el.textContent = 'No user'; return el; }
+      )
     );
-    container.appendChild(node);
-    flushSync();
+    flush();
 
-    expect(container.textContent).toBe('No user');
+    expect(text()).toBe('No user');
     setUser({ id: 1, name: 'Alice', email: 'a@b.com', role: 'admin' });
-    flushSync();
-    expect(container.textContent).toBe('Alice');
+    flush();
+    expect(text()).toBe('Alice');
+    dispose();
   });
 
   it('each() renders and updates a list', () => {
     const state = reactive({ items: ['Apple', 'Banana', 'Cherry'] });
-    const container = _createElement('div');
 
-    const node = each(
-      () => state.items,
-      (item) => { const el = _createElement('span'); el.textContent = item; return el; },
-      () => { const el = _createElement('span'); el.textContent = 'Empty'; return el; }
+    const { text, dispose } = renderContent(() =>
+      each(
+        () => state.items,
+        (item) => { const el = _createElement('span'); el.textContent = item; return el; },
+        () => { const el = _createElement('span'); el.textContent = 'Empty'; return el; }
+      )
     );
-    container.appendChild(node);
-    flushSync();
+    flush();
 
-    expect(container.textContent).toBe('AppleBananaCherry');
+    expect(text()).toBe('AppleBananaCherry');
 
     state.items = ['Apple', 'Date'];
-    flushSync();
-    expect(container.textContent).toBe('AppleDate');
+    flush();
+    expect(text()).toBe('AppleDate');
 
     state.items = [];
-    flushSync();
-    expect(container.textContent).toBe('Empty');
+    flush();
+    expect(text()).toBe('Empty');
+    dispose();
   });
 
   it('switchMatch() renders matching case', () => {
     const [tab, setTab] = signal<'home' | 'profile' | 'settings'>('home');
-    const container = _createElement('div');
 
-    const node = switchMatch(() => tab(), {
-      home: () => { const el = _createElement('span'); el.textContent = 'Home Page'; return el; },
-      profile: () => { const el = _createElement('span'); el.textContent = 'Profile Page'; return el; },
-      settings: () => { const el = _createElement('span'); el.textContent = 'Settings Page'; return el; },
-    });
-    container.appendChild(node);
-    flushSync();
+    const { text, dispose } = renderContent(() =>
+      switchMatch(() => tab(), {
+        home: () => { const el = _createElement('span'); el.textContent = 'Home Page'; return el; },
+        profile: () => { const el = _createElement('span'); el.textContent = 'Profile Page'; return el; },
+        settings: () => { const el = _createElement('span'); el.textContent = 'Settings Page'; return el; },
+      })
+    );
+    flush();
 
-    expect(container.textContent).toBe('Home Page');
+    expect(text()).toBe('Home Page');
     setTab('profile');
-    flushSync();
-    expect(container.textContent).toBe('Profile Page');
+    flush();
+    expect(text()).toBe('Profile Page');
     setTab('settings');
-    flushSync();
-    expect(container.textContent).toBe('Settings Page');
+    flush();
+    expect(text()).toBe('Settings Page');
+    dispose();
   });
 });
 
@@ -574,49 +583,49 @@ describe('Context — provide/inject through component tree', () => {
     let theme: string | undefined;
     let userName: string | undefined;
 
-    render(() => {
+    const { dispose } = renderContent(() => {
       provide(ThemeCtx, 'dark');
       provide(UserCtx, { name: 'Alice' });
 
       return _createComponent(() => {
-        // Middle component — just passes through
         return _createComponent(() => {
-          // Deeply nested component
           theme = inject(ThemeCtx);
           userName = inject(UserCtx).name;
           return _createElement('div');
         }, {});
       }, {});
-    }, _createElement('div'));
+    });
 
     expect(theme).toBe('dark');
     expect(userName).toBe('Alice');
+    dispose();
   });
 
   it('uses default value when no provider', () => {
     const LangCtx = createContext<string>('en');
     let lang: string | undefined;
 
-    render(() => {
+    const { dispose } = renderContent(() => {
       return _createComponent(() => {
         lang = inject(LangCtx);
         return _createElement('div');
       }, {});
-    }, _createElement('div'));
+    });
 
     expect(lang).toBe('en');
+    dispose();
   });
 
   it('throws when no provider and no default', () => {
     const Ctx = createContext<string>();
 
     expect(() => {
-      render(() => {
+      renderContent(() => {
         return _createComponent(() => {
           inject(Ctx);
           return _createElement('div');
         }, {});
-      }, _createElement('div'));
+      });
     }).toThrow('no provider found');
   });
 });
@@ -626,37 +635,35 @@ describe('Context — provide/inject through component tree', () => {
 // ============================================================
 describe('Render — mounting and unmounting', () => {
   it('mounts and disposes correctly', () => {
-    const container = _createElement('div');
     const cleanup = vi.fn();
 
-    const dispose = render(() => {
+    const { html, dispose } = renderContent(() => {
       onCleanup(cleanup);
       const el = _createElement('p');
       el.textContent = 'Mounted';
       return el;
-    }, container);
+    });
 
-    expect(container.innerHTML).toBe('<p>Mounted</p>');
+    expect(html()).toBe('<p>Mounted</p>');
     expect(cleanup).not.toHaveBeenCalled();
 
     dispose();
-    expect(container.innerHTML).toBe('');
     expect(cleanup).toHaveBeenCalledTimes(1);
   });
 
   it('onMount fires after setup', async () => {
     const events: string[] = [];
-    const container = _createElement('div');
 
-    render(() => {
+    const { dispose } = renderContent(() => {
       events.push('setup');
       onMount(() => events.push('mounted'));
       return _createElement('div');
-    }, container);
+    });
 
     expect(events).toEqual(['setup']);
-    await new Promise((r) => queueMicrotask(r));
+    await waitForUpdate();
     expect(events).toEqual(['setup', 'mounted']);
+    dispose();
   });
 });
 
@@ -1050,9 +1057,6 @@ describe('Refs — DOM element access', () => {
   });
 
   it('createRef works inside a component', () => {
-    const container = _createElement('div');
-    document.body.appendChild(container);
-
     const inputRef = createRef<HTMLInputElement>();
 
     function MyForm() {
@@ -1064,10 +1068,9 @@ describe('Refs — DOM element access', () => {
       return el;
     }
 
-    const dispose = render(() => _createComponent(MyForm, {}), container);
+    const { dispose } = renderComponent(MyForm);
     expect(inputRef.current).toBeInstanceOf(HTMLInputElement);
     dispose();
-    document.body.removeChild(container);
   });
 });
 
@@ -1130,59 +1133,51 @@ describe('Model — two-way form bindings', () => {
 // Portal — rendering outside component tree
 // ============================================================
 describe('Portal — rendering outside component tree', () => {
-  it('renders content into target element', () => {
-    const target = _createElement('div');
-    target.id = 'portal-target';
-    document.body.appendChild(target);
+  let portalTarget: HTMLElement;
 
+  beforeEach(() => {
+    portalTarget = _createElement('div');
+    portalTarget.id = 'portal-test-target';
+    document.body.appendChild(portalTarget);
+  });
+
+  afterEach(() => {
+    portalTarget.remove();
+  });
+
+  it('renders content into target element', () => {
     const placeholder = portal(() => {
       const el = _createElement('span');
       el.textContent = 'Portal content';
       return el;
-    }, target);
+    }, portalTarget);
 
-    // Placeholder is a comment node
     expect(placeholder.nodeType).toBe(Node.COMMENT_NODE);
-    // Content is in the target, not where the portal was called
-    expect(target.innerHTML).toBe('<span>Portal content</span>');
-
-    document.body.removeChild(target);
+    expect(portalTarget.innerHTML).toBe('<span>Portal content</span>');
   });
 
   it('renders into selector string target', () => {
-    const target = _createElement('div');
-    target.id = 'portal-selector-target';
-    document.body.appendChild(target);
-
     portal(() => {
       const el = _createElement('p');
       el.textContent = 'Found by selector';
       return el;
-    }, '#portal-selector-target');
+    }, '#portal-test-target');
 
-    expect(target.textContent).toBe('Found by selector');
-
-    document.body.removeChild(target);
+    expect(portalTarget.textContent).toBe('Found by selector');
   });
 
   it('cleans up portal content when scope is disposed', () => {
-    const target = _createElement('div');
-    document.body.appendChild(target);
-
-    let dispose: (() => void) | undefined;
     const scope = createScope(() => {
       portal(() => {
         const el = _createElement('span');
         el.textContent = 'will be cleaned up';
         return el;
-      }, target);
+      }, portalTarget);
     });
 
-    expect(target.childNodes.length).toBe(1);
+    expect(portalTarget.childNodes.length).toBe(1);
     scope.dispose();
-    expect(target.childNodes.length).toBe(0);
-
-    document.body.removeChild(target);
+    expect(portalTarget.childNodes.length).toBe(0);
   });
 });
 
@@ -1247,13 +1242,10 @@ describe('CSS class/style — object and array syntax', () => {
 // ============================================================
 describe('ErrorBoundary — catch and recover from errors', () => {
   it('renders children normally when no error', () => {
-    const container = _createElement('div');
-    document.body.appendChild(container);
-
     const child = _createElement('span');
     child.textContent = 'All good';
 
-    const dispose = render(() =>
+    const { text, dispose } = renderContent(() =>
       _createComponent(ErrorBoundary, {
         fallback: (err: Error) => {
           const el = _createElement('p');
@@ -1261,20 +1253,15 @@ describe('ErrorBoundary — catch and recover from errors', () => {
           return el;
         },
         children: child,
-      }),
-      container
+      })
     );
 
-    expect(container.textContent).toBe('All good');
+    expect(text()).toBe('All good');
     dispose();
-    document.body.removeChild(container);
   });
 
   it('shows fallback when child throws', () => {
-    const container = _createElement('div');
-    document.body.appendChild(container);
-
-    const dispose = render(() =>
+    const { text, dispose } = renderContent(() =>
       _createComponent(ErrorBoundary, {
         fallback: (err: Error) => {
           const el = _createElement('p');
@@ -1284,13 +1271,11 @@ describe('ErrorBoundary — catch and recover from errors', () => {
         get children() {
           throw new Error('Component exploded');
         },
-      }),
-      container
+      })
     );
 
-    expect(container.textContent).toBe('Caught: Component exploded');
+    expect(text()).toBe('Caught: Component exploded');
     dispose();
-    document.body.removeChild(container);
   });
 });
 
@@ -1414,10 +1399,10 @@ describe('disposeComponent — manual component disposal', () => {
       return el;
     }
 
-    const node = _createComponent(MyComponent, {});
+    const { dispose } = renderComponent(MyComponent);
     expect(cleanedUp).toBe(false);
 
-    disposeComponent(node);
+    dispose();
     expect(cleanedUp).toBe(true);
   });
 
@@ -1433,17 +1418,17 @@ describe('disposeComponent — manual component disposal', () => {
       return _createElement('div');
     }
 
-    const node = _createComponent(Counter, {});
+    const { dispose } = renderComponent(Counter);
     expect(effectRuns).toBe(1);
 
     setCount(1);
-    flushSync();
+    flush();
     expect(effectRuns).toBe(2);
 
-    disposeComponent(node);
+    dispose();
 
     setCount(2);
-    flushSync();
+    flush();
     // Effect should not run after disposal
     expect(effectRuns).toBe(2);
   });
@@ -1491,51 +1476,52 @@ describe('Dev-mode warnings', () => {
 
   it('warns on duplicate keys in each()', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const container = document.createElement('div');
 
     const items = [
       { id: 1, name: 'a' },
       { id: 1, name: 'b' }, // duplicate key
     ];
 
-    const node = each(
-      () => items,
-      (item) => {
-        const el = document.createElement('span');
-        el.textContent = item.name;
-        return el;
-      },
-      undefined,
-      { key: (item) => item.id }
+    const { dispose } = renderContent(() =>
+      each(
+        () => items,
+        (item) => {
+          const el = _createElement('span');
+          el.textContent = item.name;
+          return el;
+        },
+        undefined,
+        { key: (item) => item.id }
+      )
     );
-    container.appendChild(node);
-    // Need to flush to trigger the renderEffect
-    flushSync();
+    flush();
 
     expect(warnSpy).toHaveBeenCalledWith(
       expect.stringContaining('Duplicate key')
     );
     warnSpy.mockRestore();
+    dispose();
   });
 
   it('warns on switchMatch with no matching case', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const container = document.createElement('div');
 
-    const node = switchMatch(
-      () => 'unknown' as any,
-      {
-        loading: () => document.createElement('span'),
-        success: () => document.createElement('span'),
-      }
+    const { dispose } = renderContent(() =>
+      switchMatch(
+        () => 'unknown' as any,
+        {
+          loading: () => _createElement('span'),
+          success: () => _createElement('span'),
+        }
+      )
     );
-    container.appendChild(node);
-    flushSync();
+    flush();
 
     expect(warnSpy).toHaveBeenCalledWith(
       expect.stringContaining('switchMatch()')
     );
     warnSpy.mockRestore();
+    dispose();
   });
 
   it('warns when component returns null', () => {
@@ -1545,12 +1531,13 @@ describe('Dev-mode warnings', () => {
       return null as any;
     }
 
-    _createComponent(NullComponent, {});
+    const { dispose } = renderComponent(NullComponent);
 
     expect(warnSpy).toHaveBeenCalledWith(
       expect.stringContaining('returned null or undefined')
     );
     warnSpy.mockRestore();
+    dispose();
   });
 
   it('throws on createStore with non-object', () => {
