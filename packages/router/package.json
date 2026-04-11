@@ -1,5 +1,5 @@
 {
-  "name": "mikata",
+  "name": "@mikata/router",
   "version": "0.1.0",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -20,8 +20,6 @@
   },
   "dependencies": {
     "@mikata/reactivity": "workspace:*",
-    "@mikata/runtime": "workspace:*",
-    "@mikata/store": "workspace:*",
-    "@mikata/router": "workspace:*"
+    "@mikata/runtime": "workspace:*"
   }
 }

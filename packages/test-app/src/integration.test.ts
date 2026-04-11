@@ -47,6 +47,18 @@ import {
   transitionGroup,
 } from '@mikata/runtime';
 import {
+  createRouter,
+  defineRoutes,
+  searchParam,
+  provideRouter,
+  routeOutlet,
+  Link,
+  useRouter,
+  useParams,
+  useSearchParams,
+  useGuard,
+} from '@mikata/router';
+import {
   createStore,
   derived,
   createSelector,
@@ -2040,5 +2052,215 @@ describe('12. Transitions / Animations', () => {
     expect(container.textContent).toContain('Empty list');
 
     dispose();
+  });
+});
+
+// ============================================================================
+// 13. Router
+// ============================================================================
+
+describe('13. Router', () => {
+  it('renders initial route and navigates between pages', async () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+
+    const router = createRouter({
+      routes: defineRoutes([
+        {
+          path: '/',
+          component: () => {
+            const el = document.createElement('div');
+            el.textContent = 'Home Page';
+            return el;
+          },
+        },
+        {
+          path: '/about',
+          component: () => {
+            const el = document.createElement('div');
+            el.textContent = 'About Page';
+            return el;
+          },
+        },
+      ]),
+      history: 'memory',
+    });
+
+    const dispose = render(() => {
+      provideRouter(router);
+      const wrapper = document.createElement('div');
+      wrapper.appendChild(routeOutlet());
+      return wrapper;
+    }, container);
+    flush();
+
+    expect(container.textContent).toBe('Home Page');
+
+    await router.navigate('/about');
+    flush();
+
+    expect(container.textContent).toBe('About Page');
+
+    dispose();
+    router.dispose();
+    container.remove();
+  });
+
+  it('extracts path params and typed search params', async () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    let capturedId: string | undefined;
+    let capturedPage: number | undefined;
+
+    const router = createRouter({
+      routes: defineRoutes([
+        { path: '/', component: () => document.createElement('div') },
+        {
+          path: '/users/:id',
+          component: () => {
+            const r = useRouter();
+            capturedId = r.params().id;
+            capturedPage = r.searchParams().page as number;
+            const el = document.createElement('div');
+            el.textContent = `User ${capturedId} page ${capturedPage}`;
+            return el;
+          },
+          search: {
+            page: searchParam.number(1),
+          },
+        },
+      ]),
+      history: 'memory',
+    });
+
+    const dispose = render(() => {
+      provideRouter(router);
+      const wrapper = document.createElement('div');
+      wrapper.appendChild(routeOutlet());
+      return wrapper;
+    }, container);
+    flush();
+
+    await router.navigate('/users/42?page=3');
+    flush();
+
+    expect(capturedId).toBe('42');
+    expect(capturedPage).toBe(3);
+    expect(container.textContent).toBe('User 42 page 3');
+
+    dispose();
+    router.dispose();
+    container.remove();
+  });
+
+  it('guards redirect navigation', async () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+
+    const router = createRouter({
+      routes: defineRoutes([
+        { path: '/', component: () => { const e = document.createElement('div'); e.textContent = 'Home'; return e; } },
+        { path: '/login', component: () => { const e = document.createElement('div'); e.textContent = 'Login'; return e; } },
+        { path: '/admin', guard: () => '/login', component: () => { const e = document.createElement('div'); e.textContent = 'Admin'; return e; } },
+      ]),
+      history: 'memory',
+    });
+
+    const dispose = render(() => {
+      provideRouter(router);
+      const wrapper = document.createElement('div');
+      wrapper.appendChild(routeOutlet());
+      return wrapper;
+    }, container);
+    flush();
+
+    await router.navigate('/admin');
+    flush();
+
+    expect(router.path()).toBe('/login');
+    expect(container.textContent).toBe('Login');
+
+    dispose();
+    router.dispose();
+    container.remove();
+  });
+
+  it('renders nested routes with persistent layouts', async () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+
+    const router = createRouter({
+      routes: defineRoutes([
+        {
+          path: '/app',
+          component: () => {
+            const el = document.createElement('div');
+            const header = document.createElement('h1');
+            header.textContent = 'Layout';
+            el.appendChild(header);
+            el.appendChild(routeOutlet());
+            return el;
+          },
+          children: [
+            { path: '/', component: () => { const e = document.createElement('div'); e.textContent = 'Dash'; return e; } },
+            { path: '/settings', component: () => { const e = document.createElement('div'); e.textContent = 'Settings'; return e; } },
+          ],
+        },
+      ]),
+      history: 'memory',
+    });
+
+    const dispose = render(() => {
+      provideRouter(router);
+      const wrapper = document.createElement('div');
+      wrapper.appendChild(routeOutlet());
+      return wrapper;
+    }, container);
+
+    await router.navigate('/app');
+    flush();
+
+    expect(container.textContent).toContain('Layout');
+    expect(container.textContent).toContain('Dash');
+
+    await router.navigate('/app/settings');
+    flush();
+
+    expect(container.textContent).toContain('Layout');
+    expect(container.textContent).toContain('Settings');
+    expect(container.textContent).not.toContain('Dash');
+
+    dispose();
+    router.dispose();
+    container.remove();
+  });
+
+  it('shows notFound for unmatched routes', async () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+
+    const router = createRouter({
+      routes: defineRoutes([
+        { path: '/', component: () => { const e = document.createElement('div'); e.textContent = 'Home'; return e; } },
+      ]),
+      history: 'memory',
+      notFound: () => { const e = document.createElement('div'); e.textContent = '404'; return e; },
+    });
+
+    const dispose = render(() => {
+      provideRouter(router);
+      const wrapper = document.createElement('div');
+      wrapper.appendChild(routeOutlet());
+      return wrapper;
+    }, container);
+    flush();
+
+    await router.navigate('/nope');
+    flush();
+    expect(container.textContent).toBe('404');
+
+    dispose();
+    router.dispose();
+    container.remove();
   });
 });

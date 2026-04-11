@@ -11,6 +11,7 @@
     "@mikata/reactivity": "workspace:*",
     "@mikata/runtime": "workspace:*",
     "@mikata/store": "workspace:*",
+    "@mikata/router": "workspace:*",
     "@mikata/testing": "workspace:*"
   }
 }

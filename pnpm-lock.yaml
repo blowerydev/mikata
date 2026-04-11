@@ -44,6 +44,9 @@ importers:
       '@mikata/reactivity':
         specifier: workspace:*
         version: link:../reactivity
+      '@mikata/router':
+        specifier: workspace:*
+        version: link:../router
       '@mikata/runtime':
         specifier: workspace:*
         version: link:../runtime
@@ -52,6 +55,15 @@ importers:
         version: link:../store
 
   packages/reactivity: {}
+
+  packages/router:
+    dependencies:
+      '@mikata/reactivity':
+        specifier: workspace:*
+        version: link:../reactivity
+      '@mikata/runtime':
+        specifier: workspace:*
+        version: link:../runtime
 
   packages/runtime:
     dependencies:
@@ -70,6 +82,9 @@ importers:
       '@mikata/reactivity':
         specifier: workspace:*
         version: link:../reactivity
+      '@mikata/router':
+        specifier: workspace:*
+        version: link:../router
       '@mikata/runtime':
         specifier: workspace:*
         version: link:../runtime

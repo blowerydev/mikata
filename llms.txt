@@ -1063,6 +1063,91 @@ import styles from './fade.module.css';
 
 **`appear` option**: Set `appear: true` to animate the initial render.
 
+### Router
+
+Client-side routing with typed params, guards, nested layouts, and code splitting.
+
+```tsx
+import { createRouter, defineRoutes, searchParam, provideRouter, routeOutlet, Link, useRouter, useGuard } from '@mikata/router';
+
+// Define routes with typed search params
+const routes = defineRoutes([
+  { path: '/', component: HomePage },
+  {
+    path: '/users/:id',
+    lazy: () => import('./UserPage'),  // code-split
+    search: {
+      tab: searchParam.string('profile'),
+      page: searchParam.number(1),
+    },
+  },
+  {
+    path: '/dashboard',
+    component: DashboardLayout,
+    guard: (to) => isLoggedIn() ? true : '/login',  // redirect if not authed
+    children: [
+      { path: '/', component: DashboardHome },
+      { path: '/settings', component: Settings },
+    ],
+  },
+]);
+
+// Create router
+const router = createRouter({
+  routes,
+  history: 'browser',  // 'browser' | 'hash' | 'memory'
+  notFound: () => <h1>404</h1>,
+  scrollBehavior: { behavior: 'smooth', selectors: ['.main-content'] },
+  transition: { name: 'page', mode: 'out-in', duration: 300 },
+});
+
+// Root component
+function App() {
+  provideRouter(router);
+  return (
+    <div>
+      <nav>
+        <Link to="/" activeClass="active">Home</Link>
+        <Link to="/dashboard">Dashboard</Link>
+      </nav>
+      <main>{routeOutlet()}</main>
+    </div>
+  );
+}
+
+// Nested layout — just a component with another routeOutlet()
+function DashboardLayout() {
+  return (
+    <div class="dashboard">
+      <Sidebar />
+      <div class="content">{routeOutlet()}</div>
+    </div>
+  );
+}
+
+// Access route state in components
+function UserPage() {
+  const router = useRouter();
+  const id = computed(() => router.params().id);
+  const tab = computed(() => router.searchParams().tab);
+
+  // Component-scoped guard (auto-cleaned up)
+  useGuard(() => isDirty() ? confirm('Leave?') : true);
+
+  return <div>User {id()}, tab: {tab()}</div>;
+}
+```
+
+**Key features:**
+- `defineRoutes()` — type-inferred route definitions (not JSX)
+- `routeOutlet()` — function-based (like `show()`), not a component
+- **Typed search params** — `searchParam.string()`, `.number()`, `.boolean()`, `.json()`, `.enum()` with defaults
+- **Guards** — return `true` to allow, `false` to block, `'/path'` to redirect. Two types: per-route + `useGuard()` (component-scoped)
+- **Nested routes** — layouts persist, only inner outlet swaps
+- **Lazy routes** — `lazy: () => import('./Page')` integrates with `lazy()` from runtime
+- **Scroll restoration** — built-in, including nested scrollable containers
+- **History modes** — `'browser'` (pushState), `'hash'` (#), `'memory'` (testing/SSR)
+
 ---
 
 ## Critical Differences from Other Frameworks
@@ -1102,6 +1187,7 @@ mikata/
     runtime/       # @mikata/runtime — DOM rendering, components, control flow, context
     compiler/      # @mikata/compiler — Vite plugin + Babel JSX transform
     store/         # @mikata/store — createStore, createQuery, createMutation
+    router/        # @mikata/router — client-side routing, guards, nested layouts
     testing/       # @mikata/testing — renderComponent, fireEvent, flush, waitForUpdate
     mikata/        # mikata — umbrella re-exports
   playground/      # Vite dev app for testing
