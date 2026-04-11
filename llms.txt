@@ -418,6 +418,60 @@ Style accepts strings or camelCase objects:
 <div style={{ color: 'red', fontSize: '14px', backgroundColor: bg() }} />
 ```
 
+### JSX Type Checking
+
+Mikata provides full TypeScript JSX type definitions via `JSX.IntrinsicElements`. All HTML elements have typed attributes with autocomplete, event handler typing, and element-specific props.
+
+```tsx
+// Autocomplete for element-specific attributes
+<input type="email" placeholder="you@example.com" required />
+<textarea rows={4} cols={50} />
+<select multiple size={3} />
+
+// Type errors for invalid props
+<input typ="text" />          // Error: 'typ' does not exist
+<button disabled="yes" />     // Error: 'disabled' must be boolean
+
+// Typed event handlers
+<button onClick={(e: MouseEvent) => { /* e is MouseEvent */ }} />
+<input onInput={(e: InputEvent) => { /* e is InputEvent */ }} />
+<form onSubmit={(e: SubmitEvent) => { /* e is SubmitEvent */ }} />
+
+// Mikata class syntax — string, object, or array
+<div class="static" />
+<div class={{ active: true, hidden: false }} />
+<div class={['base', { highlight: selected() }]} />
+
+// Mikata style syntax — string or camelCase object
+<div style={{ fontSize: '14px', backgroundColor: 'red' }} />
+
+// ref — callback or Ref object
+const myRef = createRef<HTMLInputElement>();
+<input ref={myRef} />
+<input ref={(el) => { /* el is HTMLInputElement */ }} />
+
+// data-* attributes always allowed
+<div data-testid="foo" data-count={3} />
+
+// ARIA attributes
+<button aria-label="Close" aria-expanded={isOpen()} />
+```
+
+To enable JSX type checking, configure tsconfig:
+```json
+{
+  "compilerOptions": {
+    "jsx": "preserve",
+    "types": ["@mikata/runtime/jsx-global"]
+  }
+}
+```
+
+Or import the JSX namespace directly:
+```tsx
+import type { JSX } from '@mikata/runtime';
+```
+
 ---
 
 ## Store API (`@mikata/store`)

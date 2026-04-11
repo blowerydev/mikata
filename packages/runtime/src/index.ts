@@ -37,3 +37,21 @@ export { ErrorBoundary } from './error-boundary';
 
 // Render
 export { render } from './render';
+
+// JSX types
+export type {
+  HTMLAttributes,
+  DOMEventHandlers,
+  AriaAttributes,
+  SVGAttributes,
+  AnchorHTMLAttributes,
+  ButtonHTMLAttributes,
+  FormHTMLAttributes,
+  ImgHTMLAttributes,
+  InputHTMLAttributes,
+  SelectHTMLAttributes,
+  TextareaHTMLAttributes,
+  VideoHTMLAttributes,
+  AudioHTMLAttributes,
+} from './jsx';
+export type { JSX } from './jsx';
