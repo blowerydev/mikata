@@ -9,6 +9,7 @@ import {
   type ReactiveNode,
   track,
   cleanupSources,
+  cleanupPropertySources,
   pushSubscriber,
   popSubscriber,
   setInsideComputed,
@@ -34,6 +35,7 @@ export function computed<T>(fn: () => T): ReadSignal<T> {
     }
     computing = true;
     cleanupSources(node);
+    cleanupPropertySources(node);
     pushSubscriber(node);
     if (__DEV__) setInsideComputed(true);
     try {
@@ -90,6 +92,7 @@ export function computed<T>(fn: () => T): ReadSignal<T> {
 
     _dispose() {
       cleanupSources(this);
+      cleanupPropertySources(this);
       this._subscribers.clear();
     },
   };

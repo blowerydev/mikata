@@ -10,6 +10,7 @@
 import {
   type ReactiveNode,
   cleanupSources,
+  cleanupPropertySources,
   pushSubscriber,
   popSubscriber,
 } from './tracking';
@@ -69,6 +70,7 @@ function createEffectNode(
 
       // Clear old dependency tracking
       cleanupSources(node);
+      cleanupPropertySources(node);
       node._hasPropertyDeps = false;
 
       // Execute and track new dependencies
@@ -92,6 +94,7 @@ function createEffectNode(
         node._cleanup = undefined;
       }
       cleanupSources(node);
+      cleanupPropertySources(node);
       node._subscribers.clear();
     },
   };

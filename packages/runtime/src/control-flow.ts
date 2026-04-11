@@ -190,9 +190,18 @@ export function each<T>(
       entry.scope.dispose();
     }
 
-    // Reorder / insert new nodes before marker
-    for (const entry of newEntries) {
-      parent.insertBefore(entry.node, marker);
+    // Reconcile: only move/insert nodes that are out of position.
+    // Walk backwards from the end. `nextRef` is the node that should
+    // come after the current entry. Initially it's the marker.
+    // If the entry's node is already right before nextRef, skip it.
+    // Otherwise insertBefore to put it in the correct position.
+    let nextRef: Node = marker;
+    for (let i = newEntries.length - 1; i >= 0; i--) {
+      const node = newEntries[i].node;
+      if (node.nextSibling !== nextRef) {
+        parent.insertBefore(node, nextRef);
+      }
+      nextRef = node;
     }
 
     entries = newEntries;

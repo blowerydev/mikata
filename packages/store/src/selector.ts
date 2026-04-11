@@ -3,9 +3,12 @@
  *
  * Avoids re-rendering the entire list when the selected item changes.
  * Only the previously-selected and newly-selected items are notified.
+ *
+ * Each item gets its own signal that only toggles when that specific
+ * item becomes selected or deselected.
  */
 
-import { effect, signal, untrack } from '@mikata/reactivity';
+import { signal, effect, untrack, type ReadSignal } from '@mikata/reactivity';
 
 /**
  * Create an efficient selector for list selection patterns.
@@ -14,7 +17,7 @@ import { effect, signal, untrack } from '@mikata/reactivity';
  *   const [selectedId, setSelectedId] = signal(1);
  *   const isSelected = createSelector(() => selectedId());
  *
- *   // In a list item:
+ *   // In a list item — only re-runs for the specific item that changes selection:
  *   effect(() => {
  *     if (isSelected(item.id)) {
  *       // Only runs when this specific item becomes selected/deselected
@@ -25,37 +28,40 @@ export function createSelector<T, U = T>(
   source: () => T,
   equals: (a: U, b: T) => boolean = (a, b) => (a as unknown) === (b as unknown)
 ): (item: U) => boolean {
-  const listeners = new Map<U, Set<() => void>>();
+  // Each item key gets its own signal that tracks whether it's selected.
+  const itemSignals = new Map<U, [ReadSignal<boolean>, (v: boolean) => void]>();
+
   let prevValue: T | undefined;
   let initialized = false;
 
-  // Watch the source and notify only affected items
+  // Watch the source and toggle only the affected item signals
   effect(() => {
     const value = source();
+
     if (initialized) {
-      // Notify previously-selected item (now deselected)
-      if (prevValue !== undefined) {
-        const prevKey = prevValue as unknown as U;
-        const prevListeners = listeners.get(prevKey);
-        if (prevListeners) {
-          for (const notify of prevListeners) notify();
+      // Toggle signals: check each registered item against old and new value
+      for (const [item, [, setter]] of itemSignals) {
+        const wasSelected = equals(item, prevValue!);
+        const isNowSelected = equals(item, value);
+        if (wasSelected !== isNowSelected) {
+          setter(isNowSelected);
         }
       }
-      // Notify newly-selected item
-      const nextKey = value as unknown as U;
-      const nextListeners = listeners.get(nextKey);
-      if (nextListeners) {
-        for (const notify of nextListeners) notify();
-      }
     }
+
     prevValue = value;
     initialized = true;
   });
 
   return (item: U): boolean => {
-    // Register this read for notification
-    // This is a simplified version — in a full implementation,
-    // this would integrate with the reactive tracking system
-    return equals(item, untrack(source));
+    // Get or create the signal for this item
+    let sig = itemSignals.get(item);
+    if (!sig) {
+      const currentValue = untrack(source);
+      sig = signal(equals(item, currentValue));
+      itemSignals.set(item, sig);
+    }
+    // Reading the signal subscribes the current effect to this item's changes
+    return sig[0]();
   };
 }

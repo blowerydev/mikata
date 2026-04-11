@@ -87,6 +87,12 @@ export function cleanupSources(node: ReactiveNode): void {
  */
 const targetMap = new WeakMap<object, Map<PropertyKey, Set<ReactiveNode>>>();
 
+/**
+ * Reverse map: node -> list of (target, key) pairs it subscribes to.
+ * Used by cleanupPropertySources to remove stale subscriptions.
+ */
+const nodePropertyDeps = new WeakMap<ReactiveNode, Array<{ target: object; key: PropertyKey }>>();
+
 export function trackProperty(target: object, key: PropertyKey): void {
   if (!currentSubscriber) return;
   let depsMap = targetMap.get(target);
@@ -101,6 +107,36 @@ export function trackProperty(target: object, key: PropertyKey): void {
   }
   deps.add(currentSubscriber);
   currentSubscriber._hasPropertyDeps = true;
+
+  // Track reverse mapping for cleanup
+  let propDeps = nodePropertyDeps.get(currentSubscriber);
+  if (!propDeps) {
+    propDeps = [];
+    nodePropertyDeps.set(currentSubscriber, propDeps);
+  }
+  propDeps.push({ target, key });
+}
+
+/**
+ * Remove all property-level subscriptions for a node.
+ * Called before re-running an effect so stale property deps are dropped.
+ */
+export function cleanupPropertySources(node: ReactiveNode): void {
+  const propDeps = nodePropertyDeps.get(node);
+  if (!propDeps) return;
+
+  for (const { target, key } of propDeps) {
+    const depsMap = targetMap.get(target);
+    if (depsMap) {
+      const deps = depsMap.get(key);
+      if (deps) {
+        deps.delete(node);
+        if (deps.size === 0) depsMap.delete(key);
+      }
+      if (depsMap.size === 0) targetMap.delete(target);
+    }
+  }
+  propDeps.length = 0;
 }
 
 export function getPropertySubscribers(
