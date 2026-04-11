@@ -8,3 +8,21 @@ export { flushSync } from './scheduler';
 export type { Signal, ReadSignal, WriteSignal } from './signal';
 export type { Scope } from './scope';
 export type { ReactiveNode } from './tracking';
+
+// Debug / devtools (dev-mode only)
+export {
+  getGraphSnapshot,
+  getStats,
+  findNodeById,
+  traceDependencies,
+  traceSubscribers,
+  getNodesByKind,
+  findNodesByLabel,
+  _resetDebugRegistry,
+} from './debug';
+export type {
+  NodeKind,
+  DebugNodeInfo,
+  DebugNodeSnapshot,
+  ReactiveGraphSnapshot,
+} from './debug';

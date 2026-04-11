@@ -41,6 +41,9 @@ export { render } from './render';
 // HMR (Hot Module Replacement)
 export { _registerComponent, _hotReplace } from './hmr';
 
+// DevTools
+export { installDevTools } from './devtools';
+
 // JSX types
 export type {
   HTMLAttributes,

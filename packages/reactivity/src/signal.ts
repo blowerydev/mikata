@@ -13,6 +13,7 @@ import {
   isInsideComputed,
 } from './tracking';
 import { scheduleDirty } from './scheduler';
+import { registerNode, unregisterNode } from './debug';
 
 declare const __DEV__: boolean;
 
@@ -29,7 +30,7 @@ interface SignalNode<T> extends ReactiveNode {
   _value: T;
 }
 
-export function signal<T>(initialValue: T): Signal<T> {
+export function signal<T>(initialValue: T, label?: string): Signal<T> {
   const node: SignalNode<T> = {
     _value: initialValue,
     _sources: new Set(),
@@ -37,9 +38,14 @@ export function signal<T>(initialValue: T): Signal<T> {
     _version: 0,
     _dirty: false,
     _dispose() {
+      unregisterNode(this);
       this._subscribers.clear();
     },
   };
+
+  if (__DEV__) {
+    registerNode(node, 'signal', label, () => node._value);
+  }
 
   const get = (() => {
     track(node);

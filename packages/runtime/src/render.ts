@@ -3,6 +3,11 @@
  */
 
 import { createScope } from '@mikata/reactivity';
+import { installDevTools } from './devtools';
+
+declare const __DEV__: boolean;
+
+let devToolsInstalled = false;
 
 /**
  * Render a component tree into a container element.
@@ -16,6 +21,12 @@ export function render(
   component: () => Node,
   container: HTMLElement
 ): () => void {
+  // Auto-install devtools on first render in dev mode
+  if (__DEV__ && !devToolsInstalled && typeof window !== 'undefined') {
+    devToolsInstalled = true;
+    installDevTools();
+  }
+
   // Clear container
   container.textContent = '';
 

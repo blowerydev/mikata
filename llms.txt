@@ -739,6 +739,73 @@ mikata({ hmr: false })
 
 ---
 
+## DevTools (`window.__MIKATA_DEVTOOLS__`)
+
+Mikata includes built-in dev tools that auto-install when `render()` is called in dev mode. Provides both a console API and a floating overlay panel.
+
+### Console API
+
+```tsx
+// In browser console:
+const dt = __MIKATA_DEVTOOLS__;
+
+dt.stats()          // { signals: 12, computeds: 3, effects: 8, renderEffects: 15, total: 38, dirty: 0 }
+dt.graph()          // Full reactive graph snapshot with all nodes and their dependencies
+dt.inspect(5)       // Inspect node by ID: value, dirty state, sources, subscribers, creation stack
+dt.why(5)           // Trace dependency chain: what does node #5 depend on (transitively)?
+dt.subscribers(2)   // What depends on node #2 (transitively)?
+dt.list('signal')   // All signals (or 'computed', 'effect', 'renderEffect')
+dt.search('user')   // Find nodes by label substring
+dt.components()     // Component tree snapshot
+
+dt.show()           // Show floating overlay
+dt.hide()           // Hide overlay
+dt.toggle()         // Toggle overlay
+```
+
+### Labeled Nodes
+
+Pass optional labels to reactive primitives for easier debugging:
+
+```tsx
+const [count, setCount] = signal(0, 'count');
+const doubled = computed(() => count() * 2, 'doubled');
+const dispose = effect(() => { console.log(count()); }, 'logger');
+```
+
+Labels appear in devtools snapshots, `search()`, and the overlay panel.
+
+### Floating Overlay
+
+Press **Ctrl+Shift+M** (or Cmd+Shift+M on Mac) to toggle the floating overlay panel. It shows:
+
+- **Overview**: Signal/computed/effect counts, dirty count, component count, console API reference
+- **Signals**: All signals and computeds with live values, dirty state, and dependency counts
+- **Effects**: All effects and render effects with dependency counts
+- **Components**: Mounted component tree
+
+The overlay auto-refreshes every second and is draggable.
+
+### Graph Snapshot Shape
+
+```tsx
+interface DebugNodeSnapshot {
+  id: number;                  // Unique numeric ID
+  kind: 'signal' | 'computed' | 'effect' | 'renderEffect';
+  label: string | undefined;  // Optional label
+  value?: unknown;             // Current value (signals/computeds only)
+  dirty: boolean;              // Whether the node needs re-evaluation
+  version: number;             // Version counter (incremented on each value change)
+  sourceCount: number;         // Number of dependencies
+  subscriberCount: number;     // Number of subscribers
+  sources: number[];           // IDs of dependencies
+  subscribers: number[];       // IDs of subscribers
+  createdAt: string;           // Stack trace at creation
+}
+```
+
+---
+
 ## Common Patterns
 
 ### Counter

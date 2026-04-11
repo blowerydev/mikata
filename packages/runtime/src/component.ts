@@ -6,6 +6,7 @@
  */
 
 import { createScope, onCleanup, type Scope } from '@mikata/reactivity';
+import { trackComponent, untrackComponent } from './devtools';
 
 declare const __DEV__: boolean;
 
@@ -40,6 +41,10 @@ export function _createComponent<P extends Record<string, unknown>>(
   // Attach scope to the root node for cleanup
   (result as any)[SCOPE_KEY] = scope;
 
+  if (__DEV__) {
+    trackComponent(Comp.name || 'Anonymous', result);
+  }
+
   return result;
 }
 
@@ -48,6 +53,9 @@ export function _createComponent<P extends Record<string, unknown>>(
  * Called when a component's root node is removed from the DOM.
  */
 export function disposeComponent(node: Node): void {
+  if (__DEV__) {
+    untrackComponent(node);
+  }
   const scope = (node as any)[SCOPE_KEY] as Scope | undefined;
   if (scope) {
     scope.dispose();

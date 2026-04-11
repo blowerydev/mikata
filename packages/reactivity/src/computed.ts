@@ -15,13 +15,14 @@ import {
   setInsideComputed,
 } from './tracking';
 import { scheduleDirty } from './scheduler';
+import { registerNode, unregisterNode } from './debug';
 import type { ReadSignal } from './signal';
 
 declare const __DEV__: boolean;
 
 const SIGNAL_BRAND = Symbol('mikata:signal');
 
-export function computed<T>(fn: () => T): ReadSignal<T> {
+export function computed<T>(fn: () => T, label?: string): ReadSignal<T> {
   let value: T;
   let initialized = false;
   let computing = false;
@@ -91,11 +92,16 @@ export function computed<T>(fn: () => T): ReadSignal<T> {
     },
 
     _dispose() {
+      unregisterNode(this);
       cleanupSources(this);
       cleanupPropertySources(this);
       this._subscribers.clear();
     },
   };
+
+  if (__DEV__) {
+    registerNode(node, 'computed', label, () => value);
+  }
 
   const get = (() => {
     track(node);

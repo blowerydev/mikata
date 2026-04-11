@@ -16,6 +16,9 @@ import {
 } from './tracking';
 import { scheduleDirty, flushSync } from './scheduler';
 import { getCurrentScope } from './scope';
+import { registerNode, unregisterNode } from './debug';
+
+declare const __DEV__: boolean;
 
 interface EffectNode extends ReactiveNode {
   _cleanup: (() => void) | void;
@@ -26,7 +29,8 @@ interface EffectNode extends ReactiveNode {
 
 function createEffectNode(
   fn: () => void | (() => void),
-  isRender: boolean
+  isRender: boolean,
+  label?: string
 ): () => void {
   const node: EffectNode = {
     _sources: new Set(),
@@ -89,6 +93,7 @@ function createEffectNode(
     },
 
     _dispose() {
+      unregisterNode(node);
       if (node._cleanup) {
         node._cleanup();
         node._cleanup = undefined;
@@ -98,6 +103,10 @@ function createEffectNode(
       node._subscribers.clear();
     },
   };
+
+  if (__DEV__) {
+    registerNode(node, isRender ? 'renderEffect' : 'effect', label);
+  }
 
   // Register with current scope for automatic disposal
   const scope = getCurrentScope();
@@ -119,14 +128,14 @@ function createEffectNode(
  *
  * @returns A dispose function to manually stop the effect.
  */
-export function effect(fn: () => void | (() => void)): () => void {
-  return createEffectNode(fn, false);
+export function effect(fn: () => void | (() => void), label?: string): () => void {
+  return createEffectNode(fn, false, label);
 }
 
 /**
  * Like effect(), but scheduled at render priority (runs before user effects).
  * Used internally by the compiler for DOM-updating effects.
  */
-export function renderEffect(fn: () => void | (() => void)): () => void {
-  return createEffectNode(fn, true);
+export function renderEffect(fn: () => void | (() => void), label?: string): () => void {
+  return createEffectNode(fn, true, label);
 }
