@@ -38,6 +38,9 @@ export { ErrorBoundary } from './error-boundary';
 // Render
 export { render } from './render';
 
+// HMR (Hot Module Replacement)
+export { _registerComponent, _hotReplace } from './hmr';
+
 // JSX types
 export type {
   HTMLAttributes,

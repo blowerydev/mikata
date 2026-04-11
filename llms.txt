@@ -693,6 +693,52 @@ Key transform rules:
 
 ---
 
+## Hot Module Replacement (HMR)
+
+Mikata includes built-in HMR support via the Vite plugin. When a `.tsx` file is saved during development, components in that file are hot-replaced without a full page reload.
+
+### How it works
+
+1. The compiler detects component functions (uppercase function names) in each `.tsx` file
+2. Each component is wrapped in an HMR proxy via `_registerComponent(id, Comp)`
+3. The proxy tracks all active instances of that component
+4. When the file changes, `import.meta.hot.accept()` fires and calls `_hotReplace(id, NewComp)`
+5. All active instances are re-rendered with the new component function, preserving DOM position
+
+### Behavior
+
+- **State is NOT preserved.** Components re-run from scratch with fresh signals/reactive state. This is intentional — since components are setup functions that run once, mixing old reactive scopes with new setup code would create inconsistencies.
+- **Props ARE preserved.** The same props object is passed to the new component version.
+- **DOM position is preserved.** The new component output replaces the old one at the exact same position among siblings.
+- **Errors are caught.** If the new component throws during re-render, an error overlay is shown in place. The next successful HMR update replaces the error overlay.
+- **Multiple instances are updated.** If a component is rendered 5 times on the page, all 5 instances are replaced.
+
+### Configuration
+
+HMR is enabled by default in Vite dev mode and disabled in production builds.
+
+```tsx
+// vite.config.ts
+import mikata from '@mikata/compiler';
+
+export default {
+  plugins: [
+    mikata({
+      hmr: true,   // default: true in dev, false in build
+      dev: true,    // default: true
+    }),
+  ],
+};
+```
+
+To disable HMR explicitly:
+
+```tsx
+mikata({ hmr: false })
+```
+
+---
+
 ## Common Patterns
 
 ### Counter
