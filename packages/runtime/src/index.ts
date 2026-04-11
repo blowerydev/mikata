@@ -35,6 +35,10 @@ export type { Context } from './context';
 // Error boundary
 export { ErrorBoundary } from './error-boundary';
 
+// Lazy loading
+export { lazy } from './lazy';
+export type { LazyOptions } from './lazy';
+
 // Render
 export { render } from './render';
 

@@ -401,6 +401,40 @@ Catches errors thrown during child rendering and displays a fallback UI with a r
 </ErrorBoundary>
 ```
 
+### lazy(loader, options?) — Code-split components
+
+Wrap a dynamic `import()` to create a lazily-loaded component. The component loads on first render, shows a fallback while loading, and caches the result for subsequent renders.
+
+```tsx
+// Basic usage — component loads on first render
+const Dashboard = lazy(() => import('./Dashboard'));
+
+// With loading and error fallbacks
+const Settings = lazy(() => import('./Settings'), {
+  fallback: () => <Spinner />,
+  error: (err, retry) => (
+    <div>
+      <p>Failed to load: {err.message}</p>
+      <button onClick={retry}>Retry</button>
+    </div>
+  ),
+});
+
+// Used like any normal component in JSX:
+<Dashboard userId={userId()} />
+
+// Preload on hover (prefetch without rendering):
+Dashboard.preload();
+```
+
+Behavior:
+- First render shows fallback (or empty comment if none), then swaps to component once loaded
+- On error, shows error fallback with a `retry` function, or an empty comment if none
+- After first successful load, subsequent renders are synchronous (cached)
+- `preload()` starts the import without rendering — useful for prefetching on hover/route transitions
+- If the component is removed from the DOM before loading completes, the loaded component is not inserted
+- Works with `show()`, `each()`, and all other control flow
+
 ### CSS class and style syntax
 
 Class accepts strings, objects, or arrays:

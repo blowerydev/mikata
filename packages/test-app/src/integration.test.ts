@@ -42,6 +42,7 @@ import {
   portal,
   _spread,
   disposeComponent,
+  lazy,
 } from '@mikata/runtime';
 import {
   createStore,
@@ -1576,5 +1577,229 @@ describe('Dev-mode warnings', () => {
     // is verified by code review. This test just verifies flushSync
     // is available for explicit flushing.
     expect(typeof flushSync).toBe('function');
+  });
+});
+
+// ============================================================
+// 16. LAZY COMPONENTS
+// ============================================================
+describe('Lazy components — code-split via dynamic import', () => {
+  it('loads and renders a component from a dynamic import', async () => {
+    function UserProfile(props: { name: string }) {
+      const el = document.createElement('div');
+      el.textContent = `Profile: ${props.name}`;
+      return el;
+    }
+
+    const LazyProfile = lazy(() =>
+      Promise.resolve({ default: UserProfile })
+    );
+
+    const { container, dispose } = renderComponent(LazyProfile as any, { name: 'Alice' });
+
+    // Initially empty (loading)
+    expect(container.textContent).toBe('');
+
+    await waitForUpdate();
+    await waitForUpdate();
+
+    expect(container.textContent).toContain('Profile: Alice');
+    dispose();
+  });
+
+  it('shows fallback while loading', async () => {
+    let resolve!: (mod: any) => void;
+    const importPromise = new Promise<any>((r) => { resolve = r; });
+
+    function SlowPage() {
+      const el = document.createElement('div');
+      el.textContent = 'Page loaded';
+      return el;
+    }
+
+    const LazyPage = lazy(
+      () => importPromise,
+      {
+        fallback: () => {
+          const el = document.createElement('div');
+          el.className = 'spinner';
+          el.textContent = 'Loading page...';
+          return el;
+        },
+      }
+    );
+
+    const { container, dispose } = renderComponent(LazyPage as any, {});
+
+    expect(container.textContent).toBe('Loading page...');
+    expect(container.querySelector('.spinner')).toBeTruthy();
+
+    resolve({ default: SlowPage });
+    await waitForUpdate();
+    await waitForUpdate();
+
+    expect(container.textContent).toBe('Page loaded');
+    expect(container.querySelector('.spinner')).toBeNull();
+    dispose();
+  });
+
+  it('shows error fallback and supports retry', async () => {
+    let attempt = 0;
+    function WorkingComponent() {
+      const el = document.createElement('div');
+      el.textContent = 'Works now';
+      return el;
+    }
+
+    const LazyComp = lazy(
+      () => {
+        attempt++;
+        if (attempt === 1) return Promise.reject(new Error('chunk failed'));
+        return Promise.resolve({ default: WorkingComponent });
+      },
+      {
+        fallback: () => {
+          const el = document.createElement('div');
+          el.textContent = 'Loading...';
+          return el;
+        },
+        error: (err, retry) => {
+          const el = document.createElement('div');
+          el.className = 'error';
+          const btn = document.createElement('button');
+          btn.className = 'retry';
+          btn.textContent = 'Retry';
+          btn.addEventListener('click', retry);
+          el.appendChild(document.createTextNode(`Failed: ${err.message} `));
+          el.appendChild(btn);
+          return el;
+        },
+      }
+    );
+
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { container, dispose } = renderComponent(LazyComp as any, {});
+
+    // Should show loading first
+    expect(container.textContent).toBe('Loading...');
+
+    await waitForUpdate();
+    await waitForUpdate();
+
+    // Should show error after failure
+    expect(container.textContent).toContain('Failed: chunk failed');
+    expect(container.querySelector('.retry')).toBeTruthy();
+
+    // Click retry
+    fireEvent.click(container.querySelector('.retry')!);
+
+    // Should show loading again
+    expect(container.textContent).toBe('Loading...');
+
+    await waitForUpdate();
+    await waitForUpdate();
+
+    // Should show the component after successful retry
+    expect(container.textContent).toBe('Works now');
+    expect(attempt).toBe(2);
+
+    consoleSpy.mockRestore();
+    dispose();
+  });
+
+  it('caches the loaded module — second render is instant', async () => {
+    function CachedComp() {
+      const el = document.createElement('div');
+      el.textContent = 'Cached';
+      return el;
+    }
+
+    const LazyCached = lazy(() =>
+      Promise.resolve({ default: CachedComp })
+    );
+
+    // First render — async
+    const r1 = renderComponent(LazyCached as any, {});
+    await waitForUpdate();
+    await waitForUpdate();
+    expect(r1.container.textContent).toContain('Cached');
+    r1.dispose();
+
+    // Second render — should be immediate (no loading state)
+    const r2 = renderComponent(LazyCached as any, {});
+    expect(r2.container.textContent).toContain('Cached');
+    r2.dispose();
+  });
+
+  it('preload() prefetches without rendering', async () => {
+    let constructed = false;
+
+    function HeavyComp() {
+      constructed = true;
+      const el = document.createElement('div');
+      el.textContent = 'Heavy component';
+      return el;
+    }
+
+    const LazyHeavy = lazy(() =>
+      Promise.resolve({ default: HeavyComp })
+    ) as any;
+
+    // Preload
+    await LazyHeavy.preload();
+    expect(constructed).toBe(false);
+
+    // Now render — instant
+    const { container, dispose } = renderComponent(LazyHeavy, {});
+    expect(container.textContent).toContain('Heavy component');
+    expect(constructed).toBe(true);
+    dispose();
+  });
+
+  it('works with show() for conditional lazy loading', async () => {
+    function Settings() {
+      const el = document.createElement('div');
+      el.textContent = 'Settings panel';
+      return el;
+    }
+
+    const LazySettings = lazy(() =>
+      Promise.resolve({ default: Settings }),
+      { fallback: () => {
+        const el = document.createElement('span');
+        el.textContent = 'Loading settings...';
+        return el;
+      }}
+    );
+
+    const [showSettings, setShowSettings] = signal(false);
+
+    const { container, dispose } = renderContent(() =>
+      show(
+        () => showSettings(),
+        () => _createComponent(LazySettings as any, {}),
+        () => {
+          const el = document.createElement('div');
+          el.textContent = 'Main page';
+          return el;
+        }
+      )
+    );
+
+    flush();
+    expect(container.textContent).toBe('Main page');
+
+    // Toggle to show lazy component
+    setShowSettings(true);
+    flush();
+
+    // Should show fallback while loading
+    expect(container.textContent).toBe('Loading settings...');
+
+    await waitForUpdate();
+    await waitForUpdate();
+
+    expect(container.textContent).toBe('Settings panel');
+    dispose();
   });
 });
