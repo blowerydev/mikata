@@ -977,6 +977,92 @@ function ModalDemo() {
 }
 ```
 
+### Transitions & Animations
+
+Animated enter/exit for conditional rendering and lists. Supports CSS classes (like Vue's `<Transition>`) and JavaScript hooks (for GSAP, Web Animations API, etc).
+
+```tsx
+// Basic CSS transition — shows/hides with fade animation
+function FadeModal() {
+  const [open, setOpen] = signal(false);
+  return (
+    <div>
+      <button onClick={() => setOpen(v => !v)}>Toggle</button>
+      {transition(
+        () => open(),
+        () => <div class="modal">Content</div>,
+        { name: 'fade', duration: 300 }
+      )}
+    </div>
+  );
+}
+
+// With fallback (like show() + animation)
+{transition(
+  () => loggedIn(),
+  (user) => <Dashboard user={user} />,
+  () => <LoginPrompt />,
+  { name: 'slide', duration: 200, mode: 'out-in' }
+)}
+
+// JavaScript hooks for programmatic animation
+{transition(
+  () => visible(),
+  () => <Panel />,
+  {
+    onBeforeEnter: (el) => { el.style.opacity = '0'; },
+    onEnter: (el, done) => {
+      el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 300 })
+        .finished.then(done);
+    },
+    onLeave: (el, done) => {
+      el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300 })
+        .finished.then(done);
+    },
+  }
+)}
+
+// List transitions — per-item enter/exit
+function AnimatedList() {
+  const [items, setItems] = signal(['a', 'b', 'c']);
+  return transitionGroup(
+    () => items(),
+    (item) => <div class="card">{item}</div>,
+    () => <div>No items</div>,       // fallback when empty
+    { key: (item) => item },          // key function
+    { name: 'list', duration: 200 }   // transition options
+  );
+}
+```
+
+**CSS class convention** (same as Vue):
+- `{name}-enter-from` → applied at insert, removed after one frame
+- `{name}-enter-active` → applied during entire enter phase
+- `{name}-enter-to` → applied after one frame, removed when done
+- `{name}-leave-from/active/to` → same pattern for removal
+
+**Custom class names** (works with CSS Modules):
+```tsx
+import styles from './fade.module.css';
+
+{transition(
+  () => visible(),
+  () => <Modal />,
+  {
+    enterFrom: styles.enterFrom,
+    enterActive: styles.enterActive,
+    enterTo: styles.enterTo,
+    leaveFrom: styles.leaveFrom,
+    leaveActive: styles.leaveActive,
+    leaveTo: styles.leaveTo,
+  }
+)}
+```
+
+**Transition modes**: `'out-in'` (old leaves first), `'in-out'` (new enters first), or simultaneous (default).
+
+**`appear` option**: Set `appear: true` to animate the initial render.
+
 ---
 
 ## Critical Differences from Other Frameworks

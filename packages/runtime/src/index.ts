@@ -22,6 +22,10 @@ export type { Ref } from './component';
 // Control flow
 export { show, each, switchMatch } from './control-flow';
 
+// Transitions
+export { transition, transitionGroup } from './transition';
+export type { TransitionOptions } from './transition';
+
 // Portal
 export { portal } from './portal';
 

@@ -43,6 +43,8 @@ import {
   _spread,
   disposeComponent,
   lazy,
+  transition,
+  transitionGroup,
 } from '@mikata/runtime';
 import {
   createStore,
@@ -1800,6 +1802,243 @@ describe('Lazy components — code-split via dynamic import', () => {
     await waitForUpdate();
 
     expect(container.textContent).toBe('Settings panel');
+    dispose();
+  });
+});
+
+// ============================================================================
+// 12. Transitions / Animations
+// ============================================================================
+
+describe('12. Transitions / Animations', () => {
+  it('transition() renders and swaps content without animation (like show())', () => {
+    const [visible, setVisible] = signal(true);
+
+    const { container, dispose } = renderContent(() =>
+      transition(
+        () => visible(),
+        () => {
+          const el = document.createElement('div');
+          el.textContent = 'Content';
+          return el;
+        },
+        () => {
+          const el = document.createElement('div');
+          el.textContent = 'Fallback';
+          return el;
+        }
+      )
+    );
+    flush();
+    expect(container.textContent).toBe('Content');
+
+    setVisible(false);
+    flush();
+    expect(container.textContent).toBe('Fallback');
+
+    setVisible(true);
+    flush();
+    expect(container.textContent).toBe('Content');
+
+    dispose();
+  });
+
+  it('transition() applies CSS enter classes with animation', async () => {
+    const [visible, setVisible] = signal(false);
+
+    const { container, dispose } = renderContent(() =>
+      transition(
+        () => visible(),
+        () => {
+          const el = document.createElement('div');
+          el.className = 'modal';
+          el.textContent = 'Modal';
+          return el;
+        },
+        { name: 'fade', duration: 50 }
+      )
+    );
+    flush();
+    expect(container.textContent).toBe('');
+
+    setVisible(true);
+    flush();
+
+    const modal = container.querySelector('.modal') as HTMLElement;
+    expect(modal).toBeTruthy();
+    expect(modal.classList.contains('fade-enter-active')).toBe(true);
+
+    await new Promise((r) => setTimeout(r, 80));
+    expect(modal.classList.contains('fade-enter-active')).toBe(false);
+
+    dispose();
+  });
+
+  it('transition() applies CSS leave classes with out-in mode', async () => {
+    const [visible, setVisible] = signal(true);
+
+    const { container, dispose } = renderContent(() =>
+      transition(
+        () => visible(),
+        () => {
+          const el = document.createElement('div');
+          el.className = 'panel';
+          el.textContent = 'Panel';
+          return el;
+        },
+        () => {
+          const el = document.createElement('div');
+          el.textContent = 'Empty';
+          return el;
+        },
+        { name: 'slide', duration: 50, mode: 'out-in' }
+      )
+    );
+    flush();
+
+    const panel = container.querySelector('.panel') as HTMLElement;
+    expect(panel).toBeTruthy();
+
+    setVisible(false);
+    flush();
+
+    // During leave, panel should have leave classes
+    expect(panel.classList.contains('slide-leave-active')).toBe(true);
+
+    await new Promise((r) => setTimeout(r, 80));
+    expect(container.querySelector('.panel')).toBeNull();
+    expect(container.textContent).toContain('Empty');
+
+    dispose();
+  });
+
+  it('transition() calls JS hooks on enter/leave', async () => {
+    const hooks = {
+      onBeforeEnter: vi.fn(),
+      onEnter: vi.fn((_el: Element, done: () => void) => done()),
+      onAfterEnter: vi.fn(),
+      onBeforeLeave: vi.fn(),
+      onLeave: vi.fn((_el: Element, done: () => void) => done()),
+      onAfterLeave: vi.fn(),
+    };
+
+    const [visible, setVisible] = signal(false);
+
+    const { container, dispose } = renderContent(() =>
+      transition(
+        () => visible(),
+        () => {
+          const el = document.createElement('div');
+          el.textContent = 'Hooked';
+          return el;
+        },
+        { duration: 0, ...hooks }
+      )
+    );
+    flush();
+
+    setVisible(true);
+    flush();
+    await new Promise((r) => setTimeout(r, 30));
+
+    expect(hooks.onBeforeEnter).toHaveBeenCalledTimes(1);
+    expect(hooks.onEnter).toHaveBeenCalledTimes(1);
+    expect(hooks.onAfterEnter).toHaveBeenCalledTimes(1);
+
+    setVisible(false);
+    flush();
+    await new Promise((r) => setTimeout(r, 30));
+
+    expect(hooks.onBeforeLeave).toHaveBeenCalledTimes(1);
+    expect(hooks.onLeave).toHaveBeenCalledTimes(1);
+    expect(hooks.onAfterLeave).toHaveBeenCalledTimes(1);
+
+    dispose();
+  });
+
+  it('transitionGroup() renders list and handles additions/removals', async () => {
+    const [items, setItems] = signal(['a', 'b', 'c']);
+
+    const { container, dispose } = renderContent(() =>
+      transitionGroup(
+        () => items(),
+        (item) => {
+          const el = document.createElement('span');
+          el.className = `item-${item}`;
+          el.textContent = item;
+          return el;
+        },
+        () => {
+          const el = document.createElement('div');
+          el.textContent = 'No items';
+          return el;
+        },
+        undefined,
+        { name: 'list', duration: 50 }
+      )
+    );
+    flush();
+    expect(container.textContent).toBe('abc');
+
+    // Add an item
+    setItems(['a', 'b', 'c', 'd']);
+    flush();
+    expect(container.textContent).toBe('abcd');
+
+    const itemD = container.querySelector('.item-d') as HTMLElement;
+    expect(itemD.classList.contains('list-enter-active')).toBe(true);
+
+    await new Promise((r) => setTimeout(r, 80));
+    expect(itemD.classList.contains('list-enter-active')).toBe(false);
+
+    // Remove items
+    setItems(['a']);
+    flush();
+
+    const itemB = container.querySelector('.item-b') as HTMLElement;
+    expect(itemB.classList.contains('list-leave-active')).toBe(true);
+
+    await new Promise((r) => setTimeout(r, 80));
+    expect(container.querySelector('.item-b')).toBeNull();
+    expect(container.textContent).toBe('a');
+
+    dispose();
+  });
+
+  it('transitionGroup() shows fallback when list becomes empty', async () => {
+    const [items, setItems] = signal(['x', 'y']);
+
+    const { container, dispose } = renderContent(() =>
+      transitionGroup(
+        () => items(),
+        (item) => {
+          const el = document.createElement('span');
+          el.className = `item-${item}`;
+          el.textContent = item;
+          return el;
+        },
+        () => {
+          const el = document.createElement('div');
+          el.textContent = 'Empty list';
+          return el;
+        },
+        undefined,
+        { name: 'list', duration: 50 }
+      )
+    );
+    flush();
+    expect(container.textContent).toBe('xy');
+
+    setItems([]);
+    flush();
+
+    // Items should still be animating out
+    expect(container.querySelector('.item-x')).toBeTruthy();
+
+    await new Promise((r) => setTimeout(r, 80));
+    expect(container.querySelector('.item-x')).toBeNull();
+    expect(container.textContent).toContain('Empty list');
+
     dispose();
   });
 });
