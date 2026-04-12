@@ -1,10 +1,12 @@
 import { mergeClasses } from '../../utils/class-merge';
+import { useComponentDefaults } from '../../theme/component-defaults';
 import { uniqueId } from '../../utils/unique-id';
 import { InputWrapper } from '../_internal/InputWrapper';
 import type { NumberInputProps } from './NumberInput.types';
 import './NumberInput.css';
 
-export function NumberInput(props: NumberInputProps = {}): HTMLDivElement {
+export function NumberInput(userProps: NumberInputProps = {}): HTMLDivElement {
+  const props = { ...useComponentDefaults<NumberInputProps>('NumberInput'), ...userProps };
   const {
     value,
     defaultValue,

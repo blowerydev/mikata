@@ -1,8 +1,10 @@
 import { mergeClasses } from '../../utils/class-merge';
+import { useComponentDefaults } from '../../theme/component-defaults';
 import type { CardProps } from './Card.types';
 import './Card.css';
 
-export function Card(props: CardProps = {}): HTMLElement {
+export function Card(userProps: CardProps = {}): HTMLElement {
+  const props = { ...useComponentDefaults<CardProps>('Card'), ...userProps };
   const {
     shadow = 'sm',
     padding = 'md',

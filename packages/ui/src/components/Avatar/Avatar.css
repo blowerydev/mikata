@@ -27,17 +27,17 @@
 .mkt-avatar[data-radius="full"] { border-radius: 9999px; }
 
 /* Color */
-.mkt-avatar[data-color="primary"] { --_avatar-color: var(--mkt-color-primary-6); --_avatar-bg: var(--mkt-color-primary-0); }
-.mkt-avatar[data-color="gray"]    { --_avatar-color: var(--mkt-color-gray-6);    --_avatar-bg: var(--mkt-color-gray-0); }
-.mkt-avatar[data-color="red"]     { --_avatar-color: var(--mkt-color-red-6);     --_avatar-bg: var(--mkt-color-red-0); }
-.mkt-avatar[data-color="green"]   { --_avatar-color: var(--mkt-color-green-6);   --_avatar-bg: var(--mkt-color-green-0); }
-.mkt-avatar[data-color="yellow"]  { --_avatar-color: var(--mkt-color-yellow-6);  --_avatar-bg: var(--mkt-color-yellow-0); }
-.mkt-avatar[data-color="blue"]    { --_avatar-color: var(--mkt-color-blue-6);    --_avatar-bg: var(--mkt-color-blue-0); }
-.mkt-avatar[data-color="cyan"]    { --_avatar-color: var(--mkt-color-cyan-6);    --_avatar-bg: var(--mkt-color-cyan-0); }
-.mkt-avatar[data-color="teal"]    { --_avatar-color: var(--mkt-color-teal-6);    --_avatar-bg: var(--mkt-color-teal-0); }
-.mkt-avatar[data-color="violet"]  { --_avatar-color: var(--mkt-color-violet-6);  --_avatar-bg: var(--mkt-color-violet-0); }
-.mkt-avatar[data-color="pink"]    { --_avatar-color: var(--mkt-color-pink-6);    --_avatar-bg: var(--mkt-color-pink-0); }
-.mkt-avatar[data-color="orange"]  { --_avatar-color: var(--mkt-color-orange-6);  --_avatar-bg: var(--mkt-color-orange-0); }
+.mkt-avatar[data-color="primary"] { --_avatar-color: var(--mkt-color-primary-filled); --_avatar-bg: var(--mkt-color-primary-light); }
+.mkt-avatar[data-color="gray"]    { --_avatar-color: var(--mkt-color-gray-filled);    --_avatar-bg: var(--mkt-color-gray-light); }
+.mkt-avatar[data-color="red"]     { --_avatar-color: var(--mkt-color-red-filled);     --_avatar-bg: var(--mkt-color-red-light); }
+.mkt-avatar[data-color="green"]   { --_avatar-color: var(--mkt-color-green-filled);   --_avatar-bg: var(--mkt-color-green-light); }
+.mkt-avatar[data-color="yellow"]  { --_avatar-color: var(--mkt-color-yellow-filled);  --_avatar-bg: var(--mkt-color-yellow-light); }
+.mkt-avatar[data-color="blue"]    { --_avatar-color: var(--mkt-color-blue-filled);    --_avatar-bg: var(--mkt-color-blue-light); }
+.mkt-avatar[data-color="cyan"]    { --_avatar-color: var(--mkt-color-cyan-filled);    --_avatar-bg: var(--mkt-color-cyan-light); }
+.mkt-avatar[data-color="teal"]    { --_avatar-color: var(--mkt-color-teal-filled);    --_avatar-bg: var(--mkt-color-teal-light); }
+.mkt-avatar[data-color="violet"]  { --_avatar-color: var(--mkt-color-violet-filled);  --_avatar-bg: var(--mkt-color-violet-light); }
+.mkt-avatar[data-color="pink"]    { --_avatar-color: var(--mkt-color-pink-filled);    --_avatar-bg: var(--mkt-color-pink-light); }
+.mkt-avatar[data-color="orange"]  { --_avatar-color: var(--mkt-color-orange-filled);  --_avatar-bg: var(--mkt-color-orange-light); }
 
 /* Variant */
 .mkt-avatar[data-variant="filled"] {
@@ -57,17 +57,6 @@
 }
 
 /* Dark mode backgrounds */
-[data-mkt-color-scheme="dark"] .mkt-avatar[data-color="primary"] { --_avatar-bg: rgba(34, 139, 230, 0.15); }
-[data-mkt-color-scheme="dark"] .mkt-avatar[data-color="gray"]    { --_avatar-bg: rgba(134, 142, 150, 0.15); }
-[data-mkt-color-scheme="dark"] .mkt-avatar[data-color="red"]     { --_avatar-bg: rgba(250, 82, 82, 0.15); }
-[data-mkt-color-scheme="dark"] .mkt-avatar[data-color="green"]   { --_avatar-bg: rgba(64, 192, 87, 0.15); }
-[data-mkt-color-scheme="dark"] .mkt-avatar[data-color="yellow"]  { --_avatar-bg: rgba(250, 176, 5, 0.15); }
-[data-mkt-color-scheme="dark"] .mkt-avatar[data-color="blue"]    { --_avatar-bg: rgba(34, 139, 230, 0.15); }
-[data-mkt-color-scheme="dark"] .mkt-avatar[data-color="cyan"]    { --_avatar-bg: rgba(21, 170, 191, 0.15); }
-[data-mkt-color-scheme="dark"] .mkt-avatar[data-color="teal"]    { --_avatar-bg: rgba(18, 184, 134, 0.15); }
-[data-mkt-color-scheme="dark"] .mkt-avatar[data-color="violet"]  { --_avatar-bg: rgba(121, 80, 242, 0.15); }
-[data-mkt-color-scheme="dark"] .mkt-avatar[data-color="pink"]    { --_avatar-bg: rgba(230, 73, 128, 0.15); }
-[data-mkt-color-scheme="dark"] .mkt-avatar[data-color="orange"]  { --_avatar-bg: rgba(253, 126, 20, 0.15); }
 
 /* Image */
 .mkt-avatar__image {

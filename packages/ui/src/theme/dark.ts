@@ -1,10 +1,9 @@
-import type { MikataTheme } from './types';
-
 /**
- * Dark theme overrides. Only overrides semantic colors and
- * shade mappings — palette base colors remain the same.
+ * Dark-scheme base-token overrides (semantic colors + shadows).
+ * Palette shades stay the same; per-palette semantic aliases are emitted
+ * by `flattenTheme` (light/light-hover via color-mix, border shifts, etc.).
  */
-export const darkTheme: MikataTheme = {
+export const darkTheme: Record<string, string> = {
   'color-text': '#c1c2c5',
   'color-text-dimmed': '#909296',
   'color-text-inverse': '#1a1b1e',

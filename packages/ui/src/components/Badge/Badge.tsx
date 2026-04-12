@@ -1,8 +1,10 @@
 import { mergeClasses } from '../../utils/class-merge';
+import { useComponentDefaults } from '../../theme/component-defaults';
 import type { BadgeProps } from './Badge.types';
 import './Badge.css';
 
-export function Badge(props: BadgeProps = {}): HTMLElement {
+export function Badge(userProps: BadgeProps = {}): HTMLElement {
+  const props = { ...useComponentDefaults<BadgeProps>('Badge'), ...userProps };
   const {
     variant = 'filled',
     size = 'md',

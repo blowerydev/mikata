@@ -1,8 +1,10 @@
 import { mergeClasses } from '../../utils/class-merge';
+import { useComponentDefaults } from '../../theme/component-defaults';
 import type { TextProps } from './Text.types';
 import './Text.css';
 
-export function Text(props: TextProps = {}): HTMLElement {
+export function Text(userProps: TextProps = {}): HTMLElement {
+  const props = { ...useComponentDefaults<TextProps>('Text'), ...userProps };
   const {
     size = 'md',
     weight,

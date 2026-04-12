@@ -1,10 +1,9 @@
-import type { MikataTheme } from './types';
-
 /**
- * Default light theme token values.
- * Keys map to CSS variable names: `color-primary-6` → `--mkt-color-primary-6`
+ * Default light theme token values (base layer).
+ * Keys map to CSS variable names: `color-primary-6` → `--mkt-color-primary-6`.
+ * Structured theme overrides layered by `flattenTheme` take precedence.
  */
-export const defaultTheme: MikataTheme = {
+export const defaultTheme: Record<string, string> = {
   // ─── Primary (Blue) ─────────────────────────────
   'color-primary-0': '#e7f5ff',
   'color-primary-1': '#d0ebff',

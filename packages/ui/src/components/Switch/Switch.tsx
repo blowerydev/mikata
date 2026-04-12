@@ -1,9 +1,11 @@
 import { mergeClasses } from '../../utils/class-merge';
+import { useComponentDefaults } from '../../theme/component-defaults';
 import { uniqueId } from '../../utils/unique-id';
 import type { SwitchProps } from './Switch.types';
 import './Switch.css';
 
-export function Switch(props: SwitchProps = {}): HTMLLabelElement {
+export function Switch(userProps: SwitchProps = {}): HTMLLabelElement {
+  const props = { ...useComponentDefaults<SwitchProps>('Switch'), ...userProps };
   const {
     checked,
     defaultChecked,

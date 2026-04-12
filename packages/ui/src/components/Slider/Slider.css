@@ -104,14 +104,14 @@
 }
 
 /* Color mapping */
-.mkt-slider[data-color="primary"] { --_slider-color: var(--mkt-color-primary-6); }
-.mkt-slider[data-color="gray"] { --_slider-color: var(--mkt-color-gray-6); }
-.mkt-slider[data-color="red"] { --_slider-color: var(--mkt-color-red-6); }
-.mkt-slider[data-color="green"] { --_slider-color: var(--mkt-color-green-6); }
-.mkt-slider[data-color="yellow"] { --_slider-color: var(--mkt-color-yellow-6); }
-.mkt-slider[data-color="blue"] { --_slider-color: var(--mkt-color-blue-6); }
-.mkt-slider[data-color="cyan"] { --_slider-color: var(--mkt-color-cyan-6); }
-.mkt-slider[data-color="teal"] { --_slider-color: var(--mkt-color-teal-6); }
-.mkt-slider[data-color="violet"] { --_slider-color: var(--mkt-color-violet-6); }
-.mkt-slider[data-color="pink"] { --_slider-color: var(--mkt-color-pink-6); }
-.mkt-slider[data-color="orange"] { --_slider-color: var(--mkt-color-orange-6); }
+.mkt-slider[data-color="primary"] { --_slider-color: var(--mkt-color-primary-filled); }
+.mkt-slider[data-color="gray"] { --_slider-color: var(--mkt-color-gray-filled); }
+.mkt-slider[data-color="red"] { --_slider-color: var(--mkt-color-red-filled); }
+.mkt-slider[data-color="green"] { --_slider-color: var(--mkt-color-green-filled); }
+.mkt-slider[data-color="yellow"] { --_slider-color: var(--mkt-color-yellow-filled); }
+.mkt-slider[data-color="blue"] { --_slider-color: var(--mkt-color-blue-filled); }
+.mkt-slider[data-color="cyan"] { --_slider-color: var(--mkt-color-cyan-filled); }
+.mkt-slider[data-color="teal"] { --_slider-color: var(--mkt-color-teal-filled); }
+.mkt-slider[data-color="violet"] { --_slider-color: var(--mkt-color-violet-filled); }
+.mkt-slider[data-color="pink"] { --_slider-color: var(--mkt-color-pink-filled); }
+.mkt-slider[data-color="orange"] { --_slider-color: var(--mkt-color-orange-filled); }

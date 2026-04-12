@@ -1,9 +1,11 @@
 import { mergeClasses } from '../../utils/class-merge';
+import { useComponentDefaults } from '../../theme/component-defaults';
 import { Loader } from '../Loader';
 import type { ActionIconProps } from './ActionIcon.types';
 import './ActionIcon.css';
 
-export function ActionIcon(props: ActionIconProps = {}): HTMLButtonElement {
+export function ActionIcon(userProps: ActionIconProps = {}): HTMLButtonElement {
+  const props = { ...useComponentDefaults<ActionIconProps>('ActionIcon'), ...userProps };
   const {
     variant = 'subtle',
     size = 'md',

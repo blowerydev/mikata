@@ -1,10 +1,12 @@
 import { createIcon, Check } from '@mikata/icons';
 import { mergeClasses } from '../../utils/class-merge';
+import { useComponentDefaults } from '../../theme/component-defaults';
 import { uniqueId } from '../../utils/unique-id';
 import type { ChipProps } from './Chip.types';
 import './Chip.css';
 
-export function Chip(props: ChipProps = {}): HTMLElement {
+export function Chip(userProps: ChipProps = {}): HTMLElement {
+  const props = { ...useComponentDefaults<ChipProps>('Chip'), ...userProps };
   const {
     value,
     checked,

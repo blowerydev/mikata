@@ -51,17 +51,17 @@
 }
 
 /* Color */
-.mkt-toast[data-color="primary"] { --_toast-color: var(--mkt-color-primary-6); }
-.mkt-toast[data-color="gray"]    { --_toast-color: var(--mkt-color-gray-6); }
-.mkt-toast[data-color="red"]     { --_toast-color: var(--mkt-color-red-6); }
-.mkt-toast[data-color="green"]   { --_toast-color: var(--mkt-color-green-6); }
-.mkt-toast[data-color="yellow"]  { --_toast-color: var(--mkt-color-yellow-6); }
-.mkt-toast[data-color="blue"]    { --_toast-color: var(--mkt-color-blue-6); }
-.mkt-toast[data-color="cyan"]    { --_toast-color: var(--mkt-color-cyan-6); }
-.mkt-toast[data-color="teal"]    { --_toast-color: var(--mkt-color-teal-6); }
-.mkt-toast[data-color="violet"]  { --_toast-color: var(--mkt-color-violet-6); }
-.mkt-toast[data-color="pink"]    { --_toast-color: var(--mkt-color-pink-6); }
-.mkt-toast[data-color="orange"]  { --_toast-color: var(--mkt-color-orange-6); }
+.mkt-toast[data-color="primary"] { --_toast-color: var(--mkt-color-primary-filled); }
+.mkt-toast[data-color="gray"]    { --_toast-color: var(--mkt-color-gray-filled); }
+.mkt-toast[data-color="red"]     { --_toast-color: var(--mkt-color-red-filled); }
+.mkt-toast[data-color="green"]   { --_toast-color: var(--mkt-color-green-filled); }
+.mkt-toast[data-color="yellow"]  { --_toast-color: var(--mkt-color-yellow-filled); }
+.mkt-toast[data-color="blue"]    { --_toast-color: var(--mkt-color-blue-filled); }
+.mkt-toast[data-color="cyan"]    { --_toast-color: var(--mkt-color-cyan-filled); }
+.mkt-toast[data-color="teal"]    { --_toast-color: var(--mkt-color-teal-filled); }
+.mkt-toast[data-color="violet"]  { --_toast-color: var(--mkt-color-violet-filled); }
+.mkt-toast[data-color="pink"]    { --_toast-color: var(--mkt-color-pink-filled); }
+.mkt-toast[data-color="orange"]  { --_toast-color: var(--mkt-color-orange-filled); }
 
 /* Icon */
 .mkt-toast__icon {

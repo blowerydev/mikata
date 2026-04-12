@@ -1,11 +1,13 @@
 import { createIcon, Check } from '@mikata/icons';
 import { effect } from '@mikata/reactivity';
 import { mergeClasses } from '../../utils/class-merge';
+import { useComponentDefaults } from '../../theme/component-defaults';
 import { uniqueId } from '../../utils/unique-id';
 import type { CheckboxProps } from './Checkbox.types';
 import './Checkbox.css';
 
-export function Checkbox(props: CheckboxProps = {}): HTMLLabelElement {
+export function Checkbox(userProps: CheckboxProps = {}): HTMLLabelElement {
+  const props = { ...useComponentDefaults<CheckboxProps>('Checkbox'), ...userProps };
   const {
     checked,
     defaultChecked,

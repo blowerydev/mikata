@@ -1,11 +1,13 @@
 import { createIcon, Close } from '@mikata/icons';
 import { mergeClasses } from '../../utils/class-merge';
+import { useComponentDefaults } from '../../theme/component-defaults';
 import { useUILabels } from '../../utils/use-i18n-optional';
 import { Loader } from '../Loader';
 import type { NotificationProps } from './Notification.types';
 import './Notification.css';
 
-export function Notification(props: NotificationProps = {}): HTMLElement {
+export function Notification(userProps: NotificationProps = {}): HTMLElement {
+  const props = { ...useComponentDefaults<NotificationProps>('Notification'), ...userProps };
   const {
     title,
     color = 'primary',

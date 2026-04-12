@@ -1,9 +1,11 @@
 import { mergeClasses } from '../../utils/class-merge';
+import { useComponentDefaults } from '../../theme/component-defaults';
 import { uniqueId } from '../../utils/unique-id';
 import type { RadioProps } from './Radio.types';
 import './Radio.css';
 
-export function Radio(props: RadioProps = {}): HTMLLabelElement {
+export function Radio(userProps: RadioProps = {}): HTMLLabelElement {
+  const props = { ...useComponentDefaults<RadioProps>('Radio'), ...userProps };
   const {
     checked,
     defaultChecked,

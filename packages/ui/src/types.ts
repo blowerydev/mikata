@@ -2,7 +2,7 @@ import type { Ref } from '@mikata/runtime';
 
 export type MikataSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl';
 
-export type MikataColor =
+export type BuiltInColor =
   | 'primary'
   | 'gray'
   | 'red'
@@ -14,6 +14,13 @@ export type MikataColor =
   | 'violet'
   | 'pink'
   | 'orange';
+
+/**
+ * Union of the 11 built-in palette names plus any custom palette name added
+ * via `theme.colors`. The `(string & {})` opens the type without killing
+ * autocomplete for built-ins.
+ */
+export type MikataColor = BuiltInColor | (string & {});
 
 export type ClassNamesInput<Parts extends string> = Partial<Record<Parts, string>>;
 

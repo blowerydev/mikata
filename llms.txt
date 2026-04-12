@@ -1431,17 +1431,24 @@ Component library with CSS variables theming, `data-*` attribute styling, and WA
 import { ThemeProvider, createTheme, Button, TextInput, Stack, Modal } from '@mikata/ui';
 import '@mikata/ui/styles.css';
 
-// Optional: custom theme overrides
-const theme = createTheme({ 'color-primary-6': '#7c3aed' });
+// Structured theme — custom palette + primaryColor + per-component defaults.
+const theme = createTheme({
+  colors: {
+    brand: ['#f3f0ff', '#e5dbff', '#d0bfff', '#b197fc', '#9775fa',
+            '#845ef7', '#7950f2', '#7048e8', '#6741d9', '#5f3dc4'],
+  },
+  primaryColor: 'brand',
+  primaryShade: { light: 6, dark: 8 },
+  defaultRadius: 'md',
+  components: { Button: { variant: 'light' } },  // defaultProps
+});
 
 function App() {
   return (
     <ThemeProvider theme={theme} colorScheme="auto">
       <Stack gap="md">
         <TextInput label="Name" placeholder="Enter your name" required />
-        <Button variant="filled" color="primary" onClick={handleSubmit}>
-          Submit
-        </Button>
+        <Button color="brand" onClick={handleSubmit}>Submit</Button>
       </Stack>
     </ThemeProvider>
   );
@@ -1469,12 +1476,25 @@ function App() {
 - CSS uses BEM naming with `mkt-` prefix: `.mkt-button`, `.mkt-button__label`
 - Private CSS variables (`--_btn-color`) for component-internal computed values
 
-**Theming:**
-- `ThemeProvider` — wraps app with CSS variables via `display: contents` div
-- `createTheme(overrides)` — merge partial overrides with defaults
-- `useTheme()` — access color scheme state
-- `colorScheme` — `'light' | 'dark' | 'auto'` (auto uses `prefers-color-scheme`)
-- 170+ design tokens: 10 color palettes × 10 shades, semantic colors, spacing, typography, sizing, radius, shadows, transitions, z-index
+**Theming (Mantine-parity, CSS-variable driven):**
+- `ThemeProvider` — wraps app with CSS variables via `display: contents` div. Emits a sibling `<style data-mkt-generated>` node with per-component rules for custom palettes.
+- `createTheme(overrides)` — accepts the structured `MikataTheme` shape or a flat `Record<string, string>` (flat keys route to `theme.other` at highest precedence, preserving back-compat).
+- `useTheme()` — access `{ colorScheme, resolvedColorScheme, setColorScheme, theme }` signals.
+- `useComponentDefaults<P>(name)` — read per-component `defaultProps` from context; each shipped component already merges these under user props.
+- `colorScheme` — `'light' | 'dark' | 'auto'` (auto uses `prefers-color-scheme`).
+- **`MikataTheme` fields:**
+  - `colors?: Record<string, [s0..s9]>` — custom palettes alongside the 11 built-ins (`primary`, `gray`, `red`, `green`, `yellow`, `blue`, `cyan`, `teal`, `violet`, `pink`, `orange`).
+  - `primaryColor?: string` — aliases `--mkt-color-primary-*` onto the chosen palette. Default `'primary'`.
+  - `primaryShade?: number | { light: number; dark: number }` — canonical filled shade per scheme. Default `{ light: 6, dark: 8 }`.
+  - `defaultRadius?: MikataSize | string` — exposed as `--mkt-radius-default`.
+  - `fontFamily?`, `fontFamilyMono?`, `headings?: { h1..h6: { size, weight, lineHeight } }`.
+  - `components?: { [Name]: Partial<Props> }` — per-component `defaultProps`.
+  - `cssVariablesResolver?(ctx): { variables?, light?, dark? }` — escape hatch for injecting arbitrary tokens per scheme.
+  - `other?: Record<string, string>` — raw token overrides at highest precedence.
+- **Semantic aliases** (emitted per palette, per scheme): `--mkt-color-<name>-filled`, `-filled-hover`, `-light`, `-light-hover`, `-border`. Dark `-light` composites via `color-mix(in srgb, …-filled 15%, transparent)` — no hand-baked rgba.
+- **`MikataColor`** type accepts `BuiltInColor | (string & {})` so custom palette names are assignable while preserving autocomplete on the 11 built-ins.
+- **Performance:** zero per-render JS cost. Theme changes only call `style.setProperty` on the wrapper and regenerate one `<style>` node for custom palettes.
+- 170+ design tokens: 11 color palettes × 10 shades + 5 semantic aliases per palette, spacing, typography, sizing, radius, shadows, transitions, z-index.
 
 **Utilities — naming convention:**
 

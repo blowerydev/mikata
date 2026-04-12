@@ -1,8 +1,10 @@
 import { mergeClasses } from '../../utils/class-merge';
+import { useComponentDefaults } from '../../theme/component-defaults';
 import type { ThemeIconProps } from './ThemeIcon.types';
 import './ThemeIcon.css';
 
-export function ThemeIcon(props: ThemeIconProps = {}): HTMLElement {
+export function ThemeIcon(userProps: ThemeIconProps = {}): HTMLElement {
+  const props = { ...useComponentDefaults<ThemeIconProps>('ThemeIcon'), ...userProps };
   const {
     variant = 'filled',
     size = 'md',

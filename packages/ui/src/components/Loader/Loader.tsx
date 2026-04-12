@@ -1,8 +1,10 @@
 import { mergeClasses } from '../../utils/class-merge';
+import { useComponentDefaults } from '../../theme/component-defaults';
 import type { LoaderProps } from './Loader.types';
 import './Loader.css';
 
-export function Loader(props: LoaderProps = {}): HTMLElement {
+export function Loader(userProps: LoaderProps = {}): HTMLElement {
+  const props = { ...useComponentDefaults<LoaderProps>('Loader'), ...userProps };
   const {
     size = 'md',
     color,

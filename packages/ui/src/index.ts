@@ -1,9 +1,16 @@
 // Theme
-export { ThemeProvider, useTheme, createTheme, defaultTheme, darkTheme } from './theme';
-export type { MikataTheme, ColorScheme, ThemeProviderProps, ThemeContextValue } from './theme';
+export {
+  ThemeProvider, useTheme, createTheme, defaultTheme, darkTheme,
+  flattenTheme, useComponentDefaults, BUILT_IN_COLORS,
+} from './theme';
+export type {
+  MikataTheme, ColorScheme, ThemeProviderProps, ThemeContextValue,
+  HeadingConfig, HeadingsConfig, CSSVariablesOutput, CSSVariablesResolver,
+  CSSVariablesResolverContext, PrimaryShade, ColorPalette, BuiltInColorName,
+} from './theme';
 
 // Types
-export type { MikataSize, MikataColor, ClassNamesInput, MikataBaseProps } from './types';
+export type { MikataSize, MikataColor, BuiltInColor, ClassNamesInput, MikataBaseProps } from './types';
 
 // Utilities
 export { mergeClasses } from './utils/class-merge';

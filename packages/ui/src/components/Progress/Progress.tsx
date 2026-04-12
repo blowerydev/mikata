@@ -1,8 +1,10 @@
 import { mergeClasses } from '../../utils/class-merge';
+import { useComponentDefaults } from '../../theme/component-defaults';
 import type { ProgressProps } from './Progress.types';
 import './Progress.css';
 
-export function Progress(props: ProgressProps): HTMLElement {
+export function Progress(userProps: ProgressProps): HTMLElement {
+  const props = { ...useComponentDefaults<ProgressProps>('Progress'), ...userProps };
   const {
     value,
     size = 'md',

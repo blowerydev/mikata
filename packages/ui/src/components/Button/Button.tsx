@@ -1,9 +1,11 @@
 import { mergeClasses } from '../../utils/class-merge';
+import { useComponentDefaults } from '../../theme/component-defaults';
 import { Loader } from '../Loader';
 import type { ButtonProps } from './Button.types';
 import './Button.css';
 
-export function Button(props: ButtonProps = {}): HTMLButtonElement {
+export function Button(userProps: ButtonProps = {}): HTMLButtonElement {
+  const props = { ...useComponentDefaults<ButtonProps>('Button'), ...userProps };
   const {
     variant = 'filled',
     size = 'md',

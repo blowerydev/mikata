@@ -1,9 +1,11 @@
 import { createIcon, Close } from '@mikata/icons';
 import { mergeClasses } from '../../utils/class-merge';
+import { useComponentDefaults } from '../../theme/component-defaults';
 import type { AlertProps } from './Alert.types';
 import './Alert.css';
 
-export function Alert(props: AlertProps = {} as AlertProps): HTMLElement {
+export function Alert(userProps: AlertProps = {} as AlertProps): HTMLElement {
+  const props = { ...useComponentDefaults<AlertProps>('Alert'), ...userProps };
   const {
     variant = 'light',
     color = 'primary',

@@ -43,17 +43,17 @@
 .mkt-indicator__indicator[data-radius="xl"] { border-radius: var(--mkt-radius-xl); }
 
 /* Colors */
-.mkt-indicator__indicator[data-color="primary"] { --_indicator-color: var(--mkt-color-primary-6); }
-.mkt-indicator__indicator[data-color="gray"] { --_indicator-color: var(--mkt-color-gray-6); }
-.mkt-indicator__indicator[data-color="red"] { --_indicator-color: var(--mkt-color-red-6); }
-.mkt-indicator__indicator[data-color="green"] { --_indicator-color: var(--mkt-color-green-6); }
-.mkt-indicator__indicator[data-color="blue"] { --_indicator-color: var(--mkt-color-blue-6); }
-.mkt-indicator__indicator[data-color="yellow"] { --_indicator-color: var(--mkt-color-yellow-6); }
-.mkt-indicator__indicator[data-color="cyan"] { --_indicator-color: var(--mkt-color-cyan-6); }
-.mkt-indicator__indicator[data-color="teal"] { --_indicator-color: var(--mkt-color-teal-6); }
-.mkt-indicator__indicator[data-color="violet"] { --_indicator-color: var(--mkt-color-violet-6); }
-.mkt-indicator__indicator[data-color="pink"] { --_indicator-color: var(--mkt-color-pink-6); }
-.mkt-indicator__indicator[data-color="orange"] { --_indicator-color: var(--mkt-color-orange-6); }
+.mkt-indicator__indicator[data-color="primary"] { --_indicator-color: var(--mkt-color-primary-filled); }
+.mkt-indicator__indicator[data-color="gray"] { --_indicator-color: var(--mkt-color-gray-filled); }
+.mkt-indicator__indicator[data-color="red"] { --_indicator-color: var(--mkt-color-red-filled); }
+.mkt-indicator__indicator[data-color="green"] { --_indicator-color: var(--mkt-color-green-filled); }
+.mkt-indicator__indicator[data-color="blue"] { --_indicator-color: var(--mkt-color-blue-filled); }
+.mkt-indicator__indicator[data-color="yellow"] { --_indicator-color: var(--mkt-color-yellow-filled); }
+.mkt-indicator__indicator[data-color="cyan"] { --_indicator-color: var(--mkt-color-cyan-filled); }
+.mkt-indicator__indicator[data-color="teal"] { --_indicator-color: var(--mkt-color-teal-filled); }
+.mkt-indicator__indicator[data-color="violet"] { --_indicator-color: var(--mkt-color-violet-filled); }
+.mkt-indicator__indicator[data-color="pink"] { --_indicator-color: var(--mkt-color-pink-filled); }
+.mkt-indicator__indicator[data-color="orange"] { --_indicator-color: var(--mkt-color-orange-filled); }
 
 /* Positions */
 .mkt-indicator__indicator[data-position="top-start"] { top: var(--_indicator-offset); left: var(--_indicator-offset); transform: translate(-50%, -50%); }

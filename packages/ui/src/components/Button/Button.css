@@ -64,18 +64,18 @@
   border: none;
 }
 
-/* Color data attribute maps to private CSS variables */
-.mkt-button[data-color="primary"] { --_btn-color: var(--mkt-color-primary-6); --_btn-color-hover: var(--mkt-color-primary-7); --_btn-color-light: var(--mkt-color-primary-0); --_btn-color-light-hover: var(--mkt-color-primary-1); }
-.mkt-button[data-color="gray"] { --_btn-color: var(--mkt-color-gray-6); --_btn-color-hover: var(--mkt-color-gray-7); --_btn-color-light: var(--mkt-color-gray-0); --_btn-color-light-hover: var(--mkt-color-gray-1); }
-.mkt-button[data-color="red"] { --_btn-color: var(--mkt-color-red-6); --_btn-color-hover: var(--mkt-color-red-7); --_btn-color-light: var(--mkt-color-red-0); --_btn-color-light-hover: var(--mkt-color-red-1); }
-.mkt-button[data-color="green"] { --_btn-color: var(--mkt-color-green-6); --_btn-color-hover: var(--mkt-color-green-7); --_btn-color-light: var(--mkt-color-green-0); --_btn-color-light-hover: var(--mkt-color-green-1); }
-.mkt-button[data-color="yellow"] { --_btn-color: var(--mkt-color-yellow-6); --_btn-color-hover: var(--mkt-color-yellow-7); --_btn-color-light: var(--mkt-color-yellow-0); --_btn-color-light-hover: var(--mkt-color-yellow-1); }
-.mkt-button[data-color="blue"] { --_btn-color: var(--mkt-color-blue-6); --_btn-color-hover: var(--mkt-color-blue-7); --_btn-color-light: var(--mkt-color-blue-0); --_btn-color-light-hover: var(--mkt-color-blue-1); }
-.mkt-button[data-color="cyan"] { --_btn-color: var(--mkt-color-cyan-6); --_btn-color-hover: var(--mkt-color-cyan-7); --_btn-color-light: var(--mkt-color-cyan-0); --_btn-color-light-hover: var(--mkt-color-cyan-1); }
-.mkt-button[data-color="teal"] { --_btn-color: var(--mkt-color-teal-6); --_btn-color-hover: var(--mkt-color-teal-7); --_btn-color-light: var(--mkt-color-teal-0); --_btn-color-light-hover: var(--mkt-color-teal-1); }
-.mkt-button[data-color="violet"] { --_btn-color: var(--mkt-color-violet-6); --_btn-color-hover: var(--mkt-color-violet-7); --_btn-color-light: var(--mkt-color-violet-0); --_btn-color-light-hover: var(--mkt-color-violet-1); }
-.mkt-button[data-color="pink"] { --_btn-color: var(--mkt-color-pink-6); --_btn-color-hover: var(--mkt-color-pink-7); --_btn-color-light: var(--mkt-color-pink-0); --_btn-color-light-hover: var(--mkt-color-pink-1); }
-.mkt-button[data-color="orange"] { --_btn-color: var(--mkt-color-orange-6); --_btn-color-hover: var(--mkt-color-orange-7); --_btn-color-light: var(--mkt-color-orange-0); --_btn-color-light-hover: var(--mkt-color-orange-1); }
+/* Color data attribute maps to private CSS variables (via semantic aliases) */
+.mkt-button[data-color="primary"] { --_btn-color: var(--mkt-color-primary-filled); --_btn-color-hover: var(--mkt-color-primary-filled-hover); --_btn-color-light: var(--mkt-color-primary-light); --_btn-color-light-hover: var(--mkt-color-primary-light-hover); }
+.mkt-button[data-color="gray"] { --_btn-color: var(--mkt-color-gray-filled); --_btn-color-hover: var(--mkt-color-gray-filled-hover); --_btn-color-light: var(--mkt-color-gray-light); --_btn-color-light-hover: var(--mkt-color-gray-light-hover); }
+.mkt-button[data-color="red"] { --_btn-color: var(--mkt-color-red-filled); --_btn-color-hover: var(--mkt-color-red-filled-hover); --_btn-color-light: var(--mkt-color-red-light); --_btn-color-light-hover: var(--mkt-color-red-light-hover); }
+.mkt-button[data-color="green"] { --_btn-color: var(--mkt-color-green-filled); --_btn-color-hover: var(--mkt-color-green-filled-hover); --_btn-color-light: var(--mkt-color-green-light); --_btn-color-light-hover: var(--mkt-color-green-light-hover); }
+.mkt-button[data-color="yellow"] { --_btn-color: var(--mkt-color-yellow-filled); --_btn-color-hover: var(--mkt-color-yellow-filled-hover); --_btn-color-light: var(--mkt-color-yellow-light); --_btn-color-light-hover: var(--mkt-color-yellow-light-hover); }
+.mkt-button[data-color="blue"] { --_btn-color: var(--mkt-color-blue-filled); --_btn-color-hover: var(--mkt-color-blue-filled-hover); --_btn-color-light: var(--mkt-color-blue-light); --_btn-color-light-hover: var(--mkt-color-blue-light-hover); }
+.mkt-button[data-color="cyan"] { --_btn-color: var(--mkt-color-cyan-filled); --_btn-color-hover: var(--mkt-color-cyan-filled-hover); --_btn-color-light: var(--mkt-color-cyan-light); --_btn-color-light-hover: var(--mkt-color-cyan-light-hover); }
+.mkt-button[data-color="teal"] { --_btn-color: var(--mkt-color-teal-filled); --_btn-color-hover: var(--mkt-color-teal-filled-hover); --_btn-color-light: var(--mkt-color-teal-light); --_btn-color-light-hover: var(--mkt-color-teal-light-hover); }
+.mkt-button[data-color="violet"] { --_btn-color: var(--mkt-color-violet-filled); --_btn-color-hover: var(--mkt-color-violet-filled-hover); --_btn-color-light: var(--mkt-color-violet-light); --_btn-color-light-hover: var(--mkt-color-violet-light-hover); }
+.mkt-button[data-color="pink"] { --_btn-color: var(--mkt-color-pink-filled); --_btn-color-hover: var(--mkt-color-pink-filled-hover); --_btn-color-light: var(--mkt-color-pink-light); --_btn-color-light-hover: var(--mkt-color-pink-light-hover); }
+.mkt-button[data-color="orange"] { --_btn-color: var(--mkt-color-orange-filled); --_btn-color-hover: var(--mkt-color-orange-filled-hover); --_btn-color-light: var(--mkt-color-orange-light); --_btn-color-light-hover: var(--mkt-color-orange-light-hover); }
 
 /* States */
 .mkt-button:disabled,
@@ -106,15 +106,3 @@
   transform: translate(-50%, -50%);
 }
 
-/* Dark mode overrides — light/subtle backgrounds use semi-transparent accent */
-[data-mkt-color-scheme="dark"] .mkt-button[data-color="primary"] { --_btn-color-light: rgba(34, 139, 230, 0.15); --_btn-color-light-hover: rgba(34, 139, 230, 0.25); }
-[data-mkt-color-scheme="dark"] .mkt-button[data-color="gray"]    { --_btn-color-light: rgba(134, 142, 150, 0.15); --_btn-color-light-hover: rgba(134, 142, 150, 0.25); }
-[data-mkt-color-scheme="dark"] .mkt-button[data-color="red"]     { --_btn-color-light: rgba(250, 82, 82, 0.15); --_btn-color-light-hover: rgba(250, 82, 82, 0.25); }
-[data-mkt-color-scheme="dark"] .mkt-button[data-color="green"]   { --_btn-color-light: rgba(64, 192, 87, 0.15); --_btn-color-light-hover: rgba(64, 192, 87, 0.25); }
-[data-mkt-color-scheme="dark"] .mkt-button[data-color="yellow"]  { --_btn-color-light: rgba(250, 176, 5, 0.15); --_btn-color-light-hover: rgba(250, 176, 5, 0.25); }
-[data-mkt-color-scheme="dark"] .mkt-button[data-color="blue"]    { --_btn-color-light: rgba(34, 139, 230, 0.15); --_btn-color-light-hover: rgba(34, 139, 230, 0.25); }
-[data-mkt-color-scheme="dark"] .mkt-button[data-color="cyan"]    { --_btn-color-light: rgba(21, 170, 191, 0.15); --_btn-color-light-hover: rgba(21, 170, 191, 0.25); }
-[data-mkt-color-scheme="dark"] .mkt-button[data-color="teal"]    { --_btn-color-light: rgba(18, 184, 134, 0.15); --_btn-color-light-hover: rgba(18, 184, 134, 0.25); }
-[data-mkt-color-scheme="dark"] .mkt-button[data-color="violet"]  { --_btn-color-light: rgba(121, 80, 242, 0.15); --_btn-color-light-hover: rgba(121, 80, 242, 0.25); }
-[data-mkt-color-scheme="dark"] .mkt-button[data-color="pink"]    { --_btn-color-light: rgba(230, 73, 128, 0.15); --_btn-color-light-hover: rgba(230, 73, 128, 0.25); }
-[data-mkt-color-scheme="dark"] .mkt-button[data-color="orange"]  { --_btn-color-light: rgba(253, 126, 20, 0.15); --_btn-color-light-hover: rgba(253, 126, 20, 0.25); }

@@ -1,8 +1,10 @@
 import { mergeClasses } from '../../utils/class-merge';
+import { useComponentDefaults } from '../../theme/component-defaults';
 import type { AnchorProps } from './Anchor.types';
 import './Anchor.css';
 
-export function Anchor(props: AnchorProps = {}): HTMLAnchorElement {
+export function Anchor(userProps: AnchorProps = {}): HTMLAnchorElement {
+  const props = { ...useComponentDefaults<AnchorProps>('Anchor'), ...userProps };
   const {
     href,
     target,

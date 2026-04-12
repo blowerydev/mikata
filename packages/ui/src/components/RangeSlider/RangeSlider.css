@@ -15,17 +15,17 @@
 .mkt-range-slider[data-size="lg"] { --_rs-track-h: 10px; --_rs-thumb: 20px; }
 .mkt-range-slider[data-size="xl"] { --_rs-track-h: 12px; --_rs-thumb: 24px; }
 
-.mkt-range-slider[data-color="primary"] { --_rs-color: var(--mkt-color-primary-6); }
-.mkt-range-slider[data-color="gray"] { --_rs-color: var(--mkt-color-gray-6); }
-.mkt-range-slider[data-color="red"] { --_rs-color: var(--mkt-color-red-6); }
-.mkt-range-slider[data-color="green"] { --_rs-color: var(--mkt-color-green-6); }
-.mkt-range-slider[data-color="yellow"] { --_rs-color: var(--mkt-color-yellow-6); }
-.mkt-range-slider[data-color="blue"] { --_rs-color: var(--mkt-color-blue-6); }
-.mkt-range-slider[data-color="cyan"] { --_rs-color: var(--mkt-color-cyan-6); }
-.mkt-range-slider[data-color="teal"] { --_rs-color: var(--mkt-color-teal-6); }
-.mkt-range-slider[data-color="violet"] { --_rs-color: var(--mkt-color-violet-6); }
-.mkt-range-slider[data-color="pink"] { --_rs-color: var(--mkt-color-pink-6); }
-.mkt-range-slider[data-color="orange"] { --_rs-color: var(--mkt-color-orange-6); }
+.mkt-range-slider[data-color="primary"] { --_rs-color: var(--mkt-color-primary-filled); }
+.mkt-range-slider[data-color="gray"] { --_rs-color: var(--mkt-color-gray-filled); }
+.mkt-range-slider[data-color="red"] { --_rs-color: var(--mkt-color-red-filled); }
+.mkt-range-slider[data-color="green"] { --_rs-color: var(--mkt-color-green-filled); }
+.mkt-range-slider[data-color="yellow"] { --_rs-color: var(--mkt-color-yellow-filled); }
+.mkt-range-slider[data-color="blue"] { --_rs-color: var(--mkt-color-blue-filled); }
+.mkt-range-slider[data-color="cyan"] { --_rs-color: var(--mkt-color-cyan-filled); }
+.mkt-range-slider[data-color="teal"] { --_rs-color: var(--mkt-color-teal-filled); }
+.mkt-range-slider[data-color="violet"] { --_rs-color: var(--mkt-color-violet-filled); }
+.mkt-range-slider[data-color="pink"] { --_rs-color: var(--mkt-color-pink-filled); }
+.mkt-range-slider[data-color="orange"] { --_rs-color: var(--mkt-color-orange-filled); }
 
 .mkt-range-slider[data-disabled] {
   opacity: 0.6;

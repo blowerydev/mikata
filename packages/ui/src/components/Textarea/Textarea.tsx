@@ -1,11 +1,13 @@
 import { effect } from '@mikata/reactivity';
 import { mergeClasses } from '../../utils/class-merge';
+import { useComponentDefaults } from '../../theme/component-defaults';
 import { uniqueId } from '../../utils/unique-id';
 import { InputWrapper } from '../_internal/InputWrapper';
 import type { TextareaProps } from './Textarea.types';
 import './Textarea.css';
 
-export function Textarea(props: TextareaProps = {}): HTMLDivElement {
+export function Textarea(userProps: TextareaProps = {}): HTMLDivElement {
+  const props = { ...useComponentDefaults<TextareaProps>('Textarea'), ...userProps };
   const {
     value,
     defaultValue,

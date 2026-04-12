@@ -1,13 +1,15 @@
 import { createIcon, Eye, EyeOff } from '@mikata/icons';
 import { effect } from '@mikata/reactivity';
 import { mergeClasses } from '../../utils/class-merge';
+import { useComponentDefaults } from '../../theme/component-defaults';
 import { uniqueId } from '../../utils/unique-id';
 import { useUILabels } from '../../utils/use-i18n-optional';
 import { InputWrapper } from '../_internal/InputWrapper';
 import type { PasswordInputProps } from './PasswordInput.types';
 import './PasswordInput.css';
 
-export function PasswordInput(props: PasswordInputProps = {}): HTMLDivElement {
+export function PasswordInput(userProps: PasswordInputProps = {}): HTMLDivElement {
+  const props = { ...useComponentDefaults<PasswordInputProps>('PasswordInput'), ...userProps };
   const {
     value,
     defaultValue,

@@ -1,18 +1,37 @@
 import { signal, computed, renderEffect } from '@mikata/reactivity';
 import { createContext, provide, inject } from '@mikata/runtime';
 import type { MikataTheme, ColorScheme, ThemeProviderProps, ThemeContextValue } from './types';
-import { defaultTheme } from './tokens';
-import { darkTheme as defaultDarkTheme } from './dark';
-
-declare const __DEV__: boolean;
+import { flattenTheme } from './flatten';
+import { provideComponentDefaults } from './component-defaults';
+import { emitColoredRules } from './colored-registry';
+import './registrations';
 
 const ThemeContext = createContext<ThemeContextValue>();
 
+const STRUCTURED_KEYS = new Set([
+  'colors', 'primaryColor', 'primaryShade', 'defaultRadius',
+  'fontFamily', 'fontFamilyMono', 'headings', 'components',
+  'cssVariablesResolver', 'other',
+]);
+
 /**
- * Create a custom theme by merging overrides with the default theme.
+ * Create a custom theme.
+ *
+ * Accepts the structured `MikataTheme` shape, or a flat `{ 'token-name': value }`
+ * record for back-compat — flat keys are routed into `theme.other` so they still
+ * override base tokens at the same precedence.
  */
-export function createTheme(overrides: Partial<MikataTheme>): MikataTheme {
-  return { ...defaultTheme, ...overrides } as MikataTheme;
+export function createTheme(
+  overrides: Partial<MikataTheme> | Record<string, string> = {},
+): MikataTheme {
+  const out: MikataTheme = {};
+  const flat: Record<string, string> = {};
+  for (const [k, v] of Object.entries(overrides)) {
+    if (STRUCTURED_KEYS.has(k)) (out as Record<string, unknown>)[k] = v;
+    else flat[k] = v as string;
+  }
+  if (Object.keys(flat).length > 0) out.other = { ...(out.other ?? {}), ...flat };
+  return out;
 }
 
 /**
@@ -36,28 +55,37 @@ export function ThemeProvider(props: ThemeProviderProps): Node {
     return 'light';
   });
 
-  const activeTheme = computed(() => {
-    const base = props.theme ?? defaultTheme;
-    const dark = props.darkTheme ?? defaultDarkTheme;
-    return resolvedColorScheme() === 'dark' ? { ...base, ...dark } : base;
-  });
+  const activeTheme = computed<MikataTheme>(() => props.theme ?? {});
 
   provide(ThemeContext, {
     colorScheme,
     resolvedColorScheme,
     setColorScheme,
+    theme: activeTheme,
   });
+
+  provideComponentDefaults(props.theme?.components);
 
   const el = document.createElement('div');
   el.setAttribute('data-mkt-theme', '');
   el.style.display = 'contents';
 
+  const styleEl = document.createElement('style');
+  styleEl.setAttribute('data-mkt-generated', '');
+  el.appendChild(styleEl);
+
   renderEffect(() => {
+    const scheme = resolvedColorScheme();
     const theme = activeTheme();
-    for (const [token, value] of Object.entries(theme)) {
+    const flat = flattenTheme(theme, scheme);
+    if (scheme === 'dark' && props.darkTheme) Object.assign(flat, props.darkTheme);
+    for (const [token, value] of Object.entries(flat)) {
       el.style.setProperty(`--mkt-${token}`, value);
     }
-    el.setAttribute('data-mkt-color-scheme', resolvedColorScheme());
+    el.setAttribute('data-mkt-color-scheme', scheme);
+
+    const customPalettes = Object.keys(theme.colors ?? {});
+    styleEl.textContent = emitColoredRules(customPalettes);
   });
 
   return el;
@@ -72,4 +100,21 @@ export function useTheme(): ThemeContextValue {
 
 export { defaultTheme } from './tokens';
 export { darkTheme } from './dark';
-export type { MikataTheme, ColorScheme, ThemeProviderProps, ThemeContextValue } from './types';
+export { flattenTheme } from './flatten';
+export { useComponentDefaults } from './component-defaults';
+export { registerColored, getColoredRegistry } from './colored-registry';
+export type { ColoredRule, ColorVarAlias, ColoredDeclValue } from './colored-registry';
+export { BUILT_IN_COLORS } from './palettes';
+export type { ColorPalette, BuiltInColorName } from './palettes';
+export type {
+  MikataTheme,
+  ColorScheme,
+  ThemeProviderProps,
+  ThemeContextValue,
+  HeadingConfig,
+  HeadingsConfig,
+  CSSVariablesOutput,
+  CSSVariablesResolver,
+  CSSVariablesResolverContext,
+  PrimaryShade,
+} from './types';

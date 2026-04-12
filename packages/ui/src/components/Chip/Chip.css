@@ -33,17 +33,17 @@
 .mkt-chip[data-radius="xl"] { border-radius: var(--mkt-radius-xl); }
 .mkt-chip[data-radius="full"] { border-radius: var(--mkt-radius-full); }
 
-.mkt-chip[data-color="primary"] { --_chip-color: var(--mkt-color-primary-6); --_chip-color-subtle: var(--mkt-color-primary-1); }
-.mkt-chip[data-color="gray"] { --_chip-color: var(--mkt-color-gray-6); --_chip-color-subtle: var(--mkt-color-gray-1); }
-.mkt-chip[data-color="red"] { --_chip-color: var(--mkt-color-red-6); --_chip-color-subtle: var(--mkt-color-red-1); }
-.mkt-chip[data-color="green"] { --_chip-color: var(--mkt-color-green-6); --_chip-color-subtle: var(--mkt-color-green-1); }
-.mkt-chip[data-color="blue"] { --_chip-color: var(--mkt-color-blue-6); --_chip-color-subtle: var(--mkt-color-blue-1); }
-.mkt-chip[data-color="yellow"] { --_chip-color: var(--mkt-color-yellow-6); --_chip-color-subtle: var(--mkt-color-yellow-1); }
-.mkt-chip[data-color="cyan"] { --_chip-color: var(--mkt-color-cyan-6); --_chip-color-subtle: var(--mkt-color-cyan-1); }
-.mkt-chip[data-color="teal"] { --_chip-color: var(--mkt-color-teal-6); --_chip-color-subtle: var(--mkt-color-teal-1); }
-.mkt-chip[data-color="violet"] { --_chip-color: var(--mkt-color-violet-6); --_chip-color-subtle: var(--mkt-color-violet-1); }
-.mkt-chip[data-color="pink"] { --_chip-color: var(--mkt-color-pink-6); --_chip-color-subtle: var(--mkt-color-pink-1); }
-.mkt-chip[data-color="orange"] { --_chip-color: var(--mkt-color-orange-6); --_chip-color-subtle: var(--mkt-color-orange-1); }
+.mkt-chip[data-color="primary"] { --_chip-color: var(--mkt-color-primary-filled); --_chip-color-subtle: var(--mkt-color-primary-light-hover); }
+.mkt-chip[data-color="gray"] { --_chip-color: var(--mkt-color-gray-filled); --_chip-color-subtle: var(--mkt-color-gray-light-hover); }
+.mkt-chip[data-color="red"] { --_chip-color: var(--mkt-color-red-filled); --_chip-color-subtle: var(--mkt-color-red-light-hover); }
+.mkt-chip[data-color="green"] { --_chip-color: var(--mkt-color-green-filled); --_chip-color-subtle: var(--mkt-color-green-light-hover); }
+.mkt-chip[data-color="blue"] { --_chip-color: var(--mkt-color-blue-filled); --_chip-color-subtle: var(--mkt-color-blue-light-hover); }
+.mkt-chip[data-color="yellow"] { --_chip-color: var(--mkt-color-yellow-filled); --_chip-color-subtle: var(--mkt-color-yellow-light-hover); }
+.mkt-chip[data-color="cyan"] { --_chip-color: var(--mkt-color-cyan-filled); --_chip-color-subtle: var(--mkt-color-cyan-light-hover); }
+.mkt-chip[data-color="teal"] { --_chip-color: var(--mkt-color-teal-filled); --_chip-color-subtle: var(--mkt-color-teal-light-hover); }
+.mkt-chip[data-color="violet"] { --_chip-color: var(--mkt-color-violet-filled); --_chip-color-subtle: var(--mkt-color-violet-light-hover); }
+.mkt-chip[data-color="pink"] { --_chip-color: var(--mkt-color-pink-filled); --_chip-color-subtle: var(--mkt-color-pink-light-hover); }
+.mkt-chip[data-color="orange"] { --_chip-color: var(--mkt-color-orange-filled); --_chip-color-subtle: var(--mkt-color-orange-light-hover); }
 
 .mkt-chip__input {
   position: absolute;

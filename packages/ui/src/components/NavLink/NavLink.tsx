@@ -1,9 +1,11 @@
 import { createIcon, ChevronRight } from '@mikata/icons';
 import { mergeClasses } from '../../utils/class-merge';
+import { useComponentDefaults } from '../../theme/component-defaults';
 import type { NavLinkProps } from './NavLink.types';
 import './NavLink.css';
 
-export function NavLink(props: NavLinkProps): HTMLElement {
+export function NavLink(userProps: NavLinkProps): HTMLElement {
+  const props = { ...useComponentDefaults<NavLinkProps>('NavLink'), ...userProps };
   const {
     label,
     description,

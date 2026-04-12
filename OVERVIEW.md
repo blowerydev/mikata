@@ -307,15 +307,28 @@ A component library with CSS variable theming, `data-*` attribute selectors, and
 ```tsx
 import { ThemeProvider, createTheme, Button, TextInput, Stack, Alert, Modal, Badge } from '@mikata/ui';
 
-const theme = createTheme({ 'color-primary-6': '#7c3aed' });
+const theme = createTheme({
+  colors: {
+    brand: ['#f3f0ff', '#e5dbff', '#d0bfff', '#b197fc', '#9775fa',
+            '#845ef7', '#7950f2', '#7048e8', '#6741d9', '#5f3dc4'],
+  },
+  primaryColor: 'brand',
+  primaryShade: { light: 6, dark: 8 },
+  defaultRadius: 'md',
+  headings: { h1: { size: '2.25rem', weight: '700' } },
+  components: {
+    Button: { variant: 'light' },     // every Button defaults to variant='light'
+    TextInput: { size: 'md' },
+  },
+});
 
 function App() {
   return (
     <ThemeProvider theme={theme} colorScheme="auto">
       <Stack gap="md">
-        <Alert variant="light" color="blue" title="Welcome">Hello!</Alert>
+        <Alert variant="light" color="brand" title="Welcome">Hello!</Alert>
         <TextInput label="Name" placeholder="Enter name" />
-        <Button variant="filled" color="primary" size="md">Submit</Button>
+        <Button color="brand">Submit</Button>
         <Badge variant="dot" color="green">Active</Badge>
       </Stack>
     </ThemeProvider>
@@ -325,12 +338,22 @@ function App() {
 
 **Components:** Button, ActionIcon, CloseButton, ButtonGroup, TextInput, Textarea, PasswordInput, NumberInput, Checkbox, Radio, Switch, Select, Slider, Stack, Group, Grid, Container, Divider, Space, Text, Title, Anchor, Alert, Badge, Loader, Progress, Skeleton, Modal, Drawer, Tooltip, Popover.
 
+**Theming:** Mantine-parity CSS-variable system. Zero per-render JS cost — the cascade does the work, theme changes only touch `style.setProperty` on a wrapper element.
+
+- **11 built-in palettes** (`primary`, `gray`, `red`, `green`, `yellow`, `blue`, `cyan`, `teal`, `violet`, `pink`, `orange`) plus any you add via `theme.colors`. Each palette has 10 shades; custom palettes get runtime-emitted CSS rules via a per-component registry.
+- **`primaryColor`** aliases one palette's shades onto `--mkt-color-primary-*` so `color="primary"` (or omitting `color`) follows your brand.
+- **`primaryShade`** picks the canonical filled shade index per scheme (default `{ light: 6, dark: 8 }`), driving semantic aliases `--mkt-color-<name>-filled`, `-filled-hover`, `-light`, `-light-hover`, `-border`. Dark `-light` composites via `color-mix(in srgb, …-filled 15%, transparent)`.
+- **`defaultRadius`** sets `--mkt-radius-default`. **`headings`** emits `--mkt-h{1..6}-size/-weight/-lh` consumed by `Title`. **`fontFamily`/`fontFamilyMono`** override body/mono fonts.
+- **`cssVariablesResolver(ctx)`** is the escape hatch — return `{ variables?, light?, dark? }` to inject arbitrary tokens per scheme.
+- **`components.X.defaultProps`** sets per-component defaults (`components: { Button: { variant: 'light' } }`) without editing callsites. User-provided props always win.
+- **Back-compat:** `createTheme({ 'color-primary-6': '#7c3aed' })` still works — flat keys route into `theme.other` at highest precedence.
+
 **Key patterns:**
-- CSS variables for tokens (`--mkt-color-primary-6`, `--mkt-space-4`, `--mkt-radius-sm`)
+- CSS variables for tokens (`--mkt-color-primary-6`, `--mkt-color-primary-filled`, `--mkt-space-4`, `--mkt-radius-sm`)
 - `data-variant`, `data-size`, `data-color` attributes drive CSS styling
 - `classNames` prop targets inner parts: `classNames={{ root: '...', label: '...' }}`
 - Dark mode via `[data-mkt-color-scheme="dark"]` CSS selectors
-- `ThemeProvider` uses `provide()`/`inject()` context -- child components access via `useTheme()`
+- `ThemeProvider` uses `provide()`/`inject()` context -- child components access via `useTheme()`, and per-component defaults flow through `useComponentDefaults<P>(name)`.
 
 **Utilities:** `@mikata/ui` ships scope-aware helpers for common UI concerns. Because components run setup-once, naming follows Mikata conventions rather than React hook names:
 

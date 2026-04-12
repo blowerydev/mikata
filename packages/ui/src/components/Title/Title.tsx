@@ -1,8 +1,10 @@
 import { mergeClasses } from '../../utils/class-merge';
+import { useComponentDefaults } from '../../theme/component-defaults';
 import type { TitleProps } from './Title.types';
 import './Title.css';
 
-export function Title(props: TitleProps = {}): HTMLElement {
+export function Title(userProps: TitleProps = {}): HTMLElement {
+  const props = { ...useComponentDefaults<TitleProps>('Title'), ...userProps };
   const {
     order = 1,
     children,

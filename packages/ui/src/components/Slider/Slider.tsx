@@ -1,9 +1,11 @@
 import { mergeClasses } from '../../utils/class-merge';
+import { useComponentDefaults } from '../../theme/component-defaults';
 import { uniqueId } from '../../utils/unique-id';
 import type { SliderProps } from './Slider.types';
 import './Slider.css';
 
-export function Slider(props: SliderProps = {}): HTMLDivElement {
+export function Slider(userProps: SliderProps = {}): HTMLDivElement {
+  const props = { ...useComponentDefaults<SliderProps>('Slider'), ...userProps };
   const {
     value,
     defaultValue,

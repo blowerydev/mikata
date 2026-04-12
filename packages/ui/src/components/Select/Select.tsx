@@ -1,10 +1,12 @@
 import { mergeClasses } from '../../utils/class-merge';
+import { useComponentDefaults } from '../../theme/component-defaults';
 import { uniqueId } from '../../utils/unique-id';
 import { InputWrapper } from '../_internal/InputWrapper';
 import type { SelectProps } from './Select.types';
 import './Select.css';
 
-export function Select(props: SelectProps): HTMLDivElement {
+export function Select(userProps: SelectProps): HTMLDivElement {
+  const props = { ...useComponentDefaults<SelectProps>('Select'), ...userProps };
   const {
     data,
     value,

@@ -50,17 +50,17 @@
 }
 
 /* Active state — color */
-.mkt-pagination[data-color="primary"] .mkt-pagination__item[data-active] { background-color: var(--mkt-color-primary-6); color: #fff; }
-.mkt-pagination[data-color="gray"]    .mkt-pagination__item[data-active] { background-color: var(--mkt-color-gray-6);    color: #fff; }
-.mkt-pagination[data-color="red"]     .mkt-pagination__item[data-active] { background-color: var(--mkt-color-red-6);     color: #fff; }
-.mkt-pagination[data-color="green"]   .mkt-pagination__item[data-active] { background-color: var(--mkt-color-green-6);   color: #fff; }
-.mkt-pagination[data-color="yellow"]  .mkt-pagination__item[data-active] { background-color: var(--mkt-color-yellow-6);  color: #fff; }
-.mkt-pagination[data-color="blue"]    .mkt-pagination__item[data-active] { background-color: var(--mkt-color-blue-6);    color: #fff; }
-.mkt-pagination[data-color="cyan"]    .mkt-pagination__item[data-active] { background-color: var(--mkt-color-cyan-6);    color: #fff; }
-.mkt-pagination[data-color="teal"]    .mkt-pagination__item[data-active] { background-color: var(--mkt-color-teal-6);    color: #fff; }
-.mkt-pagination[data-color="violet"]  .mkt-pagination__item[data-active] { background-color: var(--mkt-color-violet-6);  color: #fff; }
-.mkt-pagination[data-color="pink"]    .mkt-pagination__item[data-active] { background-color: var(--mkt-color-pink-6);    color: #fff; }
-.mkt-pagination[data-color="orange"]  .mkt-pagination__item[data-active] { background-color: var(--mkt-color-orange-6);  color: #fff; }
+.mkt-pagination[data-color="primary"] .mkt-pagination__item[data-active] { background-color: var(--mkt-color-primary-filled); color: #fff; }
+.mkt-pagination[data-color="gray"]    .mkt-pagination__item[data-active] { background-color: var(--mkt-color-gray-filled);    color: #fff; }
+.mkt-pagination[data-color="red"]     .mkt-pagination__item[data-active] { background-color: var(--mkt-color-red-filled);     color: #fff; }
+.mkt-pagination[data-color="green"]   .mkt-pagination__item[data-active] { background-color: var(--mkt-color-green-filled);   color: #fff; }
+.mkt-pagination[data-color="yellow"]  .mkt-pagination__item[data-active] { background-color: var(--mkt-color-yellow-filled);  color: #fff; }
+.mkt-pagination[data-color="blue"]    .mkt-pagination__item[data-active] { background-color: var(--mkt-color-blue-filled);    color: #fff; }
+.mkt-pagination[data-color="cyan"]    .mkt-pagination__item[data-active] { background-color: var(--mkt-color-cyan-filled);    color: #fff; }
+.mkt-pagination[data-color="teal"]    .mkt-pagination__item[data-active] { background-color: var(--mkt-color-teal-filled);    color: #fff; }
+.mkt-pagination[data-color="violet"]  .mkt-pagination__item[data-active] { background-color: var(--mkt-color-violet-filled);  color: #fff; }
+.mkt-pagination[data-color="pink"]    .mkt-pagination__item[data-active] { background-color: var(--mkt-color-pink-filled);    color: #fff; }
+.mkt-pagination[data-color="orange"]  .mkt-pagination__item[data-active] { background-color: var(--mkt-color-orange-filled);  color: #fff; }
 
 /* Dots */
 .mkt-pagination__dots {

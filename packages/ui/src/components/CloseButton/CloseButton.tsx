@@ -1,11 +1,13 @@
 import { createIcon, Close } from '@mikata/icons';
 import { mergeClasses } from '../../utils/class-merge';
+import { useComponentDefaults } from '../../theme/component-defaults';
 import { useUILabels } from '../../utils/use-i18n-optional';
 import { ActionIcon } from '../ActionIcon';
 import type { CloseButtonProps } from './CloseButton.types';
 import './CloseButton.css';
 
-export function CloseButton(props: CloseButtonProps = {}): HTMLButtonElement {
+export function CloseButton(userProps: CloseButtonProps = {}): HTMLButtonElement {
+  const props = { ...useComponentDefaults<CloseButtonProps>('CloseButton'), ...userProps };
   const {
     size = 'md',
     disabled,

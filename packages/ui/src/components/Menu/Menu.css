@@ -76,20 +76,15 @@
 }
 
 /* Color variants for items */
-.mkt-menu__item[data-color="red"]    { color: var(--mkt-color-red-6); }
-.mkt-menu__item[data-color="green"]  { color: var(--mkt-color-green-6); }
-.mkt-menu__item[data-color="blue"]   { color: var(--mkt-color-blue-6); }
-.mkt-menu__item[data-color="yellow"] { color: var(--mkt-color-yellow-6); }
+.mkt-menu__item[data-color="red"]    { color: var(--mkt-color-red-filled); }
+.mkt-menu__item[data-color="green"]  { color: var(--mkt-color-green-filled); }
+.mkt-menu__item[data-color="blue"]   { color: var(--mkt-color-blue-filled); }
+.mkt-menu__item[data-color="yellow"] { color: var(--mkt-color-yellow-filled); }
 
-.mkt-menu__item[data-color="red"]:hover:not(:disabled)    { background-color: var(--mkt-color-red-0); }
-.mkt-menu__item[data-color="green"]:hover:not(:disabled)  { background-color: var(--mkt-color-green-0); }
-.mkt-menu__item[data-color="blue"]:hover:not(:disabled)   { background-color: var(--mkt-color-blue-0); }
-.mkt-menu__item[data-color="yellow"]:hover:not(:disabled) { background-color: var(--mkt-color-yellow-0); }
-
-[data-mkt-color-scheme="dark"] .mkt-menu__item[data-color="red"]:hover:not(:disabled)    { background-color: rgba(250, 82, 82, 0.15); }
-[data-mkt-color-scheme="dark"] .mkt-menu__item[data-color="green"]:hover:not(:disabled)  { background-color: rgba(64, 192, 87, 0.15); }
-[data-mkt-color-scheme="dark"] .mkt-menu__item[data-color="blue"]:hover:not(:disabled)   { background-color: rgba(34, 139, 230, 0.15); }
-[data-mkt-color-scheme="dark"] .mkt-menu__item[data-color="yellow"]:hover:not(:disabled) { background-color: rgba(250, 176, 5, 0.15); }
+.mkt-menu__item[data-color="red"]:hover:not(:disabled)    { background-color: var(--mkt-color-red-light); }
+.mkt-menu__item[data-color="green"]:hover:not(:disabled)  { background-color: var(--mkt-color-green-light); }
+.mkt-menu__item[data-color="blue"]:hover:not(:disabled)   { background-color: var(--mkt-color-blue-light); }
+.mkt-menu__item[data-color="yellow"]:hover:not(:disabled) { background-color: var(--mkt-color-yellow-light); }
 
 .mkt-menu__item-icon {
   display: inline-flex;

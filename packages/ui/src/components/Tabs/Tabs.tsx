@@ -1,9 +1,11 @@
 import { mergeClasses } from '../../utils/class-merge';
+import { useComponentDefaults } from '../../theme/component-defaults';
 import { uniqueId } from '../../utils/unique-id';
 import type { TabsProps } from './Tabs.types';
 import './Tabs.css';
 
-export function Tabs(props: TabsProps): HTMLElement {
+export function Tabs(userProps: TabsProps): HTMLElement {
+  const props = { ...useComponentDefaults<TabsProps>('Tabs'), ...userProps };
   const {
     items,
     defaultValue,

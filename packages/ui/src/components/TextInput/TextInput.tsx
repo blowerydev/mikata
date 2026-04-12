@@ -1,11 +1,13 @@
 import { effect } from '@mikata/reactivity';
 import { mergeClasses } from '../../utils/class-merge';
+import { useComponentDefaults } from '../../theme/component-defaults';
 import { uniqueId } from '../../utils/unique-id';
 import { InputWrapper } from '../_internal/InputWrapper';
 import type { TextInputProps } from './TextInput.types';
 import './TextInput.css';
 
-export function TextInput(props: TextInputProps = {}): HTMLDivElement {
+export function TextInput(userProps: TextInputProps = {}): HTMLDivElement {
+  const props = { ...useComponentDefaults<TextInputProps>('TextInput'), ...userProps };
   const {
     value,
     defaultValue,
