@@ -95,7 +95,14 @@ switchMatch(
     success: () => <Results />,
   }
 );
+
+// Dynamic component swap — pick the component type reactively
+import { Dynamic } from 'mikata';
+
+<Dynamic component={() => isAdmin() ? AdminPanel : UserPanel} userId={id()} />
 ```
+
+`Dynamic` disposes the old component's scope when the `component` getter returns a new value and forwards any remaining props through as reactive getters, so typed props stay live across swaps.
 
 ---
 
@@ -310,7 +317,8 @@ transitionGroup(
 - **Error boundaries** -- `<ErrorBoundary fallback={(err, reset) => ...}>` catches render errors
 - **Form bindings** -- `model(getter, setter)` for two-way binding on inputs, checkboxes, selects
 - **Refs** -- `createRef()` captures DOM elements, works as both object and callback ref
-- **DevTools** -- Built-in console API and floating overlay panel for inspecting the reactive graph
+- **DevTools** -- Floating overlay + `window.__MIKATA_DEVTOOLS__` console API. Every signal/computed/effect is attributed to its owning component (`in <Button />`), with update counts, time-since-last-change, and effect run timings (last + cumulative). The panel has a search filter, click-to-expand rows (sources, subscribers, value, creation stack), a component tree, and an element picker (hover to highlight, click to jump to the owning component). Top-5 slowest effects and most-updated signals surface in the Overview tab. Toggle with `Ctrl+Shift+M`.
+- **ESLint plugin** -- `@mikata/eslint-plugin` ships three rules to catch setup-once misuse at build time: `rules-of-setup` (flags `useX`/`provide`/`onMount`/etc. used after `await`, inside `effect`/`setTimeout`/`.then`, or at module top-level), `no-async-component` (components must be sync — use `lazy()` for code-split loading), and `no-destructured-props` (destructuring breaks getter-backed prop reactivity). Config: `import mikata from '@mikata/eslint-plugin'; export default [mikata.configs.recommended];`
 
 ---
 
@@ -457,6 +465,7 @@ mikata/
     form/          # Form state, validation, schema resolvers (zod, yup, valibot, ...)
     icons/         # Icon factory (Lucide/Tabler interop) + built-in icon set
     testing/       # Test utilities (renderComponent, fireEvent, flush)
+    eslint-plugin/ # Lint rules for setup-once, props, and async components
     mikata/        # Umbrella package re-exporting everything
 ```
 
