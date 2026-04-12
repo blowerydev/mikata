@@ -68,13 +68,13 @@ export function NavLink(props: NavLinkProps): HTMLElement {
 
   const labelEl = document.createElement('span');
   labelEl.className = mergeClasses('mkt-navlink__label', classNames?.label);
-  labelEl.textContent = label;
+  if (label instanceof Node) { labelEl.appendChild(label); } else { labelEl.textContent = label; }
   textWrap.appendChild(labelEl);
 
   if (description) {
     const descEl = document.createElement('span');
     descEl.className = mergeClasses('mkt-navlink__description', classNames?.description);
-    descEl.textContent = description;
+    if (description instanceof Node) { descEl.appendChild(description); } else { descEl.textContent = description; }
     textWrap.appendChild(descEl);
   }
 

@@ -61,7 +61,7 @@ export function Drawer(props: DrawerProps): Comment {
       const titleEl = document.createElement('h2');
       titleEl.className = mergeClasses('mkt-drawer__title', classNames?.title);
       titleEl.id = `${id}-title`;
-      titleEl.textContent = title;
+      if (title instanceof Node) { titleEl.appendChild(title); } else { titleEl.textContent = title; }
       header.appendChild(titleEl);
     }
 

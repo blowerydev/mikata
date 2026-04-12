@@ -4,8 +4,8 @@ export type NavLinkParts = 'root' | 'icon' | 'label' | 'description' | 'chevron'
 export type NavLinkVariant = 'light' | 'filled' | 'subtle';
 
 export interface NavLinkProps extends MikataBaseProps {
-  label: string;
-  description?: string;
+  label: string | Node;
+  description?: string | Node;
   icon?: Node;
   active?: boolean;
   disabled?: boolean;

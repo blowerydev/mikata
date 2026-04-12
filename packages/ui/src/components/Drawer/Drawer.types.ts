@@ -5,7 +5,7 @@ export type DrawerParts = 'root' | 'overlay' | 'content' | 'header' | 'title' | 
 
 export interface DrawerProps extends MikataBaseProps {
   /** Drawer title shown in the header */
-  title?: string;
+  title?: string | Node;
   /** Edge of the screen the drawer slides in from */
   position?: DrawerPosition;
   /** CSS width (left/right) or height (top/bottom) */

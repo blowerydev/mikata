@@ -66,7 +66,11 @@ export function Accordion(props: AccordionProps): HTMLElement {
     // Label
     const label = document.createElement('span');
     label.className = mergeClasses('mkt-accordion__label', classNames?.label);
-    label.textContent = item.label;
+    if (item.label instanceof Node) {
+      label.appendChild(item.label);
+    } else {
+      label.textContent = item.label;
+    }
 
     if (chevronPosition === 'left') {
       control.appendChild(chevron);

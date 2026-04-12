@@ -1,0 +1,211 @@
+{
+  "app": {
+    "title": "Mikata Framework Playground",
+    "subtitle": "A reactive UI framework with signals, no VDOM, and ergonomic APIs."
+  },
+  "ui": {
+    "title": "UI Component Library",
+    "description": "These components are from @mikata/ui — fully themed, accessible, and composable.",
+    "darkMode": "Dark mode",
+    "language": "Language"
+  },
+  "badges": {
+    "title": "Badges",
+    "primary": "Primary",
+    "success": "Success",
+    "error": "Error",
+    "warning": "Warning",
+    "new": "New",
+    "online": "Online"
+  },
+  "buttons": {
+    "title": "Buttons",
+    "filled": "Filled",
+    "outline": "Outline",
+    "light": "Light",
+    "subtle": "Subtle",
+    "delete": "Delete",
+    "confirm": "Confirm",
+    "loading": "Loading...",
+    "disabled": "Disabled",
+    "cancel": "Cancel"
+  },
+  "alerts": {
+    "title": "Alerts",
+    "infoTitle": "Information",
+    "infoMessage": "This is a helpful notice for users.",
+    "successTitle": "Success",
+    "successMessage": "Your changes have been saved.",
+    "errorTitle": "Error",
+    "errorMessage": "Something went wrong. Please try again.",
+    "warningTitle": "Warning",
+    "warningMessage": "This action cannot be undone."
+  },
+  "progress": {
+    "title": "Progress",
+    "start": "Start Progress"
+  },
+  "loader": {
+    "title": "Loader"
+  },
+  "form": {
+    "title": "Form Inputs",
+    "fullName": "Full Name",
+    "fullNamePlaceholder": "John Doe",
+    "displayName": "Your display name",
+    "email": "Email",
+    "emailPlaceholder": "john@example.com",
+    "password": "Password",
+    "passwordPlaceholder": "At least 8 characters",
+    "bio": "Bio",
+    "bioPlaceholder": "Tell us about yourself...",
+    "optional": "Optional",
+    "role": "Role",
+    "rolePlaceholder": "Select a role",
+    "roleAdmin": "Administrator",
+    "roleEditor": "Editor",
+    "roleUser": "User",
+    "roleViewer": "Viewer",
+    "agreeTerms": "I agree to the terms and conditions",
+    "emailNotifications": "Enable email notifications",
+    "createAccount": "Create Account"
+  },
+  "modal": {
+    "title": "Modal",
+    "openModal": "Open Modal",
+    "exampleTitle": "Example Modal",
+    "body": "This is a modal dialog from @mikata/ui.",
+    "bodyDetail": "It includes focus trapping, scroll lock, and closes on Escape."
+  },
+  "card": {
+    "title": "Card",
+    "header": "Card Header",
+    "viewDetails": "View Details",
+    "cardDescription": "Cards are containers for grouping related content and actions.",
+    "simpleCard": "A simple card without header or footer."
+  },
+  "table": {
+    "title": "Table",
+    "colName": "Name",
+    "colRole": "Role",
+    "colEmail": "Email",
+    "colStatus": "Status",
+    "statusActive": "Active",
+    "statusInactive": "Inactive"
+  },
+  "tabs": {
+    "title": "Tabs",
+    "overview": "Overview",
+    "overviewContent": "This is the overview panel. Tabs support keyboard navigation with arrow keys.",
+    "features": "Features",
+    "featuresContent": "Variants: default, outline, pills. Orientation: horizontal or vertical.",
+    "disabled": "Disabled",
+    "code": "Code",
+    "codeContent": "Use the Tabs component with an items array defining value, label, and content.",
+    "pillsVariant": "Pills variant:"
+  },
+  "accordion": {
+    "title": "Accordion",
+    "a11yLabel": "Accessibility",
+    "a11yContent": "All components follow WAI-ARIA guidelines with proper roles, keyboard navigation, and screen reader support.",
+    "themingLabel": "Theming",
+    "themingContent": "CSS variables power the entire theme system. Override tokens via ThemeProvider or plain CSS.",
+    "perfLabel": "Performance",
+    "perfContent": "No CSS-in-JS runtime. Styles are plain CSS with data-attribute selectors. Zero JavaScript overhead for styling."
+  },
+  "menu": {
+    "title": "Menu",
+    "actions": "Actions ▾",
+    "appLabel": "Application",
+    "settings": "Settings",
+    "messages": "Messages",
+    "dangerLabel": "Danger zone",
+    "deleteAccount": "Delete account"
+  },
+  "avatar": {
+    "title": "Avatar",
+    "group": "Avatar Group:"
+  },
+  "breadcrumb": {
+    "title": "Breadcrumb",
+    "home": "Home",
+    "components": "Components"
+  },
+  "pagination": {
+    "title": "Pagination"
+  },
+  "segmented": {
+    "title": "Segmented Control",
+    "preview": "Preview",
+    "code": "Code",
+    "export": "Export"
+  },
+  "navlink": {
+    "title": "NavLink",
+    "dashboard": "Dashboard",
+    "settings": "Settings",
+    "settingsDesc": "App configuration",
+    "general": "General",
+    "security": "Security",
+    "notifications": "Notifications",
+    "users": "Users"
+  },
+  "toast": {
+    "title": "Toast / Notifications",
+    "success": "Success",
+    "error": "Error",
+    "warning": "Warning",
+    "info": "Info",
+    "savedMessage": "Changes saved successfully!",
+    "savedTitle": "Saved",
+    "errorMessage": "Something went wrong!",
+    "errorTitle": "Error",
+    "warningMessage": "This action cannot be undone.",
+    "infoMessage": "New version available.",
+    "infoTitle": "Update"
+  },
+  "counter": {
+    "title": "Counter",
+    "reset": "Reset"
+  },
+  "formBindings": {
+    "title": "Form Bindings (model)",
+    "name": "Name: ",
+    "namePlaceholder": "Enter your name...",
+    "age": "Age: ",
+    "agree": " I agree",
+    "color": "Color: ",
+    "focusName": "Focus name input",
+    "agreed": "agreed",
+    "notAgreed": "not agreed"
+  },
+  "todo": {
+    "title": "Todo List",
+    "placeholder": "Add a todo...",
+    "add": "Add",
+    "empty": "No todos yet. Add one above!",
+    "completed": "{{done}}/{{total}} completed"
+  },
+  "conditional": {
+    "title": "Conditional Rendering",
+    "loading": "Loading...",
+    "success": "Success! Data loaded.",
+    "error": "Error! Something went wrong."
+  },
+  "portal": {
+    "title": "Portal (Modal)",
+    "toggle": "Toggle Modal",
+    "open": "Modal is open (rendered in body via portal)",
+    "closed": "Modal is closed",
+    "modalTitle": "Portal Modal",
+    "modalBody": "This modal is rendered into document.body via portal(), not inside the component tree.",
+    "close": "Close"
+  },
+  "errorBoundary": {
+    "title": "Error Boundary",
+    "toggleError": "Toggle error",
+    "caught": "Caught error: {{message}}",
+    "reset": "Reset",
+    "safe": "Everything is fine. Click \"Toggle error\" to trigger an error."
+  }
+}

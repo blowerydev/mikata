@@ -4,9 +4,9 @@ export type InputWrapperParts = 'root' | 'label' | 'description' | 'error' | 're
 
 export interface InputWrapperProps {
   id: string;
-  label?: string;
-  description?: string;
-  error?: string;
+  label?: string | Node;
+  description?: string | Node;
+  error?: string | Node;
   required?: boolean;
   size?: MikataSize;
   class?: string;

@@ -1,0 +1,211 @@
+{
+  "app": {
+    "title": "Mikata フレームワーク プレイグラウンド",
+    "subtitle": "シグナル、仮想DOMなし、人間工学的APIを備えたリアクティブUIフレームワーク。"
+  },
+  "ui": {
+    "title": "UIコンポーネントライブラリ",
+    "description": "@mikata/ui のコンポーネント — テーマ対応、アクセシブル、コンポーザブル。",
+    "darkMode": "ダークモード",
+    "language": "言語"
+  },
+  "badges": {
+    "title": "バッジ",
+    "primary": "プライマリ",
+    "success": "成功",
+    "error": "エラー",
+    "warning": "警告",
+    "new": "新規",
+    "online": "オンライン"
+  },
+  "buttons": {
+    "title": "ボタン",
+    "filled": "塗りつぶし",
+    "outline": "アウトライン",
+    "light": "ライト",
+    "subtle": "サトル",
+    "delete": "削除",
+    "confirm": "確認",
+    "loading": "読み込み中...",
+    "disabled": "無効",
+    "cancel": "キャンセル"
+  },
+  "alerts": {
+    "title": "アラート",
+    "infoTitle": "情報",
+    "infoMessage": "ユーザーへの有益なお知らせです。",
+    "successTitle": "成功",
+    "successMessage": "変更が保存されました。",
+    "errorTitle": "エラー",
+    "errorMessage": "問題が発生しました。もう一度お試しください。",
+    "warningTitle": "警告",
+    "warningMessage": "この操作は元に戻せません。"
+  },
+  "progress": {
+    "title": "プログレス",
+    "start": "プログレス開始"
+  },
+  "loader": {
+    "title": "ローダー"
+  },
+  "form": {
+    "title": "フォーム入力",
+    "fullName": "氏名",
+    "fullNamePlaceholder": "山田太郎",
+    "displayName": "表示名",
+    "email": "メールアドレス",
+    "emailPlaceholder": "taro@example.com",
+    "password": "パスワード",
+    "passwordPlaceholder": "8文字以上",
+    "bio": "自己紹介",
+    "bioPlaceholder": "自己紹介を入力してください...",
+    "optional": "任意",
+    "role": "役割",
+    "rolePlaceholder": "役割を選択",
+    "roleAdmin": "管理者",
+    "roleEditor": "編集者",
+    "roleUser": "ユーザー",
+    "roleViewer": "閲覧者",
+    "agreeTerms": "利用規約に同意します",
+    "emailNotifications": "メール通知を有効にする",
+    "createAccount": "アカウント作成"
+  },
+  "modal": {
+    "title": "モーダル",
+    "openModal": "モーダルを開く",
+    "exampleTitle": "モーダルの例",
+    "body": "@mikata/ui のモーダルダイアログです。",
+    "bodyDetail": "フォーカストラップ、スクロールロック、Escapeキーで閉じる機能を含みます。"
+  },
+  "card": {
+    "title": "カード",
+    "header": "カードヘッダー",
+    "viewDetails": "詳細を見る",
+    "cardDescription": "カードは関連するコンテンツとアクションをグループ化するコンテナです。",
+    "simpleCard": "ヘッダーやフッターのないシンプルなカード。"
+  },
+  "table": {
+    "title": "テーブル",
+    "colName": "名前",
+    "colRole": "役割",
+    "colEmail": "メール",
+    "colStatus": "ステータス",
+    "statusActive": "有効",
+    "statusInactive": "無効"
+  },
+  "tabs": {
+    "title": "タブ",
+    "overview": "概要",
+    "overviewContent": "概要パネルです。タブは矢印キーでキーボードナビゲーションをサポートしています。",
+    "features": "機能",
+    "featuresContent": "バリアント：デフォルト、アウトライン、ピル。方向：水平または垂直。",
+    "disabled": "無効",
+    "code": "コード",
+    "codeContent": "value、label、contentを定義するitems配列でTabsコンポーネントを使用します。",
+    "pillsVariant": "ピルバリアント："
+  },
+  "accordion": {
+    "title": "アコーディオン",
+    "a11yLabel": "アクセシビリティ",
+    "a11yContent": "すべてのコンポーネントは、適切なロール、キーボードナビゲーション、スクリーンリーダーサポートを備えたWAI-ARIAガイドラインに準拠しています。",
+    "themingLabel": "テーマ",
+    "themingContent": "CSS変数がテーマシステム全体を支えています。ThemeProviderまたはプレーンCSSでトークンをオーバーライドできます。",
+    "perfLabel": "パフォーマンス",
+    "perfContent": "CSS-in-JSランタイムなし。スタイルはdata属性セレクターを使用したプレーンCSS。スタイリングのJavaScriptオーバーヘッドはゼロです。"
+  },
+  "menu": {
+    "title": "メニュー",
+    "actions": "アクション ▾",
+    "appLabel": "アプリケーション",
+    "settings": "設定",
+    "messages": "メッセージ",
+    "dangerLabel": "危険ゾーン",
+    "deleteAccount": "アカウント削除"
+  },
+  "avatar": {
+    "title": "アバター",
+    "group": "アバターグループ："
+  },
+  "breadcrumb": {
+    "title": "パンくずリスト",
+    "home": "ホーム",
+    "components": "コンポーネント"
+  },
+  "pagination": {
+    "title": "ページネーション"
+  },
+  "segmented": {
+    "title": "セグメントコントロール",
+    "preview": "プレビュー",
+    "code": "コード",
+    "export": "エクスポート"
+  },
+  "navlink": {
+    "title": "ナビリンク",
+    "dashboard": "ダッシュボード",
+    "settings": "設定",
+    "settingsDesc": "アプリの設定",
+    "general": "一般",
+    "security": "セキュリティ",
+    "notifications": "通知",
+    "users": "ユーザー"
+  },
+  "toast": {
+    "title": "トースト / 通知",
+    "success": "成功",
+    "error": "エラー",
+    "warning": "警告",
+    "info": "情報",
+    "savedMessage": "変更が正常に保存されました！",
+    "savedTitle": "保存済み",
+    "errorMessage": "問題が発生しました！",
+    "errorTitle": "エラー",
+    "warningMessage": "この操作は元に戻せません。",
+    "infoMessage": "新しいバージョンが利用可能です。",
+    "infoTitle": "アップデート"
+  },
+  "counter": {
+    "title": "カウンター",
+    "reset": "リセット"
+  },
+  "formBindings": {
+    "title": "フォームバインディング (model)",
+    "name": "名前：",
+    "namePlaceholder": "名前を入力...",
+    "age": "年齢：",
+    "agree": " 同意する",
+    "color": "色：",
+    "focusName": "名前入力にフォーカス",
+    "agreed": "同意済み",
+    "notAgreed": "未同意"
+  },
+  "todo": {
+    "title": "Todoリスト",
+    "placeholder": "Todoを追加...",
+    "add": "追加",
+    "empty": "Todoはまだありません。上から追加してください！",
+    "completed": "{{done}}/{{total}} 完了"
+  },
+  "conditional": {
+    "title": "条件付きレンダリング",
+    "loading": "読み込み中...",
+    "success": "成功！データが読み込まれました。",
+    "error": "エラー！問題が発生しました。"
+  },
+  "portal": {
+    "title": "ポータル（モーダル）",
+    "toggle": "モーダル切替",
+    "open": "モーダルが開いています（ポータルでbodyにレンダリング）",
+    "closed": "モーダルは閉じています",
+    "modalTitle": "ポータルモーダル",
+    "modalBody": "このモーダルはportal()を使ってdocument.bodyにレンダリングされ、コンポーネントツリーの外にあります。",
+    "close": "閉じる"
+  },
+  "errorBoundary": {
+    "title": "エラーバウンダリ",
+    "toggleError": "エラー切替",
+    "caught": "エラーをキャッチ：{{message}}",
+    "reset": "リセット",
+    "safe": "すべて正常です。「エラー切替」をクリックしてエラーを発生させてください。"
+  }
+}

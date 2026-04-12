@@ -5,7 +5,7 @@ export type CheckboxParts = 'root' | 'input' | 'label' | 'icon';
 export interface CheckboxProps extends MikataBaseProps {
   checked?: boolean;
   defaultChecked?: boolean;
-  label?: string;
+  label?: string | Node;
   description?: string;
   error?: string;
   size?: MikataSize;

@@ -5,7 +5,7 @@ export type AccordionVariant = 'default' | 'contained' | 'separated';
 
 export interface AccordionItem {
   value: string;
-  label: string;
+  label: string | Node;
   content: Node | string | (() => Node);
   disabled?: boolean;
 }

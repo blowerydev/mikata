@@ -70,7 +70,7 @@ export function Switch(props: SwitchProps = {}): HTMLLabelElement {
     if (label) {
       const labelSpan = document.createElement('span');
       labelSpan.className = mergeClasses('mkt-switch__label', classNames?.label);
-      labelSpan.textContent = label;
+      if (label instanceof Node) { labelSpan.appendChild(label); } else { labelSpan.textContent = label; }
       textCol.appendChild(labelSpan);
     }
 

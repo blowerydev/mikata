@@ -9,6 +9,7 @@
   "dependencies": {
     "@mikata/reactivity": "workspace:*",
     "@mikata/runtime": "workspace:*",
+    "@mikata/i18n": "workspace:*",
     "@mikata/store": "workspace:*",
     "@mikata/ui": "workspace:*"
   },

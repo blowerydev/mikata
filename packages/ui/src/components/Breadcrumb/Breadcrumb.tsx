@@ -28,7 +28,7 @@ export function Breadcrumb(props: BreadcrumbProps): HTMLElement {
     if (item.href || item.onClick) {
       const link = document.createElement('a');
       link.className = mergeClasses('mkt-breadcrumb__item', classNames?.item);
-      link.textContent = item.label;
+      if (item.label instanceof Node) { link.appendChild(item.label); } else { link.textContent = item.label; }
       if (item.href) link.href = item.href;
       if (item.onClick) {
         link.addEventListener('click', (e) => {
@@ -41,7 +41,7 @@ export function Breadcrumb(props: BreadcrumbProps): HTMLElement {
     } else {
       const span = document.createElement('span');
       span.className = mergeClasses('mkt-breadcrumb__item', classNames?.item);
-      span.textContent = item.label;
+      if (item.label instanceof Node) { span.appendChild(item.label); } else { span.textContent = item.label; }
       if (isLast) span.setAttribute('aria-current', 'page');
       li.appendChild(span);
     }

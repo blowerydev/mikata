@@ -50,7 +50,11 @@ export function Menu(props: MenuProps): HTMLElement {
     if (item.type === 'label') {
       const label = document.createElement('div');
       label.className = mergeClasses('mkt-menu__label', classNames?.label);
-      label.textContent = item.label;
+      if (item.label instanceof Node) {
+        label.appendChild(item.label);
+      } else {
+        label.textContent = item.label;
+      }
       dropdown.appendChild(label);
       return;
     }
@@ -75,8 +79,11 @@ export function Menu(props: MenuProps): HTMLElement {
       menuItem.appendChild(iconWrap);
     }
 
-    const labelText = document.createTextNode(item.label);
-    menuItem.appendChild(labelText);
+    if (item.label instanceof Node) {
+      menuItem.appendChild(item.label);
+    } else {
+      menuItem.appendChild(document.createTextNode(item.label));
+    }
 
     menuItem.addEventListener('click', () => {
       if (item.disabled) return;

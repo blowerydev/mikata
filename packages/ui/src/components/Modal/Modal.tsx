@@ -54,7 +54,7 @@ export function Modal(props: ModalProps): Comment {
       const titleEl = document.createElement('h2');
       titleEl.className = mergeClasses('mkt-modal__title', classNames?.title);
       titleEl.id = `${id}-title`;
-      titleEl.textContent = title;
+      if (title instanceof Node) { titleEl.appendChild(title); } else { titleEl.textContent = title; }
       header.appendChild(titleEl);
     }
 

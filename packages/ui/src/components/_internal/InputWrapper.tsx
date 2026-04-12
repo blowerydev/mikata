@@ -21,7 +21,7 @@ export function InputWrapper(props: InputWrapperProps): HTMLDivElement {
     const labelEl = document.createElement('label');
     labelEl.className = mergeClasses('mkt-input-wrapper__label', classNames?.label);
     labelEl.htmlFor = id;
-    labelEl.textContent = label;
+    if (label instanceof Node) { labelEl.appendChild(label); } else { labelEl.textContent = label; }
 
     if (required) {
       const reqSpan = document.createElement('span');
@@ -38,7 +38,7 @@ export function InputWrapper(props: InputWrapperProps): HTMLDivElement {
     const descEl = document.createElement('p');
     descEl.className = mergeClasses('mkt-input-wrapper__description', classNames?.description);
     descEl.id = `${id}-description`;
-    descEl.textContent = description;
+    if (description instanceof Node) { descEl.appendChild(description); } else { descEl.textContent = description; }
     root.appendChild(descEl);
   }
 
@@ -49,7 +49,7 @@ export function InputWrapper(props: InputWrapperProps): HTMLDivElement {
     errorEl.className = mergeClasses('mkt-input-wrapper__error', classNames?.error);
     errorEl.id = `${id}-error`;
     errorEl.setAttribute('role', 'alert');
-    errorEl.textContent = error;
+    if (error instanceof Node) { errorEl.appendChild(error); } else { errorEl.textContent = error; }
     root.appendChild(errorEl);
   }
 

@@ -6,7 +6,7 @@ export type AlertParts = 'root' | 'title' | 'message' | 'icon' | 'closeButton';
 export interface AlertProps extends MikataBaseProps {
   variant?: AlertVariant;
   color?: MikataColor;
-  title?: string;
+  title?: string | Node;
   icon?: () => Node;
   closable?: boolean;
   onClose?: () => void;

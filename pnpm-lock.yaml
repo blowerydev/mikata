@@ -136,6 +136,9 @@ importers:
 
   playground:
     dependencies:
+      '@mikata/i18n':
+        specifier: workspace:*
+        version: link:../packages/i18n
       '@mikata/reactivity':
         specifier: workspace:*
         version: link:../packages/reactivity

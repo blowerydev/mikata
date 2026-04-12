@@ -37,7 +37,7 @@ export function Alert(props: AlertProps = {} as AlertProps): HTMLElement {
   if (title) {
     const titleEl = document.createElement('div');
     titleEl.className = mergeClasses('mkt-alert__title', classNames?.title);
-    titleEl.textContent = title;
+    if (title instanceof Node) { titleEl.appendChild(title); } else { titleEl.textContent = title; }
     content.appendChild(titleEl);
   }
 

@@ -5,7 +5,7 @@ export type ModalSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | 'full';
 
 export interface ModalProps extends MikataBaseProps {
   /** Dialog title shown in the header */
-  title?: string;
+  title?: string | Node;
   /** Width preset for the modal content */
   size?: ModalSize;
   /** Vertically center the modal */

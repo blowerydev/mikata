@@ -3,7 +3,7 @@ import type { MikataSize, MikataBaseProps, ClassNamesInput } from '../../types';
 export type BreadcrumbParts = 'root' | 'item' | 'separator';
 
 export interface BreadcrumbItem {
-  label: string;
+  label: string | Node;
   href?: string;
   onClick?: () => void;
 }

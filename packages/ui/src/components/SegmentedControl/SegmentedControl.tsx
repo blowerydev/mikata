@@ -68,7 +68,7 @@ export function SegmentedControl(props: SegmentedControlProps): HTMLElement {
     const label = document.createElement('label');
     label.className = mergeClasses('mkt-segmented-control__label', classNames?.label);
     label.htmlFor = inputId;
-    label.textContent = item.label;
+    if (item.label instanceof Node) { label.appendChild(item.label); } else { label.textContent = item.label; }
     if (item.value === activeValue) label.dataset.active = '';
     if (item.disabled) label.dataset.disabled = '';
 

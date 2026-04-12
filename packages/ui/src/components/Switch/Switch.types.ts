@@ -5,7 +5,7 @@ export type SwitchParts = 'root' | 'input' | 'track' | 'thumb' | 'label';
 export interface SwitchProps extends MikataBaseProps {
   checked?: boolean;
   defaultChecked?: boolean;
-  label?: string;
+  label?: string | Node;
   description?: string;
   error?: string;
   size?: MikataSize;

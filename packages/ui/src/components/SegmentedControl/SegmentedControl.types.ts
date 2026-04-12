@@ -4,7 +4,7 @@ export type SegmentedControlParts = 'root' | 'indicator' | 'label' | 'input';
 
 export interface SegmentedControlItem {
   value: string;
-  label: string;
+  label: string | Node;
   disabled?: boolean;
 }
 

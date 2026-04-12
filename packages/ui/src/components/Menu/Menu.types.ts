@@ -4,7 +4,7 @@ export type MenuParts = 'root' | 'target' | 'dropdown' | 'item' | 'divider' | 'l
 
 export interface MenuItem {
   type?: 'item';
-  label: string;
+  label: string | Node;
   icon?: Node;
   disabled?: boolean;
   color?: MikataColor;
@@ -17,7 +17,7 @@ export interface MenuDivider {
 
 export interface MenuLabel {
   type: 'label';
-  label: string;
+  label: string | Node;
 }
 
 export type MenuItemDef = MenuItem | MenuDivider | MenuLabel;
