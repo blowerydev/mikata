@@ -44,7 +44,20 @@ export function createTheme(
  *   </ThemeProvider>
  */
 export function ThemeProvider(props: ThemeProviderProps): Node {
-  const [colorScheme, setColorScheme] = signal<ColorScheme>(props.colorScheme ?? 'light');
+  // A nested ThemeProvider inherits from its parent when its own colorScheme
+  // or direction aren't explicitly configured. This keeps demos/sections that
+  // override palette or primary color responsive to the top-level dark-mode
+  // and RTL toggles.
+  let parent: ThemeContextValue | null = null;
+  try { parent = inject(ThemeContext); } catch { parent = null; }
+
+  const themeDir = typeof props.theme === 'function' ? undefined : props.theme?.direction;
+  const hasExplicitColorScheme = props.colorScheme !== undefined;
+  const hasExplicitDirection = props.direction !== undefined || themeDir !== undefined;
+
+  const [colorScheme, setColorScheme] = signal<ColorScheme>(
+    props.colorScheme ?? (parent?.colorScheme() ?? 'light'),
+  );
 
   const resolvedColorScheme = computed((): 'light' | 'dark' => {
     const scheme = colorScheme();
@@ -63,7 +76,7 @@ export function ThemeProvider(props: ThemeProviderProps): Node {
   const initialDirection: Direction =
     props.direction ??
     (typeof props.theme === 'function' ? props.theme().direction : props.theme?.direction) ??
-    'ltr';
+    (parent?.direction() ?? 'ltr');
   const [direction, setDirection] = signal<Direction>(initialDirection);
 
   provide(ThemeContext, {
@@ -74,6 +87,14 @@ export function ThemeProvider(props: ThemeProviderProps): Node {
     setDirection,
     theme: activeTheme,
   });
+
+  // Mirror parent signals when this provider didn't configure them itself.
+  if (parent && !hasExplicitColorScheme) {
+    renderEffect(() => setColorScheme(parent!.colorScheme()));
+  }
+  if (parent && !hasExplicitDirection) {
+    renderEffect(() => setDirection(parent!.direction()));
+  }
 
   const initialTheme = typeof props.theme === 'function' ? props.theme() : props.theme;
   provideComponentDefaults(initialTheme?.components);
