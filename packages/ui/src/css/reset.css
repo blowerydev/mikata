@@ -1,0 +1,12 @@
+/* Minimal reset scoped to Mikata UI */
+[data-mkt-theme] *,
+[data-mkt-theme] *::before,
+[data-mkt-theme] *::after {
+  box-sizing: border-box;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-mkt-theme] {
+    --mkt-transition-duration: 0ms !important;
+  }
+}

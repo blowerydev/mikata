@@ -1,0 +1,50 @@
+.mkt-select {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.mkt-select__input {
+  width: 100%;
+  border: 1px solid var(--mkt-color-border);
+  border-radius: var(--mkt-radius-sm);
+  font-family: var(--mkt-font-family);
+  color: var(--mkt-color-text);
+  background: var(--mkt-color-bg);
+  outline: none;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right var(--mkt-space-2) center;
+  padding-right: var(--mkt-space-7);
+  transition: border-color var(--mkt-transition-duration) var(--mkt-transition-timing);
+}
+
+.mkt-select__input:focus {
+  border-color: var(--mkt-color-focus-ring);
+  box-shadow: 0 0 0 1px var(--mkt-color-focus-ring);
+}
+
+.mkt-select__input[aria-invalid="true"] {
+  border-color: var(--mkt-color-error);
+}
+
+.mkt-select__input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background-color: var(--mkt-color-bg-subtle);
+}
+
+/* Placeholder styling */
+.mkt-select__input option[value=""] {
+  color: var(--mkt-color-text-dimmed);
+}
+
+/* Sizes */
+.mkt-select__input[data-size="xs"] { height: var(--mkt-size-xs); padding: 0 var(--mkt-space-2); font-size: var(--mkt-font-size-xs); padding-right: var(--mkt-space-6); }
+.mkt-select__input[data-size="sm"] { height: var(--mkt-size-sm); padding: 0 var(--mkt-space-3); font-size: var(--mkt-font-size-sm); padding-right: var(--mkt-space-7); }
+.mkt-select__input[data-size="md"] { height: var(--mkt-size-md); padding: 0 var(--mkt-space-3); font-size: var(--mkt-font-size-sm); padding-right: var(--mkt-space-7); }
+.mkt-select__input[data-size="lg"] { height: var(--mkt-size-lg); padding: 0 var(--mkt-space-4); font-size: var(--mkt-font-size-md); padding-right: var(--mkt-space-8); }
+.mkt-select__input[data-size="xl"] { height: var(--mkt-size-xl); padding: 0 var(--mkt-space-4); font-size: var(--mkt-font-size-md); padding-right: var(--mkt-space-8); }

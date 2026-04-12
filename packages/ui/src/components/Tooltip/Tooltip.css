@@ -1,0 +1,51 @@
+.mkt-tooltip-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.mkt-tooltip {
+  position: absolute;
+  z-index: var(--mkt-z-tooltip);
+  padding: var(--mkt-space-1) var(--mkt-space-2);
+  border-radius: var(--mkt-radius-sm);
+  background: var(--mkt-color-gray-9);
+  color: #fff;
+  font-size: var(--mkt-font-size-xs);
+  font-family: var(--mkt-font-family);
+  white-space: nowrap;
+  pointer-events: none;
+  animation: mkt-tooltip-fade 150ms var(--mkt-transition-timing);
+}
+
+@keyframes mkt-tooltip-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.mkt-tooltip[data-position="top"] {
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 6px;
+}
+
+.mkt-tooltip[data-position="bottom"] {
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: 6px;
+}
+
+.mkt-tooltip[data-position="left"] {
+  right: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  margin-right: 6px;
+}
+
+.mkt-tooltip[data-position="right"] {
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  margin-left: 6px;
+}

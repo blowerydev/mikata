@@ -1,0 +1,26 @@
+.mkt-skeleton {
+  background-color: var(--mkt-color-gray-2);
+  overflow: hidden;
+  position: relative;
+}
+
+.mkt-skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  animation: mkt-shimmer 1.5s infinite;
+}
+
+@keyframes mkt-shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* Radius */
+.mkt-skeleton[data-radius="xs"]   { border-radius: var(--mkt-radius-xs); }
+.mkt-skeleton[data-radius="sm"]   { border-radius: var(--mkt-radius-sm); }
+.mkt-skeleton[data-radius="md"]   { border-radius: var(--mkt-radius-md); }
+.mkt-skeleton[data-radius="lg"]   { border-radius: var(--mkt-radius-lg); }
+.mkt-skeleton[data-radius="xl"]   { border-radius: var(--mkt-radius-xl); }
+.mkt-skeleton[data-radius="full"] { border-radius: 9999px; }

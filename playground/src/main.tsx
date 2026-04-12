@@ -1,6 +1,8 @@
 import { render } from '@mikata/runtime';
 import { signal, computed, reactive, effect, onCleanup } from '@mikata/reactivity';
 import { createStore } from '@mikata/store';
+import '@mikata/ui/styles.css';
+import '@mikata/ui/css';
 import {
   _createElement,
   _setProp,
@@ -19,6 +21,28 @@ import {
   portal,
   ErrorBoundary,
 } from '@mikata/runtime';
+import {
+  ThemeProvider,
+  useTheme,
+  Button,
+  TextInput,
+  Textarea,
+  PasswordInput,
+  Stack,
+  Group,
+  Badge,
+  Alert,
+  Text,
+  Title,
+  Checkbox,
+  Switch,
+  Select,
+  Progress,
+  Loader,
+  Divider,
+  Modal,
+  useDisclosure,
+} from '@mikata/ui';
 
 // ============================================================
 // Demo 1: Counter (signals + computed + refs)
@@ -445,6 +469,251 @@ function ErrorBoundaryDemo() {
 }
 
 // ============================================================
+// Demo 7: UI Component Library
+// ============================================================
+function UIComponentsDemo() {
+  // ThemeProvider sets CSS variables and provides context via provide()
+  const themeEl = ThemeProvider({}) as HTMLElement;
+
+  // ThemeProvider uses display:contents (no visual box), so add a wrapper
+  // that picks up the CSS variables for background + text color
+  const wrapper = _createElement('div');
+  _setProp(wrapper, 'style', {
+    background: 'var(--mkt-color-bg)',
+    color: 'var(--mkt-color-text)',
+    padding: '1.5rem',
+    borderRadius: '8px',
+    transition: 'background 150ms, color 150ms',
+  });
+
+  // Render inner content as a child component so it can access useTheme()
+  wrapper.appendChild(_createComponent(UIContent, {}));
+  themeEl.appendChild(wrapper);
+  return themeEl;
+}
+
+/**
+ * Inner content of the UI demo. Runs as a child component so it can
+ * inject the ThemeContext provided by ThemeProvider above.
+ */
+function UIContent() {
+  const { setColorScheme, resolvedColorScheme } = useTheme();
+  const [progressVal, setProgressVal] = signal(0);
+  const { opened: modalOpened, open: openModal, close: closeModal } = useDisclosure(false);
+
+  // Animate progress bar
+  let progressTimer: ReturnType<typeof setInterval> | null = null;
+
+  function startProgress() {
+    setProgressVal(0);
+    if (progressTimer) clearInterval(progressTimer);
+    progressTimer = setInterval(() => {
+      setProgressVal((v) => {
+        if (v >= 100) {
+          if (progressTimer) clearInterval(progressTimer);
+          return 100;
+        }
+        return v + 5;
+      });
+    }, 100);
+  }
+
+  const el = _createElement('div');
+
+  // ─── Section: Theme Controls ──────────────────────
+  const themeSection = _createElement('div');
+  _setProp(themeSection, 'style', { marginBottom: '1.5rem' });
+
+  themeSection.appendChild(Title({ order: 2, children: 'UI Component Library' }));
+  themeSection.appendChild(Text({
+    size: 'sm',
+    children: 'These components are from @mikata/ui — fully themed, accessible, and composable.',
+  }));
+
+  themeSection.appendChild(Group({ gap: 'sm', children: [
+    Switch({
+      label: 'Dark mode',
+      onChange: () => {
+        const current = resolvedColorScheme();
+        setColorScheme(current === 'dark' ? 'light' : 'dark');
+      },
+    }),
+  ] }));
+  el.appendChild(themeSection);
+
+  // ─── Section: Badges ──────────────────────────────
+  const badgeSection = _createElement('div');
+  _setProp(badgeSection, 'style', { marginBottom: '1.5rem' });
+  badgeSection.appendChild(Title({ order: 3, children: 'Badges' }));
+  badgeSection.appendChild(Group({ gap: 'sm', wrap: true, children: [
+    Badge({ color: 'primary', children: 'Primary' }),
+    Badge({ color: 'green', children: 'Success' }),
+    Badge({ color: 'red', children: 'Error' }),
+    Badge({ color: 'yellow', variant: 'light', children: 'Warning' }),
+    Badge({ color: 'violet', variant: 'outline', children: 'New' }),
+    Badge({ variant: 'dot', color: 'green', children: 'Online' }),
+  ] }));
+  el.appendChild(badgeSection);
+
+  // ─── Section: Buttons ─────────────────────────────
+  const btnSection = _createElement('div');
+  _setProp(btnSection, 'style', { marginBottom: '1.5rem' });
+  btnSection.appendChild(Title({ order: 3, children: 'Buttons' }));
+  btnSection.appendChild(Group({ gap: 'sm', wrap: true, children: [
+    Button({ variant: 'filled', children: 'Filled' }),
+    Button({ variant: 'outline', children: 'Outline' }),
+    Button({ variant: 'light', children: 'Light' }),
+    Button({ variant: 'subtle', children: 'Subtle' }),
+    Button({ variant: 'filled', color: 'red', children: 'Delete' }),
+    Button({ variant: 'filled', color: 'green', children: 'Confirm' }),
+    Button({ loading: true, children: 'Loading...' }),
+    Button({ disabled: true, children: 'Disabled' }),
+  ] }));
+  el.appendChild(btnSection);
+
+  // ─── Section: Alerts ──────────────────────────────
+  const alertSection = _createElement('div');
+  _setProp(alertSection, 'style', { marginBottom: '1.5rem' });
+  alertSection.appendChild(Title({ order: 3, children: 'Alerts' }));
+  alertSection.appendChild(Stack({ gap: 'sm', children: [
+    Alert({ color: 'blue', title: 'Information', children: 'This is a helpful notice for users.' }),
+    Alert({ color: 'green', title: 'Success', children: 'Your changes have been saved.' }),
+    Alert({
+      color: 'red',
+      title: 'Error',
+      closable: true,
+      onClose: () => console.log('Alert closed'),
+      children: 'Something went wrong. Please try again.',
+    }),
+    Alert({ color: 'yellow', title: 'Warning', children: 'This action cannot be undone.' }),
+  ] }));
+  el.appendChild(alertSection);
+
+  // ─── Section: Progress ────────────────────────────
+  const progressSection = _createElement('div');
+  _setProp(progressSection, 'style', { marginBottom: '1.5rem' });
+  progressSection.appendChild(Title({ order: 3, children: 'Progress' }));
+
+  const progressBar = Progress({ value: 0, color: 'primary' });
+  effect(() => {
+    const bar = progressBar.querySelector('.mkt-progress__bar') as HTMLElement;
+    if (bar) bar.style.width = `${progressVal()}%`;
+    progressBar.setAttribute('aria-valuenow', String(progressVal()));
+  });
+  progressSection.appendChild(progressBar);
+  progressSection.appendChild(Button({
+    variant: 'light',
+    children: 'Start Progress',
+    onClick: startProgress,
+  }));
+  el.appendChild(progressSection);
+
+  // ─── Section: Loader ──────────────────────────────
+  const loaderSection = _createElement('div');
+  _setProp(loaderSection, 'style', { marginBottom: '1.5rem' });
+  loaderSection.appendChild(Title({ order: 3, children: 'Loader' }));
+  loaderSection.appendChild(Group({ gap: 'md', children: [
+    Loader({ size: 'xs' }),
+    Loader({ size: 'sm' }),
+    Loader({ size: 'md' }),
+    Loader({ size: 'lg' }),
+    Loader({ size: 'xl' }),
+  ] }));
+  el.appendChild(loaderSection);
+
+  el.appendChild(Divider({}));
+
+  // ─── Section: Form ────────────────────────────────
+  const formSection = _createElement('div');
+  _setProp(formSection, 'style', { marginBottom: '1.5rem' });
+  formSection.appendChild(Title({ order: 3, children: 'Form Inputs' }));
+
+  const formStack = Stack({ gap: 'sm', children: [
+    TextInput({
+      label: 'Full Name',
+      placeholder: 'John Doe',
+      description: 'Your display name',
+      required: true,
+    }),
+    TextInput({
+      label: 'Email',
+      placeholder: 'john@example.com',
+      required: true,
+    }),
+    PasswordInput({
+      label: 'Password',
+      placeholder: 'At least 8 characters',
+      required: true,
+    }),
+    Textarea({
+      label: 'Bio',
+      placeholder: 'Tell us about yourself...',
+      description: 'Optional',
+    }),
+    Select({
+      label: 'Role',
+      data: [
+        { value: 'admin', label: 'Administrator' },
+        { value: 'editor', label: 'Editor' },
+        { value: 'user', label: 'User' },
+        { value: 'viewer', label: 'Viewer', disabled: true },
+      ],
+      value: 'user',
+      placeholder: 'Select a role',
+    }),
+    Checkbox({ label: 'I agree to the terms and conditions', color: 'primary' }),
+    Switch({ label: 'Enable email notifications', color: 'primary' }),
+  ] });
+  formSection.appendChild(formStack);
+
+  const formSubmitRow = Group({ gap: 'sm', children: [
+    Button({
+      variant: 'filled',
+      children: 'Create Account',
+      onClick: openModal,
+    }),
+    Button({ variant: 'outline', children: 'Cancel' }),
+  ] });
+  formSection.appendChild(formSubmitRow);
+  el.appendChild(formSection);
+
+  // ─── Section: Modal ───────────────────────────────
+  const modalSection = _createElement('div');
+  _setProp(modalSection, 'style', { marginBottom: '1.5rem' });
+  modalSection.appendChild(Title({ order: 3, children: 'Modal' }));
+  modalSection.appendChild(Button({
+    variant: 'outline',
+    children: 'Open Modal',
+    onClick: openModal,
+  }));
+  el.appendChild(modalSection);
+
+  // Conditionally show modal (reactively)
+  const modalContainer = _createElement('div');
+  _insert(modalContainer, () =>
+    show(
+      () => modalOpened(),
+      () => {
+        const bodyText = _createElement('div');
+        bodyText.appendChild(Text({ children: 'This is a modal dialog from @mikata/ui.' }));
+        bodyText.appendChild(Text({ size: 'sm', children: 'It includes focus trapping, scroll lock, and closes on Escape.' }));
+
+        return Modal({
+          title: 'Example Modal',
+          size: 'md',
+          centered: true,
+          onClose: closeModal,
+          children: bodyText,
+        });
+      }
+    )
+  );
+  el.appendChild(modalContainer);
+
+  return el;
+}
+
+// ============================================================
 // App — compose all demos
 // ============================================================
 function App() {
@@ -459,6 +728,7 @@ function App() {
   _setProp(subtitle, 'style', { marginBottom: '1rem', opacity: '0.7' });
   el.appendChild(subtitle);
 
+  el.appendChild(_createComponent(UIComponentsDemo, {}));
   el.appendChild(_createComponent(Counter, {}));
   el.appendChild(_createComponent(FormDemo, {}));
   el.appendChild(_createComponent(TodoList, {}));

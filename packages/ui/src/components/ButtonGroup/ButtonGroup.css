@@ -1,0 +1,41 @@
+.mkt-button-group {
+  display: inline-flex;
+}
+
+.mkt-button-group[data-orientation="vertical"] {
+  flex-direction: column;
+}
+
+/* Remove border-radius from middle children */
+.mkt-button-group > .mkt-button:not(:first-child):not(:last-child) {
+  border-radius: 0;
+}
+
+/* Horizontal: first child loses right radius, last loses left radius */
+.mkt-button-group[data-orientation="horizontal"] > .mkt-button:first-child {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.mkt-button-group[data-orientation="horizontal"] > .mkt-button:last-child {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+/* Vertical: first child loses bottom radius, last loses top radius */
+.mkt-button-group[data-orientation="vertical"] > .mkt-button:first-child {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.mkt-button-group[data-orientation="vertical"] > .mkt-button:last-child {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+
+/* Collapse borders between adjacent buttons */
+.mkt-button-group > .mkt-button + .mkt-button {
+  margin-left: -1px;
+}
+.mkt-button-group[data-orientation="vertical"] > .mkt-button + .mkt-button {
+  margin-left: 0;
+  margin-top: -1px;
+}

@@ -1,0 +1,18 @@
+.mkt-stack {
+  display: flex;
+  flex-direction: column;
+}
+
+.mkt-stack[data-direction="row"] {
+  flex-direction: row;
+}
+
+.mkt-stack[data-gap="xs"] { gap: var(--mkt-space-1); }
+.mkt-stack[data-gap="sm"] { gap: var(--mkt-space-2); }
+.mkt-stack[data-gap="md"] { gap: var(--mkt-space-4); }
+.mkt-stack[data-gap="lg"] { gap: var(--mkt-space-6); }
+.mkt-stack[data-gap="xl"] { gap: var(--mkt-space-8); }
+
+.mkt-stack[data-wrap] {
+  flex-wrap: wrap;
+}

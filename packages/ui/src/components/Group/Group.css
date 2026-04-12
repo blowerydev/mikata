@@ -1,0 +1,19 @@
+.mkt-group {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.mkt-group[data-gap="xs"] { gap: var(--mkt-space-1); }
+.mkt-group[data-gap="sm"] { gap: var(--mkt-space-2); }
+.mkt-group[data-gap="md"] { gap: var(--mkt-space-4); }
+.mkt-group[data-gap="lg"] { gap: var(--mkt-space-6); }
+.mkt-group[data-gap="xl"] { gap: var(--mkt-space-8); }
+
+.mkt-group[data-wrap] {
+  flex-wrap: wrap;
+}
+
+.mkt-group[data-grow] > * {
+  flex: 1;
+}

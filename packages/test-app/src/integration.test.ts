@@ -59,6 +59,34 @@ import {
   useGuard,
 } from '@mikata/router';
 import {
+  createI18n,
+  provideI18n,
+  useI18n,
+} from '@mikata/i18n';
+import {
+  ThemeProvider,
+  createTheme,
+  useTheme,
+  defaultTheme,
+  darkTheme,
+  Button,
+  TextInput,
+  Stack,
+  Group,
+  Badge,
+  Alert,
+  Text,
+  Title,
+  Checkbox,
+  Switch,
+  Select,
+  Progress,
+  Modal,
+  Loader,
+  mergeClasses,
+  useDisclosure,
+} from '@mikata/ui';
+import {
   createStore,
   derived,
   createSelector,
@@ -2262,5 +2290,557 @@ describe('13. Router', () => {
     dispose();
     router.dispose();
     container.remove();
+  });
+});
+
+// ════════════════════════════════════════════════════════════════════
+// 14. i18n
+// ════════════════════════════════════════════════════════════════════
+
+describe('14. i18n', () => {
+  const en = {
+    greeting: 'Hello {{name}}',
+    nav: { home: 'Home', about: 'About' },
+    items: { one: '{{count}} item', other: '{{count}} items' },
+  };
+
+  const fr = {
+    greeting: 'Bonjour {{name}}',
+    nav: { home: 'Accueil', about: 'À propos' },
+    items: { one: '{{count}} article', other: '{{count}} articles' },
+  };
+
+  it('translates and interpolates in a component', () => {
+    const i18n = createI18n({ locale: 'en', fallbackLocale: 'en', messages: { en } });
+
+    function Greeting(props: { name: string }) {
+      const { t } = useI18n();
+      const el = document.createElement('p');
+      renderEffect(() => {
+        el.textContent = t('greeting' as any, { name: props.name });
+      });
+      return el;
+    }
+
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+
+    const dispose = render(() => {
+      provideI18n(i18n);
+      return _createComponent(Greeting, { name: 'World' });
+    }, container);
+    flush();
+
+    expect(container.textContent).toBe('Hello World');
+
+    dispose();
+    container.remove();
+  });
+
+  it('switches locale and updates DOM reactively', async () => {
+    const i18n = createI18n({ locale: 'en', fallbackLocale: 'en', messages: { en, fr } });
+
+    function Nav() {
+      const { t } = useI18n();
+      const el = document.createElement('span');
+      renderEffect(() => {
+        el.textContent = t('nav.home' as any);
+      });
+      return el;
+    }
+
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+
+    const dispose = render(() => {
+      provideI18n(i18n);
+      return _createComponent(Nav, {});
+    }, container);
+    flush();
+
+    expect(container.textContent).toBe('Home');
+
+    await i18n.setLocale('fr');
+    flush();
+    expect(container.textContent).toBe('Accueil');
+
+    dispose();
+    container.remove();
+  });
+
+  it('loads translations via async loader', async () => {
+    const loader = vi.fn(async (locale: string) => {
+      if (locale === 'fr') return fr;
+      throw new Error('Unknown');
+    });
+
+    const i18n = createI18n({
+      locale: 'en',
+      fallbackLocale: 'en',
+      messages: { en },
+      loader,
+    });
+
+    function Label() {
+      const { t } = useI18n();
+      const el = document.createElement('span');
+      renderEffect(() => {
+        el.textContent = t('nav.about' as any);
+      });
+      return el;
+    }
+
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+
+    const dispose = render(() => {
+      provideI18n(i18n);
+      return _createComponent(Label, {});
+    }, container);
+    flush();
+
+    expect(container.textContent).toBe('About');
+
+    await i18n.setLocale('fr');
+    flush();
+    expect(container.textContent).toBe('À propos');
+    expect(loader).toHaveBeenCalledWith('fr');
+
+    dispose();
+    container.remove();
+  });
+
+  it('pluralizes correctly', () => {
+    const i18n = createI18n({ locale: 'en', fallbackLocale: 'en', messages: { en } });
+
+    function Items(props: { count: number }) {
+      const { t } = useI18n();
+      const el = document.createElement('span');
+      renderEffect(() => {
+        el.textContent = t.plural('items' as any, props.count);
+      });
+      return el;
+    }
+
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+
+    const dispose = render(() => {
+      provideI18n(i18n);
+      return _createComponent(Items, { count: 1 });
+    }, container);
+    flush();
+
+    expect(container.textContent).toBe('1 item');
+
+    dispose();
+    container.remove();
+  });
+
+  it('formats numbers and dates with locale', () => {
+    const i18n = createI18n({ locale: 'en-US', fallbackLocale: 'en-US', messages: { 'en-US': en } });
+
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+
+    const dispose = render(() => {
+      provideI18n(i18n);
+      const { fmt } = useI18n();
+      const el = document.createElement('span');
+      renderEffect(() => {
+        el.textContent = fmt.number(9999.99, { style: 'currency', currency: 'USD' });
+      });
+      return el;
+    }, container);
+    flush();
+
+    expect(container.textContent).toBe('$9,999.99');
+
+    dispose();
+    container.remove();
+  });
+});
+
+// ============================================================
+// 15. UI COMPONENT LIBRARY
+// ============================================================
+describe('15. UI Components', () => {
+  let container: HTMLElement;
+
+  beforeEach(() => {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+  });
+
+  afterEach(() => {
+    container.remove();
+  });
+
+  it('ThemeProvider sets CSS variables and components render inside it', () => {
+    const dispose = render(() => {
+      const el = ThemeProvider({}) as HTMLElement;
+      // Add a button inside the theme provider
+      el.appendChild(Button({ children: 'Themed Button', color: 'primary' }));
+      return el;
+    }, container);
+    flush();
+
+    const themeEl = container.querySelector('[data-mkt-theme]') as HTMLElement;
+    expect(themeEl).not.toBeNull();
+    expect(themeEl.style.getPropertyValue('--mkt-color-primary-6')).toBe(defaultTheme['color-primary-6']);
+    expect(themeEl.getAttribute('data-mkt-color-scheme')).toBe('light');
+
+    const btn = container.querySelector('.mkt-button') as HTMLButtonElement;
+    expect(btn).not.toBeNull();
+    expect(btn.querySelector('.mkt-button__label')!.textContent).toBe('Themed Button');
+
+    dispose();
+  });
+
+  it('createTheme merges overrides and ThemeProvider applies them', () => {
+    const custom = createTheme({ 'color-primary-6': '#7c3aed' });
+    const dispose = render(() => {
+      return ThemeProvider({ theme: custom }) as HTMLElement;
+    }, container);
+    flush();
+
+    const themeEl = container.querySelector('[data-mkt-theme]') as HTMLElement;
+    expect(themeEl.style.getPropertyValue('--mkt-color-primary-6')).toBe('#7c3aed');
+    // Other tokens remain from defaults
+    expect(themeEl.style.getPropertyValue('--mkt-color-text')).toBe(defaultTheme['color-text']);
+
+    dispose();
+  });
+
+  it('dark mode applies dark theme overrides', () => {
+    const dispose = render(() => {
+      return ThemeProvider({ colorScheme: 'dark' }) as HTMLElement;
+    }, container);
+    flush();
+
+    const themeEl = container.querySelector('[data-mkt-theme]') as HTMLElement;
+    expect(themeEl.getAttribute('data-mkt-color-scheme')).toBe('dark');
+    expect(themeEl.style.getPropertyValue('--mkt-color-bg')).toBe(darkTheme['color-bg']);
+    expect(themeEl.style.getPropertyValue('--mkt-color-text')).toBe(darkTheme['color-text']);
+
+    dispose();
+  });
+
+  it('Button renders all variants and handles click events', () => {
+    const clicks: string[] = [];
+    const dispose = render(() => {
+      const el = ThemeProvider({}) as HTMLElement;
+      el.appendChild(Button({
+        variant: 'filled',
+        color: 'primary',
+        children: 'Filled',
+        onClick: () => clicks.push('filled'),
+      }));
+      el.appendChild(Button({
+        variant: 'outline',
+        color: 'red',
+        children: 'Outline',
+        onClick: () => clicks.push('outline'),
+      }));
+      el.appendChild(Button({
+        variant: 'subtle',
+        disabled: true,
+        children: 'Disabled',
+        onClick: () => clicks.push('disabled'),
+      }));
+      return el;
+    }, container);
+    flush();
+
+    const buttons = container.querySelectorAll('.mkt-button');
+    expect(buttons.length).toBe(3);
+
+    // Check variants
+    expect((buttons[0] as HTMLElement).dataset.variant).toBe('filled');
+    expect((buttons[1] as HTMLElement).dataset.variant).toBe('outline');
+    expect((buttons[1] as HTMLElement).dataset.color).toBe('red');
+
+    // Click filled button
+    (buttons[0] as HTMLButtonElement).click();
+    expect(clicks).toEqual(['filled']);
+
+    // Disabled button should not fire click
+    expect((buttons[2] as HTMLButtonElement).disabled).toBe(true);
+
+    dispose();
+  });
+
+  it('Button loading state shows loader and disables interaction', () => {
+    const el = Button({ loading: true, children: 'Saving...' });
+    expect(el.disabled).toBe(true);
+    expect(el.getAttribute('aria-busy')).toBe('true');
+    expect(el.querySelector('.mkt-button__loader')).not.toBeNull();
+  });
+
+  it('TextInput with label, error, and ARIA attributes', () => {
+    const el = TextInput({
+      label: 'Email',
+      description: 'We will never share your email',
+      error: 'Invalid email address',
+      required: true,
+      value: 'test@',
+    });
+
+    // Label connected to input
+    const label = el.querySelector('label')!;
+    const input = el.querySelector('input')!;
+    expect(label.htmlFor).toBe(input.id);
+    expect(label.textContent).toContain('Email');
+
+    // Required indicator
+    expect(el.querySelector('.mkt-input-wrapper__required')).not.toBeNull();
+
+    // Description
+    const desc = el.querySelector('.mkt-input-wrapper__description')!;
+    expect(desc.textContent).toBe('We will never share your email');
+
+    // Error
+    const error = el.querySelector('[role="alert"]')!;
+    expect(error.textContent).toBe('Invalid email address');
+
+    // ARIA on input
+    expect(input.getAttribute('aria-invalid')).toBe('true');
+    expect(input.getAttribute('aria-required')).toBe('true');
+    expect(input.getAttribute('aria-describedby')).toContain('-description');
+    expect(input.getAttribute('aria-describedby')).toContain('-error');
+
+    // Value
+    expect(input.value).toBe('test@');
+  });
+
+  it('Stack and Group compose children with layout', () => {
+    const child1 = document.createElement('p');
+    child1.textContent = 'Item 1';
+    const child2 = document.createElement('p');
+    child2.textContent = 'Item 2';
+    const child3 = document.createElement('p');
+    child3.textContent = 'Item 3';
+
+    const stack = Stack({ gap: 'md', children: [child1, child2] });
+    expect(stack.classList.contains('mkt-stack')).toBe(true);
+    expect(stack.dataset.gap).toBe('md');
+    expect(stack.children.length).toBe(2);
+
+    const group = Group({ gap: 'sm', children: [child3] });
+    expect(group.classList.contains('mkt-group')).toBe(true);
+    expect(group.dataset.gap).toBe('sm');
+  });
+
+  it('Select renders options from data array', () => {
+    const el = Select({
+      label: 'Country',
+      placeholder: 'Pick one',
+      data: [
+        { value: 'us', label: 'United States' },
+        { value: 'uk', label: 'United Kingdom' },
+        { value: 'de', label: 'Germany', disabled: true },
+      ],
+      value: 'uk',
+    });
+
+    const select = el.querySelector('select')!;
+    // Placeholder + 3 data options
+    expect(select.options.length).toBe(4);
+    expect(select.options[0].disabled).toBe(true); // placeholder
+    expect(select.options[1].textContent).toBe('United States');
+    expect(select.options[3].disabled).toBe(true); // Germany
+    expect(select.value).toBe('uk');
+
+    // Label
+    expect(el.querySelector('label')!.textContent).toContain('Country');
+  });
+
+  it('Checkbox and Switch render with proper roles', () => {
+    const checkbox = Checkbox({
+      label: 'Accept terms',
+      checked: true,
+    });
+    const cbInput = checkbox.querySelector('input[type="checkbox"]') as HTMLInputElement;
+    expect(cbInput.checked).toBe(true);
+    expect(checkbox.querySelector('.mkt-checkbox__label')!.textContent).toBe('Accept terms');
+
+    const sw = Switch({
+      label: 'Dark mode',
+    });
+    const swInput = sw.querySelector('input[type="checkbox"]') as HTMLInputElement;
+    expect(swInput.getAttribute('role')).toBe('switch');
+    expect(sw.querySelector('.mkt-switch__label')!.textContent).toBe('Dark mode');
+  });
+
+  it('Alert renders with role=alert and close button works', () => {
+    let closed = false;
+    const el = Alert({
+      title: 'Warning',
+      color: 'yellow',
+      closable: true,
+      onClose: () => { closed = true; },
+      children: 'Something needs attention',
+    });
+
+    expect(el.getAttribute('role')).toBe('alert');
+    expect(el.dataset.color).toBe('yellow');
+    expect(el.querySelector('.mkt-alert__title')!.textContent).toBe('Warning');
+    expect(el.querySelector('.mkt-alert__message')!.textContent).toBe('Something needs attention');
+
+    const closeBtn = el.querySelector('.mkt-alert__close-button') as HTMLButtonElement;
+    expect(closeBtn.getAttribute('aria-label')).toBe('Close');
+    closeBtn.click();
+    expect(closed).toBe(true);
+  });
+
+  it('Badge renders variants including dot', () => {
+    const filled = Badge({ variant: 'filled', color: 'green', children: 'Active' });
+    expect(filled.dataset.variant).toBe('filled');
+    expect(filled.dataset.color).toBe('green');
+    expect(filled.textContent).toContain('Active');
+
+    const dot = Badge({ variant: 'dot', children: 'Status' });
+    expect(dot.querySelector('.mkt-badge__dot')).not.toBeNull();
+  });
+
+  it('Progress renders with correct ARIA and bar width', () => {
+    const el = Progress({ value: 75, color: 'green' });
+    expect(el.getAttribute('role')).toBe('progressbar');
+    expect(el.getAttribute('aria-valuenow')).toBe('75');
+    expect(el.getAttribute('aria-valuemin')).toBe('0');
+    expect(el.getAttribute('aria-valuemax')).toBe('100');
+
+    const bar = el.querySelector('.mkt-progress__bar') as HTMLElement;
+    expect(bar.style.width).toBe('75%');
+  });
+
+  it('Modal renders into body with dialog role and handles close', () => {
+    let closed = false;
+    const bodyContent = document.createElement('p');
+    bodyContent.textContent = 'Modal body content';
+
+    const dispose = render(() => {
+      return ThemeProvider({
+        children: Modal({
+          title: 'Confirm',
+          onClose: () => { closed = true; },
+          children: bodyContent,
+        }) as unknown as Node,
+      }) as HTMLElement;
+    }, container);
+    flush();
+
+    // Modal is appended to document.body, not inside container
+    const modal = document.body.querySelector('.mkt-modal')!;
+    expect(modal).not.toBeNull();
+
+    const dialog = modal.querySelector('[role="dialog"]')!;
+    expect(dialog.getAttribute('aria-modal')).toBe('true');
+    expect(dialog.getAttribute('aria-labelledby')).toBeTruthy();
+
+    // Title
+    const titleId = dialog.getAttribute('aria-labelledby')!;
+    const titleEl = dialog.querySelector(`#${titleId}`)!;
+    expect(titleEl.textContent).toBe('Confirm');
+
+    // Close button
+    const closeBtn = modal.querySelector('.mkt-modal__close') as HTMLButtonElement;
+    expect(closeBtn.getAttribute('aria-label')).toBe('Close');
+    closeBtn.click();
+    expect(closed).toBe(true);
+
+    // Cleanup
+    dispose();
+    modal.remove();
+  });
+
+  it('Text and Title render correct elements', () => {
+    const text = Text({ size: 'lg', children: 'Paragraph' });
+    expect(text.tagName).toBe('P');
+    expect(text.dataset.size).toBe('lg');
+    expect(text.textContent).toBe('Paragraph');
+
+    const h2 = Title({ order: 2, children: 'Section Title' });
+    expect(h2.tagName).toBe('H2');
+    expect(h2.textContent).toBe('Section Title');
+  });
+
+  it('classNames prop allows targeting inner component parts', () => {
+    const btn = Button({
+      classNames: { root: 'custom-root', label: 'custom-label', icon: 'custom-icon' },
+      children: 'Styled',
+    });
+
+    expect(btn.classList.contains('custom-root')).toBe(true);
+    expect(btn.querySelector('.custom-label')).not.toBeNull();
+  });
+
+  it('mergeClasses utility filters falsy values correctly', () => {
+    expect(mergeClasses('a', false, 'b', null, undefined, 'c')).toBe('a b c');
+    expect(mergeClasses()).toBe('');
+  });
+
+  it('useDisclosure manages open/close/toggle state', () => {
+    const { opened, open, close, toggle } = useDisclosure(false);
+    expect(opened()).toBe(false);
+    open();
+    expect(opened()).toBe(true);
+    close();
+    expect(opened()).toBe(false);
+    toggle();
+    expect(opened()).toBe(true);
+    toggle();
+    expect(opened()).toBe(false);
+  });
+
+  it('full form scenario: themed form with validation feedback', () => {
+    const dispose = render(() => {
+      const el = ThemeProvider({}) as HTMLElement;
+
+      const form = Stack({ gap: 'md', children: [
+        TextInput({ label: 'Username', required: true, value: '' }),
+        TextInput({ label: 'Email', error: 'Invalid email', value: 'bad' }),
+        Select({
+          label: 'Role',
+          data: [
+            { value: 'admin', label: 'Admin' },
+            { value: 'user', label: 'User' },
+          ],
+          value: 'user',
+        }),
+        Checkbox({ label: 'I agree to terms', required: true }),
+        Button({ type: 'submit', children: 'Create Account' }),
+      ] });
+
+      el.appendChild(form);
+      return el;
+    }, container);
+    flush();
+
+    // Verify the themed wrapper is present
+    expect(container.querySelector('[data-mkt-theme]')).not.toBeNull();
+
+    // Verify form structure
+    const inputs = container.querySelectorAll('input[type="text"]');
+    expect(inputs.length).toBe(2);
+
+    // Username field has no error
+    const usernameInput = inputs[0] as HTMLInputElement;
+    expect(usernameInput.getAttribute('aria-required')).toBe('true');
+    expect(usernameInput.getAttribute('aria-invalid')).toBeNull();
+
+    // Email field has error
+    const emailInput = inputs[1] as HTMLInputElement;
+    expect(emailInput.getAttribute('aria-invalid')).toBe('true');
+
+    // Select
+    const select = container.querySelector('select')!;
+    expect(select.value).toBe('user');
+
+    // Submit button
+    const submitBtn = container.querySelector('button[type="submit"]')!;
+    expect(submitBtn.querySelector('.mkt-button__label')!.textContent).toBe('Create Account');
+
+    dispose();
   });
 });

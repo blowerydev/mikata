@@ -1,0 +1,94 @@
+.mkt-number-input {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.mkt-number-input__input {
+  width: 100%;
+  border: 1px solid var(--mkt-color-border);
+  border-radius: var(--mkt-radius-sm);
+  font-family: var(--mkt-font-family);
+  color: var(--mkt-color-text);
+  background: var(--mkt-color-bg);
+  outline: none;
+  padding-right: var(--mkt-space-7);
+  transition: border-color var(--mkt-transition-duration) var(--mkt-transition-timing);
+  -moz-appearance: textfield;
+}
+
+.mkt-number-input__input::-webkit-inner-spin-button,
+.mkt-number-input__input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.mkt-number-input__input:focus {
+  border-color: var(--mkt-color-focus-ring);
+  box-shadow: 0 0 0 1px var(--mkt-color-focus-ring);
+}
+
+.mkt-number-input__input[aria-invalid="true"] {
+  border-color: var(--mkt-color-error);
+}
+
+.mkt-number-input__input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background: var(--mkt-color-bg-subtle);
+}
+
+.mkt-number-input__input::placeholder {
+  color: var(--mkt-color-text-dimmed);
+}
+
+/* Sizes */
+.mkt-number-input__input[data-size="xs"] { height: var(--mkt-size-xs); padding: 0 var(--mkt-space-2); font-size: var(--mkt-font-size-xs); padding-right: var(--mkt-space-6); }
+.mkt-number-input__input[data-size="sm"] { height: var(--mkt-size-sm); padding: 0 var(--mkt-space-3); font-size: var(--mkt-font-size-sm); padding-right: var(--mkt-space-7); }
+.mkt-number-input__input[data-size="md"] { height: var(--mkt-size-md); padding: 0 var(--mkt-space-3); font-size: var(--mkt-font-size-sm); padding-right: var(--mkt-space-7); }
+.mkt-number-input__input[data-size="lg"] { height: var(--mkt-size-lg); padding: 0 var(--mkt-space-4); font-size: var(--mkt-font-size-md); padding-right: var(--mkt-space-8); }
+.mkt-number-input__input[data-size="xl"] { height: var(--mkt-size-xl); padding: 0 var(--mkt-space-4); font-size: var(--mkt-font-size-md); padding-right: var(--mkt-space-8); }
+
+.mkt-number-input__controls {
+  position: absolute;
+  right: 1px;
+  top: 1px;
+  bottom: 1px;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--mkt-color-border);
+  border-radius: 0 var(--mkt-radius-sm) var(--mkt-radius-sm) 0;
+  overflow: hidden;
+}
+
+.mkt-number-input__control {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  padding: 0 var(--mkt-space-1);
+  background: var(--mkt-color-bg);
+  border: none;
+  cursor: pointer;
+  color: var(--mkt-color-text-dimmed);
+  line-height: 1;
+  font-size: 10px;
+}
+
+.mkt-number-input__control:hover {
+  background: var(--mkt-color-bg-subtle);
+  color: var(--mkt-color-text);
+}
+
+.mkt-number-input__control:active {
+  background: var(--mkt-color-bg-hover);
+}
+
+.mkt-number-input__control + .mkt-number-input__control {
+  border-top: 1px solid var(--mkt-color-border);
+}
+
+.mkt-number-input__control:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

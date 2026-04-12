@@ -1,0 +1,9 @@
+.mkt-space {
+  display: block;
+}
+
+.mkt-space[data-size="xs"] { height: var(--mkt-space-1); }
+.mkt-space[data-size="sm"] { height: var(--mkt-space-2); }
+.mkt-space[data-size="md"] { height: var(--mkt-space-4); }
+.mkt-space[data-size="lg"] { height: var(--mkt-space-6); }
+.mkt-space[data-size="xl"] { height: var(--mkt-space-8); }

@@ -1,0 +1,9 @@
+.mkt-grid {
+  display: grid;
+}
+
+.mkt-grid[data-gap="xs"] { gap: var(--mkt-space-1); }
+.mkt-grid[data-gap="sm"] { gap: var(--mkt-space-2); }
+.mkt-grid[data-gap="md"] { gap: var(--mkt-space-4); }
+.mkt-grid[data-gap="lg"] { gap: var(--mkt-space-6); }
+.mkt-grid[data-gap="xl"] { gap: var(--mkt-space-8); }

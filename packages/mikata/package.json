@@ -22,6 +22,7 @@
     "@mikata/reactivity": "workspace:*",
     "@mikata/runtime": "workspace:*",
     "@mikata/store": "workspace:*",
-    "@mikata/router": "workspace:*"
+    "@mikata/router": "workspace:*",
+    "@mikata/i18n": "workspace:*"
   }
 }

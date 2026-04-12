@@ -72,6 +72,23 @@ export type {
   MutationResult,
 } from '@mikata/store';
 
+// i18n
+export {
+  createI18n,
+  provideI18n,
+  useI18n,
+} from '@mikata/i18n';
+
+export type {
+  I18nOptions,
+  I18nInstance,
+  TranslateFunction,
+  Formatters,
+  TranslationKeys,
+  PluralCategory,
+  PluralMessages,
+} from '@mikata/i18n';
+
 // Router
 export {
   createRouter,

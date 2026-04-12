@@ -39,8 +39,20 @@ importers:
         specifier: ^6.0.0
         version: 6.4.2
 
+  packages/i18n:
+    dependencies:
+      '@mikata/reactivity':
+        specifier: workspace:*
+        version: link:../reactivity
+      '@mikata/runtime':
+        specifier: workspace:*
+        version: link:../runtime
+
   packages/mikata:
     dependencies:
+      '@mikata/i18n':
+        specifier: workspace:*
+        version: link:../i18n
       '@mikata/reactivity':
         specifier: workspace:*
         version: link:../reactivity
@@ -79,6 +91,9 @@ importers:
 
   packages/test-app:
     dependencies:
+      '@mikata/i18n':
+        specifier: workspace:*
+        version: link:../i18n
       '@mikata/reactivity':
         specifier: workspace:*
         version: link:../reactivity
@@ -94,9 +109,24 @@ importers:
       '@mikata/testing':
         specifier: workspace:*
         version: link:../testing
+      '@mikata/ui':
+        specifier: workspace:*
+        version: link:../ui
 
   packages/testing:
     dependencies:
+      '@mikata/reactivity':
+        specifier: workspace:*
+        version: link:../reactivity
+      '@mikata/runtime':
+        specifier: workspace:*
+        version: link:../runtime
+
+  packages/ui:
+    dependencies:
+      '@mikata/i18n':
+        specifier: workspace:*
+        version: link:../i18n
       '@mikata/reactivity':
         specifier: workspace:*
         version: link:../reactivity
@@ -115,6 +145,9 @@ importers:
       '@mikata/store':
         specifier: workspace:*
         version: link:../packages/store
+      '@mikata/ui':
+        specifier: workspace:*
+        version: link:../packages/ui
     devDependencies:
       '@mikata/compiler':
         specifier: workspace:*

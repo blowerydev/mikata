@@ -12,6 +12,8 @@
     "@mikata/runtime": "workspace:*",
     "@mikata/store": "workspace:*",
     "@mikata/router": "workspace:*",
-    "@mikata/testing": "workspace:*"
+    "@mikata/testing": "workspace:*",
+    "@mikata/i18n": "workspace:*",
+    "@mikata/ui": "workspace:*"
   }
 }

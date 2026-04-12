@@ -17,6 +17,7 @@
 - `@mikata/store` — createStore, derived, createSelector, createQuery, createMutation
 - `@mikata/compiler` — Vite/Babel plugin that transforms JSX to runtime calls
 - `@mikata/testing` — testing utilities: renderComponent, fireEvent, waitForUpdate, query helpers
+- `@mikata/ui` — component library: buttons, inputs, layout, feedback, overlays with CSS variables theming
 - `mikata` — umbrella re-export of all packages
 
 ---
@@ -1148,6 +1149,118 @@ function UserPage() {
 - **Scroll restoration** — built-in, including nested scrollable containers
 - **History modes** — `'browser'` (pushState), `'hash'` (#), `'memory'` (testing/SSR)
 
+### i18n
+
+Internationalization with runtime translation loading, typed keys, and reactive locale switching.
+
+```tsx
+import { createI18n, provideI18n, useI18n } from '@mikata/i18n';
+
+// Base translations (keys inferred for type safety)
+const en = {
+  greeting: 'Hello {{name}}',
+  nav: { home: 'Home', about: 'About' },
+  items: { one: '{{count}} item', other: '{{count}} items' },
+};
+
+const i18n = createI18n({
+  locale: 'en',
+  fallbackLocale: 'en',
+  messages: { en },
+  // Load other locales at runtime from CDN, API, etc.
+  loader: async (locale) => {
+    const res = await fetch(`https://cdn.example.com/i18n/${locale}.json`);
+    return res.json();
+  },
+});
+
+// Root component
+function App() {
+  provideI18n(i18n);
+  return <div>{routeOutlet()}</div>;
+}
+
+// Any component
+function MyPage() {
+  const { t, fmt, locale, setLocale, loading } = useI18n();
+
+  return (
+    <div>
+      <p>{t('greeting', { name: 'World' })}</p>
+      <p>{t('nav.home')}</p>
+      <p>{t.plural('items', 3)}</p>
+      <p>{fmt.number(1234.5, { style: 'currency', currency: 'USD' })}</p>
+      <p>{fmt.date(new Date(), { dateStyle: 'long' })}</p>
+      <p>{fmt.relativeTime(-3, 'day')}</p>
+      <button onClick={() => setLocale('fr')}>French</button>
+    </div>
+  );
+}
+```
+
+**Key features:**
+- **Runtime loading** — `loader` function fetches translations from any source (CDN, API, bundled JSON)
+- **Typed keys** — inferred from base locale object via TypeScript generics, no codegen
+- **Reactive** — locale is a signal; `t()` reads it transitively, only affected effects re-run
+- **Single API** — one `t()` function with `t.plural()` for pluralization
+- **Fallback chain** — missing key in current locale falls back to `fallbackLocale`, then raw key
+- **Formatters** — `fmt.number()`, `fmt.date()`, `fmt.relativeTime()`, `fmt.list()` wrap browser `Intl.*` APIs (zero bundle cost)
+- **Lazy locale loading** — `setLocale()` is async, loads via `loader`, caches results
+- **Pluralization** — `t.plural(key, count)` uses `Intl.PluralRules` for locale-aware plural categories
+- **Loading state** — `loading` signal for showing UI indicators during async locale fetch
+
+### UI Components (`@mikata/ui`)
+
+Component library with CSS variables theming, `data-*` attribute styling, and WAI-ARIA compliance.
+
+**Styling approach:** CSS variables + CSS classes. No style props. Components use design tokens as CSS variables (`--mkt-color-primary-6`, `--mkt-space-4`). Variants/sizes/colors are selected via `data-*` attributes. Users customize via `class` prop (root) + `classNames` prop (inner parts).
+
+```tsx
+import { ThemeProvider, createTheme, Button, TextInput, Stack, Modal } from '@mikata/ui';
+import '@mikata/ui/styles.css';
+
+// Optional: custom theme overrides
+const theme = createTheme({ 'color-primary-6': '#7c3aed' });
+
+function App() {
+  return (
+    <ThemeProvider theme={theme} colorScheme="auto">
+      <Stack gap="md">
+        <TextInput label="Name" placeholder="Enter your name" required />
+        <Button variant="filled" color="primary" onClick={handleSubmit}>
+          Submit
+        </Button>
+      </Stack>
+    </ThemeProvider>
+  );
+}
+```
+
+**Components available:**
+- **Layout:** Box, Stack, Group, Grid, Container, Divider, Space
+- **Typography:** Text, Title, Anchor
+- **Buttons:** Button, ActionIcon, CloseButton, ButtonGroup
+- **Feedback:** Loader, Alert, Badge, Progress, Skeleton
+- **Form inputs:** TextInput, Textarea, PasswordInput, NumberInput, Checkbox, Radio, Switch, Select, Slider
+- **Overlays:** Tooltip, Popover, Modal, Drawer
+
+**Key patterns:**
+- `variant` — visual style: `'filled' | 'outline' | 'light' | 'subtle'`
+- `size` — `'xs' | 'sm' | 'md' | 'lg' | 'xl'` using design token heights
+- `color` — palette: `'primary' | 'red' | 'green' | 'blue'` etc.
+- `classNames` — target inner parts: `classNames={{ root: '...', label: '...' }}`
+- `ref` — callback ref or `createRef()` object
+- Form inputs include `InputWrapper` with label, description, error, required indicator, and proper ARIA
+- CSS uses BEM naming with `mkt-` prefix: `.mkt-button`, `.mkt-button__label`
+- Private CSS variables (`--_btn-color`) for component-internal computed values
+
+**Theming:**
+- `ThemeProvider` — wraps app with CSS variables via `display: contents` div
+- `createTheme(overrides)` — merge partial overrides with defaults
+- `useTheme()` — access color scheme state
+- `colorScheme` — `'light' | 'dark' | 'auto'` (auto uses `prefers-color-scheme`)
+- 170+ design tokens: 10 color palettes × 10 shades, semantic colors, spacing, typography, sizing, radius, shadows, transitions, z-index
+
 ---
 
 ## Critical Differences from Other Frameworks
@@ -1188,6 +1301,8 @@ mikata/
     compiler/      # @mikata/compiler — Vite plugin + Babel JSX transform
     store/         # @mikata/store — createStore, createQuery, createMutation
     router/        # @mikata/router — client-side routing, guards, nested layouts
+    i18n/          # @mikata/i18n — internationalization, runtime loading, typed keys
+    ui/            # @mikata/ui — component library, CSS variables theming, 30+ components
     testing/       # @mikata/testing — renderComponent, fireEvent, flush, waitForUpdate
     mikata/        # mikata — umbrella re-exports
   playground/      # Vite dev app for testing

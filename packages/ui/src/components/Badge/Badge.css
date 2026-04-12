@@ -1,0 +1,81 @@
+.mkt-badge {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--mkt-font-family);
+  font-weight: var(--mkt-font-weight-semibold);
+  letter-spacing: 0.25px;
+  text-transform: uppercase;
+  text-decoration: none;
+  border-radius: 9999px;
+  white-space: nowrap;
+  --_badge-color: var(--mkt-color-primary-6);
+  --_badge-bg: var(--mkt-color-primary-0);
+}
+
+/* Size */
+.mkt-badge[data-size="xs"] { font-size: 0.5625rem; padding: 0 6px;  height: 16px; }
+.mkt-badge[data-size="sm"] { font-size: 0.625rem;  padding: 0 8px;  height: 18px; }
+.mkt-badge[data-size="md"] { font-size: 0.6875rem; padding: 0 10px; height: 20px; }
+.mkt-badge[data-size="lg"] { font-size: 0.75rem;   padding: 0 12px; height: 24px; }
+.mkt-badge[data-size="xl"] { font-size: 0.875rem;  padding: 0 16px; height: 28px; }
+
+/* Color */
+.mkt-badge[data-color="primary"] { --_badge-color: var(--mkt-color-primary-6); --_badge-bg: var(--mkt-color-primary-0); }
+.mkt-badge[data-color="gray"]    { --_badge-color: var(--mkt-color-gray-6);    --_badge-bg: var(--mkt-color-gray-0); }
+.mkt-badge[data-color="red"]     { --_badge-color: var(--mkt-color-red-6);     --_badge-bg: var(--mkt-color-red-0); }
+.mkt-badge[data-color="green"]   { --_badge-color: var(--mkt-color-green-6);   --_badge-bg: var(--mkt-color-green-0); }
+.mkt-badge[data-color="yellow"]  { --_badge-color: var(--mkt-color-yellow-6);  --_badge-bg: var(--mkt-color-yellow-0); }
+.mkt-badge[data-color="blue"]    { --_badge-color: var(--mkt-color-blue-6);    --_badge-bg: var(--mkt-color-blue-0); }
+.mkt-badge[data-color="cyan"]    { --_badge-color: var(--mkt-color-cyan-6);    --_badge-bg: var(--mkt-color-cyan-0); }
+.mkt-badge[data-color="teal"]    { --_badge-color: var(--mkt-color-teal-6);    --_badge-bg: var(--mkt-color-teal-0); }
+.mkt-badge[data-color="violet"]  { --_badge-color: var(--mkt-color-violet-6);  --_badge-bg: var(--mkt-color-violet-0); }
+.mkt-badge[data-color="pink"]    { --_badge-color: var(--mkt-color-pink-6);    --_badge-bg: var(--mkt-color-pink-0); }
+.mkt-badge[data-color="orange"]  { --_badge-color: var(--mkt-color-orange-6);  --_badge-bg: var(--mkt-color-orange-0); }
+
+/* Variants */
+.mkt-badge[data-variant="filled"] {
+  background-color: var(--_badge-color);
+  color: #fff;
+  border: 1px solid transparent;
+}
+
+.mkt-badge[data-variant="light"] {
+  background-color: var(--_badge-bg);
+  color: var(--_badge-color);
+  border: 1px solid transparent;
+}
+
+.mkt-badge[data-variant="outline"] {
+  background-color: transparent;
+  color: var(--_badge-color);
+  border: 1px solid var(--_badge-color);
+}
+
+.mkt-badge[data-variant="dot"] {
+  background-color: var(--_badge-bg);
+  color: var(--mkt-color-text);
+  border: 1px solid transparent;
+  padding-left: 0;
+}
+
+.mkt-badge__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--_badge-color);
+  margin-right: 6px;
+  margin-left: 8px;
+}
+
+/* Dark mode overrides */
+[data-mkt-color-scheme="dark"] .mkt-badge[data-color="primary"] { --_badge-bg: rgba(34, 139, 230, 0.15); }
+[data-mkt-color-scheme="dark"] .mkt-badge[data-color="gray"]    { --_badge-bg: rgba(134, 142, 150, 0.15); }
+[data-mkt-color-scheme="dark"] .mkt-badge[data-color="red"]     { --_badge-bg: rgba(250, 82, 82, 0.15); }
+[data-mkt-color-scheme="dark"] .mkt-badge[data-color="green"]   { --_badge-bg: rgba(64, 192, 87, 0.15); }
+[data-mkt-color-scheme="dark"] .mkt-badge[data-color="yellow"]  { --_badge-bg: rgba(250, 176, 5, 0.15); }
+[data-mkt-color-scheme="dark"] .mkt-badge[data-color="blue"]    { --_badge-bg: rgba(34, 139, 230, 0.15); }
+[data-mkt-color-scheme="dark"] .mkt-badge[data-color="cyan"]    { --_badge-bg: rgba(21, 170, 191, 0.15); }
+[data-mkt-color-scheme="dark"] .mkt-badge[data-color="teal"]    { --_badge-bg: rgba(18, 184, 134, 0.15); }
+[data-mkt-color-scheme="dark"] .mkt-badge[data-color="violet"]  { --_badge-bg: rgba(121, 80, 242, 0.15); }
+[data-mkt-color-scheme="dark"] .mkt-badge[data-color="pink"]    { --_badge-bg: rgba(230, 73, 128, 0.15); }
+[data-mkt-color-scheme="dark"] .mkt-badge[data-color="orange"]  { --_badge-bg: rgba(253, 126, 20, 0.15); }

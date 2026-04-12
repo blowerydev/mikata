@@ -1,0 +1,28 @@
+.mkt-input-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mkt-space-1);
+}
+
+.mkt-input-wrapper__label {
+  font-size: var(--mkt-font-size-sm);
+  font-weight: var(--mkt-font-weight-medium);
+  color: var(--mkt-color-text);
+}
+
+.mkt-input-wrapper__required {
+  color: var(--mkt-color-error);
+  margin-left: var(--mkt-space-1);
+}
+
+.mkt-input-wrapper__description {
+  font-size: var(--mkt-font-size-xs);
+  color: var(--mkt-color-text-dimmed);
+  margin: 0;
+}
+
+.mkt-input-wrapper__error {
+  font-size: var(--mkt-font-size-xs);
+  color: var(--mkt-color-error);
+  margin: 0;
+}
