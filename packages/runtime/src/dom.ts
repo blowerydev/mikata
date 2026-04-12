@@ -5,6 +5,12 @@
 
 import { renderEffect } from '@mikata/reactivity';
 
+declare const __DEV__: boolean;
+
+// Matches `<script`, `javascript:`, or inline `onXxx=` handlers — the three
+// common XSS shapes people paste into innerHTML without thinking.
+const SUSPICIOUS_INNER_HTML = /<script\b|javascript:|\son\w+\s*=/i;
+
 /**
  * Resolve class value from string, object, array, or mix.
  *   resolveClass('foo')                    → 'foo'
@@ -71,6 +77,12 @@ export function _setProp(
       applyStyleObject(el, value as Record<string, unknown>);
     }
   } else if (key === 'innerHTML' || key === 'textContent') {
+    if (__DEV__ && key === 'innerHTML' && typeof value === 'string' && SUSPICIOUS_INNER_HTML.test(value)) {
+      console.warn(
+        '[mikata] innerHTML contains content that looks like a script or inline event handler. ' +
+        'Use textContent or sanitize the input — innerHTML bypasses all escaping.'
+      );
+    }
     (el as any)[key] = value;
   } else if (key in el) {
     // DOM property
@@ -166,19 +178,46 @@ export function _createFragment(children: unknown[]): DocumentFragment {
 
 /**
  * Spread an object of props onto an element, with reactive support.
+ *
+ * Event handlers (onClick, onInput, ...) are swapped via remove/addEventListener
+ * each time props change, so repeated spread updates don't accumulate listeners.
+ * Non-handler props fall through to `_setProp`.
  */
 export function _spread(
   el: HTMLElement,
   accessor: () => Record<string, unknown>
 ): void {
+  // Track the last handler attached per event name so we can remove it before
+  // attaching the next one on subsequent runs.
+  const attached = new Map<string, EventListener>();
+
   renderEffect(() => {
     const props = accessor();
+    const seenEvents = new Set<string>();
+
     for (const [key, value] of Object.entries(props)) {
       if (/^on[A-Z]/.test(key)) {
         const eventName = key.slice(2).toLowerCase();
-        el.addEventListener(eventName, value as EventListener);
+        seenEvents.add(eventName);
+        const prev = attached.get(eventName);
+        if (prev === value) continue;
+        if (prev) el.removeEventListener(eventName, prev);
+        if (typeof value === 'function') {
+          el.addEventListener(eventName, value as EventListener);
+          attached.set(eventName, value as EventListener);
+        } else {
+          attached.delete(eventName);
+        }
       } else {
         _setProp(el, key, value);
+      }
+    }
+
+    // Any handler registered last run but omitted this run must be removed.
+    for (const [eventName, handler] of attached) {
+      if (!seenEvents.has(eventName)) {
+        el.removeEventListener(eventName, handler);
+        attached.delete(eventName);
       }
     }
   });

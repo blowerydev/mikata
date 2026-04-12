@@ -11,6 +11,7 @@ export type {
   GetInputPropsOptions,
   InputProps,
   MikataForm,
+  FormScope,
 } from './types';
 
 // Utilities (exported for advanced users / custom resolvers)

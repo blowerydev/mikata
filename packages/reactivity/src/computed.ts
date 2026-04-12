@@ -26,6 +26,10 @@ export function computed<T>(fn: () => T, label?: string): ReadSignal<T> {
   let value: T;
   let initialized = false;
   let computing = false;
+  // If fn() throws, cache the error and re-throw on every read until sources
+  // change — otherwise subsequent reads would silently return the stale value.
+  let error: unknown = undefined;
+  let hasError = false;
 
   function recompute(): boolean {
     if (__DEV__ && computing) {
@@ -41,20 +45,28 @@ export function computed<T>(fn: () => T, label?: string): ReadSignal<T> {
     if (__DEV__) setInsideComputed(true);
     try {
       const newValue = fn();
+      hasError = false;
+      error = undefined;
       if (!initialized || !Object.is(value, newValue)) {
         value = newValue;
         node._version++;
         initialized = true;
-        return true; // value changed
+        return true;
       }
+      initialized = true;
+      return false;
+    } catch (e) {
+      hasError = true;
+      error = e;
+      // Treat error as initialized so we stop re-running fn on every read.
+      // A source change will mark us dirty again and we'll retry naturally.
+      initialized = true;
+      throw e;
     } finally {
       if (__DEV__) setInsideComputed(false);
       popSubscriber();
       computing = false;
     }
-    node._dirty = false;
-    initialized = true;
-    return false; // value unchanged
   }
 
   const node: ReactiveNode = {
@@ -107,10 +119,14 @@ export function computed<T>(fn: () => T, label?: string): ReadSignal<T> {
     track(node);
 
     if (node._dirty || !initialized) {
-      recompute();
-      node._dirty = false;
+      try {
+        recompute();
+      } finally {
+        node._dirty = false;
+      }
     }
 
+    if (hasError) throw error;
     return value;
   }) as ReadSignal<T>;
 

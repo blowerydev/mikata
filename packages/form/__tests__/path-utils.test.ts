@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { getPath } from '../src/utils/get-path';
 import { setPath } from '../src/utils/set-path';
 import { deepEqual } from '../src/utils/deep-equal';
@@ -68,5 +68,20 @@ describe('deepClone', () => {
     expect(c.a).not.toBe(o.a);
     expect(c.a.b).not.toBe(o.a.b);
     expect(c).toEqual(o);
+  });
+
+  it('clones Date values instead of sharing reference', () => {
+    const d = new Date(2025, 0, 1);
+    const c = deepClone({ d });
+    expect(c.d).not.toBe(d);
+    expect(c.d.getTime()).toBe(d.getTime());
+  });
+
+  it('warns in dev when a non-plain object is encountered', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    class Foo { x = 1; }
+    deepClone({ foo: new Foo() });
+    expect(warn).toHaveBeenCalled();
+    warn.mockRestore();
   });
 });

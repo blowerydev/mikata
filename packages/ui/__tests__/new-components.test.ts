@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render } from '@mikata/runtime';
 import { _resetIdCounter } from '../src/utils/unique-id';
 
 import { Card } from '../src/components/Card';
@@ -12,6 +13,8 @@ import { SegmentedControl } from '../src/components/SegmentedControl';
 import { Breadcrumb } from '../src/components/Breadcrumb';
 import { NavLink } from '../src/components/NavLink';
 import { toast } from '../src/components/Toast';
+import { Autocomplete } from '../src/components/Autocomplete';
+import { MultiSelect } from '../src/components/MultiSelect';
 
 beforeEach(() => {
   _resetIdCounter();
@@ -159,6 +162,30 @@ describe('Menu', () => {
     const btn = document.createElement('button');
     const el = Menu({ target: btn, items: [{ label: 'Item' }] });
     expect(btn.getAttribute('aria-haspopup')).toBe('menu');
+  });
+
+  it('removes its document click listener on disposal', () => {
+    const addSpy = vi.spyOn(document, 'addEventListener');
+    const removeSpy = vi.spyOn(document, 'removeEventListener');
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+
+    const dispose = render(() => {
+      const btn = document.createElement('button');
+      return Menu({ target: btn, items: [{ label: 'Item' }] });
+    }, container);
+
+    const addedClicks = addSpy.mock.calls.filter(([ev]) => ev === 'click').length;
+    expect(addedClicks).toBeGreaterThan(0);
+
+    dispose();
+
+    const removedClicks = removeSpy.mock.calls.filter(([ev]) => ev === 'click').length;
+    expect(removedClicks).toBe(addedClicks);
+
+    addSpy.mockRestore();
+    removeSpy.mockRestore();
+    container.remove();
   });
 });
 
@@ -527,5 +554,69 @@ describe('toast', () => {
     // After exit animation timeout (200ms)
     await new Promise((r) => setTimeout(r, 250));
     expect(document.body.querySelectorAll('.mkt-toast').length).toBe(0);
+  });
+});
+
+// ── Autocomplete / MultiSelect keyed reconciliation ───────────
+describe('Autocomplete keyed reconciliation', () => {
+  it('reuses <li> nodes for options that survive filtering', () => {
+    const el = Autocomplete({ data: ['apple', 'banana', 'apricot', 'avocado'] });
+    document.body.appendChild(el);
+    const input = el.querySelector('input')!;
+    const dropdown = el.querySelector('ul')!;
+
+    input.focus();
+    input.dispatchEvent(new Event('focus'));
+    const firstApple = dropdown.querySelector('li')!;
+    expect(firstApple.textContent).toBe('apple');
+
+    // Type "a" — apple/apricot/avocado still present; banana goes away
+    input.value = 'a';
+    input.dispatchEvent(new Event('input'));
+
+    const applesAfter = Array.from(dropdown.querySelectorAll('li'))
+      .find((li) => li.textContent === 'apple')!;
+    expect(applesAfter).toBe(firstApple); // same node — reused
+  });
+
+  it('removes <li> nodes that no longer match', () => {
+    const el = Autocomplete({ data: ['apple', 'banana'] });
+    document.body.appendChild(el);
+    const input = el.querySelector('input')!;
+    const dropdown = el.querySelector('ul')!;
+
+    input.dispatchEvent(new Event('focus'));
+    expect(dropdown.querySelectorAll('li').length).toBe(2);
+
+    input.value = 'app';
+    input.dispatchEvent(new Event('input'));
+    expect(dropdown.querySelectorAll('li').length).toBe(1);
+    expect(dropdown.querySelector('li')?.textContent).toBe('apple');
+  });
+});
+
+describe('MultiSelect keyed reconciliation', () => {
+  it('reuses <li> nodes across filter changes', () => {
+    const el = MultiSelect({
+      data: [
+        { value: 'a', label: 'Apple' },
+        { value: 'b', label: 'Banana' },
+        { value: 'ap', label: 'Apricot' },
+      ],
+    });
+    document.body.appendChild(el);
+    const input = el.querySelector('input')!;
+    const dropdown = el.querySelector('ul')!;
+
+    input.dispatchEvent(new Event('focus'));
+    const appleBefore = Array.from(dropdown.querySelectorAll('li'))
+      .find((li) => li.textContent === 'Apple')!;
+
+    input.value = 'ap';
+    input.dispatchEvent(new Event('input'));
+    const appleAfter = Array.from(dropdown.querySelectorAll('li'))
+      .find((li) => li.textContent === 'Apple')!;
+
+    expect(appleAfter).toBe(appleBefore);
   });
 });

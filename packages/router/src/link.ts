@@ -7,6 +7,12 @@ import { inject } from '@mikata/runtime';
 import { RouterContext } from './outlet';
 import type { NavigateTarget } from './types';
 
+declare const __DEV__: boolean;
+
+// Schemes we consider safe on <a href>. Anything else (javascript:, data:,
+// vbscript:, file:, etc.) is flagged in dev.
+const SAFE_SCHEME = /^(https?:|mailto:|tel:|ftp:|sms:|#|\/|\?|[^:]*$)/i;
+
 export interface LinkProps {
   to: string | NavigateTarget;
   replace?: boolean;
@@ -65,7 +71,14 @@ export function Link(props: LinkProps): Node {
 
   // Keep href in sync
   renderEffect(() => {
-    el.setAttribute('href', href());
+    const value = href();
+    if (__DEV__ && !SAFE_SCHEME.test(value)) {
+      console.warn(
+        `[mikata/router] <Link to="${value}"> uses an unsafe URL scheme. ` +
+        'javascript:, data:, and similar schemes can execute arbitrary code when clicked.'
+      );
+    }
+    el.setAttribute('href', value);
   });
 
   // Active state

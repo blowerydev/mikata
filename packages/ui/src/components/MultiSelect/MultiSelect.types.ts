@@ -11,7 +11,8 @@ export type MultiSelectParts =
   | 'pill'
   | 'pillRemove'
   | 'dropdown'
-  | 'option';
+  | 'option'
+  | 'loading';
 
 export interface MultiSelectOption {
   value: string;
@@ -19,8 +20,18 @@ export interface MultiSelectOption {
   disabled?: boolean;
 }
 
+export type MultiSelectFetcher = (
+  query: string,
+  signal: AbortSignal,
+) => Promise<(string | MultiSelectOption)[]>;
+
 export interface MultiSelectProps extends MikataBaseProps {
-  data: (string | MultiSelectOption)[];
+  /**
+   * Static options list, or an async fetcher for remote typeahead. When a
+   * fetcher is supplied, input is debounced (300 ms default) and prior
+   * in-flight requests are aborted.
+   */
+  data: (string | MultiSelectOption)[] | MultiSelectFetcher;
   value?: string[];
   defaultValue?: string[];
   placeholder?: string;
@@ -36,6 +47,10 @@ export interface MultiSelectProps extends MikataBaseProps {
   searchable?: boolean;
   /** Whether the picker can be cleared at once */
   clearable?: boolean;
+  /** Debounce window for async fetchers, ms. Default: 300. */
+  debounceMs?: number;
+  /** Text shown while an async fetch is in flight. */
+  loadingLabel?: string;
   onChange?: (value: string[]) => void;
   classNames?: ClassNamesInput<MultiSelectParts>;
 }

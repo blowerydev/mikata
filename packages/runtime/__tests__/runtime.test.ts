@@ -6,6 +6,7 @@ import {
   _insert,
   _createComponent,
   _createFragment,
+  _spread,
   render,
   show,
   each,
@@ -80,6 +81,51 @@ describe('DOM helpers', () => {
       document.createTextNode('B'),
     ]);
     expect(frag.childNodes.length).toBe(2);
+  });
+
+  it('_spread swaps event listeners on prop change instead of accumulating', () => {
+    const el = _createElement('button');
+    const [handler, setHandler] = signal<() => void>(() => {});
+
+    const counts = { a: 0, b: 0 };
+    const handlerA = () => { counts.a++; };
+    const handlerB = () => { counts.b++; };
+
+    setHandler(() => handlerA);
+    _spread(el, () => ({ onClick: handler() }));
+    el.dispatchEvent(new MouseEvent('click'));
+    expect(counts).toEqual({ a: 1, b: 0 });
+
+    // Swap handler — the old one must be removed so the click only fires B.
+    setHandler(() => handlerB);
+    flushSync();
+    el.dispatchEvent(new MouseEvent('click'));
+    expect(counts).toEqual({ a: 1, b: 1 });
+
+    // Remove handler entirely.
+    setHandler(() => undefined as unknown as () => void);
+    flushSync();
+    el.dispatchEvent(new MouseEvent('click'));
+    expect(counts).toEqual({ a: 1, b: 1 });
+  });
+
+  it('_setProp warns in dev when innerHTML contains script-like content', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const el = _createElement('div');
+
+    _setProp(el, 'innerHTML', '<p>hello</p>');
+    expect(warn).not.toHaveBeenCalled();
+
+    _setProp(el, 'innerHTML', '<script>alert(1)</script>');
+    expect(warn).toHaveBeenCalledTimes(1);
+
+    _setProp(el, 'innerHTML', '<img src=x onerror=alert(1)>');
+    expect(warn).toHaveBeenCalledTimes(2);
+
+    _setProp(el, 'innerHTML', '<a href="javascript:alert(1)">');
+    expect(warn).toHaveBeenCalledTimes(3);
+
+    warn.mockRestore();
   });
 });
 

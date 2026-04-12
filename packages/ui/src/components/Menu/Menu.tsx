@@ -1,3 +1,4 @@
+import { onCleanup } from '@mikata/runtime';
 import { mergeClasses } from '../../utils/class-merge';
 import { uniqueId } from '../../utils/unique-id';
 import type { MenuProps, MenuItemDef } from './Menu.types';
@@ -165,6 +166,7 @@ export function Menu(props: MenuProps): HTMLElement {
     if (isOpen) close();
   };
   document.addEventListener('click', onDocClick);
+  onCleanup(() => document.removeEventListener('click', onDocClick));
 
   // Set aria-haspopup on target button
   const targetBtn = targetWrapper.querySelector('button');

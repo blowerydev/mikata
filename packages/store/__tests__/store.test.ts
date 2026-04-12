@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
-import { effect, flushSync, computed } from '@mikata/reactivity';
-import { createStore, derived, createQuery, createMutation } from '../src/index';
+import { effect, flushSync, computed, signal, createScope } from '@mikata/reactivity';
+import { createStore, derived, createQuery, createMutation, createSelector } from '../src/index';
 
 describe('createStore', () => {
   it('creates a reactive store', () => {
@@ -170,5 +170,111 @@ describe('createMutation', () => {
     mutation.reset();
     expect(mutation.status()).toBe('idle');
     expect(mutation.data()).toBeUndefined();
+  });
+});
+
+describe('createSelector', () => {
+  it('only notifies the items whose selection state changed', () => {
+    const [selected, setSelected] = signal(1);
+    const isSelected = createSelector(() => selected());
+
+    const runs: Record<number, number> = { 1: 0, 2: 0, 3: 0 };
+    const scope = createScope(() => {
+      for (const id of [1, 2, 3]) {
+        effect(() => {
+          isSelected(id);
+          runs[id]++;
+        });
+      }
+    });
+
+    expect(runs).toEqual({ 1: 1, 2: 1, 3: 1 });
+
+    setSelected(2);
+    flushSync();
+    // Only items 1 (was selected) and 2 (now selected) should re-run
+    expect(runs).toEqual({ 1: 2, 2: 2, 3: 1 });
+
+    setSelected(3);
+    flushSync();
+    expect(runs).toEqual({ 1: 2, 2: 3, 3: 2 });
+
+    scope.dispose();
+  });
+
+  it('prunes stale item signals when the reading scope disposes', () => {
+    const [selected, setSelected] = signal(0);
+    // Custom equals that counts how many entries the watcher iterates —
+    // this reflects itemSignals.size each time the source changes.
+    let equalsCalls = 0;
+    const isSelected = createSelector<number, number>(
+      () => selected(),
+      (a, b) => {
+        equalsCalls++;
+        return a === b;
+      }
+    );
+
+    // Register 500 items across 50 disposable scopes, then dispose them all.
+    for (let round = 0; round < 50; round++) {
+      const scope = createScope(() => {
+        for (let id = round * 10; id < round * 10 + 10; id++) {
+          effect(() => {
+            isSelected(id);
+          });
+        }
+      });
+      scope.dispose();
+    }
+
+    // After disposing everything, the watching effect should have nothing
+    // to iterate. Trigger a source change and measure equals calls.
+    equalsCalls = 0;
+    setSelected(1);
+    flushSync();
+    // Two calls per surviving item (old value + new value). Zero survivors → zero calls.
+    expect(equalsCalls).toBe(0);
+  });
+
+  it('reuses the signal while refs > 0, recreates after all refs drop', () => {
+    const [selected, setSelected] = signal(1);
+    const isSelected = createSelector(() => selected());
+
+    const calls1: boolean[] = [];
+    const scope1 = createScope(() => {
+      effect(() => {
+        calls1.push(isSelected(1));
+      });
+    });
+
+    expect(calls1).toEqual([true]);
+
+    setSelected(2);
+    flushSync();
+    expect(calls1).toEqual([true, false]);
+
+    scope1.dispose();
+
+    // After scope1 disposes, item 1's entry should be gone. Changing source
+    // shouldn't keep notifying — verify by toggling back and seeing no throw
+    // and that a new scope observing the same item starts fresh.
+    setSelected(1);
+    flushSync();
+
+    const calls2: boolean[] = [];
+    const scope2 = createScope(() => {
+      effect(() => {
+        calls2.push(isSelected(1));
+      });
+    });
+
+    // Fresh entry should start from the current source value (1 → true)
+    expect(calls2).toEqual([true]);
+
+    setSelected(3);
+    flushSync();
+    expect(calls2).toEqual([true, false]);
+
+    scope2.dispose();
   });
 });

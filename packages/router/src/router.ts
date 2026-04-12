@@ -46,7 +46,9 @@ export function createRouter(options: RouterOptions): Router {
 
   // Create history adapter
   let history: HistoryAdapter;
-  if (historyMode === 'hash') {
+  if (typeof historyMode === 'object' && historyMode !== null) {
+    history = historyMode;
+  } else if (historyMode === 'hash') {
     history = createHashHistory();
   } else if (historyMode === 'memory') {
     history = createMemoryHistory();

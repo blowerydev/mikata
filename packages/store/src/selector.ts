@@ -8,7 +8,12 @@
  * item becomes selected or deselected.
  */
 
-import { signal, effect, untrack, type ReadSignal } from '@mikata/reactivity';
+import { signal, effect, untrack, onCleanup, type ReadSignal } from '@mikata/reactivity';
+
+interface SelectorEntry<U> {
+  sig: [ReadSignal<boolean>, (v: boolean) => void];
+  refs: number;
+}
 
 /**
  * Create an efficient selector for list selection patterns.
@@ -29,7 +34,9 @@ export function createSelector<T, U = T>(
   equals: (a: U, b: T) => boolean = (a, b) => (a as unknown) === (b as unknown)
 ): (item: U) => boolean {
   // Each item key gets its own signal that tracks whether it's selected.
-  const itemSignals = new Map<U, [ReadSignal<boolean>, (v: boolean) => void]>();
+  // Refcounted by reading scope so entries are pruned when callers dispose,
+  // preventing unbounded growth in long-running apps that rotate list items.
+  const itemSignals = new Map<U, SelectorEntry<U>>();
 
   let prevValue: T | undefined;
   let initialized = false;
@@ -40,11 +47,11 @@ export function createSelector<T, U = T>(
 
     if (initialized) {
       // Toggle signals: check each registered item against old and new value
-      for (const [item, [, setter]] of itemSignals) {
+      for (const [item, entry] of itemSignals) {
         const wasSelected = equals(item, prevValue!);
         const isNowSelected = equals(item, value);
         if (wasSelected !== isNowSelected) {
-          setter(isNowSelected);
+          entry.sig[1](isNowSelected);
         }
       }
     }
@@ -55,13 +62,20 @@ export function createSelector<T, U = T>(
 
   return (item: U): boolean => {
     // Get or create the signal for this item
-    let sig = itemSignals.get(item);
-    if (!sig) {
+    let entry = itemSignals.get(item);
+    if (!entry) {
       const currentValue = untrack(source);
-      sig = signal(equals(item, currentValue));
-      itemSignals.set(item, sig);
+      entry = { sig: signal(equals(item, currentValue)), refs: 0 };
+      itemSignals.set(item, entry);
     }
+    entry.refs++;
+    const captured = entry;
+    onCleanup(() => {
+      if (--captured.refs === 0 && itemSignals.get(item) === captured) {
+        itemSignals.delete(item);
+      }
+    });
     // Reading the signal subscribes the current effect to this item's changes
-    return sig[0]();
+    return entry.sig[0]();
   };
 }

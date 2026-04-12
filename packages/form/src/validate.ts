@@ -2,9 +2,15 @@ import type { FormError, FormErrors, ValidatorSpec, ValidatorObject } from './ty
 import { runValidatorObject } from './utils/flatten-spec';
 import { getPath } from './utils/get-path';
 
+export function isThenable(v: unknown): v is PromiseLike<unknown> {
+  return !!v && (typeof v === 'object' || typeof v === 'function') &&
+    typeof (v as { then?: unknown }).then === 'function';
+}
+
 /**
  * Run the full validator spec against the values, returning a flat FormErrors
- * map.
+ * map. Any fields whose validators return a Promise are skipped here — async
+ * validators are handled per-field via `validateSingleFieldMaybeAsync`.
  */
 export function runValidator<Values>(
   spec: ValidatorSpec<Values> | undefined,
@@ -14,19 +20,44 @@ export function runValidator<Values>(
   if (typeof spec === 'function') {
     return spec(values) ?? {};
   }
-  return runValidatorObject(spec as ValidatorObject<Values>, values);
+  const raw = runValidatorObject(spec as ValidatorObject<Values>, values);
+  // Drop pending Promise entries so full-form validate() stays synchronous.
+  const out: FormErrors = {};
+  for (const key of Object.keys(raw)) {
+    const v = raw[key] as unknown;
+    if (!isThenable(v)) out[key] = raw[key];
+  }
+  return out;
 }
 
 /**
  * Validate a single field. For object-spec: walks to the field's validator and
  * runs only that leaf. For function/resolver: runs the whole validator and
  * extracts the single path.
+ *
+ * Synchronous overload — drops Promise returns (the async pipeline in
+ * create-form handles those directly). Use `validateSingleFieldMaybeAsync`
+ * when you need to distinguish sync vs async.
  */
 export function validateSingleField<Values>(
   spec: ValidatorSpec<Values> | undefined,
   values: Values,
   path: string
 ): FormError | null {
+  const raw = validateSingleFieldMaybeAsync(spec, values, path);
+  if (isThenable(raw)) return null;
+  return raw;
+}
+
+/**
+ * Like `validateSingleField` but preserves Promise returns so the caller can
+ * await them. Callers are responsible for token-based cancellation.
+ */
+export function validateSingleFieldMaybeAsync<Values>(
+  spec: ValidatorSpec<Values> | undefined,
+  values: Values,
+  path: string
+): FormError | null | Promise<FormError | null | undefined> {
   if (!spec) return null;
 
   if (typeof spec === 'function') {
@@ -40,7 +71,12 @@ export function validateSingleField<Values>(
   if (!leaf) return null;
   const value = getPath(values, path);
   const result = leaf(value, values, path);
-  return result != null && result !== false ? (result as FormError) : null;
+  if (isThenable(result)) {
+    return Promise.resolve(result).then((r) =>
+      r != null && (r as unknown) !== false ? (r as FormError) : null,
+    );
+  }
+  return result != null && (result as unknown) !== false ? (result as FormError) : null;
 }
 
 function findValidatorForPath<Values>(

@@ -3,6 +3,7 @@ import type {
   FormError,
   FormErrors,
   FormOptions,
+  FormScope,
   GetInputPropsOptions,
   InputProps,
   MikataForm,
@@ -11,7 +12,11 @@ import { deepClone } from './utils/deep-clone';
 import { deepEqual } from './utils/deep-equal';
 import { getPath } from './utils/get-path';
 import { setPath } from './utils/set-path';
-import { runValidator, validateSingleField } from './validate';
+import {
+  isThenable,
+  runValidator,
+  validateSingleFieldMaybeAsync,
+} from './validate';
 
 /**
  * Create a reactive form handle. Setup-once: call `createForm({...})` inside a
@@ -30,12 +35,19 @@ export function createForm<Values extends object>(
     clearInputErrorOnChange = true,
     transformValues,
     enhance,
+    asyncDebounceMs = 0,
   } = options;
 
   const [initialSnapshot, setInitialSnapshot] = signal<Values>(deepClone(initialValues));
   const [valuesSignal, setValuesSignal] = signal<Values>(deepClone(initialValues));
   const [errorsSignal, setErrorsSignal] = signal<FormErrors>({});
   const [touchedSignal, setTouchedSignal] = signal<Record<string, boolean>>({});
+  const [validatingSignal, setValidatingSignal] = signal<Record<string, boolean>>({});
+  // Per-path monotonic token — every new async run increments it, stale
+  // resolutions compare their captured token against the current and bail if
+  // they've been superseded.
+  const validationTokens = new Map<string, number>();
+  const debounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
   // Field refs for focusing the first invalid field on submit failure.
   const fieldRefs = new Map<string, HTMLElement>();
 
@@ -50,13 +62,67 @@ export function createForm<Values extends object>(
     return getPath(valuesSignal(), path);
   }
 
+  function setPathValidating(path: string, pending: boolean): void {
+    const cur = validatingSignal();
+    const already = !!cur[path];
+    if (already === pending) return;
+    const next = { ...cur };
+    if (pending) next[path] = true;
+    else delete next[path];
+    setValidatingSignal(next);
+  }
+
+  function runFieldValidation(path: string): void {
+    const raw = validateSingleFieldMaybeAsync(validatorSpec, valuesSignal(), path);
+    if (isThenable(raw)) {
+      const token = (validationTokens.get(path) ?? 0) + 1;
+      validationTokens.set(path, token);
+      setPathValidating(path, true);
+      raw.then(
+        (result) => {
+          if (validationTokens.get(path) !== token) return;
+          if (result) setFieldError(path, result as FormError);
+          else clearFieldError(path);
+          setPathValidating(path, false);
+        },
+        (err) => {
+          if (validationTokens.get(path) !== token) return;
+          setPathValidating(path, false);
+          // Surface unexpected rejections; users who want to swallow should
+          // catch inside the validator itself.
+          if (typeof console !== 'undefined') {
+            console.error(`[mikata/form] async validator for "${path}" rejected:`, err);
+          }
+        },
+      );
+    } else if (raw) {
+      setFieldError(path, raw);
+    }
+  }
+
+  function scheduleFieldValidation(path: string): void {
+    if (asyncDebounceMs > 0) {
+      const prev = debounceTimers.get(path);
+      if (prev) clearTimeout(prev);
+      // Bump the token pre-emptively so any in-flight run whose timer has
+      // already fired discards its result when the debounced call lands.
+      validationTokens.set(path, (validationTokens.get(path) ?? 0) + 1);
+      const timer = setTimeout(() => {
+        debounceTimers.delete(path);
+        runFieldValidation(path);
+      }, asyncDebounceMs);
+      debounceTimers.set(path, timer);
+    } else {
+      runFieldValidation(path);
+    }
+  }
+
   function setFieldValue(path: string, value: unknown): void {
     batch(() => {
       setValuesSignal(setPath(valuesSignal(), path, value));
       if (clearInputErrorOnChange) clearFieldError(path);
       if (validateInputOnChange) {
-        const err = validateSingleField(validatorSpec, valuesSignal(), path);
-        if (err) setFieldError(path, err);
+        scheduleFieldValidation(path);
       }
     });
   }
@@ -116,13 +182,27 @@ export function createForm<Values extends object>(
   }
 
   function validateField(path: string): { hasError: boolean; error: FormError | null } {
-    const err = validateSingleField(validatorSpec, valuesSignal(), path);
-    if (err) {
-      setFieldError(path, err);
-      return { hasError: true, error: err };
+    const raw = validateSingleFieldMaybeAsync(validatorSpec, valuesSignal(), path);
+    if (isThenable(raw)) {
+      // Kick off the async path so the result lands eventually.
+      runFieldValidation(path);
+      // Return the current known state; the async result will update errors
+      // when it resolves.
+      const existing = errorsSignal()[path] ?? null;
+      return { hasError: !!existing, error: (existing as FormError) ?? null };
+    }
+    if (raw) {
+      setFieldError(path, raw);
+      return { hasError: true, error: raw };
     }
     clearFieldError(path);
     return { hasError: false, error: null };
+  }
+
+  function isValidating(path?: string): boolean {
+    const map = validatingSignal();
+    if (path == null) return Object.keys(map).length > 0;
+    return !!map[path];
   }
 
   function isDirty(path?: string): boolean {
@@ -187,8 +267,8 @@ export function createForm<Values extends object>(
     const onBlur = (): void => {
       markTouched(path);
       if (validateInputOnBlur) {
-        const err = validateSingleField(validatorSpec, valuesSignal(), path);
-        if (err) setFieldError(path, err);
+        // Blur bypasses debounce — commit-time signals should feel immediate.
+        runFieldValidation(path);
       }
     };
 
@@ -329,6 +409,37 @@ export function createForm<Values extends object>(
     return dispose as unknown as () => void;
   }
 
+  function scope(scopePath: string): FormScope {
+    const prefix = scopePath ? `${scopePath}.` : '';
+    const join = (sub: string): string =>
+      sub ? (prefix ? `${prefix}${sub}` : sub) : scopePath;
+
+    return {
+      path: scopePath,
+      getInputProps: (path, opts) => getInputProps(join(path), opts),
+      setFieldValue: (path, value) => setFieldValue(join(path), value),
+      getValue: (path) => getPath(valuesSignal(), join(path)),
+      errors: () => {
+        const all = errorsSignal();
+        if (!prefix) return { ...all };
+        const result: FormErrors = {};
+        for (const key of Object.keys(all)) {
+          if (key === scopePath) {
+            result[''] = all[key];
+          } else if (key.startsWith(prefix)) {
+            result[key.slice(prefix.length)] = all[key];
+          }
+        }
+        return result;
+      },
+      insertListItem: (path, item, index) => insertListItem(join(path), item, index),
+      removeListItem: (path, index) => removeListItem(join(path), index),
+      reorderListItem: (path, range) => reorderListItem(join(path), range),
+      replaceListItem: (path, index, item) => replaceListItem(join(path), index, item),
+      scope: (subPath) => scope(scopePath ? `${scopePath}.${subPath}` : subPath),
+    };
+  }
+
   const form: MikataForm<Values> = {
     get values() {
       return valuesSignal();
@@ -355,6 +466,7 @@ export function createForm<Values extends object>(
     resetDirty,
     validate,
     validateField,
+    isValidating,
     getInputProps,
     insertListItem,
     removeListItem,
@@ -364,6 +476,7 @@ export function createForm<Values extends object>(
     onReset,
     getTransformedValues,
     watch,
+    scope,
   };
 
   enhance?.(form);

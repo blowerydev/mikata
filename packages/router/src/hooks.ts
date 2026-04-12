@@ -5,7 +5,13 @@
 import { computed, onCleanup } from '@mikata/reactivity';
 import { inject } from '@mikata/runtime';
 import { RouterContext } from './outlet';
-import type { Router, RouteGuard, MatchedRoute, ReadSignal } from './types';
+import type {
+  Router,
+  RouteGuard,
+  MatchedRoute,
+  ReadSignal,
+  PathParams,
+} from './types';
 
 /**
  * Get the router instance from context.
@@ -17,14 +23,24 @@ export function useRouter(): Router {
 
 /**
  * Get the current route params as a reactive signal.
+ *
+ * Accepts either a path literal (`useParams<'/users/:id'>()` → `{ id: string }`)
+ * or an explicit shape (`useParams<{ id: string }>()` → that shape). Defaults
+ * to an open `Record<string, string>` when no generic is provided.
  */
-export function useParams<T extends Record<string, string> = Record<string, string>>(): ReadSignal<T> {
+export function useParams<T = Record<string, string>>(): ReadSignal<
+  T extends string ? PathParams<T> : T
+> {
   const router = useRouter();
-  return router.params as ReadSignal<T>;
+  return router.params as unknown as ReadSignal<T extends string ? PathParams<T> : T>;
 }
 
 /**
  * Get the current search params as a reactive signal and a setter.
+ *
+ * Pass a schema type via `InferSearchSchema<typeof schema>` for typed reads:
+ *   const schema = { tab: searchParam.string('home') };
+ *   const [params] = useSearchParams<InferSearchSchema<typeof schema>>();
  */
 export function useSearchParams<T extends Record<string, unknown> = Record<string, unknown>>(): [
   ReadSignal<T>,

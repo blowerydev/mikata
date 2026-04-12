@@ -125,4 +125,45 @@ describe('computed', () => {
     expect(combined()).toBe(10); // 4 + 6
     expect(fn).toHaveBeenCalledTimes(2); // only once, not twice
   });
+
+  it('re-throws cached error on repeated reads until a dependency changes', () => {
+    const [n, setN] = signal(0);
+    const risky = computed(() => {
+      if (n() === 0) throw new Error('bad');
+      return n() * 2;
+    });
+
+    expect(() => risky()).toThrow('bad');
+    // Second read — must still throw (not silently return a stale value)
+    expect(() => risky()).toThrow('bad');
+
+    // Changing the dependency clears the error and returns the fresh value
+    setN(5);
+    expect(risky()).toBe(10);
+
+    // And can throw again if the dependency flips back
+    setN(0);
+    expect(() => risky()).toThrow('bad');
+  });
+
+  it('only re-runs the body after a dependency change, not on every read after error', () => {
+    const [n, setN] = signal(0);
+    const calls = vi.fn(() => {
+      if (n() === 0) throw new Error('bad');
+      return n();
+    });
+    const c = computed(calls);
+
+    expect(() => c()).toThrow();
+    expect(calls).toHaveBeenCalledTimes(1);
+
+    // Subsequent reads with no dep change should NOT re-run the body
+    expect(() => c()).toThrow();
+    expect(() => c()).toThrow();
+    expect(calls).toHaveBeenCalledTimes(1);
+
+    setN(3);
+    expect(c()).toBe(3);
+    expect(calls).toHaveBeenCalledTimes(2);
+  });
 });

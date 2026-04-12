@@ -1,9 +1,11 @@
 import { createIcon, Close } from '@mikata/icons';
+import { onCleanup } from '@mikata/runtime';
 import { mergeClasses } from '../../utils/class-merge';
 import { uniqueId } from '../../utils/unique-id';
 import { useUILabels } from '../../utils/use-i18n-optional';
+import { createAsyncDataController } from '../../utils/async-data';
 import { InputWrapper } from '../_internal/InputWrapper';
-import type { MultiSelectProps, MultiSelectOption } from './MultiSelect.types';
+import type { MultiSelectProps, MultiSelectOption, MultiSelectFetcher } from './MultiSelect.types';
 import './MultiSelect.css';
 
 const normalize = (data: (string | MultiSelectOption)[]): MultiSelectOption[] =>
@@ -24,6 +26,8 @@ export function MultiSelect(props: MultiSelectProps): HTMLDivElement {
     maxValues,
     searchable = true,
     clearable,
+    debounceMs,
+    loadingLabel,
     onChange,
     classNames,
     class: className,
@@ -32,8 +36,16 @@ export function MultiSelect(props: MultiSelectProps): HTMLDivElement {
 
   const id = uniqueId('multi-select');
   const listId = `${id}-list`;
-  const options = normalize(data);
+  const isAsync = typeof data === 'function';
+  const fetcher = isAsync ? (data as MultiSelectFetcher) : null;
+  // Pool of known options (covers statically-provided data and every async
+  // result we've seen). Needed so pills keep their label after the query
+  // changes and the option drops out of the visible list.
+  let options: MultiSelectOption[] = isAsync ? [] : normalize(data as (string | MultiSelectOption)[]);
+  const optionByValue = new Map<string, MultiSelectOption>();
+  for (const opt of options) optionByValue.set(opt.value, opt);
   const labels = useUILabels();
+  const resolvedLoadingLabel = loadingLabel ?? labels.loading ?? 'Loading…';
 
   const selected = new Set<string>(value ?? defaultValue);
 
@@ -67,8 +79,16 @@ export function MultiSelect(props: MultiSelectProps): HTMLDivElement {
 
   let activeIdx = -1;
   let currentFiltered: MultiSelectOption[] = [];
+  let loading = false;
+  // Keyed reconciliation by option value — see Autocomplete for the same
+  // pattern. Avoids full dropdown rebuild on each keystroke.
+  const liByValue = new Map<string, HTMLLIElement>();
+  let emptyLi: HTMLLIElement | null = null;
+  let loadingLi: HTMLLIElement | null = null;
 
   const emit = () => onChange?.(Array.from(selected));
+
+  const labelFor = (v: string): string => optionByValue.get(v)?.label ?? v;
 
   const removePill = (v: string) => {
     selected.delete(v);
@@ -81,20 +101,20 @@ export function MultiSelect(props: MultiSelectProps): HTMLDivElement {
     // remove old pills
     Array.from(control.querySelectorAll('.mkt-multi-select__pill')).forEach((el) => el.remove());
     const frag = document.createDocumentFragment();
-    for (const opt of options) {
-      if (!selected.has(opt.value)) continue;
+    for (const v of selected) {
+      const lbl = labelFor(v);
       const pill = document.createElement('span');
       pill.className = mergeClasses('mkt-multi-select__pill', classNames?.pill);
-      pill.textContent = opt.label;
+      pill.textContent = lbl;
       const rm = document.createElement('button');
       rm.type = 'button';
       rm.className = mergeClasses('mkt-multi-select__pill-remove', classNames?.pillRemove);
-      rm.setAttribute('aria-label', `${labels.remove}: ${opt.label}`);
+      rm.setAttribute('aria-label', `${labels.remove}: ${lbl}`);
       rm.appendChild(createIcon(Close, { size: 10, strokeWidth: 1.5 }));
       rm.addEventListener('mousedown', (e) => {
         e.preventDefault();
         if (disabled) return;
-        removePill(opt.value);
+        removePill(v);
       });
       pill.appendChild(rm);
       frag.appendChild(pill);
@@ -123,58 +143,141 @@ export function MultiSelect(props: MultiSelectProps): HTMLDivElement {
 
   const renderDropdown = () => {
     const q = input.value.trim().toLowerCase();
-    currentFiltered = options.filter((o) => !q || o.label.toLowerCase().includes(q));
-    dropdown.textContent = '';
-    if (!currentFiltered.length) {
-      const li = document.createElement('li');
-      li.className = 'mkt-multi-select__empty';
-      li.textContent = labels.noResults;
-      dropdown.appendChild(li);
+    if (isAsync) {
+      // Remote: the pool already reflects the latest results for this query.
+      currentFiltered = options.slice();
+    } else {
+      currentFiltered = options.filter((o) => !q || o.label.toLowerCase().includes(q));
+    }
+
+    // Loading state: show the spinner row; clear any stale option rows.
+    if (loading) {
+      for (const li of liByValue.values()) li.remove();
+      liByValue.clear();
+      if (emptyLi && emptyLi.parentNode === dropdown) emptyLi.remove();
+      if (!loadingLi) {
+        loadingLi = document.createElement('li');
+        loadingLi.className = mergeClasses('mkt-multi-select__loading', classNames?.loading);
+        loadingLi.setAttribute('aria-live', 'polite');
+        loadingLi.textContent = resolvedLoadingLabel;
+      }
+      if (loadingLi.parentNode !== dropdown) dropdown.appendChild(loadingLi);
       dropdown.hidden = false;
       input.setAttribute('aria-expanded', 'true');
       return;
     }
+
+    if (loadingLi && loadingLi.parentNode === dropdown) loadingLi.remove();
+
+    if (!currentFiltered.length) {
+      for (const li of liByValue.values()) li.remove();
+      liByValue.clear();
+      if (!emptyLi) {
+        emptyLi = document.createElement('li');
+        emptyLi.className = 'mkt-multi-select__empty';
+        emptyLi.textContent = labels.noResults;
+      }
+      if (emptyLi.parentNode !== dropdown) dropdown.appendChild(emptyLi);
+      dropdown.hidden = false;
+      input.setAttribute('aria-expanded', 'true');
+      return;
+    }
+
+    if (emptyLi && emptyLi.parentNode === dropdown) emptyLi.remove();
+
+    const seen = new Set<string>();
+    let prev: HTMLLIElement | null = null;
     currentFiltered.forEach((opt, i) => {
-      const li = document.createElement('li');
-      li.className = mergeClasses('mkt-multi-select__option', classNames?.option);
-      li.setAttribute('role', 'option');
-      li.setAttribute('aria-selected', selected.has(opt.value) ? 'true' : 'false');
-      if (selected.has(opt.value)) li.dataset.selected = '';
-      if (opt.disabled) li.dataset.disabled = '';
+      seen.add(opt.value);
+      let li = liByValue.get(opt.value);
+      if (!li) {
+        li = document.createElement('li');
+        li.className = mergeClasses('mkt-multi-select__option', classNames?.option);
+        li.setAttribute('role', 'option');
+        li.textContent = opt.label;
+        if (opt.disabled) li.dataset.disabled = '';
+        li.addEventListener('mousedown', (e) => {
+          e.preventDefault();
+          toggleOption(opt);
+        });
+        liByValue.set(opt.value, li);
+      }
+      const isSel = selected.has(opt.value);
+      li.setAttribute('aria-selected', isSel ? 'true' : 'false');
+      if (isSel) li.dataset.selected = '';
+      else delete li.dataset.selected;
       if (i === activeIdx) li.dataset.active = '';
-      li.textContent = opt.label;
-      li.addEventListener('mousedown', (e) => {
-        e.preventDefault();
-        toggleOption(opt);
-      });
-      dropdown.appendChild(li);
+      else delete li.dataset.active;
+      const expected = prev ? prev.nextSibling : dropdown.firstChild;
+      if (expected !== li) dropdown.insertBefore(li, expected);
+      prev = li;
     });
+
+    for (const [val, li] of liByValue) {
+      if (!seen.has(val)) {
+        li.remove();
+        liByValue.delete(val);
+      }
+    }
+
     dropdown.hidden = false;
     input.setAttribute('aria-expanded', 'true');
   };
 
-  input.addEventListener('focus', renderDropdown);
+  const asyncController = fetcher
+    ? createAsyncDataController<string | MultiSelectOption>(fetcher, {
+        debounceMs,
+        onLoading: (l) => {
+          loading = l;
+          renderDropdown();
+        },
+        onResult: (items) => {
+          options = normalize(items);
+          for (const opt of options) optionByValue.set(opt.value, opt);
+          loading = false;
+          renderDropdown();
+          // Pills may reference values whose labels only just arrived.
+          renderPills();
+        },
+      })
+    : null;
+
+  if (asyncController) onCleanup(() => asyncController.dispose());
+
+  input.addEventListener('focus', () => {
+    if (asyncController) asyncController.request(input.value);
+    renderDropdown();
+  });
   input.addEventListener('blur', () => setTimeout(close, 120));
   input.addEventListener('input', () => {
     activeIdx = -1;
+    if (asyncController) {
+      asyncController.request(input.value);
+      // Clear stale results so the dropdown shows the loading row (or nothing)
+      // until the fresh fetch lands.
+      options = [];
+    }
     renderDropdown();
   });
   input.addEventListener('keydown', (e) => {
     if (dropdown.hidden && (e.key === 'ArrowDown' || e.key === 'Enter')) {
       e.preventDefault();
+      if (asyncController) asyncController.request(input.value);
       renderDropdown();
       return;
     }
     if (e.key === 'ArrowDown') {
       e.preventDefault();
+      if (!currentFiltered.length) return;
       activeIdx = (activeIdx + 1) % currentFiltered.length;
       renderDropdown();
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
+      if (!currentFiltered.length) return;
       activeIdx = (activeIdx - 1 + currentFiltered.length) % currentFiltered.length;
       renderDropdown();
     } else if (e.key === 'Enter') {
-      if (activeIdx >= 0) {
+      if (activeIdx >= 0 && currentFiltered[activeIdx]) {
         e.preventDefault();
         toggleOption(currentFiltered[activeIdx]);
       }

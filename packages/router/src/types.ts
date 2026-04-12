@@ -8,6 +8,31 @@ export type { TransitionOptions } from '@mikata/runtime';
 declare const __DEV__: boolean;
 
 // ---------------------------------------------------------------------------
+// Path param inference
+// ---------------------------------------------------------------------------
+
+/**
+ * Extracts the union of param names from a path literal.
+ *   ExtractParams<'/users/:id'>            → 'id'
+ *   ExtractParams<'/users/:id/posts/:pid'> → 'id' | 'pid'
+ *   ExtractParams<'/about'>                → never
+ */
+export type ExtractParams<P extends string> =
+  P extends `${string}:${infer Param}/${infer Rest}`
+    ? Param | ExtractParams<`/${Rest}`>
+    : P extends `${string}:${infer Param}`
+      ? Param
+      : never;
+
+/**
+ * Params record inferred from a path literal. Falls back to an open
+ * `Record<string, string>` when no params are declared.
+ */
+export type PathParams<P extends string> = [ExtractParams<P>] extends [never]
+  ? Record<string, string>
+  : { [K in ExtractParams<P>]: string };
+
+// ---------------------------------------------------------------------------
 // Search Param Definitions
 // ---------------------------------------------------------------------------
 
@@ -15,7 +40,21 @@ export interface SearchParamDef<T = unknown> {
   parse: (raw: string | null) => T;
   serialize: (value: T) => string;
   defaultValue: T;
+  /**
+   * Phantom field used only by `InferSearchSchema` to recover the parsed type
+   * at the type level. Never populated at runtime.
+   */
+  readonly __type?: T;
 }
+
+/**
+ * Given a `{ key: SearchParamDef<T> }` schema, yields `{ key: T }`.
+ *   const schema = { tab: searchParam.string('home'), page: searchParam.number(1) };
+ *   type S = InferSearchSchema<typeof schema>; // { tab: string; page: number }
+ */
+export type InferSearchSchema<T> = {
+  [K in keyof T]: T[K] extends SearchParamDef<infer U> ? U : never;
+};
 
 // ---------------------------------------------------------------------------
 // Route Definition
@@ -146,9 +185,11 @@ export type RouteGuard = (
 // Navigation
 // ---------------------------------------------------------------------------
 
-export type NavigateTarget = string | {
-  path: string;
-  params?: Record<string, string | number>;
+export type NavigateTarget<P extends string = string> = string | {
+  path: P;
+  params?: [ExtractParams<P>] extends [never]
+    ? Record<string, string | number>
+    : { [K in ExtractParams<P>]: string | number };
   search?: Record<string, unknown>;
   hash?: string;
 };
@@ -175,7 +216,11 @@ export type ScrollBehaviorOption = 'auto' | 'smooth' | {
 
 export interface RouterOptions {
   routes: RouteDefinition[];
-  history?: 'browser' | 'hash' | 'memory';
+  /**
+   * History mode string, or a pre-built `HistoryAdapter` (used by
+   * `createTestRouter` to seed an in-memory history at a specific path).
+   */
+  history?: 'browser' | 'hash' | 'memory' | HistoryAdapter;
   base?: string;
   scrollBehavior?: ScrollBehaviorOption | false;
   transition?: TransitionOptions;
@@ -212,7 +257,10 @@ export interface Router {
   isNavigating: ReadSignal<boolean>;
 
   /** Navigate to a new route. */
-  navigate(to: NavigateTarget, options?: NavigateOptions): Promise<void>;
+  navigate<P extends string = string>(
+    to: NavigateTarget<P>,
+    options?: NavigateOptions,
+  ): Promise<void>;
 
   /** Go back in history. */
   back(): void;

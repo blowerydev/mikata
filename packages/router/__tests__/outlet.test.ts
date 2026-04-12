@@ -2,11 +2,12 @@
  * Tests for routeOutlet() and provideRouter().
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createScope, flushSync } from '@mikata/reactivity';
 import { render } from '@mikata/runtime';
 import { createRouter } from '../src/router';
 import { provideRouter, routeOutlet } from '../src/outlet';
+import { Link } from '../src/link';
 import type { Router } from '../src/types';
 
 // @ts-expect-error — define __DEV__ for tests
@@ -199,5 +200,56 @@ describe('routeOutlet()', () => {
 
     // The old scope should have been disposed
     expect(container.textContent).toBe('About');
+  });
+});
+
+describe('Link unsafe-scheme warning', () => {
+  let container: HTMLElement;
+  let router: Router;
+  let dispose: () => void;
+
+  beforeEach(() => {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    router = createRouter({ routes: [{ path: '/', component: () => document.createElement('div') }], history: 'memory' });
+  });
+
+  afterEach(() => {
+    dispose?.();
+    router?.dispose();
+    container.remove();
+  });
+
+  function renderLink(to: string) {
+    dispose = render(() => {
+      provideRouter(router);
+      return Link({ to });
+    }, container);
+    flushSync();
+  }
+
+  it('does not warn for http(s), mailto, relative paths', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    renderLink('https://example.com');
+    renderLink('/about');
+    renderLink('mailto:a@b.com');
+    renderLink('#hash');
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
+  it('warns in dev for javascript: URLs', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    renderLink('javascript:alert(1)');
+    expect(warn).toHaveBeenCalled();
+    expect((warn.mock.calls[0][0] as string)).toContain('unsafe URL scheme');
+    warn.mockRestore();
+  });
+
+  it('warns for data: URLs', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    renderLink('data:text/html,<script>alert(1)</script>');
+    expect(warn).toHaveBeenCalled();
+    warn.mockRestore();
   });
 });

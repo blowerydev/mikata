@@ -201,6 +201,20 @@ function UserPage() {
 
 Guards use return values (not callbacks): `true` = allow, `false` = block, `'/path'` = redirect.
 
+**Typed params from path literals.** Pass a path template to `useParams` / `useSearchParams` / `navigate` and parameter names are extracted at the type level — no hand-written shape:
+
+```tsx
+const params = useParams<'/users/:id/posts/:postId'>();
+params().id;      // string
+params().postId;  // string
+
+router.navigate({ path: '/users/:id', params: { id: '42' } }); // params keyed to the path
+
+type S = InferSearchSchema<typeof schema>; // { tab: string; page: number }
+```
+
+**Testing.** `createTestRouter(routes, '/initial')` wires a router to an in-memory history for unit tests. `createBrowserHistory` / `createHashHistory` / `createMemoryHistory` are also exported directly.
+
 ---
 
 ## i18n
@@ -336,7 +350,9 @@ function App() {
 }
 ```
 
-**Components:** Button, ActionIcon, CloseButton, ButtonGroup, TextInput, Textarea, PasswordInput, NumberInput, Checkbox, Radio, Switch, Select, Slider, Stack, Group, Grid, Container, Divider, Space, Text, Title, Anchor, Alert, Badge, Loader, Progress, Skeleton, Modal, Drawer, Tooltip, Popover.
+**Components:** Button, ActionIcon, CloseButton, ButtonGroup, TextInput, Textarea, PasswordInput, NumberInput, Checkbox, Radio, Switch, Select, Autocomplete, MultiSelect, Slider, Stack, Group, Grid, Container, Divider, Space, Text, Title, Anchor, Alert, Badge, Loader, Progress, Skeleton, Modal, Drawer, Tooltip, Popover.
+
+**Async data:** `Select`, `Autocomplete`, and `MultiSelect` accept a fetcher in place of a static `data` array — e.g. `data={(query, signal) => fetch(...).then(r => r.json())}`. Debouncing (`debounceMs`, default 300ms), AbortController-based cancellation of superseded requests, and a loading indicator are built in.
 
 **Theming:** Mantine-parity CSS-variable system. Zero per-render JS cost — the cascade does the work, theme changes only touch `style.setProperty` on a wrapper element.
 
@@ -392,6 +408,10 @@ const form = createForm({
 ```
 
 **Features:** `getInputProps` (spread-compatible), path-based access (`items.0.name`), array helpers (`insertListItem`, `removeListItem`, `reorderListItem`, `replaceListItem`), dirty/touched tracking, reset, transform, watch. Schema resolvers for **zod, yup, valibot, superstruct, joi** as sub-path imports so tree-shaking keeps unused ones out.
+
+**Scoped sub-forms:** `form.scope('addresses.0')` returns a handle whose `getInputProps`, `setFieldValue`, `getValue`, `errors`, and array helpers are rooted at the given path — nested forms without string-concatenating paths. `.scope(sub)` composes further.
+
+**Async validators:** return a `Promise<string | null>` from any field validator (e.g. a uniqueness check). The form dedupes in-flight checks per path, drops stale results, and exposes `form.isValidating(path?)` as a reactive signal for spinner UI. Pass `asyncDebounceMs` in `createForm` options to debounce on-change validation for network calls.
 
 **Reactive errors:** `getInputProps` returns `error` as a getter `() => FormError | null | undefined` bound to the field's path. Mikata UI inputs (`TextInput`, `PasswordInput`, `Textarea`, `Checkbox`, `InputWrapper`) detect the function form and subscribe via `effect()`, so error messages and `aria-invalid` flip on and off automatically as validation state changes — no manual re-render. Pass `error={() => form.errors.foo}` when binding manually for the same behavior.
 
