@@ -552,11 +552,8 @@ function ErrorBoundaryDemo() {
 // Demo 7: UI Component Library
 // ============================================================
 function UIComponentsDemo() {
-  // ThemeProvider sets CSS variables and provides context via provide()
-  const themeEl = ThemeProvider({}) as HTMLElement;
-
-  // ThemeProvider uses display:contents (no visual box), so add a wrapper
-  // that picks up the CSS variables for background + text color
+  // Shares the App-level ThemeProvider — don't create a nested one, or the
+  // dark-mode toggle's setColorScheme only flips this scope.
   const wrapper = _createElement('div');
   _setProp(wrapper, 'style', {
     background: 'var(--mkt-color-bg)',
@@ -566,10 +563,8 @@ function UIComponentsDemo() {
     transition: 'background 150ms, color 150ms',
   });
 
-  // Render inner content as a child component so it can access useTheme()
   wrapper.appendChild(_createComponent(UIContent, {}));
-  themeEl.appendChild(wrapper);
-  return themeEl;
+  return wrapper;
 }
 
 /**
@@ -1021,8 +1016,8 @@ function UIContent() {
 // Demo 8: Extras — new components showcase
 // ============================================================
 function ExtrasDemo() {
-  const themeEl = ThemeProvider({}) as HTMLElement;
-
+  // Shares the App-level ThemeProvider — avoid nesting providers so the
+  // dark-mode toggle in the UI demo also affects this section.
   const wrapper = _createElement('div');
   _setProp(wrapper, 'style', {
     background: 'var(--mkt-color-bg)',
@@ -1034,8 +1029,7 @@ function ExtrasDemo() {
   });
 
   wrapper.appendChild(_createComponent(ExtrasContent, {}));
-  themeEl.appendChild(wrapper);
-  return themeEl;
+  return wrapper;
 }
 
 function ExtrasContent() {
@@ -1311,10 +1305,9 @@ function ExtrasContent() {
     })(),
   }));
 
-  const scrollDiv = _createElement('div');
-  _setProp(scrollDiv, 'style', { height: '120px', border: '1px solid var(--mkt-color-border)', borderRadius: 'var(--mkt-radius-sm)' });
-  scrollDiv.appendChild(ScrollArea({
+  const scrollArea = ScrollArea({
     type: 'hover',
+    height: 120,
     children: (() => {
       const frag = _createElement('div');
       _setProp(frag, 'style', { padding: 'var(--mkt-space-3)' });
@@ -1325,8 +1318,9 @@ function ExtrasContent() {
       }
       return frag;
     })(),
-  }));
-  el.appendChild(scrollDiv);
+  });
+  _setProp(scrollArea, 'style', { border: '1px solid var(--mkt-color-border)', borderRadius: 'var(--mkt-radius-sm)' });
+  el.appendChild(scrollArea);
 
   el.appendChild(Divider({}));
 
@@ -1437,8 +1431,13 @@ function App() {
   _setProp(subtitle, 'style', { marginBottom: '1rem', opacity: '0.7' });
   el.appendChild(subtitle);
 
-  el.appendChild(_createComponent(UIComponentsDemo, {}));
-  el.appendChild(_createComponent(ExtrasDemo, {}));
+  // Single ThemeProvider shared across both UI demos so the dark-mode toggle
+  // affects the Extras section too.
+  const theme = ThemeProvider({}) as HTMLElement;
+  theme.appendChild(_createComponent(UIComponentsDemo, {}));
+  theme.appendChild(_createComponent(ExtrasDemo, {}));
+  el.appendChild(theme);
+
   el.appendChild(_createComponent(Counter, {}));
   el.appendChild(_createComponent(FormDemo, {}));
   el.appendChild(_createComponent(TodoList, {}));
