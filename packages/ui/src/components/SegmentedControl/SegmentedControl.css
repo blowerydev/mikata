@@ -1,0 +1,94 @@
+.mkt-segmented-control {
+  display: inline-flex;
+  position: relative;
+  background-color: var(--mkt-color-gray-1, #f1f3f5);
+  border-radius: var(--mkt-radius-sm);
+  padding: 3px;
+  font-family: var(--mkt-font-family);
+}
+
+[data-mkt-color-scheme="dark"] .mkt-segmented-control {
+  background-color: rgba(255, 255, 255, 0.07);
+}
+
+.mkt-segmented-control--full-width {
+  display: flex;
+}
+
+.mkt-segmented-control--full-width .mkt-segmented-control__label {
+  flex: 1;
+  text-align: center;
+}
+
+/* Hidden radio inputs */
+.mkt-segmented-control__input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Label (acts as the clickable area) */
+.mkt-segmented-control__label {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--mkt-radius-xs);
+  cursor: pointer;
+  color: var(--mkt-color-gray-6);
+  font-weight: var(--mkt-font-weight-medium);
+  white-space: nowrap;
+  user-select: none;
+  transition: color var(--mkt-transition-duration) var(--mkt-transition-timing);
+}
+
+/* Size */
+.mkt-segmented-control[data-size="xs"] .mkt-segmented-control__label { padding: 4px 8px;  font-size: var(--mkt-font-size-xs); }
+.mkt-segmented-control[data-size="sm"] .mkt-segmented-control__label { padding: 5px 12px; font-size: var(--mkt-font-size-xs); }
+.mkt-segmented-control[data-size="md"] .mkt-segmented-control__label { padding: 7px 16px; font-size: var(--mkt-font-size-sm); }
+.mkt-segmented-control[data-size="lg"] .mkt-segmented-control__label { padding: 9px 20px; font-size: var(--mkt-font-size-sm); }
+.mkt-segmented-control[data-size="xl"] .mkt-segmented-control__label { padding: 11px 24px; font-size: var(--mkt-font-size-md); }
+
+.mkt-segmented-control__label:hover:not([data-disabled]) {
+  color: var(--mkt-color-text);
+}
+
+.mkt-segmented-control__label[data-active] {
+  color: var(--mkt-color-text);
+}
+
+.mkt-segmented-control__label[data-disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Focus on radio shows on label */
+.mkt-segmented-control__input:focus-visible + .mkt-segmented-control__label {
+  outline: 2px solid var(--mkt-color-focus-ring);
+  outline-offset: 2px;
+}
+
+/* Sliding indicator */
+.mkt-segmented-control__indicator {
+  position: absolute;
+  top: 3px;
+  left: 0;
+  height: calc(100% - 6px);
+  background-color: var(--mkt-color-bg, #fff);
+  border-radius: var(--mkt-radius-xs);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: transform 200ms ease, width 200ms ease;
+  z-index: 0;
+}
+
+[data-mkt-color-scheme="dark"] .mkt-segmented-control__indicator {
+  background-color: rgba(255, 255, 255, 0.12);
+  box-shadow: none;
+}

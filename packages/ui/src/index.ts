@@ -54,6 +54,23 @@ export { Switch } from './components/Switch';
 export { Select } from './components/Select';
 export { Slider } from './components/Slider';
 
+// Data Display
+export { Card } from './components/Card';
+export { Table } from './components/Table';
+export { Avatar, AvatarGroup } from './components/Avatar';
+export { Accordion } from './components/Accordion';
+
+// Navigation
+export { Tabs } from './components/Tabs';
+export { Menu } from './components/Menu';
+export { Pagination } from './components/Pagination';
+export { SegmentedControl } from './components/SegmentedControl';
+export { Breadcrumb } from './components/Breadcrumb';
+export { NavLink } from './components/NavLink';
+
+// Notifications
+export { toast } from './components/Toast';
+
 // Overlays
 export { Tooltip } from './components/Tooltip';
 export { Popover } from './components/Popover';

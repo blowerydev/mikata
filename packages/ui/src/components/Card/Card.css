@@ -1,0 +1,62 @@
+.mkt-card {
+  background-color: var(--mkt-color-bg);
+  color: var(--mkt-color-text);
+  overflow: hidden;
+  font-family: var(--mkt-font-family);
+}
+
+.mkt-card--bordered {
+  border: 1px solid var(--mkt-color-gray-2);
+}
+
+[data-mkt-color-scheme="dark"] .mkt-card--bordered {
+  border-color: var(--mkt-color-border);
+}
+
+/* Radius */
+.mkt-card[data-radius="xs"] { border-radius: var(--mkt-radius-xs); }
+.mkt-card[data-radius="sm"] { border-radius: var(--mkt-radius-sm); }
+.mkt-card[data-radius="md"] { border-radius: var(--mkt-radius-md); }
+.mkt-card[data-radius="lg"] { border-radius: var(--mkt-radius-lg); }
+.mkt-card[data-radius="xl"] { border-radius: var(--mkt-radius-xl); }
+
+/* Shadow */
+.mkt-card[data-shadow="xs"] { box-shadow: var(--mkt-shadow-xs); }
+.mkt-card[data-shadow="sm"] { box-shadow: var(--mkt-shadow-sm); }
+.mkt-card[data-shadow="md"] { box-shadow: var(--mkt-shadow-md); }
+.mkt-card[data-shadow="lg"] { box-shadow: var(--mkt-shadow-lg); }
+.mkt-card[data-shadow="xl"] { box-shadow: var(--mkt-shadow-xl); }
+
+/* Padding */
+.mkt-card[data-padding="xs"] > .mkt-card__body { padding: var(--mkt-space-2); }
+.mkt-card[data-padding="sm"] > .mkt-card__body { padding: var(--mkt-space-3); }
+.mkt-card[data-padding="md"] > .mkt-card__body { padding: var(--mkt-space-4); }
+.mkt-card[data-padding="lg"] > .mkt-card__body { padding: var(--mkt-space-5); }
+.mkt-card[data-padding="xl"] > .mkt-card__body { padding: var(--mkt-space-6); }
+
+/* Header */
+.mkt-card__header {
+  padding: var(--mkt-space-3) var(--mkt-space-4);
+  border-bottom: 1px solid var(--mkt-color-gray-2);
+  font-weight: var(--mkt-font-weight-semibold);
+  font-size: var(--mkt-font-size-sm);
+}
+
+[data-mkt-color-scheme="dark"] .mkt-card__header {
+  border-bottom-color: var(--mkt-color-border);
+}
+
+/* Body */
+.mkt-card__body {
+  /* padding set by data-padding on parent */
+}
+
+/* Footer */
+.mkt-card__footer {
+  padding: var(--mkt-space-3) var(--mkt-space-4);
+  border-top: 1px solid var(--mkt-color-gray-2);
+}
+
+[data-mkt-color-scheme="dark"] .mkt-card__footer {
+  border-top-color: var(--mkt-color-border);
+}

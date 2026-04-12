@@ -4,6 +4,7 @@ import { useFocusTrap } from '../../utils/use-focus-trap';
 import { useScrollLock } from '../../utils/use-scroll-lock';
 import { useUILabels } from '../../utils/use-i18n-optional';
 import { useId } from '../../utils/use-id';
+import { applyThemeToPortal } from '../../utils/get-color-scheme';
 import type { ModalProps } from './Modal.types';
 import './Modal.css';
 
@@ -83,6 +84,7 @@ export function Modal(props: ModalProps): Comment {
 
   const root = document.createElement('div');
   root.className = mergeClasses('mkt-modal', className, classNames?.root);
+  applyThemeToPortal(root);
   root.appendChild(overlay);
   document.body.appendChild(root);
 

@@ -1,0 +1,91 @@
+.mkt-table {
+  overflow-x: auto;
+  font-family: var(--mkt-font-family);
+}
+
+.mkt-table--bordered {
+  border: 1px solid var(--mkt-color-gray-2);
+  border-radius: var(--mkt-radius-sm);
+}
+
+[data-mkt-color-scheme="dark"] .mkt-table--bordered {
+  border-color: var(--mkt-color-border);
+}
+
+.mkt-table__table {
+  width: 100%;
+  border-collapse: collapse;
+  border-spacing: 0;
+}
+
+/* Size */
+.mkt-table__table[data-size="xs"] .mkt-table__th,
+.mkt-table__table[data-size="xs"] .mkt-table__td { padding: 4px 8px; font-size: var(--mkt-font-size-xs); }
+
+.mkt-table__table[data-size="sm"] .mkt-table__th,
+.mkt-table__table[data-size="sm"] .mkt-table__td { padding: 6px 10px; font-size: var(--mkt-font-size-xs); }
+
+.mkt-table__table[data-size="md"] .mkt-table__th,
+.mkt-table__table[data-size="md"] .mkt-table__td { padding: 8px 12px; font-size: var(--mkt-font-size-sm); }
+
+.mkt-table__table[data-size="lg"] .mkt-table__th,
+.mkt-table__table[data-size="lg"] .mkt-table__td { padding: 10px 16px; font-size: var(--mkt-font-size-sm); }
+
+.mkt-table__table[data-size="xl"] .mkt-table__th,
+.mkt-table__table[data-size="xl"] .mkt-table__td { padding: 14px 20px; font-size: var(--mkt-font-size-md); }
+
+/* thead */
+.mkt-table__th {
+  text-align: left;
+  font-weight: var(--mkt-font-weight-semibold);
+  color: var(--mkt-color-text);
+  border-bottom: 2px solid var(--mkt-color-gray-2);
+  white-space: nowrap;
+}
+
+[data-mkt-color-scheme="dark"] .mkt-table__th {
+  border-bottom-color: var(--mkt-color-border);
+}
+
+/* tbody */
+.mkt-table__td {
+  color: var(--mkt-color-text);
+  border-bottom: 1px solid var(--mkt-color-gray-2);
+}
+
+[data-mkt-color-scheme="dark"] .mkt-table__td {
+  border-bottom-color: var(--mkt-color-border);
+}
+
+.mkt-table__tbody .mkt-table__tr:last-child .mkt-table__td {
+  border-bottom: none;
+}
+
+/* Striped */
+.mkt-table--striped .mkt-table__tbody .mkt-table__tr:nth-child(even) {
+  background-color: var(--mkt-color-gray-0);
+}
+
+[data-mkt-color-scheme="dark"] .mkt-table--striped .mkt-table__tbody .mkt-table__tr:nth-child(even) {
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
+/* Hover */
+.mkt-table--hover .mkt-table__tbody .mkt-table__tr:hover {
+  background-color: var(--mkt-color-gray-0);
+}
+
+[data-mkt-color-scheme="dark"] .mkt-table--hover .mkt-table__tbody .mkt-table__tr:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+/* Column borders */
+.mkt-table--col-borders .mkt-table__th + .mkt-table__th,
+.mkt-table--col-borders .mkt-table__td + .mkt-table__td {
+  border-left: 1px solid var(--mkt-color-gray-2);
+}
+
+[data-mkt-color-scheme="dark"] .mkt-table--col-borders .mkt-table__th + .mkt-table__th,
+[data-mkt-color-scheme="dark"] .mkt-table--col-borders .mkt-table__td + .mkt-table__td {
+  border-left-color: var(--mkt-color-border);
+}

@@ -42,6 +42,18 @@ import {
   Divider,
   Modal,
   useDisclosure,
+  Card,
+  Table,
+  Tabs,
+  Menu,
+  Accordion,
+  Avatar,
+  AvatarGroup,
+  Pagination,
+  SegmentedControl,
+  Breadcrumb,
+  NavLink,
+  toast,
 } from '@mikata/ui';
 
 // ============================================================
@@ -709,6 +721,219 @@ function UIContent() {
     )
   );
   el.appendChild(modalContainer);
+
+  el.appendChild(Divider({}));
+
+  // ─── Section: Card ───────────────────────────────
+  const cardSection = _createElement('div');
+  _setProp(cardSection, 'style', { marginBottom: '1.5rem' });
+  cardSection.appendChild(Title({ order: 3, children: 'Card' }));
+  cardSection.appendChild(Group({ gap: 'md', wrap: true, children: [
+    Card({
+      shadow: 'sm',
+      padding: 'md',
+      withBorder: true,
+      header: 'Card Header',
+      footer: Button({ variant: 'light', size: 'sm', children: 'View Details' }),
+      children: Text({ size: 'sm', children: 'Cards are containers for grouping related content and actions.' }),
+    }),
+    Card({
+      shadow: 'md',
+      padding: 'lg',
+      children: Text({ children: 'A simple card without header or footer.' }),
+    }),
+  ] }));
+  el.appendChild(cardSection);
+
+  // ─── Section: Table ──────────────────────────────
+  const tableSection = _createElement('div');
+  _setProp(tableSection, 'style', { marginBottom: '1.5rem' });
+  tableSection.appendChild(Title({ order: 3, children: 'Table' }));
+  tableSection.appendChild(Table({
+    striped: true,
+    highlightOnHover: true,
+    withBorder: true,
+    columns: [
+      { key: 'name', title: 'Name' },
+      { key: 'role', title: 'Role' },
+      { key: 'email', title: 'Email' },
+      { key: 'status', title: 'Status', render: (row: any) => Badge({ color: row.status === 'Active' ? 'green' : 'gray', size: 'sm', children: row.status }) },
+    ],
+    data: [
+      { name: 'Alice Johnson', role: 'Admin', email: 'alice@example.com', status: 'Active' },
+      { name: 'Bob Smith', role: 'Editor', email: 'bob@example.com', status: 'Active' },
+      { name: 'Carol White', role: 'Viewer', email: 'carol@example.com', status: 'Inactive' },
+      { name: 'Dave Brown', role: 'Editor', email: 'dave@example.com', status: 'Active' },
+    ],
+  }));
+  el.appendChild(tableSection);
+
+  // ─── Section: Tabs ───────────────────────────────
+  const tabsSection = _createElement('div');
+  _setProp(tabsSection, 'style', { marginBottom: '1.5rem' });
+  tabsSection.appendChild(Title({ order: 3, children: 'Tabs' }));
+  tabsSection.appendChild(Tabs({
+    items: [
+      { value: 'overview', label: 'Overview', content: Text({ children: 'This is the overview panel. Tabs support keyboard navigation with arrow keys.' }) },
+      { value: 'features', label: 'Features', content: Text({ children: 'Variants: default, outline, pills. Orientation: horizontal or vertical.' }) },
+      { value: 'disabled', label: 'Disabled', content: 'This tab is disabled', disabled: true },
+      { value: 'code', label: 'Code', content: Text({ children: 'Use the Tabs component with an items array defining value, label, and content.' }) },
+    ],
+    color: 'primary',
+  }));
+  tabsSection.appendChild(Text({ size: 'sm', children: 'Pills variant:', class: 'mkt-mt-2' }));
+  tabsSection.appendChild(Tabs({
+    variant: 'pills',
+    color: 'violet',
+    items: [
+      { value: 'react', label: 'React', content: 'React content' },
+      { value: 'vue', label: 'Vue', content: 'Vue content' },
+      { value: 'solid', label: 'Solid', content: 'Solid content' },
+    ],
+  }));
+  el.appendChild(tabsSection);
+
+  // ─── Section: Accordion ──────────────────────────
+  const accordionSection = _createElement('div');
+  _setProp(accordionSection, 'style', { marginBottom: '1.5rem' });
+  accordionSection.appendChild(Title({ order: 3, children: 'Accordion' }));
+  accordionSection.appendChild(Accordion({
+    variant: 'separated',
+    items: [
+      { value: 'a11y', label: 'Accessibility', content: 'All components follow WAI-ARIA guidelines with proper roles, keyboard navigation, and screen reader support.' },
+      { value: 'theming', label: 'Theming', content: 'CSS variables power the entire theme system. Override tokens via ThemeProvider or plain CSS.' },
+      { value: 'perf', label: 'Performance', content: 'No CSS-in-JS runtime. Styles are plain CSS with data-attribute selectors. Zero JavaScript overhead for styling.' },
+    ],
+    defaultValue: 'a11y',
+  }));
+  el.appendChild(accordionSection);
+
+  // ─── Section: Menu ───────────────────────────────
+  const menuSection = _createElement('div');
+  _setProp(menuSection, 'style', { marginBottom: '1.5rem' });
+  menuSection.appendChild(Title({ order: 3, children: 'Menu' }));
+  menuSection.appendChild(Menu({
+    target: Button({ variant: 'outline', children: 'Actions \u25BE' }),
+    items: [
+      { type: 'label', label: 'Application' },
+      { label: 'Settings', onClick: () => console.log('Settings clicked') },
+      { label: 'Messages', onClick: () => console.log('Messages clicked') },
+      { type: 'divider' },
+      { type: 'label', label: 'Danger zone' },
+      { label: 'Delete account', color: 'red', onClick: () => console.log('Delete clicked') },
+    ],
+  }));
+  el.appendChild(menuSection);
+
+  // ─── Section: Avatar ─────────────────────────────
+  const avatarSection = _createElement('div');
+  _setProp(avatarSection, 'style', { marginBottom: '1.5rem' });
+  avatarSection.appendChild(Title({ order: 3, children: 'Avatar' }));
+  avatarSection.appendChild(Group({ gap: 'md', children: [
+    Avatar({ name: 'Alice Johnson', color: 'blue' }),
+    Avatar({ name: 'Bob Smith', color: 'red', variant: 'filled' }),
+    Avatar({ color: 'green', size: 'lg' }),
+    Avatar({ name: 'Carol White', color: 'violet', size: 'xl', variant: 'outline' }),
+  ] }));
+  avatarSection.appendChild(Text({ size: 'sm', children: 'Avatar Group:' }));
+  avatarSection.appendChild(AvatarGroup({ spacing: 'sm', children: [
+    Avatar({ name: 'A B', color: 'blue', variant: 'filled' }),
+    Avatar({ name: 'C D', color: 'red', variant: 'filled' }),
+    Avatar({ name: 'E F', color: 'green', variant: 'filled' }),
+    Avatar({ name: '+3', color: 'gray', variant: 'filled' }),
+  ] }));
+  el.appendChild(avatarSection);
+
+  // ─── Section: Breadcrumb ─────────────────────────
+  const breadcrumbSection = _createElement('div');
+  _setProp(breadcrumbSection, 'style', { marginBottom: '1.5rem' });
+  breadcrumbSection.appendChild(Title({ order: 3, children: 'Breadcrumb' }));
+  breadcrumbSection.appendChild(Breadcrumb({
+    items: [
+      { label: 'Home', href: '#' },
+      { label: 'Components', href: '#' },
+      { label: 'Breadcrumb' },
+    ],
+  }));
+  el.appendChild(breadcrumbSection);
+
+  // ─── Section: Pagination ─────────────────────────
+  const paginationSection = _createElement('div');
+  _setProp(paginationSection, 'style', { marginBottom: '1.5rem' });
+  paginationSection.appendChild(Title({ order: 3, children: 'Pagination' }));
+  paginationSection.appendChild(Pagination({
+    total: 20,
+    defaultValue: 5,
+    onChange: (page) => console.log('Page:', page),
+  }));
+  el.appendChild(paginationSection);
+
+  // ─── Section: SegmentedControl ───────────────────
+  const segmentedSection = _createElement('div');
+  _setProp(segmentedSection, 'style', { marginBottom: '1.5rem' });
+  segmentedSection.appendChild(Title({ order: 3, children: 'Segmented Control' }));
+  segmentedSection.appendChild(SegmentedControl({
+    data: ['Preview', 'Code', 'Export'],
+    defaultValue: 'Preview',
+    onChange: (val) => console.log('Segment:', val),
+  }));
+  el.appendChild(segmentedSection);
+
+  // ─── Section: NavLink ────────────────────────────
+  const navSection = _createElement('div');
+  _setProp(navSection, 'style', { marginBottom: '1.5rem', maxWidth: '280px' });
+  navSection.appendChild(Title({ order: 3, children: 'NavLink' }));
+  navSection.appendChild(NavLink({
+    label: 'Dashboard',
+    active: true,
+    onClick: () => console.log('Dashboard'),
+  }));
+  navSection.appendChild(NavLink({
+    label: 'Settings',
+    description: 'App configuration',
+    children: [
+      NavLink({ label: 'General', onClick: () => console.log('General') }),
+      NavLink({ label: 'Security', onClick: () => console.log('Security') }),
+      NavLink({ label: 'Notifications', disabled: true }),
+    ],
+  }));
+  navSection.appendChild(NavLink({
+    label: 'Users',
+    onClick: () => console.log('Users'),
+  }));
+  el.appendChild(navSection);
+
+  // ─── Section: Toast ──────────────────────────────
+  const toastSection = _createElement('div');
+  _setProp(toastSection, 'style', { marginBottom: '1.5rem' });
+  toastSection.appendChild(Title({ order: 3, children: 'Toast / Notifications' }));
+  toastSection.appendChild(Group({ gap: 'sm', wrap: true, children: [
+    Button({
+      variant: 'filled',
+      color: 'green',
+      children: 'Success',
+      onClick: () => toast.success('Changes saved successfully!', { title: 'Saved' }),
+    }),
+    Button({
+      variant: 'filled',
+      color: 'red',
+      children: 'Error',
+      onClick: () => toast.error('Something went wrong!', { title: 'Error' }),
+    }),
+    Button({
+      variant: 'filled',
+      color: 'yellow',
+      children: 'Warning',
+      onClick: () => toast.warning('This action cannot be undone.'),
+    }),
+    Button({
+      variant: 'filled',
+      color: 'blue',
+      children: 'Info',
+      onClick: () => toast.info('New version available.', { title: 'Update' }),
+    }),
+  ] }));
+  el.appendChild(toastSection);
 
   return el;
 }

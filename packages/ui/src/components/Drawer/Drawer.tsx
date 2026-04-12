@@ -4,6 +4,7 @@ import { useFocusTrap } from '../../utils/use-focus-trap';
 import { useScrollLock } from '../../utils/use-scroll-lock';
 import { useUILabels } from '../../utils/use-i18n-optional';
 import { useId } from '../../utils/use-id';
+import { applyThemeToPortal } from '../../utils/get-color-scheme';
 import type { DrawerProps } from './Drawer.types';
 import './Drawer.css';
 
@@ -88,6 +89,7 @@ export function Drawer(props: DrawerProps): Comment {
   // Assemble into root container
   const root = document.createElement('div');
   root.className = mergeClasses('mkt-drawer', className, classNames?.root);
+  applyThemeToPortal(root);
   root.appendChild(overlay);
   root.appendChild(content);
   document.body.appendChild(root);

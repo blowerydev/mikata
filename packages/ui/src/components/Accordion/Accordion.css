@@ -1,0 +1,127 @@
+.mkt-accordion {
+  font-family: var(--mkt-font-family);
+}
+
+/* ── Default variant ── */
+.mkt-accordion[data-variant="default"] .mkt-accordion__item {
+  border-bottom: 1px solid var(--mkt-color-gray-2);
+}
+
+[data-mkt-color-scheme="dark"] .mkt-accordion[data-variant="default"] .mkt-accordion__item {
+  border-bottom-color: var(--mkt-color-border);
+}
+
+/* ── Contained variant ── */
+.mkt-accordion[data-variant="contained"] {
+  border: 1px solid var(--mkt-color-gray-2);
+  border-radius: var(--mkt-radius-sm);
+}
+
+.mkt-accordion[data-variant="contained"] .mkt-accordion__item + .mkt-accordion__item {
+  border-top: 1px solid var(--mkt-color-gray-2);
+}
+
+[data-mkt-color-scheme="dark"] .mkt-accordion[data-variant="contained"] {
+  border-color: var(--mkt-color-border);
+}
+
+[data-mkt-color-scheme="dark"] .mkt-accordion[data-variant="contained"] .mkt-accordion__item + .mkt-accordion__item {
+  border-top-color: var(--mkt-color-border);
+}
+
+/* ── Separated variant ── */
+.mkt-accordion[data-variant="separated"] .mkt-accordion__item {
+  border: 1px solid var(--mkt-color-gray-2);
+  border-radius: var(--mkt-radius-sm);
+  margin-bottom: var(--mkt-space-2);
+}
+
+.mkt-accordion[data-variant="separated"] .mkt-accordion__item[data-active] {
+  border-color: var(--mkt-color-primary-6);
+}
+
+[data-mkt-color-scheme="dark"] .mkt-accordion[data-variant="separated"] .mkt-accordion__item {
+  border-color: var(--mkt-color-border);
+}
+
+/* Control */
+.mkt-accordion__control {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--mkt-color-text);
+  font-family: inherit;
+  font-weight: var(--mkt-font-weight-medium);
+  text-align: left;
+  transition: background-color var(--mkt-transition-duration) var(--mkt-transition-timing);
+}
+
+/* Size */
+.mkt-accordion[data-size="xs"] .mkt-accordion__control { padding: 6px 8px; font-size: var(--mkt-font-size-xs); }
+.mkt-accordion[data-size="sm"] .mkt-accordion__control { padding: 8px 12px; font-size: var(--mkt-font-size-sm); }
+.mkt-accordion[data-size="md"] .mkt-accordion__control { padding: 12px 16px; font-size: var(--mkt-font-size-sm); }
+.mkt-accordion[data-size="lg"] .mkt-accordion__control { padding: 14px 20px; font-size: var(--mkt-font-size-md); }
+.mkt-accordion[data-size="xl"] .mkt-accordion__control { padding: 18px 24px; font-size: var(--mkt-font-size-md); }
+
+.mkt-accordion__control:hover:not(:disabled) {
+  background-color: var(--mkt-color-gray-0);
+}
+
+[data-mkt-color-scheme="dark"] .mkt-accordion__control:hover:not(:disabled) {
+  background-color: rgba(255, 255, 255, 0.04);
+}
+
+.mkt-accordion__control:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.mkt-accordion__control:focus-visible {
+  outline: 2px solid var(--mkt-color-focus-ring);
+  outline-offset: -2px;
+  z-index: 1;
+}
+
+/* Chevron position: right (default) puts label first, chevron pushed right */
+.mkt-accordion__control[data-chevron-position="right"] {
+  justify-content: space-between;
+}
+
+/* Chevron position: left puts chevron first, then label */
+.mkt-accordion__control[data-chevron-position="left"] {
+  gap: var(--mkt-space-2);
+}
+
+/* Label */
+.mkt-accordion__label {
+  flex: 1;
+}
+
+/* Chevron */
+.mkt-accordion__chevron {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  transition: transform var(--mkt-transition-duration) var(--mkt-transition-timing);
+  color: var(--mkt-color-gray-6);
+}
+
+.mkt-accordion__chevron[data-rotated] {
+  transform: rotate(180deg);
+}
+
+/* Panel */
+.mkt-accordion__panel-content {
+  padding: 0 16px 12px;
+  font-size: var(--mkt-font-size-sm);
+  color: var(--mkt-color-text);
+  line-height: 1.5;
+}
+
+.mkt-accordion[data-size="xs"] .mkt-accordion__panel-content { padding: 0 8px 6px; }
+.mkt-accordion[data-size="sm"] .mkt-accordion__panel-content { padding: 0 12px 8px; }
+.mkt-accordion[data-size="lg"] .mkt-accordion__panel-content { padding: 0 20px 14px; }
+.mkt-accordion[data-size="xl"] .mkt-accordion__panel-content { padding: 0 24px 18px; }

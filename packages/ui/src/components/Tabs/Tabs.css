@@ -1,0 +1,158 @@
+.mkt-tabs {
+  font-family: var(--mkt-font-family);
+}
+
+.mkt-tabs[data-orientation="vertical"] {
+  display: flex;
+  gap: var(--mkt-space-4);
+}
+
+/* Tab list */
+.mkt-tabs__list {
+  display: flex;
+  gap: 0;
+}
+
+.mkt-tabs[data-orientation="horizontal"] .mkt-tabs__list {
+  border-bottom: 2px solid var(--mkt-color-gray-2);
+}
+
+.mkt-tabs[data-orientation="vertical"] .mkt-tabs__list {
+  flex-direction: column;
+  border-right: 2px solid var(--mkt-color-gray-2);
+}
+
+[data-mkt-color-scheme="dark"] .mkt-tabs[data-orientation="horizontal"] .mkt-tabs__list {
+  border-bottom-color: var(--mkt-color-border);
+}
+
+[data-mkt-color-scheme="dark"] .mkt-tabs[data-orientation="vertical"] .mkt-tabs__list {
+  border-right-color: var(--mkt-color-border);
+}
+
+/* Tab button */
+.mkt-tabs__tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--mkt-space-2);
+  padding: var(--mkt-space-2) var(--mkt-space-4);
+  border: none;
+  background: transparent;
+  color: var(--mkt-color-gray-6);
+  cursor: pointer;
+  font-family: var(--mkt-font-family);
+  font-weight: var(--mkt-font-weight-medium);
+  white-space: nowrap;
+  transition: color var(--mkt-transition-duration) var(--mkt-transition-timing),
+              background-color var(--mkt-transition-duration) var(--mkt-transition-timing);
+  position: relative;
+}
+
+/* Size */
+.mkt-tabs__list[data-size="xs"] .mkt-tabs__tab { font-size: var(--mkt-font-size-xs); padding: 4px 8px; }
+.mkt-tabs__list[data-size="sm"] .mkt-tabs__tab { font-size: var(--mkt-font-size-xs); padding: 6px 12px; }
+.mkt-tabs__list[data-size="md"] .mkt-tabs__tab { font-size: var(--mkt-font-size-sm); padding: 8px 16px; }
+.mkt-tabs__list[data-size="lg"] .mkt-tabs__tab { font-size: var(--mkt-font-size-md); padding: 10px 20px; }
+.mkt-tabs__list[data-size="xl"] .mkt-tabs__tab { font-size: var(--mkt-font-size-md); padding: 12px 24px; }
+
+.mkt-tabs__tab:hover:not(:disabled) {
+  color: var(--mkt-color-text);
+}
+
+.mkt-tabs__tab:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.mkt-tabs__tab:focus-visible {
+  outline: 2px solid var(--mkt-color-focus-ring);
+  outline-offset: -2px;
+  z-index: 1;
+}
+
+/* ── Default variant ── */
+.mkt-tabs[data-variant="default"] .mkt-tabs__tab {
+  margin-bottom: -2px;
+  border-bottom: 2px solid transparent;
+}
+
+.mkt-tabs[data-variant="default"][data-orientation="vertical"] .mkt-tabs__tab {
+  margin-bottom: 0;
+  margin-right: -2px;
+  border-bottom: none;
+  border-right: 2px solid transparent;
+}
+
+/* Color for active default tab */
+.mkt-tabs[data-variant="default"][data-color="primary"] .mkt-tabs__tab[data-active] { border-color: var(--mkt-color-primary-6); color: var(--mkt-color-primary-6); }
+.mkt-tabs[data-variant="default"][data-color="gray"]    .mkt-tabs__tab[data-active] { border-color: var(--mkt-color-gray-6);    color: var(--mkt-color-gray-6); }
+.mkt-tabs[data-variant="default"][data-color="red"]     .mkt-tabs__tab[data-active] { border-color: var(--mkt-color-red-6);     color: var(--mkt-color-red-6); }
+.mkt-tabs[data-variant="default"][data-color="green"]   .mkt-tabs__tab[data-active] { border-color: var(--mkt-color-green-6);   color: var(--mkt-color-green-6); }
+.mkt-tabs[data-variant="default"][data-color="blue"]    .mkt-tabs__tab[data-active] { border-color: var(--mkt-color-blue-6);    color: var(--mkt-color-blue-6); }
+.mkt-tabs[data-variant="default"][data-color="violet"]  .mkt-tabs__tab[data-active] { border-color: var(--mkt-color-violet-6);  color: var(--mkt-color-violet-6); }
+.mkt-tabs[data-variant="default"][data-color="cyan"]    .mkt-tabs__tab[data-active] { border-color: var(--mkt-color-cyan-6);    color: var(--mkt-color-cyan-6); }
+.mkt-tabs[data-variant="default"][data-color="teal"]    .mkt-tabs__tab[data-active] { border-color: var(--mkt-color-teal-6);    color: var(--mkt-color-teal-6); }
+.mkt-tabs[data-variant="default"][data-color="yellow"]  .mkt-tabs__tab[data-active] { border-color: var(--mkt-color-yellow-6);  color: var(--mkt-color-yellow-6); }
+.mkt-tabs[data-variant="default"][data-color="pink"]    .mkt-tabs__tab[data-active] { border-color: var(--mkt-color-pink-6);    color: var(--mkt-color-pink-6); }
+.mkt-tabs[data-variant="default"][data-color="orange"]  .mkt-tabs__tab[data-active] { border-color: var(--mkt-color-orange-6);  color: var(--mkt-color-orange-6); }
+
+/* ── Outline variant ── */
+.mkt-tabs[data-variant="outline"] .mkt-tabs__tab {
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: var(--mkt-radius-sm) var(--mkt-radius-sm) 0 0;
+  margin-bottom: -2px;
+}
+
+.mkt-tabs[data-variant="outline"] .mkt-tabs__tab[data-active] {
+  border-color: var(--mkt-color-gray-2);
+  background-color: var(--mkt-color-bg);
+  color: var(--mkt-color-text);
+}
+
+[data-mkt-color-scheme="dark"] .mkt-tabs[data-variant="outline"] .mkt-tabs__tab[data-active] {
+  border-color: var(--mkt-color-border);
+}
+
+/* ── Pills variant ── */
+.mkt-tabs[data-variant="pills"] .mkt-tabs__list {
+  border-bottom: none;
+  gap: var(--mkt-space-1);
+}
+
+.mkt-tabs[data-variant="pills"][data-orientation="vertical"] .mkt-tabs__list {
+  border-right: none;
+}
+
+.mkt-tabs[data-variant="pills"] .mkt-tabs__tab {
+  border-radius: var(--mkt-radius-sm);
+}
+
+.mkt-tabs[data-variant="pills"][data-color="primary"] .mkt-tabs__tab[data-active] { background-color: var(--mkt-color-primary-6); color: #fff; }
+.mkt-tabs[data-variant="pills"][data-color="gray"]    .mkt-tabs__tab[data-active] { background-color: var(--mkt-color-gray-6);    color: #fff; }
+.mkt-tabs[data-variant="pills"][data-color="red"]     .mkt-tabs__tab[data-active] { background-color: var(--mkt-color-red-6);     color: #fff; }
+.mkt-tabs[data-variant="pills"][data-color="green"]   .mkt-tabs__tab[data-active] { background-color: var(--mkt-color-green-6);   color: #fff; }
+.mkt-tabs[data-variant="pills"][data-color="blue"]    .mkt-tabs__tab[data-active] { background-color: var(--mkt-color-blue-6);    color: #fff; }
+.mkt-tabs[data-variant="pills"][data-color="violet"]  .mkt-tabs__tab[data-active] { background-color: var(--mkt-color-violet-6);  color: #fff; }
+.mkt-tabs[data-variant="pills"][data-color="cyan"]    .mkt-tabs__tab[data-active] { background-color: var(--mkt-color-cyan-6);    color: #fff; }
+.mkt-tabs[data-variant="pills"][data-color="teal"]    .mkt-tabs__tab[data-active] { background-color: var(--mkt-color-teal-6);    color: #fff; }
+.mkt-tabs[data-variant="pills"][data-color="yellow"]  .mkt-tabs__tab[data-active] { background-color: var(--mkt-color-yellow-6);  color: #fff; }
+.mkt-tabs[data-variant="pills"][data-color="pink"]    .mkt-tabs__tab[data-active] { background-color: var(--mkt-color-pink-6);    color: #fff; }
+.mkt-tabs[data-variant="pills"][data-color="orange"]  .mkt-tabs__tab[data-active] { background-color: var(--mkt-color-orange-6);  color: #fff; }
+
+/* Tab icon */
+.mkt-tabs__tab-icon {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* Panel */
+.mkt-tabs__panel {
+  padding: var(--mkt-space-4) 0;
+}
+
+.mkt-tabs__panel:focus-visible {
+  outline: 2px solid var(--mkt-color-focus-ring);
+  outline-offset: 2px;
+}

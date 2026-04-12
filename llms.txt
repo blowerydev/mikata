@@ -1241,8 +1241,10 @@ function App() {
 - **Typography:** Text, Title, Anchor
 - **Buttons:** Button, ActionIcon, CloseButton, ButtonGroup
 - **Feedback:** Loader, Alert, Badge, Progress, Skeleton
-- **Form inputs:** TextInput, Textarea, PasswordInput, NumberInput, Checkbox, Radio, Switch, Select, Slider
-- **Overlays:** Tooltip, Popover, Modal, Drawer
+- **Form inputs:** TextInput, Textarea, PasswordInput, NumberInput, Checkbox, Radio, Switch, Select, Slider, SegmentedControl
+- **Overlays:** Tooltip, Popover, Modal, Drawer, Toast (imperative API: `toast.show()`, `.success()`, `.error()`, `.warning()`, `.info()`)
+- **Data display:** Card, Table, Accordion, Avatar, AvatarGroup
+- **Navigation:** Tabs, Menu, Breadcrumb, Pagination, NavLink
 
 **Key patterns:**
 - `variant` — visual style: `'filled' | 'outline' | 'light' | 'subtle'`
@@ -1302,7 +1304,7 @@ mikata/
     store/         # @mikata/store — createStore, createQuery, createMutation
     router/        # @mikata/router — client-side routing, guards, nested layouts
     i18n/          # @mikata/i18n — internationalization, runtime loading, typed keys
-    ui/            # @mikata/ui — component library, CSS variables theming, 30+ components
+    ui/            # @mikata/ui — component library, CSS variables theming, 40+ components
     testing/       # @mikata/testing — renderComponent, fireEvent, flush, waitForUpdate
     mikata/        # mikata — umbrella re-exports
   playground/      # Vite dev app for testing
