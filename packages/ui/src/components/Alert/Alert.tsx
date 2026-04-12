@@ -60,7 +60,9 @@ export function Alert(props: AlertProps = {} as AlertProps): HTMLElement {
     closeBtn.className = mergeClasses('mkt-alert__close-button', classNames?.closeButton);
     closeBtn.type = 'button';
     closeBtn.setAttribute('aria-label', 'Close');
-    closeBtn.innerHTML = '&#215;';
+    closeBtn.innerHTML =
+      '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">' +
+      '<path d="M4 4L12 12M12 4L4 12"/></svg>';
     closeBtn.addEventListener('click', () => {
       onClose?.();
     });

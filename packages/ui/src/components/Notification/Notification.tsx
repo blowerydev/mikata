@@ -67,7 +67,7 @@ export function Notification(props: NotificationProps = {}): HTMLElement {
     close.className = mergeClasses('mkt-notification__close', classNames?.close);
     close.setAttribute('aria-label', labels.close);
     close.innerHTML =
-      '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5">' +
+      '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">' +
       '<path d="M4 4L12 12M12 4L4 12"/></svg>';
     close.addEventListener('click', onClose);
     root.appendChild(close);

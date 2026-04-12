@@ -42,6 +42,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: var(--mkt-space-4);
   padding: var(--mkt-space-4) var(--mkt-space-5);
   border-bottom: 1px solid var(--mkt-color-border);
   flex-shrink: 0;
@@ -50,22 +51,34 @@
 .mkt-drawer__title {
   font-size: var(--mkt-font-size-lg);
   font-weight: var(--mkt-font-weight-semibold);
+  line-height: 1.3;
   color: var(--mkt-color-text);
   margin: 0;
   font-family: var(--mkt-font-family);
+  flex: 1;
+  min-width: 0;
 }
 
 .mkt-drawer__close {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
   background: none;
   border: none;
   cursor: pointer;
-  padding: var(--mkt-space-1);
+  padding: 0;
   border-radius: var(--mkt-radius-sm);
   color: var(--mkt-color-text-dimmed);
   transition: background-color var(--mkt-transition-duration) var(--mkt-transition-timing);
+}
+
+.mkt-drawer__close svg {
+  display: block;
+  width: 16px;
+  height: 16px;
 }
 
 .mkt-drawer__close:hover {

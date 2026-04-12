@@ -64,7 +64,7 @@ export function Modal(props: ModalProps): Comment {
       closeBtn.type = 'button';
       closeBtn.setAttribute('aria-label', labels.close);
       closeBtn.innerHTML =
-        '<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5">' +
+        '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">' +
         '<path d="M4 4L12 12M12 4L4 12"/></svg>';
       closeBtn.addEventListener('click', onClose);
       header.appendChild(closeBtn);
