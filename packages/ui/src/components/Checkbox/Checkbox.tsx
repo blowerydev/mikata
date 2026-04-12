@@ -14,6 +14,7 @@ export function Checkbox(props: CheckboxProps = {}): HTMLLabelElement {
     color = 'primary',
     disabled,
     onChange,
+    onBlur,
     classNames,
     class: className,
     ref,
@@ -40,6 +41,7 @@ export function Checkbox(props: CheckboxProps = {}): HTMLLabelElement {
   if (disabled) input.disabled = true;
   if (error) input.setAttribute('aria-invalid', 'true');
   if (onChange) input.addEventListener('change', onChange);
+  if (onBlur) input.addEventListener('blur', onBlur as EventListener);
 
   if (ref) {
     if (typeof ref === 'function') ref(input);
@@ -74,7 +76,8 @@ export function Checkbox(props: CheckboxProps = {}): HTMLLabelElement {
     if (description) {
       const descEl = document.createElement('p');
       descEl.className = 'mkt-checkbox__description';
-      descEl.textContent = description;
+      if (description instanceof Node) descEl.appendChild(description);
+      else descEl.textContent = description;
       textCol.appendChild(descEl);
     }
 
@@ -82,7 +85,8 @@ export function Checkbox(props: CheckboxProps = {}): HTMLLabelElement {
       const errorEl = document.createElement('p');
       errorEl.className = 'mkt-checkbox__error';
       errorEl.setAttribute('role', 'alert');
-      errorEl.textContent = error;
+      if (error instanceof Node) errorEl.appendChild(error);
+      else errorEl.textContent = error;
       textCol.appendChild(errorEl);
     }
 

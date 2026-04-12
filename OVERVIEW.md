@@ -341,6 +341,41 @@ function App() {
 
 ---
 
+## Forms
+
+`@mikata/form` is a signal-backed form handler inspired by `@mantine/form`. Setup-once (`createForm({...})` returns a stable handle), fine-grained reactivity (no re-render churn), and plays directly with `@mikata/ui` inputs.
+
+```tsx
+import { createForm } from '@mikata/form';
+import { zodResolver } from '@mikata/form/resolvers/zod';
+import { TextInput, PasswordInput, Checkbox, Button } from '@mikata/ui';
+import { z } from 'zod';
+
+const form = createForm({
+  initialValues: { email: '', password: '', remember: false },
+  validate: zodResolver(z.object({
+    email: z.string().email(),
+    password: z.string().min(8),
+  })),
+  validateInputOnBlur: true,
+});
+
+<form onSubmit={form.onSubmit((values) => save(values))}>
+  <TextInput label="Email" {...form.getInputProps('email')} />
+  <PasswordInput label="Password" {...form.getInputProps('password')} />
+  <Checkbox label="Remember me" {...form.getInputProps('remember', { type: 'checkbox' })} />
+  <Button type="submit" disabled={!form.isValid()}>Sign in</Button>
+</form>
+```
+
+**Features:** `getInputProps` (spread-compatible), path-based access (`items.0.name`), array helpers (`insertListItem`, `removeListItem`, `reorderListItem`, `replaceListItem`), dirty/touched tracking, reset, transform, watch. Schema resolvers for **zod, yup, valibot, superstruct, joi** as sub-path imports so tree-shaking keeps unused ones out.
+
+**Accessibility:** `getInputProps` returns values `InputWrapper` uses to wire `aria-invalid`, `aria-errormessage`, `aria-describedby`, and `role="alert"` on errors. `onSubmit` focuses the first invalid field after a failed validation.
+
+**i18n:** Error values are `string | Node`. Pass `t.node('errors.invalidEmail')` from `@mikata/i18n` for reactive translated errors that update on locale change without re-validating. Every resolver accepts a `messages` callback for translation.
+
+---
+
 ## Project Structure
 
 ```
@@ -353,6 +388,7 @@ mikata/
     router/        # Client-side routing, guards, nested layouts
     i18n/          # Internationalization, runtime loading, formatters
     ui/            # Component library -- buttons, inputs, layout, feedback, overlays
+    form/          # Form state, validation, schema resolvers (zod, yup, valibot, ...)
     testing/       # Test utilities (renderComponent, fireEvent, flush)
     mikata/        # Umbrella package re-exporting everything
 ```

@@ -282,5 +282,27 @@
     "overlayContent": "任意の場所をクリックして閉じる",
     "rangeTitle": "範囲スライダー",
     "rangeLabel": "価格帯"
+  },
+  "formPkg": {
+    "title": "フォームとバリデーション (@mikata/form)",
+    "description": "シグナルベースのフォームハンドル。getInputPropsが値・エラー・onInput/onChange・onBlurを結線します。エラーはNodeに対応し、翻訳はリアクティブに更新されます。",
+    "email": "メールアドレス",
+    "password": "パスワード",
+    "city": "市区町村",
+    "remember": "ログイン状態を保持",
+    "itemsTitle": "項目",
+    "itemName": "名前",
+    "addItem": "項目を追加",
+    "save": "保存",
+    "reset": "リセット",
+    "errRequired": "必須項目です",
+    "errEmail": "メールアドレスの形式が正しくありません",
+    "errMinPw": "8文字以上で入力してください",
+    "submitted": "フォームを送信しました！",
+    "hasErrors": "強調表示された項目を修正してください",
+    "dirty": "変更",
+    "valid": "有効",
+    "yes": "はい",
+    "no": "いいえ"
   }
 }

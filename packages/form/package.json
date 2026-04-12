@@ -1,0 +1,63 @@
+{
+  "name": "@mikata/form",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./resolvers/zod": {
+      "types": "./dist/resolvers/zod.d.ts",
+      "import": "./dist/resolvers/zod.js",
+      "require": "./dist/resolvers/zod.cjs"
+    },
+    "./resolvers/yup": {
+      "types": "./dist/resolvers/yup.d.ts",
+      "import": "./dist/resolvers/yup.js",
+      "require": "./dist/resolvers/yup.cjs"
+    },
+    "./resolvers/valibot": {
+      "types": "./dist/resolvers/valibot.d.ts",
+      "import": "./dist/resolvers/valibot.js",
+      "require": "./dist/resolvers/valibot.cjs"
+    },
+    "./resolvers/superstruct": {
+      "types": "./dist/resolvers/superstruct.d.ts",
+      "import": "./dist/resolvers/superstruct.js",
+      "require": "./dist/resolvers/superstruct.cjs"
+    },
+    "./resolvers/joi": {
+      "types": "./dist/resolvers/joi.d.ts",
+      "import": "./dist/resolvers/joi.js",
+      "require": "./dist/resolvers/joi.cjs"
+    }
+  },
+  "sideEffects": false,
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch"
+  },
+  "dependencies": {
+    "@mikata/reactivity": "workspace:*"
+  },
+  "peerDependencies": {
+    "zod": "*",
+    "yup": "*",
+    "valibot": "*",
+    "superstruct": "*",
+    "joi": "*"
+  },
+  "peerDependenciesMeta": {
+    "zod": { "optional": true },
+    "yup": { "optional": true },
+    "valibot": { "optional": true },
+    "superstruct": { "optional": true },
+    "joi": { "optional": true }
+  }
+}

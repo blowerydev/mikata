@@ -19,6 +19,7 @@ export function Textarea(props: TextareaProps = {}): HTMLDivElement {
     autosize,
     onInput,
     onChange,
+    onBlur,
     classNames,
     class: className,
     ref,
@@ -61,6 +62,7 @@ export function Textarea(props: TextareaProps = {}): HTMLDivElement {
 
   if (onInput) textarea.addEventListener('input', onInput as EventListener);
   if (onChange) textarea.addEventListener('change', onChange);
+  if (onBlur) textarea.addEventListener('blur', onBlur as EventListener);
 
   if (ref) {
     if (typeof ref === 'function') ref(textarea as any);

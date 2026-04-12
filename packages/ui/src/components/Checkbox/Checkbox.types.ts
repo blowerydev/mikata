@@ -6,11 +6,13 @@ export interface CheckboxProps extends MikataBaseProps {
   checked?: boolean;
   defaultChecked?: boolean;
   label?: string | Node;
-  description?: string;
-  error?: string;
+  description?: string | Node;
+  error?: string | Node;
   size?: MikataSize;
   color?: MikataColor;
   disabled?: boolean;
   onChange?: (e: Event) => void;
+  onBlur?: (e: FocusEvent) => void;
+  'aria-invalid'?: boolean;
   classNames?: ClassNamesInput<CheckboxParts>;
 }

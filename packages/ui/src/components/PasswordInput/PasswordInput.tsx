@@ -18,6 +18,7 @@ export function PasswordInput(props: PasswordInputProps = {}): HTMLDivElement {
     size = 'md',
     onInput,
     onChange,
+    onBlur,
     classNames,
     class: className,
     ref,
@@ -48,6 +49,7 @@ export function PasswordInput(props: PasswordInputProps = {}): HTMLDivElement {
 
   if (onInput) input.addEventListener('input', onInput as EventListener);
   if (onChange) input.addEventListener('change', onChange);
+  if (onBlur) input.addEventListener('blur', onBlur as EventListener);
 
   if (ref) {
     if (typeof ref === 'function') ref(input);

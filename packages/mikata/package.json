@@ -23,6 +23,7 @@
     "@mikata/runtime": "workspace:*",
     "@mikata/store": "workspace:*",
     "@mikata/router": "workspace:*",
-    "@mikata/i18n": "workspace:*"
+    "@mikata/i18n": "workspace:*",
+    "@mikata/form": "workspace:*"
   }
 }

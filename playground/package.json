@@ -11,7 +11,8 @@
     "@mikata/runtime": "workspace:*",
     "@mikata/i18n": "workspace:*",
     "@mikata/store": "workspace:*",
-    "@mikata/ui": "workspace:*"
+    "@mikata/ui": "workspace:*",
+    "@mikata/form": "workspace:*"
   },
   "devDependencies": {
     "@mikata/compiler": "workspace:*",

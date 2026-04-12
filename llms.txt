@@ -18,6 +18,7 @@
 - `@mikata/compiler` — Vite/Babel plugin that transforms JSX to runtime calls
 - `@mikata/testing` — testing utilities: renderComponent, fireEvent, waitForUpdate, query helpers
 - `@mikata/ui` — component library: buttons, inputs, layout, feedback, overlays with CSS variables theming
+- `@mikata/form` — form state, validation, schema resolvers (zod, yup, valibot, superstruct, joi)
 - `mikata` — umbrella re-export of all packages
 
 ---
@@ -692,6 +693,152 @@ Flush + wait one microtask. Use when you need async effects to settle (e.g., `on
 setCount(5);
 await waitForUpdate();
 ```
+
+---
+
+## Form API (`@mikata/form`)
+
+Signal-backed form handling inspired by `@mantine/form`. Setup-once factory, no hooks rules. Field reads via `form.values.x` track fine-grained — no whole-form re-renders. Works with any inputs (`@mikata/ui` or native), schema-agnostic validation with resolvers for zod, yup, valibot, superstruct, joi as sub-path imports.
+
+### createForm(options) → MikataForm
+
+```tsx
+import { createForm } from '@mikata/form';
+import { zodResolver } from '@mikata/form/resolvers/zod';
+import { TextInput, PasswordInput, Checkbox, Button } from '@mikata/ui';
+import { z } from 'zod';
+
+const form = createForm({
+  initialValues: { email: '', password: '', remember: false },
+  validate: zodResolver(z.object({
+    email: z.string().email(),
+    password: z.string().min(8),
+  })),
+  validateInputOnBlur: true,
+  clearInputErrorOnChange: true,
+});
+
+<form onSubmit={form.onSubmit((values) => save(values))}>
+  <TextInput label="Email" {...form.getInputProps('email')} />
+  <PasswordInput label="Password" {...form.getInputProps('password')} />
+  <Checkbox label="Remember" {...form.getInputProps('remember', { type: 'checkbox' })} />
+  <Button type="submit" disabled={!form.isValid()}>Sign in</Button>
+</form>
+```
+
+### Options
+
+- `initialValues` — initial shape (required). Form uses deep-clone snapshots.
+- `validate` — validator spec: object (mirrors values shape), function `(values) => FormErrors`, or a resolver.
+- `validateInputOnChange` (default `false`) — validate a field on every change.
+- `validateInputOnBlur` (default `false`) — validate a field on blur.
+- `clearInputErrorOnChange` (default `true`) — clear a field's error when its value changes.
+- `transformValues` — optional transform for `getTransformedValues()`.
+- `enhance` — called once with the form handle; attach custom helpers.
+
+### Validator spec shapes
+
+**Object spec** — mirrors the values tree; leaves are `(value, values, path) => string | Node | null`. For arrays, pass the element-shape spec and it's applied to each element.
+```ts
+validate: {
+  email: (v) => /@/.test(v) ? null : 'Invalid email',
+  address: { city: (v) => v ? null : 'Required' },
+  items: { name: (v) => v ? null : 'Required' },
+}
+```
+
+**Function spec** — whole values in, `FormErrors` out.
+```ts
+validate: (values) => values.a < 10 ? { a: 'Too small' } : {}
+```
+
+**Resolver** — from `@mikata/form/resolvers/{zod,yup,valibot,superstruct,joi}`. Each accepts optional `messages` for translation.
+
+### Form handle
+
+- `form.values` / `form.errors` — reactive proxies; reads track fine-grained.
+- `getValues()` / `getValue(path)` / `setValues(patchOrFn)` / `setFieldValue(path, value)`
+- `reset()` — restore initial values; clear errors and touched.
+- `initialize(values)` — replace the initial snapshot with new values (use after loading from server).
+- `setErrors` / `setFieldError` / `clearErrors` / `clearFieldError`
+- `isValid()` / `isDirty(path?)` / `isTouched(path?)` — all computeds, track reactively.
+- `getTouched()` / `getDirty()` / `resetTouched()` / `resetDirty()`
+- `validate()` — run the full spec, update errors, return `{ hasErrors, errors }`.
+- `validateField(path)` — run one field; return `{ hasError, error }`.
+- `getInputProps(path, options)` — see below.
+- `insertListItem(path, item, index?)` / `removeListItem(path, index)` / `reorderListItem(path, {from, to})` / `replaceListItem(path, index, item)`
+- `onSubmit(onValid, onInvalid?)` — returns a submit handler; calls `preventDefault`, runs full validation, focuses the first invalid field that registered a ref, then calls the appropriate callback.
+- `onReset(handler?)` — returns a reset handler.
+- `getTransformedValues()` — values run through `transformValues` (or raw values).
+- `watch(path, callback)` — subscribe to a single field; returns dispose.
+
+### getInputProps
+
+Two shapes, matching Mantine:
+
+- Default (`type: 'input'`) — returns `{ value, onInput, onChange, onBlur, error?, aria-invalid?, ref? }`. Works with TextInput, Textarea, Select, PasswordInput, Autocomplete. `onInput` drives live updates (DOM conventions — Mikata UI inputs fire `input` as you type; `change` fires on blur).
+- `{ type: 'checkbox' }` — returns `{ checked, onChange, onBlur, error?, aria-invalid?, ref? }`. Works with Checkbox, Switch, Radio.
+
+For inputs with `onValueChange` (NumberInput, Slider, Rating) or array-shaped changes (MultiSelect, TagsInput, FileInput), bind manually:
+```tsx
+<NumberInput
+  value={form.values.qty}
+  onValueChange={(v) => form.setFieldValue('qty', v)}
+  error={form.errors.qty}
+/>
+```
+
+`onChange` accepts either a DOM event (reads `event.target.value` or `event.target.checked`) or a raw value.
+
+### Accessibility
+
+- `InputWrapper` in `@mikata/ui` auto-wires `aria-invalid`, `aria-errormessage`, `aria-describedby`, `role="alert"` from the `error`/`description` props — `getInputProps` feeds the error, so ARIA is automatic.
+- `onSubmit` with `withFocus: true` (default, via `getInputProps`) moves focus to the first invalid field's registered element after a failed validation.
+- Errors announce via `role="alert"` live region.
+
+### i18n
+
+- `FormError = string | Node`. Pass `t.node('errors.invalidEmail')` from `@mikata/i18n` for reactive translated errors:
+  ```ts
+  validate: { email: (v) => /@/.test(v) ? null : t.node('errors.invalidEmail') }
+  ```
+  The `Node` form updates when locale changes, without re-validating.
+- Every resolver accepts a `messages` callback for translation. E.g. `zodResolver(schema, { messages: (issue) => t(`errors.${issue.code}`) })`.
+- `@mikata/form` has no dependency on `@mikata/i18n` — translation is an opt-in consumer pattern.
+
+### Schema resolvers
+
+Each resolver lives in a sub-path export so tree-shaking keeps unused ones out:
+
+```ts
+import { zodResolver } from '@mikata/form/resolvers/zod';
+import { yupResolver } from '@mikata/form/resolvers/yup';
+import { valibotResolver } from '@mikata/form/resolvers/valibot';
+import { superstructResolver } from '@mikata/form/resolvers/superstruct';
+import { joiResolver } from '@mikata/form/resolvers/joi';
+```
+
+Resolvers translate the schema library's error shape into `FormErrors` keyed by dotted path. Every resolver accepts a `messages` callback for translation.
+
+**Valibot** requires you to also pass `safeParse` since the library is tree-shaken:
+```ts
+import { safeParse } from 'valibot';
+valibotResolver(schema, { safeParse });
+```
+
+### Array fields
+
+```tsx
+{each(() => form.values.items, (_, i) => (
+  <Group>
+    <TextInput {...form.getInputProps(`items.${i()}.name`)} />
+    <Button onClick={() => form.removeListItem('items', i())}>×</Button>
+  </Group>
+))}
+<Button onClick={() => form.insertListItem('items', { name: '' })}>Add</Button>
+```
+
+`removeListItem` automatically shifts any errors/touched state on subsequent indices so they stay aligned with the new array.
 
 ---
 

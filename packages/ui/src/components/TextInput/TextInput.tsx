@@ -19,6 +19,7 @@ export function TextInput(props: TextInputProps = {}): HTMLDivElement {
     rightSection,
     onInput,
     onChange,
+    onBlur,
     classNames,
     class: className,
     ref,
@@ -47,6 +48,7 @@ export function TextInput(props: TextInputProps = {}): HTMLDivElement {
 
   if (onInput) input.addEventListener('input', onInput as EventListener);
   if (onChange) input.addEventListener('change', onChange);
+  if (onBlur) input.addEventListener('blur', onBlur as EventListener);
 
   if (ref) {
     if (typeof ref === 'function') ref(input);

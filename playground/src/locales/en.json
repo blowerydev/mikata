@@ -282,5 +282,27 @@
     "overlayContent": "Click anywhere to dismiss",
     "rangeTitle": "Range slider",
     "rangeLabel": "Price range"
+  },
+  "formPkg": {
+    "title": "Forms & Validation (@mikata/form)",
+    "description": "Signal-backed form handle. getInputProps wires value, error, onInput/onChange, onBlur. Errors support Node values so translations update reactively.",
+    "email": "Email",
+    "password": "Password",
+    "city": "City",
+    "remember": "Remember me",
+    "itemsTitle": "Items",
+    "itemName": "Name",
+    "addItem": "Add item",
+    "save": "Save",
+    "reset": "Reset",
+    "errRequired": "Required",
+    "errEmail": "Invalid email",
+    "errMinPw": "Minimum 8 characters",
+    "submitted": "Form submitted!",
+    "hasErrors": "Please fix the highlighted fields",
+    "dirty": "dirty",
+    "valid": "valid",
+    "yes": "yes",
+    "no": "no"
   }
 }

@@ -2,6 +2,7 @@ import { render } from '@mikata/runtime';
 import { signal, computed, reactive, effect, onCleanup } from '@mikata/reactivity';
 import { createStore } from '@mikata/store';
 import { createI18n, provideI18n, useI18n } from '@mikata/i18n';
+import { createForm } from '@mikata/form';
 import '@mikata/ui/styles.css';
 import '@mikata/ui/css';
 import {
@@ -1414,6 +1415,207 @@ function ExtrasContent() {
 }
 
 // ============================================================
+// Demo 9: @mikata/form — signal-backed form handle
+// ============================================================
+function FormPackageDemo() {
+  // Shares the App-level ThemeProvider.
+  const wrapper = _createElement('div');
+  _setProp(wrapper, 'style', {
+    background: 'var(--mkt-color-bg)',
+    color: 'var(--mkt-color-text)',
+    padding: '1.5rem',
+    borderRadius: '8px',
+    marginTop: '1.5rem',
+    transition: 'background 150ms, color 150ms',
+  });
+  wrapper.appendChild(_createComponent(FormPackageContent, {}));
+  return wrapper;
+}
+
+let __itemCounter = 0;
+const nextItemId = () => ++__itemCounter;
+
+function FormPackageContent() {
+  const { t } = useI18n();
+
+  const form = createForm<{
+    email: string;
+    password: string;
+    remember: boolean;
+    address: { city: string };
+    items: { id: number; name: string }[];
+  }>({
+    initialValues: {
+      email: '',
+      password: '',
+      remember: false,
+      address: { city: '' },
+      items: [{ id: nextItemId(), name: '' }],
+    },
+    validate: {
+      email: (v) =>
+        !v
+          ? t.node('formPkg.errRequired')
+          : /@/.test(v as string)
+            ? null
+            : t.node('formPkg.errEmail'),
+      password: (v) =>
+        (v as string).length < 8 ? t.node('formPkg.errMinPw') : null,
+      address: {
+        city: (v) => (v ? null : t.node('formPkg.errRequired')),
+      },
+      items: { name: (v) => (v ? null : t.node('formPkg.errRequired')) },
+    },
+    validateInputOnBlur: true,
+  });
+
+  const el = _createElement('div');
+  el.appendChild(Title({ order: 2, children: t.node('formPkg.title') }));
+  el.appendChild(Text({ size: 'sm', children: t.node('formPkg.description') }));
+
+  const formEl = _createElement('form') as HTMLFormElement;
+  formEl.addEventListener(
+    'submit',
+    form.onSubmit(
+      (values) => {
+        toast.success(t('formPkg.submitted'));
+        console.log('[form] submitted:', values);
+      },
+      (errors) => {
+        toast.error(t('formPkg.hasErrors'));
+        console.log('[form] invalid:', errors);
+      }
+    )
+  );
+  formEl.addEventListener('reset', form.onReset());
+
+  const fields = Stack({
+    gap: 'sm',
+    children: [
+      TextInput({
+        label: t.node('formPkg.email'),
+        placeholder: 'you@example.com',
+        ...(form.getInputProps('email') as any),
+      }),
+      PasswordInput({
+        label: t.node('formPkg.password'),
+        ...(form.getInputProps('password') as any),
+      }),
+      TextInput({
+        label: t.node('formPkg.city'),
+        ...(form.getInputProps('address.city') as any),
+      }),
+      Checkbox({
+        label: t.node('formPkg.remember'),
+        ...(form.getInputProps('remember', { type: 'checkbox' }) as any),
+      }),
+    ],
+  });
+  formEl.appendChild(fields);
+
+  // Dynamic list — each item bound via `items.${i}.name`.
+  const listWrap = _createElement('div');
+  _setProp(listWrap, 'style', { marginTop: '1rem' });
+  listWrap.appendChild(
+    Title({ order: 4, children: t.node('formPkg.itemsTitle') })
+  );
+
+  const listContainer = _createElement('div');
+  _insert(
+    listContainer,
+    () =>
+      each(
+        () => form.values.items,
+        (item, idx) => {
+          const row = Group({
+            gap: 'sm',
+            align: 'end',
+            children: [
+              TextInput({
+                label: t.node('formPkg.itemName'),
+                ...(form.getInputProps(`items.${idx()}.name`) as any),
+              }),
+              Button({
+                variant: 'subtle',
+                color: 'red',
+                onClick: () => form.removeListItem('items', idx()),
+                children: '×',
+              }),
+            ],
+          });
+          return row;
+        },
+        () => {
+          const p = _createElement('p');
+          p.textContent = '—';
+          return p;
+        },
+        { key: (item: { id: number }) => item.id }
+      )
+  );
+  listWrap.appendChild(listContainer);
+
+  const addBtn = Button({
+    variant: 'light',
+    onClick: () =>
+      form.insertListItem('items', { id: nextItemId(), name: '' }),
+    children: t.node('formPkg.addItem'),
+  });
+  listWrap.appendChild(addBtn);
+  formEl.appendChild(listWrap);
+
+  // Submit / reset row. Gate submit on isDirty + isValid.
+  const submitRow = _createElement('div');
+  _setProp(submitRow, 'style', {
+    marginTop: '1rem',
+    display: 'flex',
+    gap: '0.5rem',
+  });
+
+  const submitBtn = Button({
+    type: 'submit',
+    children: t.node('formPkg.save'),
+  }) as HTMLElement;
+  const nativeSubmit =
+    submitBtn.tagName === 'BUTTON'
+      ? (submitBtn as HTMLButtonElement)
+      : (submitBtn.querySelector('button') as HTMLButtonElement);
+  effect(() => {
+    const disabled = !form.isDirty() || !form.isValid();
+    if (nativeSubmit) nativeSubmit.disabled = disabled;
+  });
+  submitRow.appendChild(submitBtn);
+
+  submitRow.appendChild(
+    Button({
+      type: 'reset',
+      variant: 'subtle',
+      children: t.node('formPkg.reset'),
+    })
+  );
+  formEl.appendChild(submitRow);
+
+  el.appendChild(formEl);
+
+  // Live status — shows dirty/valid/touched reactively so reviewers can see
+  // the signals doing their job.
+  const status = _createElement('p');
+  _setProp(status, 'style', {
+    fontSize: '0.875rem',
+    opacity: '0.7',
+    marginTop: '0.75rem',
+  });
+  _insert(status, () => {
+    const dirty = form.isDirty() ? t('formPkg.yes') : t('formPkg.no');
+    const valid = form.isValid() ? t('formPkg.yes') : t('formPkg.no');
+    return `${t('formPkg.dirty')}: ${dirty} • ${t('formPkg.valid')}: ${valid}`;
+  });
+  el.appendChild(status);
+
+  return el;
+}
+
+// ============================================================
 // App — compose all demos
 // ============================================================
 function App() {
@@ -1436,6 +1638,7 @@ function App() {
   const theme = ThemeProvider({}) as HTMLElement;
   theme.appendChild(_createComponent(UIComponentsDemo, {}));
   theme.appendChild(_createComponent(ExtrasDemo, {}));
+  theme.appendChild(_createComponent(FormPackageDemo, {}));
   el.appendChild(theme);
 
   el.appendChild(_createComponent(Counter, {}));
