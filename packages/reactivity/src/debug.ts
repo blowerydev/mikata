@@ -7,6 +7,7 @@
  */
 
 import type { ReactiveNode } from './tracking';
+import { getCurrentScope, type Scope } from './scope';
 
 declare const __DEV__: boolean;
 
@@ -29,6 +30,18 @@ export interface DebugNodeInfo {
   createdAt: string;
   /** Read current value (signals/computeds only) */
   getValue?: () => unknown;
+  /** The reactive scope active when this node was created (used to attribute to a component) */
+  scope?: Scope;
+  /** Last `_version` we observed — used to derive updateCount/lastChangedAt lazily at snapshot time. */
+  lastSeenVersion: number;
+  /** Number of times the node's version has changed since registration. */
+  updateCount: number;
+  /** Timestamp of the most recent observed change (performance.now()). 0 if never changed. */
+  lastChangedAt: number;
+  /** For effects: duration of the last run, in ms. Undefined if never run. */
+  lastRunMs?: number;
+  /** For effects: cumulative runtime, in ms. */
+  totalRunMs: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -60,7 +73,23 @@ export function registerNode(
     node,
     createdAt: frames,
     getValue,
+    scope: getCurrentScope() ?? undefined,
+    lastSeenVersion: node._version,
+    updateCount: 0,
+    lastChangedAt: 0,
+    totalRunMs: 0,
   });
+}
+
+/**
+ * Record the duration of an effect run. Called by effect._run in dev mode.
+ */
+export function recordEffectRun(node: ReactiveNode, durationMs: number): void {
+  if (typeof __DEV__ !== 'undefined' && !__DEV__) return;
+  const info = nodeRegistry.get(node);
+  if (!info) return;
+  info.lastRunMs = durationMs;
+  info.totalRunMs += durationMs;
 }
 
 /**
@@ -100,10 +129,29 @@ export interface DebugNodeSnapshot {
   sources: number[];
   subscribers: number[];
   createdAt: string;
+  /**
+   * Closest labeled scope ancestor (typically the owning component). Lets
+   * devtools show "in <Button />" next to each signal/effect.
+   */
+  owner?: { scopeId: number; label: string };
+  /** Number of times this node's value/version has changed since creation. */
+  updateCount: number;
+  /** performance.now() of most recent change — 0 if never changed. */
+  lastChangedAt: number;
+  /** For effects: last run duration in ms. */
+  lastRunMs?: number;
+  /** For effects: cumulative run time in ms. */
+  totalRunMs?: number;
 }
 
 function snapshotNode(info: DebugNodeInfo): DebugNodeSnapshot {
   const { node } = info;
+  // Lazy change tracking: compare version since last snapshot.
+  if (node._version !== info.lastSeenVersion) {
+    info.lastSeenVersion = node._version;
+    info.updateCount++;
+    info.lastChangedAt = performance.now();
+  }
   return {
     id: info.id,
     kind: info.kind,
@@ -120,7 +168,21 @@ function snapshotNode(info: DebugNodeInfo): DebugNodeSnapshot {
       .map((s) => nodeRegistry.get(s)?.id)
       .filter((id): id is number => id !== undefined),
     createdAt: info.createdAt,
+    owner: findLabeledScope(info.scope),
+    updateCount: info.updateCount,
+    lastChangedAt: info.lastChangedAt,
+    lastRunMs: info.lastRunMs,
+    totalRunMs: info.totalRunMs || undefined,
   };
+}
+
+function findLabeledScope(scope: Scope | undefined): { scopeId: number; label: string } | undefined {
+  let cur: Scope | null | undefined = scope;
+  while (cur) {
+    if (cur.label) return { scopeId: cur.id, label: cur.label };
+    cur = cur.parent;
+  }
+  return undefined;
 }
 
 function safeGetValue(fn: () => unknown): unknown {

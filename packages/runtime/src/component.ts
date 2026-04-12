@@ -33,6 +33,9 @@ export function _createComponent<P extends Record<string, unknown>>(
   const scope = createScope(() => {
     result = Comp(props);
   });
+  if (__DEV__) {
+    scope.label = Comp.name || 'Anonymous';
+  }
 
   if (!result) {
     if (__DEV__) {

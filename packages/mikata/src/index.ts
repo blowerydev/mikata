@@ -45,6 +45,7 @@ export {
   show,
   each,
   switchMatch,
+  Dynamic,
   portal,
   model,
   createContext,

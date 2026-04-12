@@ -11,7 +11,17 @@ export interface Disposable {
   _dispose(): void;
 }
 
+let nextScopeId = 1;
+
 export class Scope {
+  /** Unique numeric ID for devtools. */
+  id: number;
+  /**
+   * Optional label (e.g., the component name) for devtools. Set by
+   * `_createComponent` for every component scope so signals/effects
+   * created inside can be attributed back to their owning component.
+   */
+  label?: string;
   children: (Disposable | Scope)[] = [];
   cleanups: (() => void)[] = [];
   parent: Scope | null;
@@ -19,6 +29,7 @@ export class Scope {
   contexts: Map<symbol, unknown> = new Map();
 
   constructor(parent: Scope | null) {
+    this.id = nextScopeId++;
     this.parent = parent;
     parent?.children.push(this);
   }

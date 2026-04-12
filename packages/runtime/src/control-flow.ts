@@ -10,7 +10,7 @@ import {
   createScope,
   type Scope,
 } from '@mikata/reactivity';
-import { disposeComponent } from './component';
+import { _createComponent, disposeComponent } from './component';
 
 declare const __DEV__: boolean;
 
@@ -266,6 +266,75 @@ export function switchMatch<T extends string | number>(
     }
     currentNode = newNode!;
     currentCase = val;
+  });
+
+  return currentNode;
+}
+
+/**
+ * Render a component whose identity can change at runtime. Reads
+ * `props.component` reactively and re-instantiates when it changes,
+ * forwarding all other props to the new component through reactive getters.
+ *
+ * The `component` prop may be `null`/`undefined` to render nothing.
+ *
+ * Usage:
+ *   const kind = signal<'button' | 'link'>('button');
+ *   const Current = computed(() => kind() === 'button' ? Button : Link);
+ *   <Dynamic component={Current()} label="Click" onClick={handle} />
+ */
+type AnyComponent = (props: Record<string, unknown>) => Node | null;
+
+interface DynamicProps {
+  component: AnyComponent | null | undefined;
+  [key: string]: unknown;
+}
+
+export function Dynamic(props: DynamicProps): Node {
+  // Forward every prop except `component` via getter, so the inner component
+  // sees live values even though we only build this bag once.
+  const forwarded: Record<string, unknown> = {};
+  for (const key of Object.keys(props)) {
+    if (key === 'component') continue;
+    Object.defineProperty(forwarded, key, {
+      get: () => props[key],
+      enumerable: true,
+      configurable: true,
+    });
+  }
+
+  let currentNode: Node = document.createComment('dynamic');
+  let currentComp: AnyComponent | null | undefined = undefined;
+  let currentScope: Scope | null = null;
+
+  renderEffect(() => {
+    const Comp = props.component;
+    if (Comp === currentComp) return;
+
+    if (currentScope) {
+      currentScope.dispose();
+      currentScope = null;
+    }
+    // Also dispose the previous rendered node's component scope if it was one.
+    if (currentNode) disposeComponent(currentNode);
+
+    let newNode: Node;
+    if (!Comp) {
+      newNode = document.createComment('dynamic:empty');
+    } else {
+      let instance: Node | null = null;
+      const scope = createScope(() => {
+        instance = _createComponent(Comp, forwarded);
+      });
+      currentScope = scope;
+      newNode = instance!;
+    }
+
+    if (currentNode.parentNode) {
+      currentNode.parentNode.replaceChild(newNode, currentNode);
+    }
+    currentNode = newNode;
+    currentComp = Comp;
   });
 
   return currentNode;

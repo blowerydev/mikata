@@ -20,7 +20,7 @@ export {
 export type { Ref } from './component';
 
 // Control flow
-export { show, each, switchMatch } from './control-flow';
+export { show, each, switchMatch, Dynamic } from './control-flow';
 
 // Transitions
 export { transition, transitionGroup } from './transition';

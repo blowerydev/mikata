@@ -16,7 +16,7 @@ import {
 } from './tracking';
 import { scheduleDirty, flushSync } from './scheduler';
 import { getCurrentScope } from './scope';
-import { registerNode, unregisterNode } from './debug';
+import { registerNode, recordEffectRun, unregisterNode } from './debug';
 
 declare const __DEV__: boolean;
 
@@ -43,6 +43,7 @@ function createEffectNode(
     _sourceVersions: new Map(),
 
     _run() {
+      const runStart = __DEV__ ? performance.now() : 0;
       // Before re-running, force-revalidate computed sources and check
       // if any source actually changed value. This prevents re-running
       // effects when a computed recomputes to the same value.
@@ -89,6 +90,10 @@ function createEffectNode(
       node._sourceVersions = new Map();
       for (const source of node._sources) {
         node._sourceVersions.set(source, source._version);
+      }
+
+      if (__DEV__) {
+        recordEffectRun(node, performance.now() - runStart);
       }
     },
 

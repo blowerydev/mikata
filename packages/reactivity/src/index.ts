@@ -18,6 +18,7 @@ export {
   traceSubscribers,
   getNodesByKind,
   findNodesByLabel,
+  recordEffectRun,
   _resetDebugRegistry,
 } from './debug';
 export type {

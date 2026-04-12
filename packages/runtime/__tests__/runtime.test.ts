@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { signal, effect, reactive, computed, flushSync } from '@mikata/reactivity';
+import { signal, effect, reactive, computed, flushSync, onCleanup } from '@mikata/reactivity';
 import {
   _createElement,
   _setProp,
@@ -11,6 +11,7 @@ import {
   show,
   each,
   switchMatch,
+  Dynamic,
   createContext,
   provide,
   inject,
@@ -348,6 +349,98 @@ describe('switchMatch()', () => {
     setStatus('error');
     flushSync();
     expect(container.textContent).toBe('error!');
+  });
+});
+
+describe('Dynamic', () => {
+  function Red(props: { label: string }) {
+    const el = _createElement('span');
+    el.setAttribute('data-kind', 'red');
+    _insert(el, () => props.label);
+    return el;
+  }
+  function Blue(props: { label: string }) {
+    const el = _createElement('strong');
+    el.setAttribute('data-kind', 'blue');
+    _insert(el, () => props.label);
+    return el;
+  }
+
+  it('swaps components when the `component` prop changes', () => {
+const container = _createElement('div');
+    const [Comp, setComp] = signal<((p: { label: string }) => Node) | null>(Red);
+    const node = _createComponent(Dynamic, {
+      get component() { return Comp() as never; },
+      label: 'hi',
+    });
+    container.appendChild(node);
+    flushSync();
+    expect(container.querySelector('[data-kind="red"]')?.textContent).toBe('hi');
+
+    setComp(() => Blue);
+    flushSync();
+    expect(container.querySelector('[data-kind="red"]')).toBe(null);
+    expect(container.querySelector('[data-kind="blue"]')?.textContent).toBe('hi');
+  });
+
+  it('forwards reactive props to the active component', () => {
+const container = _createElement('div');
+    const [label, setLabel] = signal('a');
+    const node = _createComponent(Dynamic, {
+      component: Red as never,
+      get label() { return label(); },
+    });
+    container.appendChild(node);
+    flushSync();
+    expect(container.textContent).toBe('a');
+
+    setLabel('b');
+    flushSync();
+    expect(container.textContent).toBe('b');
+  });
+
+  it('renders nothing when component is null', () => {
+const container = _createElement('div');
+    const [Comp, setComp] = signal<((p: { label: string }) => Node) | null>(null);
+    const node = _createComponent(Dynamic, {
+      get component() { return Comp() as never; },
+      label: 'x',
+    });
+    container.appendChild(node);
+    flushSync();
+    expect(container.textContent).toBe('');
+
+    setComp(() => Red);
+    flushSync();
+    expect(container.textContent).toBe('x');
+  });
+
+  it('disposes the previous component scope on swap', () => {
+const cleanups: string[] = [];
+    function A() {
+      onCleanup(() => cleanups.push('A'));
+      const el = _createElement('span');
+      el.textContent = 'A';
+      return el;
+    }
+    function B() {
+      const el = _createElement('span');
+      el.textContent = 'B';
+      return el;
+    }
+    const container = _createElement('div');
+    const [Comp, setComp] = signal<(() => Node) | null>(A);
+    const node = _createComponent(Dynamic, {
+      get component() { return Comp() as never; },
+    });
+    container.appendChild(node);
+    flushSync();
+    expect(container.textContent).toBe('A');
+
+    setComp(() => B);
+    flushSync();
+    expect(container.textContent).toBe('B');
+    expect(cleanups).toEqual(['A']);
   });
 });
 
