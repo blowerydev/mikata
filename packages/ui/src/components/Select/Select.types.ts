@@ -24,9 +24,9 @@ export interface SelectProps extends MikataBaseProps {
   value?: string;
   defaultValue?: string;
   placeholder?: string;
-  label?: string;
-  description?: string;
-  error?: string;
+  label?: string | Node;
+  description?: string | Node;
+  error?: string | Node | (() => string | Node | null | undefined);
   required?: boolean;
   disabled?: boolean;
   size?: MikataSize;

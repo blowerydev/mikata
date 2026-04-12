@@ -4,10 +4,22 @@
 
 import { createScope } from '@mikata/reactivity';
 import { installDevTools } from './devtools';
+import { installErrorOverlay } from './error-overlay';
 
 declare const __DEV__: boolean;
 
 let devToolsInstalled = false;
+let errorOverlayInstalled = false;
+
+export interface RenderOptions {
+  /**
+   * Show a fixed-position overlay for uncaught errors / unhandled rejections
+   * in dev mode. Default: true. Set to false to disable (e.g. when you already
+   * have your own error reporter). Can also be disabled globally by setting
+   * `window.__MIKATA_ERROR_OVERLAY__ = false` before the first render.
+   */
+  errorOverlay?: boolean;
+}
 
 /**
  * Render a component tree into a container element.
@@ -19,12 +31,20 @@ let devToolsInstalled = false;
  */
 export function render(
   component: () => Node,
-  container: HTMLElement
+  container: HTMLElement,
+  options: RenderOptions = {},
 ): () => void {
-  // Auto-install devtools on first render in dev mode
-  if (__DEV__ && !devToolsInstalled && typeof window !== 'undefined') {
-    devToolsInstalled = true;
-    installDevTools();
+  if (__DEV__ && typeof window !== 'undefined') {
+    if (!devToolsInstalled) {
+      devToolsInstalled = true;
+      installDevTools();
+    }
+    const globalFlag = (window as unknown as { __MIKATA_ERROR_OVERLAY__?: boolean }).__MIKATA_ERROR_OVERLAY__;
+    const overlayEnabled = options.errorOverlay !== false && globalFlag !== false;
+    if (overlayEnabled && !errorOverlayInstalled) {
+      errorOverlayInstalled = true;
+      installErrorOverlay();
+    }
   }
 
   // Clear container

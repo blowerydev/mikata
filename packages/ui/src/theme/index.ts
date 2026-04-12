@@ -55,7 +55,10 @@ export function ThemeProvider(props: ThemeProviderProps): Node {
     return 'light';
   });
 
-  const activeTheme = computed<MikataTheme>(() => props.theme ?? {});
+  const activeTheme = computed<MikataTheme>(() => {
+    const t = props.theme;
+    return ((typeof t === 'function' ? t() : t) ?? {}) as MikataTheme;
+  });
 
   provide(ThemeContext, {
     colorScheme,
@@ -64,7 +67,8 @@ export function ThemeProvider(props: ThemeProviderProps): Node {
     theme: activeTheme,
   });
 
-  provideComponentDefaults(props.theme?.components);
+  const initialTheme = typeof props.theme === 'function' ? props.theme() : props.theme;
+  provideComponentDefaults(initialTheme?.components);
 
   const el = document.createElement('div');
   el.setAttribute('data-mkt-theme', '');

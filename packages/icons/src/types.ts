@@ -15,6 +15,16 @@ export type IconChild = [string, IconAttrs];
  */
 export type IconNode = [string, IconAttrs, IconChild[]];
 
+/**
+ * Read-only variant accepted by `createIcon` — lucide/tabler export their
+ * icons as deeply-readonly tuples, so the factory must accept either shape.
+ */
+export type ReadonlyIconNode = readonly [
+  string,
+  Readonly<IconAttrs>,
+  ReadonlyArray<readonly [string, Readonly<IconAttrs>]>?,
+];
+
 export interface IconProps {
   /** Sets both width and height. Default: 24. */
   size?: number | string;

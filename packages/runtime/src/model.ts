@@ -21,6 +21,9 @@ interface ModelProps {
   /** Input handler */
   onInput?: (e: Event) => void;
   onChange?: (e: Event) => void;
+  // Widen so the return value is spread-compatible with `_spread`'s accessor
+  // signature (which expects a Readonly<Record<string, unknown>>).
+  readonly [key: string]: unknown;
 }
 
 /**
@@ -32,7 +35,9 @@ interface ModelProps {
  */
 export function model<T>(
   getter: () => T,
-  setter: (value: T) => void,
+  // NoInfer so T is fixed by the getter and WriteSignal<T>'s overload
+  // (updater: (prev: T) => T) => void doesn't hijack inference.
+  setter: (value: NoInfer<T>) => void,
   type: ModelType = 'text'
 ): ModelProps {
   if (type === 'checkbox') {

@@ -51,9 +51,12 @@ export {
   provide,
   inject,
   ErrorBoundary,
+  installErrorOverlay,
+  uninstallErrorOverlay,
+  reportOverlayError,
 } from '@mikata/runtime';
 
-export type { Context, Ref } from '@mikata/runtime';
+export type { Context, Ref, RenderOptions } from '@mikata/runtime';
 
 // Store
 export {
@@ -115,6 +118,7 @@ export { createIcon } from '@mikata/icons';
 
 export type {
   IconNode,
+  ReadonlyIconNode,
   IconProps,
   IconAttrs,
   IconChild,

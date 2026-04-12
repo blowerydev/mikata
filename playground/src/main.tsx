@@ -1741,7 +1741,6 @@ const TEAL_PALETTE: ColorPalette = [
 function ThemingDemo() {
   const [primaryColor, setPrimaryColor] = signal<'brand' | 'teal' | 'primary'>('brand');
   const [primaryShade, setPrimaryShade] = signal<number>(6);
-  const [buttonDefault, setButtonDefault] = signal<'filled' | 'light' | 'outline'>('light');
 
   const wrapper = _createElement('div');
   _setProp(wrapper, 'style', { marginTop: '1.5rem' });
@@ -1757,7 +1756,7 @@ function ThemingDemo() {
   controls.appendChild(Title({ order: 2, children: 'Theming demo' }));
   controls.appendChild(Text({
     size: 'sm',
-    children: 'Custom palettes, primaryColor, primaryShade, and per-component defaultProps.',
+    children: 'Custom palettes + reactive primaryColor / primaryShade. Changes flow through CSS variables without remounting the provider.',
   }));
   controls.appendChild(Group({ gap: 'md', align: 'end', children: [
     Select({
@@ -1776,67 +1775,52 @@ function ThemingDemo() {
       value: String(primaryShade()),
       onChange: (e) => setPrimaryShade(Number((e.target as HTMLSelectElement).value)),
     }),
-    Select({
-      label: 'Button defaultProps.variant',
-      data: [
-        { value: 'filled', label: 'filled' },
-        { value: 'light', label: 'light' },
-        { value: 'outline', label: 'outline' },
-      ],
-      value: buttonDefault(),
-      onChange: (e) => setButtonDefault((e.target as HTMLSelectElement).value as 'filled' | 'light' | 'outline'),
-    }),
   ] }));
   wrapper.appendChild(controls);
 
-  // Mount point — recreated on every signal change so the nested ThemeProvider
-  // picks up new theme.components.defaultProps and theme.colors values.
-  const mount = _createElement('div');
-  wrapper.appendChild(mount);
-
-  effect(() => {
-    const theme: MikataTheme = {
+  // Single provider with a reactive theme getter — CSS vars + palette rules
+  // update live when the signals above change.
+  const provider = ThemeProvider({
+    theme: (): MikataTheme => ({
       colors: { brand: BRAND_PALETTE, teal: TEAL_PALETTE },
       primaryColor: primaryColor(),
       primaryShade: primaryShade(),
-      components: { Button: { variant: buttonDefault() } },
-    };
+    }),
+  }) as HTMLElement;
 
-    const provider = ThemeProvider({ theme }) as HTMLElement;
-    const content = _createElement('div');
-    _setProp(content, 'style', {
-      background: 'var(--mkt-color-bg)',
-      color: 'var(--mkt-color-text)',
-      padding: '1.5rem',
-      borderRadius: '0 0 8px 8px',
-      transition: 'background 150ms, color 150ms',
-    });
-
-    content.appendChild(Title({ order: 4, children: 'Buttons (variant from defaultProps)' }));
-    content.appendChild(Group({ gap: 'sm', wrap: true, children: [
-      Button({ children: 'Primary' }),
-      Button({ color: 'brand', children: 'Brand' }),
-      Button({ color: 'teal', children: 'Teal' }),
-      Button({ color: 'red', children: 'Red' }),
-      Button({ variant: 'filled', children: 'Override→filled' }),
-    ] }));
-
-    content.appendChild(Title({ order: 4, children: 'Badges & Alerts with custom palettes' }));
-    content.appendChild(Group({ gap: 'sm', wrap: true, children: [
-      Badge({ children: 'Primary' }),
-      Badge({ color: 'brand', children: 'Brand' }),
-      Badge({ color: 'teal', children: 'Teal' }),
-    ] }));
-    content.appendChild(Alert({
-      variant: 'light',
-      color: 'brand',
-      title: 'Brand palette',
-      children: 'This Alert uses the custom brand palette via the runtime-emitted rules.',
-    }));
-
-    provider.appendChild(content);
-    mount.replaceChildren(provider);
+  const content = _createElement('div');
+  _setProp(content, 'style', {
+    background: 'var(--mkt-color-bg)',
+    color: 'var(--mkt-color-text)',
+    padding: '1.5rem',
+    borderRadius: '0 0 8px 8px',
+    transition: 'background 150ms, color 150ms',
   });
+
+  content.appendChild(Title({ order: 4, children: 'Buttons' }));
+  content.appendChild(Group({ gap: 'sm', wrap: true, children: [
+    Button({ children: 'Primary' }),
+    Button({ color: 'brand', children: 'Brand' }),
+    Button({ color: 'teal', children: 'Teal' }),
+    Button({ color: 'red', children: 'Red' }),
+    Button({ variant: 'filled', children: 'Filled' }),
+  ] }));
+
+  content.appendChild(Title({ order: 4, children: 'Badges & Alerts with custom palettes' }));
+  content.appendChild(Group({ gap: 'sm', wrap: true, children: [
+    Badge({ children: 'Primary' }),
+    Badge({ color: 'brand', children: 'Brand' }),
+    Badge({ color: 'teal', children: 'Teal' }),
+  ] }));
+  content.appendChild(Alert({
+    variant: 'light',
+    color: 'brand',
+    title: 'Brand palette',
+    children: 'This Alert uses the custom brand palette via the runtime-emitted rules.',
+  }));
+
+  provider.appendChild(content);
+  wrapper.appendChild(provider);
 
   return wrapper;
 }

@@ -1,4 +1,4 @@
-import type { IconNode, IconProps } from './types';
+import type { IconNode, IconProps, ReadonlyIconNode } from './types';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -16,10 +16,10 @@ const SVG_NS = 'http://www.w3.org/2000/svg';
  * default (`aria-hidden="true"`); pass `aria-label` for an announced icon.
  */
 export function createIcon(
-  node: IconNode,
+  node: IconNode | ReadonlyIconNode,
   props: IconProps = {}
 ): SVGSVGElement {
-  const [rootTag, rootAttrs, children] = node;
+  const [rootTag, rootAttrs, children = []] = node;
   const svg = document.createElementNS(SVG_NS, rootTag) as SVGSVGElement;
 
   for (const key in rootAttrs) {

@@ -56,7 +56,13 @@ export interface MikataTheme {
 }
 
 export interface ThemeProviderProps {
-  theme?: MikataTheme;
+  /**
+   * Theme object or a getter for one. Pass a getter (`() => theme`) if you
+   * need the provider to react to signal-driven token changes — CSS variables
+   * and palette rules update live. `theme.components` defaults are read once
+   * at mount.
+   */
+  theme?: MikataTheme | (() => MikataTheme);
   /** @deprecated Use `theme.other` for dark-scheme overrides; dark semantic colors are now built in. */
   darkTheme?: Record<string, string>;
   colorScheme?: ColorScheme;

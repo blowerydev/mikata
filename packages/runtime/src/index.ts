@@ -45,6 +45,14 @@ export type { LazyOptions } from './lazy';
 
 // Render
 export { render } from './render';
+export type { RenderOptions } from './render';
+
+// Dev-mode error overlay
+export {
+  installErrorOverlay,
+  uninstallErrorOverlay,
+  reportOverlayError,
+} from './error-overlay';
 
 // HMR (Hot Module Replacement)
 export { _registerComponent, _hotReplace } from './hmr';

@@ -185,7 +185,7 @@ export function _createFragment(children: unknown[]): DocumentFragment {
  */
 export function _spread(
   el: HTMLElement,
-  accessor: () => Record<string, unknown>
+  accessor: () => Readonly<Record<string, unknown>>,
 ): void {
   // Track the last handler attached per event name so we can remove it before
   // attaching the next one on subsequent runs.
