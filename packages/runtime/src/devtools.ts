@@ -174,7 +174,7 @@ function createOverlay(): HTMLElement {
         position: fixed;
         bottom: 16px;
         right: 16px;
-        width: 360px;
+        width: 420px;
         max-height: 480px;
         background: #1a1a2e;
         color: #e0e0e0;
@@ -353,8 +353,7 @@ function createOverlay(): HTMLElement {
     <div class="__mdt-header">
       <span class="__mdt-title">Mikata DevTools</span>
       <div class="__mdt-btns">
-        <button class="__mdt-btn" id="__mdt-refresh">Refresh</button>
-        <button class="__mdt-btn" id="__mdt-close">X</button>
+        <button class="__mdt-btn" id="__mdt-close" aria-label="Close">X</button>
       </div>
     </div>
     <div class="__mdt-tab-bar">
@@ -368,7 +367,6 @@ function createOverlay(): HTMLElement {
 
   // Event listeners
   overlay.querySelector('#__mdt-close')!.addEventListener('click', hideOverlay);
-  overlay.querySelector('#__mdt-refresh')!.addEventListener('click', () => refreshContent());
 
   const tabs = overlay.querySelectorAll('.__mdt-tab');
   tabs.forEach((tab) => {

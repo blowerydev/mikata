@@ -1,3 +1,4 @@
+import { createIcon, Close } from '@mikata/icons';
 import { createRef, onCleanup } from '@mikata/runtime';
 import { mergeClasses } from '../../utils/class-merge';
 import { onFocusTrap } from '../../utils/on-focus-trap';
@@ -70,9 +71,7 @@ export function Drawer(props: DrawerProps): Comment {
       closeBtn.className = mergeClasses('mkt-drawer__close', classNames?.close);
       closeBtn.type = 'button';
       closeBtn.setAttribute('aria-label', labels.close);
-      closeBtn.innerHTML =
-        '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">' +
-        '<path d="M4 4L12 12M12 4L4 12"/></svg>';
+      closeBtn.appendChild(createIcon(Close, { strokeWidth: 1.5 }));
       closeBtn.addEventListener('click', onClose);
       header.appendChild(closeBtn);
     }

@@ -1,3 +1,4 @@
+import { effect } from '@mikata/reactivity';
 import { mergeClasses } from '../../utils/class-merge';
 import type { InputWrapperProps } from './InputWrapper.types';
 import './InputWrapper.css';
@@ -44,7 +45,24 @@ export function InputWrapper(props: InputWrapperProps): HTMLDivElement {
 
   root.appendChild(children);
 
-  if (error) {
+  if (typeof error === 'function') {
+    const errorEl = document.createElement('p');
+    errorEl.className = mergeClasses('mkt-input-wrapper__error', classNames?.error);
+    errorEl.id = `${id}-error`;
+    errorEl.setAttribute('role', 'alert');
+    root.appendChild(errorEl);
+    effect(() => {
+      const e = error();
+      errorEl.replaceChildren();
+      if (e == null) {
+        errorEl.hidden = true;
+      } else {
+        errorEl.hidden = false;
+        if (e instanceof Node) errorEl.appendChild(e);
+        else errorEl.textContent = String(e);
+      }
+    });
+  } else if (error) {
     const errorEl = document.createElement('p');
     errorEl.className = mergeClasses('mkt-input-wrapper__error', classNames?.error);
     errorEl.id = `${id}-error`;

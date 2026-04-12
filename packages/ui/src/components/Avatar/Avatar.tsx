@@ -1,6 +1,14 @@
+import { createIcon } from '@mikata/icons';
+import type { IconNode } from '@mikata/icons';
 import { mergeClasses } from '../../utils/class-merge';
 import type { AvatarProps, AvatarGroupProps } from './Avatar.types';
 import './Avatar.css';
+
+const UserSilhouette: IconNode = [
+  'svg',
+  { viewBox: '0 0 16 16', fill: 'currentColor' },
+  [['path', { d: 'M8 8a3 3 0 100-6 3 3 0 000 6zM2 14s0-4 6-4 6 4 6 4H2z' }]],
+];
 
 function getInitials(name: string): string {
   const parts = name.trim().split(/\s+/);
@@ -52,10 +60,7 @@ export function Avatar(props: AvatarProps = {}): HTMLElement {
     if (name) {
       placeholder.textContent = getInitials(name);
     } else {
-      // Default user icon
-      placeholder.innerHTML =
-        '<svg viewBox="0 0 16 16" width="60%" height="60%" fill="currentColor">' +
-        '<path d="M8 8a3 3 0 100-6 3 3 0 000 6zM2 14s0-4 6-4 6 4 6 4H2z"/></svg>';
+      placeholder.appendChild(createIcon(UserSilhouette, { size: '60%' }));
     }
 
     el.appendChild(placeholder);

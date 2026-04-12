@@ -110,6 +110,16 @@ export type {
   MikataForm,
 } from '@mikata/form';
 
+// Icons
+export { createIcon } from '@mikata/icons';
+
+export type {
+  IconNode,
+  IconProps,
+  IconAttrs,
+  IconChild,
+} from '@mikata/icons';
+
 // Router
 export {
   createRouter,

@@ -12,7 +12,9 @@
     "@mikata/i18n": "workspace:*",
     "@mikata/store": "workspace:*",
     "@mikata/ui": "workspace:*",
-    "@mikata/form": "workspace:*"
+    "@mikata/form": "workspace:*",
+    "@mikata/icons": "workspace:*",
+    "lucide": "^0.460.0"
   },
   "devDependencies": {
     "@mikata/compiler": "workspace:*",

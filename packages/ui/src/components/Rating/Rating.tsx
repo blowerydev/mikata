@@ -1,11 +1,23 @@
+import { createIcon } from '@mikata/icons';
+import type { IconNode } from '@mikata/icons';
 import { mergeClasses } from '../../utils/class-merge';
 import { uniqueId } from '../../utils/unique-id';
 import type { RatingProps } from './Rating.types';
 import './Rating.css';
 
-const STAR =
-  '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">' +
-  '<path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>';
+const STAR_NODE: IconNode = [
+  'svg',
+  { viewBox: '0 0 24 24', fill: 'currentColor' },
+  [
+    [
+      'path',
+      {
+        d: 'M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z',
+      },
+    ],
+  ],
+];
+const createStar = () => createIcon(STAR_NODE);
 
 export function Rating(props: RatingProps = {}): HTMLElement {
   const {
@@ -45,13 +57,13 @@ export function Rating(props: RatingProps = {}): HTMLElement {
     // empty background
     const bg = document.createElement('span');
     bg.className = 'mkt-rating__symbol-body mkt-rating__symbol-body--bg';
-    bg.innerHTML = STAR;
+    bg.appendChild(createStar());
     symbolGroup.appendChild(bg);
 
     // filled foreground (clipped by width)
     const fillWrap = document.createElement('span');
     fillWrap.className = mergeClasses('mkt-rating__symbol-body', 'mkt-rating__symbol-body--fill', classNames?.symbolBody);
-    fillWrap.innerHTML = STAR;
+    fillWrap.appendChild(createStar());
     symbolGroup.appendChild(fillWrap);
 
     // Fraction interactive labels/inputs

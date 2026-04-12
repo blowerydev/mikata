@@ -1,3 +1,4 @@
+import { effect } from '@mikata/reactivity';
 import { mergeClasses } from '../../utils/class-merge';
 import { uniqueId } from '../../utils/unique-id';
 import { InputWrapper } from '../_internal/InputWrapper';
@@ -38,13 +39,21 @@ export function TextInput(props: TextInputProps = {}): HTMLDivElement {
   if (placeholder) input.placeholder = placeholder;
   if (disabled) input.disabled = true;
   if (required) input.setAttribute('aria-required', 'true');
-  if (error) input.setAttribute('aria-invalid', 'true');
 
   const describedBy: string[] = [];
   if (description) describedBy.push(`${id}-description`);
   if (error) describedBy.push(`${id}-error`);
   if (describedBy.length) input.setAttribute('aria-describedby', describedBy.join(' '));
   if (error) input.setAttribute('aria-errormessage', `${id}-error`);
+
+  if (typeof error === 'function') {
+    effect(() => {
+      if (error()) input.setAttribute('aria-invalid', 'true');
+      else input.removeAttribute('aria-invalid');
+    });
+  } else if (error) {
+    input.setAttribute('aria-invalid', 'true');
+  }
 
   if (onInput) input.addEventListener('input', onInput as EventListener);
   if (onChange) input.addEventListener('change', onChange);

@@ -1,5 +1,5 @@
 {
-  "name": "mikata",
+  "name": "@mikata/icons",
   "version": "0.1.0",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -18,13 +18,12 @@
     "build": "tsup",
     "dev": "tsup --watch"
   },
-  "dependencies": {
-    "@mikata/reactivity": "workspace:*",
-    "@mikata/runtime": "workspace:*",
-    "@mikata/store": "workspace:*",
-    "@mikata/router": "workspace:*",
-    "@mikata/i18n": "workspace:*",
-    "@mikata/form": "workspace:*",
-    "@mikata/icons": "workspace:*"
+  "peerDependencies": {
+    "lucide": "*",
+    "@tabler/icons": "*"
+  },
+  "peerDependenciesMeta": {
+    "lucide": { "optional": true },
+    "@tabler/icons": { "optional": true }
   }
 }

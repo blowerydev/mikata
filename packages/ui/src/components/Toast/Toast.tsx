@@ -1,3 +1,4 @@
+import { createIcon, Close } from '@mikata/icons';
 import { mergeClasses } from '../../utils/class-merge';
 import { applyThemeToPortal } from '../../utils/get-color-scheme';
 import type { ToastOptions, ToastInstance, ToastManager, ToastPosition } from './Toast.types';
@@ -71,9 +72,7 @@ function createToastEl(id: string, options: ToastOptions): HTMLElement {
     closeBtn.className = 'mkt-toast__close';
     closeBtn.type = 'button';
     closeBtn.setAttribute('aria-label', 'Close');
-    closeBtn.innerHTML =
-      '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">' +
-      '<path d="M4 4L12 12M12 4L4 12"/></svg>';
+    closeBtn.appendChild(createIcon(Close, { strokeWidth: 1.5 }));
     closeBtn.addEventListener('click', () => closeToast(id));
     el.appendChild(closeBtn);
   }

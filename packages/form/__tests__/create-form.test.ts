@@ -232,12 +232,15 @@ describe('createForm — getInputProps', () => {
     expect(form.getValue('qty')).toBe(42);
   });
 
-  it('includes error and aria-invalid when error is present', () => {
+  it('exposes a reactive error getter bound to the field path', () => {
     const form = createForm({ initialValues: { name: '' } });
-    form.setFieldError('name', 'Required');
     const props = form.getInputProps('name');
-    expect(props.error).toBe('Required');
-    expect(props['aria-invalid']).toBe(true);
+    expect(typeof props.error).toBe('function');
+    expect(props.error!()).toBeUndefined();
+    form.setFieldError('name', 'Required');
+    expect(props.error!()).toBe('Required');
+    form.clearFieldError('name');
+    expect(props.error!()).toBeUndefined();
   });
 });
 

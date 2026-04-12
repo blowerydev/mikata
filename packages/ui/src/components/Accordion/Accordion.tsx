@@ -1,11 +1,8 @@
+import { createIcon, ChevronDown } from '@mikata/icons';
 import { mergeClasses } from '../../utils/class-merge';
 import { uniqueId } from '../../utils/unique-id';
 import type { AccordionProps } from './Accordion.types';
 import './Accordion.css';
-
-const CHEVRON_SVG =
-  '<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5">' +
-  '<path d="M4 6L8 10L12 6"/></svg>';
 
 export function Accordion(props: AccordionProps): HTMLElement {
   const {
@@ -60,7 +57,7 @@ export function Accordion(props: AccordionProps): HTMLElement {
     // Chevron
     const chevron = document.createElement('span');
     chevron.className = mergeClasses('mkt-accordion__chevron', classNames?.chevron);
-    chevron.innerHTML = CHEVRON_SVG;
+    chevron.appendChild(createIcon(ChevronDown, { size: 16, strokeWidth: 1.5 }));
     if (isOpen) chevron.dataset.rotated = '';
 
     // Label

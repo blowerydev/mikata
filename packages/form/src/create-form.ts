@@ -168,7 +168,6 @@ export function createForm<Values extends object>(
     const withFocus = opts.withFocus ?? true;
 
     const value = getPath(valuesSignal(), path);
-    const error = withError ? errorsSignal()[path] : undefined;
 
     const onChange = (eventOrValue: unknown): void => {
       let nextValue: unknown;
@@ -208,9 +207,8 @@ export function createForm<Values extends object>(
       props.onInput = onChange;
     }
 
-    if (withError && error != null) {
-      props.error = error;
-      props['aria-invalid'] = true;
+    if (withError) {
+      props.error = () => errorsSignal()[path];
     }
 
     if (withFocus) {

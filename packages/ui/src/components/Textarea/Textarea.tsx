@@ -1,3 +1,4 @@
+import { effect } from '@mikata/reactivity';
 import { mergeClasses } from '../../utils/class-merge';
 import { uniqueId } from '../../utils/unique-id';
 import { InputWrapper } from '../_internal/InputWrapper';
@@ -42,13 +43,21 @@ export function Textarea(props: TextareaProps = {}): HTMLDivElement {
   if (placeholder) textarea.placeholder = placeholder;
   if (disabled) textarea.disabled = true;
   if (required) textarea.setAttribute('aria-required', 'true');
-  if (error) textarea.setAttribute('aria-invalid', 'true');
 
   const describedBy: string[] = [];
   if (description) describedBy.push(`${id}-description`);
   if (error) describedBy.push(`${id}-error`);
   if (describedBy.length) textarea.setAttribute('aria-describedby', describedBy.join(' '));
   if (error) textarea.setAttribute('aria-errormessage', `${id}-error`);
+
+  if (typeof error === 'function') {
+    effect(() => {
+      if (error()) textarea.setAttribute('aria-invalid', 'true');
+      else textarea.removeAttribute('aria-invalid');
+    });
+  } else if (error) {
+    textarea.setAttribute('aria-invalid', 'true');
+  }
 
   if (autosize) {
     const adjustHeight = () => {

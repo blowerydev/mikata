@@ -19,6 +19,7 @@
 - `@mikata/testing` — testing utilities: renderComponent, fireEvent, waitForUpdate, query helpers
 - `@mikata/ui` — component library: buttons, inputs, layout, feedback, overlays with CSS variables theming
 - `@mikata/form` — form state, validation, schema resolvers (zod, yup, valibot, superstruct, joi)
+- `@mikata/icons` — zero-dep icon factory; Lucide/Tabler interop + ~25 built-in IconNodes
 - `mikata` — umbrella re-export of all packages
 
 ---
@@ -776,15 +777,17 @@ validate: (values) => values.a < 10 ? { a: 'Too small' } : {}
 
 Two shapes, matching Mantine:
 
-- Default (`type: 'input'`) — returns `{ value, onInput, onChange, onBlur, error?, aria-invalid?, ref? }`. Works with TextInput, Textarea, Select, PasswordInput, Autocomplete. `onInput` drives live updates (DOM conventions — Mikata UI inputs fire `input` as you type; `change` fires on blur).
-- `{ type: 'checkbox' }` — returns `{ checked, onChange, onBlur, error?, aria-invalid?, ref? }`. Works with Checkbox, Switch, Radio.
+- Default (`type: 'input'`) — returns `{ value, onInput, onChange, onBlur, error?, ref? }`. Works with TextInput, Textarea, Select, PasswordInput, Autocomplete. `onInput` drives live updates (DOM conventions — Mikata UI inputs fire `input` as you type; `change` fires on blur).
+- `{ type: 'checkbox' }` — returns `{ checked, onChange, onBlur, error?, ref? }`. Works with Checkbox, Switch, Radio.
 
-For inputs with `onValueChange` (NumberInput, Slider, Rating) or array-shaped changes (MultiSelect, TagsInput, FileInput), bind manually:
+`error` is a **getter function** (`() => FormError | null | undefined`) bound to the field's path, not a static snapshot. Spread it into a Mikata UI input and `InputWrapper` subscribes via `effect()` so errors appear, update, and clear reactively as validation state changes — no manual re-render, no `aria-invalid` plumbing. Read the current value by calling it: `form.getInputProps('email').error?.()`.
+
+For inputs with `onValueChange` (NumberInput, Slider, Rating) or array-shaped changes (MultiSelect, TagsInput, FileInput), bind manually. Pass `error` as a getter to keep it reactive:
 ```tsx
 <NumberInput
   value={form.values.qty}
   onValueChange={(v) => form.setFieldValue('qty', v)}
-  error={form.errors.qty}
+  error={() => form.errors.qty}
 />
 ```
 
@@ -792,7 +795,7 @@ For inputs with `onValueChange` (NumberInput, Slider, Rating) or array-shaped ch
 
 ### Accessibility
 
-- `InputWrapper` in `@mikata/ui` auto-wires `aria-invalid`, `aria-errormessage`, `aria-describedby`, `role="alert"` from the `error`/`description` props — `getInputProps` feeds the error, so ARIA is automatic.
+- `InputWrapper` in `@mikata/ui` auto-wires `aria-invalid`, `aria-errormessage`, `aria-describedby`, `role="alert"` from the `error`/`description` props — `getInputProps` feeds the error as a reactive getter, so ARIA flips on/off automatically as errors appear and clear.
 - `onSubmit` with `withFocus: true` (default, via `getInputProps`) moves focus to the first invalid field's registered element after a failed validation.
 - Errors announce via `role="alert"` live region.
 
@@ -839,6 +842,68 @@ valibotResolver(schema, { safeParse });
 ```
 
 `removeListItem` automatically shifts any errors/touched state on subsequent indices so they stay aligned with the new array.
+
+---
+
+## Icons API (`@mikata/icons`)
+
+Zero-dep icon factory that turns `[tag, attrs, children[]]` icon tuples into `SVGSVGElement` nodes on demand. The tuple shape matches Lucide and `@tabler/icons` per-icon exports, so either library can be dropped in without a wrapper package. Ships a curated starter set of ~25 built-in icons for zero-dep usage.
+
+### createIcon(node, props?) → SVGSVGElement
+
+```ts
+import { createIcon } from '@mikata/icons';
+import { Camera, Download } from 'lucide';            // or '@tabler/icons'
+
+createIcon(Camera);                                   // 24×24, stroke=currentColor
+createIcon(Download, { size: 16, strokeWidth: 1.5 }); // sized, thinner stroke
+createIcon(Camera, { 'aria-label': 'Open camera' });  // role="img" + aria-label
+```
+
+Props:
+- `size?: number | string` — width + height (default `24`; accepts `'60%'` etc.)
+- `color?: string` — sets the `stroke` attribute
+- `strokeWidth?: number | string` — overrides stroke width
+- `class?: string` — CSS class on the root `<svg>`
+- `'aria-label'?: string` — sets `role="img"` + `aria-label`
+- `'aria-hidden'?: boolean` — defaults to `true` when no `aria-label`
+
+A11y: decorative by default (no label → `aria-hidden="true"`). Pass `aria-label` for an announced icon; the factory also sets `focusable="false"` on every svg.
+
+### Built-in icons (zero-dep)
+
+All follow Lucide geometry (24×24, stroke=currentColor, stroke-width=2, round caps/joins):
+
+```ts
+import { createIcon, Close, Check, ChevronDown, Eye, EyeOff, Search, Info, Warning, CheckCircle, Plus, Trash, Home, Settings, Menu, User } from '@mikata/icons';
+
+actionIcon.appendChild(createIcon(Trash, { size: 16 }));
+```
+
+Full list: `Close, Check, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Eye, EyeOff, Star, Search, Info, Warning, ErrorCircle, CheckCircle, Plus, Minus, Edit, Trash, User, Home, Settings, Menu, ExternalLink, DotsVertical, Refresh`.
+
+### Lucide / Tabler interop
+
+Both `lucide` and `@tabler/icons` export per-icon `IconNode` tuples in the same shape. Import them as named ESM exports (tree-shakes to the icons you actually use) and pass them to `createIcon`:
+
+```ts
+import { createIcon } from '@mikata/icons';
+import { Bell, Settings2 } from 'lucide';
+
+Button({ leftIcon: createIcon(Bell, { size: 16 }), children: 'Notifications' });
+```
+
+`@mikata/icons` has zero runtime deps; `lucide` and `@tabler/icons` are declared as optional peer deps so consumers install whichever they want.
+
+### IconNode shape
+
+```ts
+type IconAttrs = Record<string, string | number>;
+type IconChild = [tag: string, attrs: IconAttrs];
+type IconNode  = [rootTag: string, rootAttrs: IconAttrs, children: IconChild[]];
+```
+
+You can hand-author custom nodes for bespoke icons — every UI component that accepts an icon slot (`Button.leftIcon`, `Input.leftSection`, `Alert.icon`, `Notification.icon`, `NavLink.icon`, `Menu.icon`, etc.) takes an `SVGSVGElement`, so `createIcon(...)` drops in directly.
 
 ---
 

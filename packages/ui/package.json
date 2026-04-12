@@ -23,6 +23,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@mikata/icons": "workspace:*",
     "@mikata/reactivity": "workspace:*",
     "@mikata/runtime": "workspace:*"
   },

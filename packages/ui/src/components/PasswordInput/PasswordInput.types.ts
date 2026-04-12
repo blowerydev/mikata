@@ -9,7 +9,7 @@ export interface PasswordInputProps extends MikataBaseProps {
   placeholder?: string;
   label?: string | Node;
   description?: string | Node;
-  error?: string | Node;
+  error?: string | Node | (() => string | Node | null | undefined);
   required?: boolean;
   disabled?: boolean;
   size?: MikataSize;

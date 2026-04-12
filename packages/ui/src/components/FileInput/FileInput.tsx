@@ -1,3 +1,4 @@
+import { createIcon, Close } from '@mikata/icons';
 import { mergeClasses } from '../../utils/class-merge';
 import { uniqueId } from '../../utils/unique-id';
 import { InputWrapper } from '../_internal/InputWrapper';
@@ -86,9 +87,7 @@ export function FileInput(props: FileInputProps = {}): HTMLDivElement {
       clear.setAttribute('role', 'button');
       clear.setAttribute('aria-label', 'Clear');
       clear.tabIndex = 0;
-      clear.innerHTML =
-        '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5">' +
-        '<path d="M4 4L12 12M12 4L4 12"/></svg>';
+      clear.appendChild(createIcon(Close, { size: 12, strokeWidth: 1.5 }));
       clear.addEventListener('click', (e) => {
         e.stopPropagation();
         fileInput.value = '';

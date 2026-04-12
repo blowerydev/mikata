@@ -1,10 +1,7 @@
+import { createIcon, ChevronRight } from '@mikata/icons';
 import { mergeClasses } from '../../utils/class-merge';
 import type { TreeProps, TreeNode } from './Tree.types';
 import './Tree.css';
-
-const CARET =
-  '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">' +
-  '<path d="M6 4L10 8L6 12"/></svg>';
 
 export function Tree(props: TreeProps): HTMLElement {
   const {
@@ -39,7 +36,7 @@ export function Tree(props: TreeProps): HTMLElement {
     const expander = document.createElement('span');
     expander.className = mergeClasses('mkt-tree__expander', classNames?.expander);
     if (hasChildren) {
-      expander.innerHTML = CARET;
+      expander.appendChild(createIcon(ChevronRight, { size: 12 }));
       if (expanded.has(node.value)) expander.dataset.open = '';
     }
     label.appendChild(expander);

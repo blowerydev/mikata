@@ -1,3 +1,4 @@
+import { createIcon, Check } from '@mikata/icons';
 import { mergeClasses } from '../../utils/class-merge';
 import { uniqueId } from '../../utils/unique-id';
 import type { ChipProps } from './Chip.types';
@@ -50,9 +51,7 @@ export function Chip(props: ChipProps = {}): HTMLElement {
   // Check icon
   const iconWrap = document.createElement('span');
   iconWrap.className = mergeClasses('mkt-chip__icon', classNames?.iconWrap);
-  iconWrap.innerHTML =
-    '<svg viewBox="0 0 10 7" width="10" height="7" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">' +
-    '<path d="M1 3.5L3.5 6L9 1"/></svg>';
+  iconWrap.appendChild(createIcon(Check, { size: 10, strokeWidth: 1.75 }));
 
   const label = document.createElement('span');
   label.className = mergeClasses('mkt-chip__label', classNames?.label);

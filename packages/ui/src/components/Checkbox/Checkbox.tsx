@@ -1,3 +1,5 @@
+import { createIcon, Check } from '@mikata/icons';
+import { effect } from '@mikata/reactivity';
 import { mergeClasses } from '../../utils/class-merge';
 import { uniqueId } from '../../utils/unique-id';
 import type { CheckboxProps } from './Checkbox.types';
@@ -39,7 +41,14 @@ export function Checkbox(props: CheckboxProps = {}): HTMLLabelElement {
   if (checked != null) input.checked = checked;
   if (defaultChecked != null && checked == null) input.checked = defaultChecked;
   if (disabled) input.disabled = true;
-  if (error) input.setAttribute('aria-invalid', 'true');
+  if (typeof error === 'function') {
+    effect(() => {
+      if (error()) input.setAttribute('aria-invalid', 'true');
+      else input.removeAttribute('aria-invalid');
+    });
+  } else if (error) {
+    input.setAttribute('aria-invalid', 'true');
+  }
   if (onChange) input.addEventListener('change', onChange);
   if (onBlur) input.addEventListener('blur', onBlur as EventListener);
 
@@ -56,9 +65,8 @@ export function Checkbox(props: CheckboxProps = {}): HTMLLabelElement {
   icon.dataset.size = size;
   icon.setAttribute('aria-hidden', 'true');
 
-  // Checkmark SVG
   const svgSize = size === 'xs' || size === 'sm' ? 10 : size === 'lg' ? 16 : size === 'xl' ? 20 : 12;
-  icon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="${svgSize}" height="${svgSize}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+  icon.appendChild(createIcon(Check, { size: svgSize, strokeWidth: 3 }));
 
   root.appendChild(icon);
 
@@ -81,7 +89,23 @@ export function Checkbox(props: CheckboxProps = {}): HTMLLabelElement {
       textCol.appendChild(descEl);
     }
 
-    if (error) {
+    if (typeof error === 'function') {
+      const errorEl = document.createElement('p');
+      errorEl.className = 'mkt-checkbox__error';
+      errorEl.setAttribute('role', 'alert');
+      textCol.appendChild(errorEl);
+      effect(() => {
+        const e = error();
+        errorEl.replaceChildren();
+        if (e == null) {
+          errorEl.hidden = true;
+        } else {
+          errorEl.hidden = false;
+          if (e instanceof Node) errorEl.appendChild(e);
+          else errorEl.textContent = String(e);
+        }
+      });
+    } else if (error) {
       const errorEl = document.createElement('p');
       errorEl.className = 'mkt-checkbox__error';
       errorEl.setAttribute('role', 'alert');

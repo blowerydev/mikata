@@ -76,8 +76,12 @@ export interface InputProps {
   onChange: (eventOrValue: unknown) => void;
   onInput?: (eventOrValue: unknown) => void;
   onBlur: (event: FocusEvent) => void;
-  error?: FormError;
-  'aria-invalid'?: boolean;
+  /**
+   * Reactive error getter. Reads the current error for the bound path from the
+   * form's signal, so consuming UI components can subscribe (via `effect`) and
+   * update the error display when validation runs.
+   */
+  error?: () => FormError | null | undefined;
   ref?: (el: HTMLElement | null) => void;
 }
 

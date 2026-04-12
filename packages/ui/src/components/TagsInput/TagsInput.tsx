@@ -1,3 +1,4 @@
+import { createIcon, Close } from '@mikata/icons';
 import { mergeClasses } from '../../utils/class-merge';
 import { uniqueId } from '../../utils/unique-id';
 import { useUILabels } from '../../utils/use-i18n-optional';
@@ -85,9 +86,7 @@ export function TagsInput(props: TagsInputProps): HTMLDivElement {
       rm.type = 'button';
       rm.className = mergeClasses('mkt-tags-input__pill-remove', classNames?.pillRemove);
       rm.setAttribute('aria-label', `${labels.remove}: ${t}`);
-      rm.innerHTML =
-        '<svg viewBox="0 0 12 12" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.5">' +
-        '<path d="M3 3L9 9M9 3L3 9"/></svg>';
+      rm.appendChild(createIcon(Close, { size: 10, strokeWidth: 1.5 }));
       rm.addEventListener('mousedown', (e) => {
         e.preventDefault();
         if (disabled) return;

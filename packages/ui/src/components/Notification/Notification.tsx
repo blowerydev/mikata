@@ -1,3 +1,4 @@
+import { createIcon, Close } from '@mikata/icons';
 import { mergeClasses } from '../../utils/class-merge';
 import { useUILabels } from '../../utils/use-i18n-optional';
 import { Loader } from '../Loader';
@@ -66,9 +67,7 @@ export function Notification(props: NotificationProps = {}): HTMLElement {
     close.type = 'button';
     close.className = mergeClasses('mkt-notification__close', classNames?.close);
     close.setAttribute('aria-label', labels.close);
-    close.innerHTML =
-      '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">' +
-      '<path d="M4 4L12 12M12 4L4 12"/></svg>';
+    close.appendChild(createIcon(Close, { strokeWidth: 1.5 }));
     close.addEventListener('click', onClose);
     root.appendChild(close);
   }

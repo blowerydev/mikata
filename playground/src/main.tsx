@@ -3,6 +3,17 @@ import { signal, computed, reactive, effect, onCleanup } from '@mikata/reactivit
 import { createStore } from '@mikata/store';
 import { createI18n, provideI18n, useI18n } from '@mikata/i18n';
 import { createForm } from '@mikata/form';
+import { createIcon, Check, Close } from '@mikata/icons';
+import {
+  Download as LucideDownload,
+  Search as LucideSearch,
+  Bell as LucideBell,
+  Info as LucideInfo,
+  Home as LucideHome,
+  Trash2 as LucideTrash,
+  Heart as LucideHeart,
+  Settings as LucideSettings,
+} from 'lucide';
 import '@mikata/ui/styles.css';
 import '@mikata/ui/css';
 import {
@@ -103,6 +114,7 @@ import {
   CopyButton,
   Overlay,
   RangeSlider,
+  ActionIcon,
 } from '@mikata/ui';
 import enMessages from './locales/en.json';
 import jaMessages from './locales/ja.json';
@@ -1090,11 +1102,7 @@ function ExtrasContent() {
 
   // ─── ThemeIcons & ColorSwatch ──────────────
   el.appendChild(Title({ order: 3, children: t.node('extras.themeIconTitle') }));
-  const icon = () => {
-    const s = document.createElement('span');
-    s.innerHTML = '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 8L7 12L13 4"/></svg>';
-    return s.firstChild as Node;
-  };
+  const icon = () => createIcon(Check, { size: 14 });
   el.appendChild(Group({ gap: 'sm', children: [
     ThemeIcon({ color: 'primary', children: icon() }),
     ThemeIcon({ color: 'green', variant: 'light', children: icon() }),
@@ -1535,11 +1543,12 @@ function FormPackageContent() {
                 label: t.node('formPkg.itemName'),
                 ...(form.getInputProps(`items.${idx()}.name`) as any),
               }),
-              Button({
+              ActionIcon({
                 variant: 'subtle',
                 color: 'red',
+                'aria-label': 'Remove item',
                 onClick: () => form.removeListItem('items', idx()),
-                children: '×',
+                children: createIcon(Close, { size: 16 }),
               }),
             ],
           });
@@ -1616,6 +1625,105 @@ function FormPackageContent() {
 }
 
 // ============================================================
+// IconsDemo — @mikata/icons + Lucide interop
+// ============================================================
+function IconsDemo() {
+  const wrapper = _createElement('div');
+  _setProp(wrapper, 'style', {
+    background: 'var(--mkt-color-bg)',
+    color: 'var(--mkt-color-text)',
+    padding: '1.5rem',
+    borderRadius: '8px',
+    marginTop: '1.5rem',
+    transition: 'background 150ms, color 150ms',
+  });
+  wrapper.appendChild(_createComponent(IconsContent, {}));
+  return wrapper;
+}
+
+function IconsContent() {
+  const { t } = useI18n();
+  const el = _createElement('div');
+
+  el.appendChild(Title({ order: 2, children: t.node('icons.title') }));
+  el.appendChild(Text({ size: 'sm', children: t.node('icons.subtitle') }));
+
+  // Button with Lucide leftIcon
+  el.appendChild(Title({ order: 4, children: t.node('icons.buttons') }));
+  el.appendChild(Group({ gap: 'sm', children: [
+    Button({ leftIcon: createIcon(LucideDownload, { size: 16 }), children: t.node('icons.download') }),
+    Button({ variant: 'outline', leftIcon: createIcon(LucideHeart, { size: 16 }), children: t.node('icons.like') }),
+    Button({ variant: 'subtle', color: 'red', leftIcon: createIcon(LucideTrash, { size: 16 }), children: t.node('icons.delete') }),
+  ] }));
+
+  // TextInput leftSection
+  el.appendChild(Title({ order: 4, children: t.node('icons.inputs') }));
+  el.appendChild(TextInput({
+    placeholder: String(t('icons.searchPlaceholder')),
+    leftSection: createIcon(LucideSearch, { size: 16 }),
+  }));
+
+  // Alert + Notification with icons
+  el.appendChild(Title({ order: 4, children: t.node('icons.feedback') }));
+  el.appendChild(Alert({
+    variant: 'light',
+    color: 'primary',
+    icon: () => createIcon(LucideInfo, { size: 20 }),
+    title: t.node('icons.alertTitle'),
+    children: t.node('icons.alertBody'),
+  }));
+  el.appendChild(Notification({
+    color: 'green',
+    icon: createIcon(Check, { size: 18 }),
+    title: t.node('icons.notifTitle'),
+    children: t.node('icons.notifBody'),
+  }));
+
+  // NavLink with icon
+  el.appendChild(Title({ order: 4, children: t.node('icons.navigation') }));
+  const nav = _createElement('div');
+  _setProp(nav, 'style', { maxWidth: '240px' });
+  nav.appendChild(NavLink({
+    label: t.node('icons.navHome'),
+    icon: createIcon(LucideHome, { size: 16 }),
+    active: true,
+  }));
+  nav.appendChild(NavLink({
+    label: t.node('icons.navSettings'),
+    icon: createIcon(LucideSettings, { size: 16 }),
+  }));
+  nav.appendChild(NavLink({
+    label: t.node('icons.navNotifications'),
+    icon: createIcon(LucideBell, { size: 16 }),
+  }));
+  el.appendChild(nav);
+
+  // ActionIcon wrapping a Lucide icon
+  el.appendChild(Title({ order: 4, children: t.node('icons.actions') }));
+  el.appendChild(Group({ gap: 'sm', children: [
+    ActionIcon({
+      variant: 'subtle',
+      'aria-label': String(t('icons.likeAria')),
+      children: createIcon(LucideHeart, { size: 18 }),
+    }),
+    ActionIcon({
+      variant: 'light',
+      color: 'blue',
+      'aria-label': String(t('icons.settingsAria')),
+      children: createIcon(LucideSettings, { size: 18 }),
+    }),
+    ActionIcon({
+      variant: 'filled',
+      color: 'red',
+      'aria-label': String(t('icons.deleteAria')),
+      children: createIcon(LucideTrash, { size: 18 }),
+    }),
+  ] }));
+
+  return el;
+}
+
+// ============================================================
 // App — compose all demos
 // ============================================================
 function App() {
@@ -1639,6 +1747,7 @@ function App() {
   theme.appendChild(_createComponent(UIComponentsDemo, {}));
   theme.appendChild(_createComponent(ExtrasDemo, {}));
   theme.appendChild(_createComponent(FormPackageDemo, {}));
+  theme.appendChild(_createComponent(IconsDemo, {}));
   el.appendChild(theme);
 
   el.appendChild(_createComponent(Counter, {}));

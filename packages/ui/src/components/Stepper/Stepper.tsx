@@ -1,3 +1,4 @@
+import { createIcon, Check } from '@mikata/icons';
 import { mergeClasses } from '../../utils/class-merge';
 import type { StepperProps } from './Stepper.types';
 import './Stepper.css';
@@ -41,9 +42,7 @@ export function Stepper(props: StepperProps): HTMLElement {
     icon.className = mergeClasses('mkt-stepper__step-icon', classNames?.stepIcon);
     if (step.icon) icon.appendChild(step.icon);
     else if (state === 'complete')
-      icon.innerHTML =
-        '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">' +
-        '<path d="M3 8L7 12L13 4"/></svg>';
+      icon.appendChild(createIcon(Check, { size: 14 }));
     else if (state === 'error') icon.textContent = '!';
     else icon.textContent = String(i + 1);
     stepEl.appendChild(icon);

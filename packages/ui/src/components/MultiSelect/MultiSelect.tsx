@@ -1,3 +1,4 @@
+import { createIcon, Close } from '@mikata/icons';
 import { mergeClasses } from '../../utils/class-merge';
 import { uniqueId } from '../../utils/unique-id';
 import { useUILabels } from '../../utils/use-i18n-optional';
@@ -89,9 +90,7 @@ export function MultiSelect(props: MultiSelectProps): HTMLDivElement {
       rm.type = 'button';
       rm.className = mergeClasses('mkt-multi-select__pill-remove', classNames?.pillRemove);
       rm.setAttribute('aria-label', `${labels.remove}: ${opt.label}`);
-      rm.innerHTML =
-        '<svg viewBox="0 0 12 12" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.5">' +
-        '<path d="M3 3L9 9M9 3L3 9"/></svg>';
+      rm.appendChild(createIcon(Close, { size: 10, strokeWidth: 1.5 }));
       rm.addEventListener('mousedown', (e) => {
         e.preventDefault();
         if (disabled) return;
@@ -205,9 +204,7 @@ export function MultiSelect(props: MultiSelectProps): HTMLDivElement {
     clear.type = 'button';
     clear.className = 'mkt-multi-select__clear';
     clear.setAttribute('aria-label', labels.clear);
-    clear.innerHTML =
-      '<svg viewBox="0 0 12 12" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.5">' +
-      '<path d="M3 3L9 9M9 3L3 9"/></svg>';
+    clear.appendChild(createIcon(Close, { size: 10, strokeWidth: 1.5 }));
     clear.addEventListener('mousedown', (e) => {
       e.preventDefault();
       selected.clear();

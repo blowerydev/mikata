@@ -6,7 +6,7 @@ export interface InputWrapperProps {
   id: string;
   label?: string | Node;
   description?: string | Node;
-  error?: string | Node;
+  error?: string | Node | (() => string | Node | null | undefined);
   required?: boolean;
   size?: MikataSize;
   class?: string;

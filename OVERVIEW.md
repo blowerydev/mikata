@@ -370,9 +370,32 @@ const form = createForm({
 
 **Features:** `getInputProps` (spread-compatible), path-based access (`items.0.name`), array helpers (`insertListItem`, `removeListItem`, `reorderListItem`, `replaceListItem`), dirty/touched tracking, reset, transform, watch. Schema resolvers for **zod, yup, valibot, superstruct, joi** as sub-path imports so tree-shaking keeps unused ones out.
 
+**Reactive errors:** `getInputProps` returns `error` as a getter `() => FormError | null | undefined` bound to the field's path. Mikata UI inputs (`TextInput`, `PasswordInput`, `Textarea`, `Checkbox`, `InputWrapper`) detect the function form and subscribe via `effect()`, so error messages and `aria-invalid` flip on and off automatically as validation state changes — no manual re-render. Pass `error={() => form.errors.foo}` when binding manually for the same behavior.
+
 **Accessibility:** `getInputProps` returns values `InputWrapper` uses to wire `aria-invalid`, `aria-errormessage`, `aria-describedby`, and `role="alert"` on errors. `onSubmit` focuses the first invalid field after a failed validation.
 
 **i18n:** Error values are `string | Node`. Pass `t.node('errors.invalidEmail')` from `@mikata/i18n` for reactive translated errors that update on locale change without re-validating. Every resolver accepts a `messages` callback for translation.
+
+---
+
+## Icons
+
+`@mikata/icons` is a tiny, zero-dep factory for turning icon data into `SVGSVGElement` nodes. The data shape matches **Lucide** and **Tabler Icons** (`[tag, attrs, children[]]`), so you install whichever set you want and drop the per-icon export straight into `createIcon`:
+
+```tsx
+import { createIcon } from '@mikata/icons';
+import { Download, Search } from 'lucide';
+import { Button, TextInput } from '@mikata/ui';
+
+Button({ leftIcon: createIcon(Download, { size: 16 }), children: 'Download' });
+TextInput({ leftSection: createIcon(Search, { size: 16 }), placeholder: 'Search…' });
+```
+
+Every UI component that accepts an icon slot (`Button.leftIcon`, `Input.leftSection`, `Alert.icon`, `Notification.icon`, `NavLink.icon`, `Menu.icon`, `ActionIcon`, `ThemeIcon`…) takes a `Node`, and `createIcon` returns an `SVGSVGElement` — no wrapper needed.
+
+For zero-dep projects, `@mikata/icons` also ships ~25 built-in nodes mirroring Lucide geometry (`Close, Check, ChevronDown/Up/Left/Right, Eye, EyeOff, Star, Search, Info, Warning, ErrorCircle, CheckCircle, Plus, Minus, Edit, Trash, User, Home, Settings, Menu, ExternalLink, DotsVertical, Refresh`). These are the same icons the UI library uses internally, so the chevrons in Accordion/NavLink, checkmarks in Checkbox/Chip/Stepper, close Xs in Alert/Modal/Drawer/Notification/Toast, and eye toggles in PasswordInput all route through `createIcon` with the built-in set.
+
+**Props:** `size`, `color` (stroke), `strokeWidth`, `class`, `aria-label`, `aria-hidden`. Decorative by default — pass `aria-label` for announced icons. Zero runtime deps; `lucide` and `@tabler/icons` are optional peer deps so you pull in only what you use.
 
 ---
 
@@ -389,6 +412,7 @@ mikata/
     i18n/          # Internationalization, runtime loading, formatters
     ui/            # Component library -- buttons, inputs, layout, feedback, overlays
     form/          # Form state, validation, schema resolvers (zod, yup, valibot, ...)
+    icons/         # Icon factory (Lucide/Tabler interop) + built-in icon set
     testing/       # Test utilities (renderComponent, fireEvent, flush)
     mikata/        # Umbrella package re-exporting everything
 ```

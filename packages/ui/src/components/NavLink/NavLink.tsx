@@ -1,10 +1,7 @@
+import { createIcon, ChevronRight } from '@mikata/icons';
 import { mergeClasses } from '../../utils/class-merge';
 import type { NavLinkProps } from './NavLink.types';
 import './NavLink.css';
-
-const CHEVRON_SVG =
-  '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5">' +
-  '<path d="M6 4L10 8L6 12"/></svg>';
 
 export function NavLink(props: NavLinkProps): HTMLElement {
   const {
@@ -84,7 +81,7 @@ export function NavLink(props: NavLinkProps): HTMLElement {
   if (hasChildren) {
     const chevron = document.createElement('span');
     chevron.className = mergeClasses('mkt-navlink__chevron', classNames?.chevron);
-    chevron.innerHTML = CHEVRON_SVG;
+    chevron.appendChild(createIcon(ChevronRight, { size: 14, strokeWidth: 1.5 }));
     if (isOpen) chevron.dataset.rotated = '';
     el.appendChild(chevron);
 
