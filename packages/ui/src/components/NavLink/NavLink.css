@@ -17,7 +17,7 @@
   font-size: var(--mkt-font-size-sm);
   cursor: pointer;
   transition: background-color var(--mkt-transition-duration) var(--mkt-transition-timing);
-  text-align: left;
+  text-align: start;
   --_navlink-color: var(--mkt-color-primary-6);
   --_navlink-bg: var(--mkt-color-primary-0);
 }
@@ -98,7 +98,9 @@
   line-height: 1.3;
 }
 
-/* Chevron */
+/* Chevron — points toward the inline-end edge. In RTL the collapsed state
+   flips to point inline-end (visually left); when expanded it rotates down,
+   same as LTR. */
 .mkt-navlink__chevron {
   display: inline-flex;
   align-items: center;
@@ -107,11 +109,16 @@
   color: var(--mkt-color-gray-5);
 }
 
-.mkt-navlink__chevron[data-rotated] {
+[dir="rtl"] .mkt-navlink__chevron {
+  transform: rotate(180deg);
+}
+
+.mkt-navlink__chevron[data-rotated],
+[dir="rtl"] .mkt-navlink__chevron[data-rotated] {
   transform: rotate(90deg);
 }
 
 /* Nested children */
 .mkt-navlink__children {
-  padding-left: 24px;
+  padding-inline-start: 24px;
 }

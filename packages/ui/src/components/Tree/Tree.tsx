@@ -1,9 +1,11 @@
 import { createIcon, ChevronRight } from '@mikata/icons';
 import { mergeClasses } from '../../utils/class-merge';
+import { useDirection } from '../../theme';
 import type { TreeProps, TreeNode } from './Tree.types';
 import './Tree.css';
 
 export function Tree(props: TreeProps): HTMLElement {
+  const direction = useDirection();
   const {
     data,
     defaultExpanded = [],
@@ -66,12 +68,17 @@ export function Tree(props: TreeProps): HTMLElement {
         e.preventDefault();
         if (hasChildren) toggle();
         onSelect?.(node.value, node);
-      } else if (e.key === 'ArrowRight' && hasChildren && !expanded.has(node.value)) {
-        e.preventDefault();
-        toggle();
-      } else if (e.key === 'ArrowLeft' && hasChildren && expanded.has(node.value)) {
-        e.preventDefault();
-        toggle();
+      } else {
+        const isRtl = direction() === 'rtl';
+        const expandKey = isRtl ? 'ArrowLeft' : 'ArrowRight';
+        const collapseKey = isRtl ? 'ArrowRight' : 'ArrowLeft';
+        if (e.key === expandKey && hasChildren && !expanded.has(node.value)) {
+          e.preventDefault();
+          toggle();
+        } else if (e.key === collapseKey && hasChildren && expanded.has(node.value)) {
+          e.preventDefault();
+          toggle();
+        }
       }
     });
 

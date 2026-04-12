@@ -33,7 +33,7 @@
   font: inherit;
   color: inherit;
   cursor: default;
-  text-align: left;
+  text-align: start;
 }
 
 button.mkt-stepper__step {
@@ -109,7 +109,7 @@ button.mkt-stepper__step:focus-visible {
   width: 2px;
   height: auto;
   min-height: var(--mkt-space-4);
-  margin-left: calc(var(--_step-size) / 2 - 1px);
+  margin-inline-start: calc(var(--_step-size) / 2 - 1px);
   flex: 0 0 auto;
 }
 

@@ -371,6 +371,7 @@ function App() {
 - **`cssVariablesResolver(ctx)`** is the escape hatch — return `{ variables?, light?, dark? }` to inject arbitrary tokens per scheme.
 - **`components.X.defaultProps`** sets per-component defaults (`components: { Button: { variant: 'light' } }`) without editing callsites. User-provided props always win.
 - **Back-compat:** `createTheme({ 'color-primary-6': '#7c3aed' })` still works — flat keys route into `theme.other` at highest precedence.
+- **RTL support:** Set `direction="rtl"` on `ThemeProvider` (or `theme.direction`). Emits `dir="rtl"` on the wrapper; component CSS uses logical properties (`inset-inline-start`, `margin-inline-end`, `border-start-end-radius`, etc.) so layout flips automatically. Portals mirror direction via `applyThemeToPortal`. Keyboard nav (`Tabs`, `PinInput`, `RangeSlider`, `Tree`) flips ArrowLeft/ArrowRight. `Drawer` accepts `position="start"|"end"` (logical, flips with direction) alongside `"left"|"right"` (physical). Use `useDirection()` from `@mikata/ui` to read the reactive direction signal in custom components; returns `() => 'ltr'` outside a `ThemeProvider`.
 
 **Key patterns:**
 - CSS variables for tokens (`--mkt-color-primary-6`, `--mkt-color-primary-filled`, `--mkt-space-4`, `--mkt-radius-sm`)
@@ -383,7 +384,7 @@ function App() {
 
 - `createX` — returns reactive state: `createDisclosure`, `createMediaQuery`, `createLocalStorage`, `createClipboard`, `createToggle`, `createDebouncedSignal`, `createThrottledSignal`, `createPrevious`, `createViewportSize`, `createInterval`, `createTimeout`, `createIdle`, `createNetworkStatus`, `createOs`, `createReducedMotion`, `createPageVisibility`, `createIntersection`, `createResizeObserver`
 - `onX` — attaches a side effect, auto-cleaned on scope dispose: `onClickOutside`, `onFocusTrap`, `onScrollLock`, `onHotkeys`, `onWindowEvent`, `onDocumentEvent`, `onPageLeave`, `onDocumentTitle`
-- `useX` — reserved for context consumers: `useTheme`, `useUILabels`
+- `useX` — reserved for context consumers: `useTheme`, `useDirection`, `useUILabels`
 - Pure utilities: `uniqueId`, `mergeClasses`, `mergeRefs`
 
 ---

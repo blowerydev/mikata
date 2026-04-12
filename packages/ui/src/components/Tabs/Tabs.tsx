@@ -1,6 +1,8 @@
 import { mergeClasses } from '../../utils/class-merge';
 import { useComponentDefaults } from '../../theme/component-defaults';
 import { uniqueId } from '../../utils/unique-id';
+import { directionalArrowKeys } from '../../utils/direction';
+import { useDirection } from '../../theme';
 import type { TabsProps } from './Tabs.types';
 import './Tabs.css';
 
@@ -21,6 +23,7 @@ export function Tabs(userProps: TabsProps): HTMLElement {
   } = props;
 
   const id = uniqueId('tabs');
+  const direction = useDirection();
   let activeValue = value ?? defaultValue ?? items[0]?.value ?? '';
 
   const root = document.createElement('div');
@@ -119,8 +122,7 @@ export function Tabs(userProps: TabsProps): HTMLElement {
     if (currentIndex < 0) return;
 
     const isHorizontal = orientation === 'horizontal';
-    const prevKey = isHorizontal ? 'ArrowLeft' : 'ArrowUp';
-    const nextKey = isHorizontal ? 'ArrowRight' : 'ArrowDown';
+    const { prevKey, nextKey } = directionalArrowKeys(isHorizontal, direction());
     let newIndex = -1;
 
     if (e.key === nextKey) {

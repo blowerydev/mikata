@@ -92,13 +92,21 @@ export function SegmentedControl(props: SegmentedControlProps): HTMLElement {
     const activeLabel = labels[activeIndex];
     if (!activeLabel) return;
 
-    // Use requestAnimationFrame to ensure layout is computed
     requestAnimationFrame(() => {
-      // offsetLeft is relative to offsetParent (root, since it has position: relative)
-      // The indicator is positioned at top: 3px (matching root padding), so left offset
-      // from the label's offsetLeft works directly
+      // Indicator is anchored at `inset-inline-start: 0`. The X delta from there
+      // to the active label depends on writing direction: in LTR, offsetLeft is
+      // the physical-left distance from the container's start edge; in RTL, the
+      // start edge is the right side, so we measure the label's *inline-start
+      // offset from the container's inline-start edge* as
+      // containerWidth - offsetLeft - offsetWidth, and translate *leftward*
+      // (negative) since translateX is always physical.
+      const parent = activeLabel.offsetParent as HTMLElement | null;
+      const isRtl = parent ? getComputedStyle(parent).direction === 'rtl' : false;
+      const startOffset = isRtl && parent
+        ? -(parent.clientWidth - activeLabel.offsetLeft - activeLabel.offsetWidth)
+        : activeLabel.offsetLeft;
       indicator.style.width = `${activeLabel.offsetWidth}px`;
-      indicator.style.transform = `translateX(${activeLabel.offsetLeft}px)`;
+      indicator.style.transform = `translateX(${startOffset}px)`;
     });
   }
 

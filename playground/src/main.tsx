@@ -37,6 +37,7 @@ import {
 import {
   ThemeProvider,
   useTheme,
+  useDirection,
   createTheme,
   type MikataTheme,
   type ColorPalette,
@@ -589,7 +590,7 @@ function UIComponentsDemo() {
  */
 function UIContent() {
   const { t, locale, setLocale } = useI18n();
-  const { setColorScheme, resolvedColorScheme } = useTheme();
+  const { setColorScheme, resolvedColorScheme, direction, setDirection } = useTheme();
   const [progressVal, setProgressVal] = signal(0);
   const { opened: modalOpened, open: openModal, close: closeModal } = useDisclosure(false);
 
@@ -636,6 +637,22 @@ function UIContent() {
       value: 'en',
       onChange: (e) => setLocale((e.target as HTMLSelectElement).value),
     }),
+    (() => {
+      const wrapper = _createElement('div');
+      const label = _createElement('label');
+      _setProp(label, 'style', { fontSize: '0.875rem', display: 'block', marginBottom: '4px' });
+      label.textContent = 'Direction';
+      wrapper.appendChild(label);
+      wrapper.appendChild(SegmentedControl({
+        data: [
+          { value: 'ltr', label: 'LTR' },
+          { value: 'rtl', label: 'RTL' },
+        ],
+        defaultValue: direction(),
+        onChange: (v) => setDirection(v as 'ltr' | 'rtl'),
+      }));
+      return wrapper;
+    })(),
   ] }));
   el.appendChild(themeSection);
 

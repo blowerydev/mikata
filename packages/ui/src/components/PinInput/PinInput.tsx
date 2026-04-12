@@ -1,8 +1,10 @@
 import { mergeClasses } from '../../utils/class-merge';
+import { useDirection } from '../../theme';
 import type { PinInputProps } from './PinInput.types';
 import './PinInput.css';
 
 export function PinInput(props: PinInputProps = {}): HTMLElement {
+  const direction = useDirection();
   const {
     length = 4,
     value,
@@ -62,11 +64,14 @@ export function PinInput(props: PinInputProps = {}): HTMLElement {
     });
 
     input.addEventListener('keydown', (e) => {
+      const isRtl = direction() === 'rtl';
+      const prevKey = isRtl ? 'ArrowRight' : 'ArrowLeft';
+      const nextKey = isRtl ? 'ArrowLeft' : 'ArrowRight';
       if (e.key === 'Backspace' && !input.value && i > 0) {
         inputs[i - 1].focus();
-      } else if (e.key === 'ArrowLeft' && i > 0) {
+      } else if (e.key === prevKey && i > 0) {
         inputs[i - 1].focus();
-      } else if (e.key === 'ArrowRight' && i < length - 1) {
+      } else if (e.key === nextKey && i < length - 1) {
         inputs[i + 1].focus();
       }
     });

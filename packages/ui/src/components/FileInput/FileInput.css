@@ -24,7 +24,7 @@
   border: 1px solid var(--mkt-color-border);
   border-radius: var(--mkt-radius-sm);
   font-family: var(--mkt-font-family);
-  text-align: left;
+  text-align: start;
   cursor: pointer;
   outline: none;
   transition: border-color var(--mkt-transition-duration) var(--mkt-transition-timing);

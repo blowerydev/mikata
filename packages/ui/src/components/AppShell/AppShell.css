@@ -30,18 +30,18 @@
   display: flex;
   align-items: center;
   padding: 0 var(--mkt-space-4);
-  margin-left: var(--_shell-navbar);
-  margin-right: var(--_shell-aside);
+  margin-inline-start: var(--_shell-navbar);
+  margin-inline-end: var(--_shell-aside);
 }
 
 .mkt-app-shell__navbar {
   position: fixed;
   top: var(--_shell-header);
   bottom: var(--_shell-footer);
-  left: 0;
+  inset-inline-start: 0;
   width: var(--_shell-navbar);
   background: var(--mkt-color-bg);
-  border-right: 1px solid var(--mkt-color-border);
+  border-inline-end: 1px solid var(--mkt-color-border);
   overflow-y: auto;
   padding: var(--mkt-space-4);
   box-sizing: border-box;
@@ -51,18 +51,18 @@
   position: fixed;
   top: var(--_shell-header);
   bottom: var(--_shell-footer);
-  right: 0;
+  inset-inline-end: 0;
   width: var(--_shell-aside);
   background: var(--mkt-color-bg);
-  border-left: 1px solid var(--mkt-color-border);
+  border-inline-start: 1px solid var(--mkt-color-border);
   overflow-y: auto;
   padding: var(--mkt-space-4);
   box-sizing: border-box;
 }
 
 .mkt-app-shell__main {
-  margin-left: var(--_shell-navbar);
-  margin-right: var(--_shell-aside);
+  margin-inline-start: var(--_shell-navbar);
+  margin-inline-end: var(--_shell-aside);
   padding: var(--_shell-padding);
   min-height: calc(100vh - var(--_shell-header) - var(--_shell-footer));
   box-sizing: border-box;

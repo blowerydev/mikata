@@ -2,7 +2,7 @@
   position: relative;
   margin: 0;
   padding: var(--mkt-space-4) var(--mkt-space-5);
-  border-left: 3px solid var(--_bq-color, var(--mkt-color-primary-6));
+  border-inline-start: 3px solid var(--_bq-color, var(--mkt-color-primary-6));
   background-color: var(--mkt-color-gray-0);
   color: var(--mkt-color-text);
   border-radius: 0 var(--mkt-radius-sm) var(--mkt-radius-sm) 0;

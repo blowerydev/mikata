@@ -11,19 +11,22 @@ export function getColorScheme(): 'light' | 'dark' {
 }
 
 /**
- * Copy the ThemeProvider's CSS custom properties and color scheme attribute
- * onto a portal element that renders outside the ThemeProvider tree (e.g. Modal, Toast).
- * This ensures theming (colors, fonts, spacing) cascades correctly.
+ * Copy the ThemeProvider's CSS custom properties, color scheme, and writing
+ * direction onto a portal element that renders outside the ThemeProvider
+ * tree (e.g. Modal, Toast, Drawer, Popover). This ensures theming cascades
+ * correctly and RTL-aware CSS (`inset-inline-start`, `margin-inline-end`,
+ * etc.) resolves to the right physical edge.
  */
 export function applyThemeToPortal(el: HTMLElement): void {
   const themed = document.querySelector('[data-mkt-theme]') as HTMLElement | null;
   if (!themed) return;
 
-  // Copy color scheme attribute
   const scheme = themed.getAttribute('data-mkt-color-scheme');
   if (scheme) el.setAttribute('data-mkt-color-scheme', scheme);
 
-  // Copy all --mkt-* CSS custom properties from the ThemeProvider
+  const dir = themed.getAttribute('dir');
+  if (dir) el.setAttribute('dir', dir);
+
   const style = themed.style;
   for (let i = 0; i < style.length; i++) {
     const prop = style[i];

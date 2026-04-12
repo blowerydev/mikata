@@ -1,17 +1,17 @@
 .mkt-list {
   margin: 0;
-  padding-left: var(--mkt-space-5);
+  padding-inline-start: var(--mkt-space-5);
   color: var(--mkt-color-text);
   font-family: var(--mkt-font-family);
 }
 
 .mkt-list[data-custom-icon] {
   list-style: none;
-  padding-left: 0;
+  padding-inline-start: 0;
 }
 
 .mkt-list[data-with-padding] {
-  padding-left: var(--mkt-space-5);
+  padding-inline-start: var(--mkt-space-5);
 }
 
 .mkt-list[data-size="xs"] { font-size: var(--mkt-font-size-xs); }

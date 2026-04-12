@@ -1,9 +1,9 @@
 .mkt-container {
   width: 100%;
-  margin-left: auto;
-  margin-right: auto;
-  padding-left: var(--mkt-space-4);
-  padding-right: var(--mkt-space-4);
+  margin-inline-start: auto;
+  margin-inline-end: auto;
+  padding-inline-start: var(--mkt-space-4);
+  padding-inline-end: var(--mkt-space-4);
 }
 
 .mkt-container[data-size="xs"] { max-width: 540px; }

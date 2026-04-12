@@ -12,7 +12,7 @@
 
 .mkt-input-wrapper__required {
   color: var(--mkt-color-error);
-  margin-left: var(--mkt-space-1);
+  margin-inline-start: var(--mkt-space-1);
 }
 
 .mkt-input-wrapper__description {

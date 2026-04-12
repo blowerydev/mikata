@@ -42,8 +42,7 @@
 .mkt-autocomplete__dropdown {
   position: absolute;
   top: 100%;
-  left: 0;
-  right: 0;
+  inset-inline: 0;
   z-index: var(--mkt-z-dropdown);
   margin: var(--mkt-space-1) 0 0 0;
   padding: var(--mkt-space-1);

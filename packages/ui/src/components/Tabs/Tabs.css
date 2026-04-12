@@ -19,7 +19,7 @@
 
 .mkt-tabs[data-orientation="vertical"] .mkt-tabs__list {
   flex-direction: column;
-  border-right: 2px solid var(--mkt-color-gray-2);
+  border-inline-end: 2px solid var(--mkt-color-gray-2);
 }
 
 [data-mkt-color-scheme="dark"] .mkt-tabs[data-orientation="horizontal"] .mkt-tabs__list {
@@ -27,7 +27,7 @@
 }
 
 [data-mkt-color-scheme="dark"] .mkt-tabs[data-orientation="vertical"] .mkt-tabs__list {
-  border-right-color: var(--mkt-color-border);
+  border-inline-end-color: var(--mkt-color-border);
 }
 
 /* Tab button */
@@ -78,9 +78,9 @@
 
 .mkt-tabs[data-variant="default"][data-orientation="vertical"] .mkt-tabs__tab {
   margin-bottom: 0;
-  margin-right: -2px;
+  margin-inline-end: -2px;
   border-bottom: none;
-  border-right: 2px solid transparent;
+  border-inline-end: 2px solid transparent;
 }
 
 /* Color for active default tab */
@@ -121,7 +121,7 @@
 }
 
 .mkt-tabs[data-variant="pills"][data-orientation="vertical"] .mkt-tabs__list {
-  border-right: none;
+  border-inline-end: none;
 }
 
 .mkt-tabs[data-variant="pills"] .mkt-tabs__tab {

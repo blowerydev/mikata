@@ -51,7 +51,7 @@
   color: var(--mkt-color-text);
   font-family: inherit;
   font-size: inherit;
-  text-align: left;
+  text-align: start;
   cursor: pointer;
   border-radius: var(--mkt-radius-xs);
   transition: background-color var(--mkt-transition-duration) var(--mkt-transition-timing);

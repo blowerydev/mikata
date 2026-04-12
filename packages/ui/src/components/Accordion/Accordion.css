@@ -55,7 +55,7 @@
   color: var(--mkt-color-text);
   font-family: inherit;
   font-weight: var(--mkt-font-weight-medium);
-  text-align: left;
+  text-align: start;
   transition: background-color var(--mkt-transition-duration) var(--mkt-transition-timing);
 }
 

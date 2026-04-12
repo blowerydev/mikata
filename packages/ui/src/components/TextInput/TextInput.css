@@ -54,9 +54,9 @@
   color: var(--mkt-color-text-dimmed);
 }
 
-.mkt-text-input__section--left { left: 0; }
-.mkt-text-input__section--right { right: 0; }
+.mkt-text-input__section--left { inset-inline-start: 0; }
+.mkt-text-input__section--right { inset-inline-end: 0; }
 
 /* Adjust input padding when sections are present */
-.mkt-text-input--has-left .mkt-text-input__input { padding-left: var(--mkt-space-8); }
-.mkt-text-input--has-right .mkt-text-input__input { padding-right: var(--mkt-space-8); }
+.mkt-text-input--has-left .mkt-text-input__input { padding-inline-start: var(--mkt-space-8); }
+.mkt-text-input--has-right .mkt-text-input__input { padding-inline-end: var(--mkt-space-8); }

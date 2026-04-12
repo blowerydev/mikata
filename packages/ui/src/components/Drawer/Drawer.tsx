@@ -44,7 +44,7 @@ export function Drawer(props: DrawerProps): Comment {
   if (title) content.setAttribute('aria-labelledby', `${id}-title`);
 
   // Set size based on position
-  const isHorizontal = position === 'left' || position === 'right';
+  const isHorizontal = position === 'left' || position === 'right' || position === 'start' || position === 'end';
   if (isHorizontal) {
     content.style.width = size;
   } else {

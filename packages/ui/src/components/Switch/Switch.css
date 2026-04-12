@@ -40,12 +40,22 @@
 .mkt-switch__thumb {
   position: absolute;
   top: 2px;
-  left: 2px;
+  inset-inline-start: 2px;
   border-radius: 50%;
   background: #fff;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
   transition: transform var(--mkt-transition-duration) var(--mkt-transition-timing);
 }
+
+[dir="rtl"] .mkt-switch__input:checked + .mkt-switch__track > .mkt-switch__thumb {
+  transform: translateX(calc(-1 * (100% - 2px)));
+}
+
+[dir="rtl"] .mkt-switch__input:checked + .mkt-switch__track[data-size="xs"] > .mkt-switch__thumb { transform: translateX(-12px); }
+[dir="rtl"] .mkt-switch__input:checked + .mkt-switch__track[data-size="sm"] > .mkt-switch__thumb { transform: translateX(-14px); }
+[dir="rtl"] .mkt-switch__input:checked + .mkt-switch__track[data-size="md"] > .mkt-switch__thumb { transform: translateX(-16px); }
+[dir="rtl"] .mkt-switch__input:checked + .mkt-switch__track[data-size="lg"] > .mkt-switch__thumb { transform: translateX(-20px); }
+[dir="rtl"] .mkt-switch__input:checked + .mkt-switch__track[data-size="xl"] > .mkt-switch__thumb { transform: translateX(-24px); }
 
 /* Thumb sizes */
 .mkt-switch__thumb[data-size="xs"] { width: 12px; height: 12px; }

@@ -1,9 +1,11 @@
 import { onCleanup } from '@mikata/runtime';
 import { mergeClasses } from '../../utils/class-merge';
+import { useDirection } from '../../theme';
 import type { RangeSliderProps } from './RangeSlider.types';
 import './RangeSlider.css';
 
 export function RangeSlider(props: RangeSliderProps = {}): HTMLElement {
+  const direction = useDirection();
   const {
     value,
     defaultValue,
@@ -166,12 +168,13 @@ export function RangeSlider(props: RangeSliderProps = {}): HTMLElement {
   const keyStep = (e: KeyboardEvent, which: 'low' | 'high') => {
     if (disabled) return;
     const big = step * 10;
+    const isRtl = direction() === 'rtl';
+    const decKey = isRtl ? 'ArrowRight' : 'ArrowLeft';
+    const incKey = isRtl ? 'ArrowLeft' : 'ArrowRight';
     let dx = 0;
-    switch (e.key) {
-      case 'ArrowLeft':
-      case 'ArrowDown': dx = -step; break;
-      case 'ArrowRight':
-      case 'ArrowUp':   dx =  step; break;
+    if (e.key === decKey || e.key === 'ArrowDown') dx = -step;
+    else if (e.key === incKey || e.key === 'ArrowUp') dx = step;
+    else switch (e.key) {
       case 'PageDown':  dx = -big;  break;
       case 'PageUp':    dx =  big;  break;
       case 'Home': {

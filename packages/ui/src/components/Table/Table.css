@@ -36,7 +36,7 @@
 
 /* thead */
 .mkt-table__th {
-  text-align: left;
+  text-align: start;
   font-weight: var(--mkt-font-weight-semibold);
   color: var(--mkt-color-text);
   border-bottom: 2px solid var(--mkt-color-gray-2);
@@ -82,10 +82,10 @@
 /* Column borders */
 .mkt-table--col-borders .mkt-table__th + .mkt-table__th,
 .mkt-table--col-borders .mkt-table__td + .mkt-table__td {
-  border-left: 1px solid var(--mkt-color-gray-2);
+  border-inline-start: 1px solid var(--mkt-color-gray-2);
 }
 
 [data-mkt-color-scheme="dark"] .mkt-table--col-borders .mkt-table__th + .mkt-table__th,
 [data-mkt-color-scheme="dark"] .mkt-table--col-borders .mkt-table__td + .mkt-table__td {
-  border-left-color: var(--mkt-color-border);
+  border-inline-start-color: var(--mkt-color-border);
 }

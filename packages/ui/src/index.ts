@@ -1,10 +1,10 @@
 // Theme
 export {
-  ThemeProvider, useTheme, createTheme, defaultTheme, darkTheme,
+  ThemeProvider, useTheme, useDirection, createTheme, defaultTheme, darkTheme,
   flattenTheme, useComponentDefaults, BUILT_IN_COLORS,
 } from './theme';
 export type {
-  MikataTheme, ColorScheme, ThemeProviderProps, ThemeContextValue,
+  MikataTheme, ColorScheme, Direction, ThemeProviderProps, ThemeContextValue,
   HeadingConfig, HeadingsConfig, CSSVariablesOutput, CSSVariablesResolver,
   CSSVariablesResolverContext, PrimaryShade, ColorPalette, BuiltInColorName,
 } from './theme';

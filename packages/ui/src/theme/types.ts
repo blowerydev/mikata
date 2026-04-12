@@ -3,6 +3,8 @@ import type { ColorPalette } from './palettes';
 
 export type ColorScheme = 'light' | 'dark' | 'auto';
 
+export type Direction = 'ltr' | 'rtl';
+
 export interface HeadingConfig {
   size?: string;
   weight?: string;
@@ -47,6 +49,8 @@ export interface MikataTheme {
   fontFamily?: string;
   fontFamilyMono?: string;
   headings?: HeadingsConfig;
+  /** Default writing direction. Default: 'ltr'. Overridden by `ThemeProvider`'s `direction` prop if set. */
+  direction?: Direction;
   /** Per-component default props. Example: { Button: { variant: 'light' } } */
   components?: Record<string, Record<string, unknown>>;
   /** Hook for injecting arbitrary extra CSS variables. */
@@ -66,6 +70,8 @@ export interface ThemeProviderProps {
   /** @deprecated Use `theme.other` for dark-scheme overrides; dark semantic colors are now built in. */
   darkTheme?: Record<string, string>;
   colorScheme?: ColorScheme;
+  /** Writing direction. Wins over `theme.direction`. Default: 'ltr'. */
+  direction?: Direction;
   children?: Node;
 }
 
@@ -73,5 +79,7 @@ export interface ThemeContextValue {
   colorScheme: () => ColorScheme;
   resolvedColorScheme: () => 'light' | 'dark';
   setColorScheme: (scheme: ColorScheme) => void;
+  direction: () => Direction;
+  setDirection: (dir: Direction) => void;
   theme: () => MikataTheme;
 }

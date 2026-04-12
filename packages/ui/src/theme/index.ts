@@ -1,6 +1,6 @@
 import { signal, computed, renderEffect } from '@mikata/reactivity';
 import { createContext, provide, inject } from '@mikata/runtime';
-import type { MikataTheme, ColorScheme, ThemeProviderProps, ThemeContextValue } from './types';
+import type { MikataTheme, ColorScheme, Direction, ThemeProviderProps, ThemeContextValue } from './types';
 import { flattenTheme } from './flatten';
 import { provideComponentDefaults } from './component-defaults';
 import { emitColoredRules } from './colored-registry';
@@ -10,7 +10,7 @@ const ThemeContext = createContext<ThemeContextValue>();
 
 const STRUCTURED_KEYS = new Set([
   'colors', 'primaryColor', 'primaryShade', 'defaultRadius',
-  'fontFamily', 'fontFamilyMono', 'headings', 'components',
+  'fontFamily', 'fontFamilyMono', 'headings', 'direction', 'components',
   'cssVariablesResolver', 'other',
 ]);
 
@@ -60,10 +60,18 @@ export function ThemeProvider(props: ThemeProviderProps): Node {
     return ((typeof t === 'function' ? t() : t) ?? {}) as MikataTheme;
   });
 
+  const initialDirection: Direction =
+    props.direction ??
+    (typeof props.theme === 'function' ? props.theme().direction : props.theme?.direction) ??
+    'ltr';
+  const [direction, setDirection] = signal<Direction>(initialDirection);
+
   provide(ThemeContext, {
     colorScheme,
     resolvedColorScheme,
     setColorScheme,
+    direction,
+    setDirection,
     theme: activeTheme,
   });
 
@@ -92,6 +100,10 @@ export function ThemeProvider(props: ThemeProviderProps): Node {
     styleEl.textContent = emitColoredRules(customPalettes);
   });
 
+  renderEffect(() => {
+    el.setAttribute('dir', direction());
+  });
+
   return el;
 }
 
@@ -100,6 +112,19 @@ export function ThemeProvider(props: ThemeProviderProps): Node {
  */
 export function useTheme(): ThemeContextValue {
   return inject(ThemeContext);
+}
+
+/**
+ * Reactive direction signal ('ltr' | 'rtl'). Thin wrapper over `useTheme().direction`.
+ * Returns a getter so consumers subscribe only when they read. Defaults to 'ltr'
+ * when used outside a `ThemeProvider` so components stay usable standalone.
+ */
+export function useDirection(): () => Direction {
+  try {
+    return useTheme().direction;
+  } catch {
+    return () => 'ltr';
+  }
 }
 
 export { defaultTheme } from './tokens';
@@ -113,6 +138,7 @@ export type { ColorPalette, BuiltInColorName } from './palettes';
 export type {
   MikataTheme,
   ColorScheme,
+  Direction,
   ThemeProviderProps,
   ThemeContextValue,
   HeadingConfig,

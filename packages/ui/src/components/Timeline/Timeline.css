@@ -18,7 +18,7 @@
 
 .mkt-timeline[data-align="right"] .mkt-timeline__item {
   flex-direction: row-reverse;
-  text-align: right;
+  text-align: end;
 }
 
 .mkt-timeline__item::before {
