@@ -1,5 +1,5 @@
 import { mergeClasses } from '../../utils/class-merge';
-import { useId } from '../../utils/use-id';
+import { uniqueId } from '../../utils/unique-id';
 import type { AccordionProps } from './Accordion.types';
 import './Accordion.css';
 
@@ -21,7 +21,7 @@ export function Accordion(props: AccordionProps): HTMLElement {
     ref,
   } = props;
 
-  const id = useId('accordion');
+  const id = uniqueId('accordion');
   let openValues: Set<string> = new Set(
     Array.isArray(defaultValue) ? defaultValue : defaultValue ? [defaultValue] : [],
   );

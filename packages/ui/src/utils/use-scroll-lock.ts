@@ -1,13 +1,2 @@
-import { onCleanup } from '@mikata/reactivity';
-
-/**
- * Lock body scroll while this scope is active.
- * Restores original overflow on cleanup.
- */
-export function useScrollLock(): void {
-  const original = document.body.style.overflow;
-  document.body.style.overflow = 'hidden';
-  onCleanup(() => {
-    document.body.style.overflow = original;
-  });
-}
+/** @deprecated Import `onScrollLock` from `../utils/on-scroll-lock` instead. */
+export { useScrollLock, onScrollLock } from './on-scroll-lock';

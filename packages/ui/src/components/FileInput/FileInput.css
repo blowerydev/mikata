@@ -1,0 +1,93 @@
+.mkt-file-input {
+  position: relative;
+  display: block;
+  width: 100%;
+}
+
+.mkt-file-input__native {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.mkt-file-input__input {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 0 var(--mkt-space-3);
+  gap: var(--mkt-space-2);
+  background-color: var(--mkt-color-bg);
+  color: var(--mkt-color-text);
+  border: 1px solid var(--mkt-color-border);
+  border-radius: var(--mkt-radius-sm);
+  font-family: var(--mkt-font-family);
+  text-align: left;
+  cursor: pointer;
+  outline: none;
+  transition: border-color var(--mkt-transition-duration) var(--mkt-transition-timing);
+}
+
+.mkt-file-input__input:hover:not(:disabled) {
+  background-color: var(--mkt-color-bg-subtle);
+}
+
+.mkt-file-input__input:focus-visible {
+  border-color: var(--mkt-color-focus-ring);
+  box-shadow: 0 0 0 1px var(--mkt-color-focus-ring);
+}
+
+.mkt-file-input__input[aria-invalid="true"] {
+  border-color: var(--mkt-color-error);
+}
+
+.mkt-file-input__input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background-color: var(--mkt-color-bg-subtle);
+}
+
+.mkt-file-input__input[data-size="xs"] { height: var(--mkt-size-xs); font-size: var(--mkt-font-size-xs); }
+.mkt-file-input__input[data-size="sm"] { height: var(--mkt-size-sm); font-size: var(--mkt-font-size-sm); }
+.mkt-file-input__input[data-size="md"] { height: var(--mkt-size-md); font-size: var(--mkt-font-size-sm); }
+.mkt-file-input__input[data-size="lg"] { height: var(--mkt-size-lg); font-size: var(--mkt-font-size-md); }
+.mkt-file-input__input[data-size="xl"] { height: var(--mkt-size-xl); font-size: var(--mkt-font-size-md); }
+
+.mkt-file-input__section {
+  display: inline-flex;
+  align-items: center;
+  color: var(--mkt-color-text-dimmed);
+}
+
+.mkt-file-input__value {
+  flex: 1;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.mkt-file-input__value[data-placeholder] {
+  color: var(--mkt-color-text-dimmed);
+}
+
+.mkt-file-input__clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: var(--mkt-radius-full);
+  color: var(--mkt-color-text-dimmed);
+  cursor: pointer;
+}
+
+.mkt-file-input__clear:hover {
+  background-color: var(--mkt-color-gray-2);
+  color: var(--mkt-color-text);
+}
+
+[data-mkt-color-scheme="dark"] .mkt-file-input__clear:hover {
+  background-color: var(--mkt-color-border);
+}

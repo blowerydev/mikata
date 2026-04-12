@@ -1,0 +1,34 @@
+.mkt-mark {
+  padding: 0 4px;
+  border-radius: var(--mkt-radius-xs);
+  color: inherit;
+  background-color: var(--mkt-color-yellow-2);
+}
+
+.mkt-mark[data-color="yellow"] { background-color: var(--mkt-color-yellow-2); }
+.mkt-mark[data-color="red"] { background-color: var(--mkt-color-red-2); }
+.mkt-mark[data-color="green"] { background-color: var(--mkt-color-green-2); }
+.mkt-mark[data-color="blue"] { background-color: var(--mkt-color-blue-2); }
+.mkt-mark[data-color="cyan"] { background-color: var(--mkt-color-cyan-2); }
+.mkt-mark[data-color="teal"] { background-color: var(--mkt-color-teal-2); }
+.mkt-mark[data-color="violet"] { background-color: var(--mkt-color-violet-2); }
+.mkt-mark[data-color="pink"] { background-color: var(--mkt-color-pink-2); }
+.mkt-mark[data-color="orange"] { background-color: var(--mkt-color-orange-2); }
+.mkt-mark[data-color="gray"] { background-color: var(--mkt-color-gray-2); }
+.mkt-mark[data-color="primary"] { background-color: var(--mkt-color-primary-2); }
+
+[data-mkt-color-scheme="dark"] .mkt-mark {
+  color: var(--mkt-color-text-inverse);
+}
+
+[data-mkt-color-scheme="dark"] .mkt-mark[data-color="yellow"] { background-color: var(--mkt-color-yellow-6); }
+[data-mkt-color-scheme="dark"] .mkt-mark[data-color="red"] { background-color: var(--mkt-color-red-6); }
+[data-mkt-color-scheme="dark"] .mkt-mark[data-color="green"] { background-color: var(--mkt-color-green-6); }
+[data-mkt-color-scheme="dark"] .mkt-mark[data-color="blue"] { background-color: var(--mkt-color-blue-6); }
+[data-mkt-color-scheme="dark"] .mkt-mark[data-color="cyan"] { background-color: var(--mkt-color-cyan-6); }
+[data-mkt-color-scheme="dark"] .mkt-mark[data-color="teal"] { background-color: var(--mkt-color-teal-6); }
+[data-mkt-color-scheme="dark"] .mkt-mark[data-color="violet"] { background-color: var(--mkt-color-violet-6); }
+[data-mkt-color-scheme="dark"] .mkt-mark[data-color="pink"] { background-color: var(--mkt-color-pink-6); }
+[data-mkt-color-scheme="dark"] .mkt-mark[data-color="orange"] { background-color: var(--mkt-color-orange-6); }
+[data-mkt-color-scheme="dark"] .mkt-mark[data-color="gray"] { background-color: var(--mkt-color-gray-7); }
+[data-mkt-color-scheme="dark"] .mkt-mark[data-color="primary"] { background-color: var(--mkt-color-primary-6); }

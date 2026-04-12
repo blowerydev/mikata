@@ -1,0 +1,166 @@
+.mkt-multi-select__root {
+  position: relative;
+}
+
+.mkt-multi-select {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--mkt-space-1);
+  min-height: var(--mkt-size-md);
+  padding: var(--mkt-space-1) var(--mkt-space-2);
+  border: 1px solid var(--mkt-color-border);
+  border-radius: var(--mkt-radius-sm);
+  background: var(--mkt-color-bg);
+  color: var(--mkt-color-text);
+  cursor: text;
+  font-family: var(--mkt-font-family);
+  transition: border-color var(--mkt-transition-duration) var(--mkt-transition-timing);
+}
+
+.mkt-multi-select[data-size="xs"] { min-height: var(--mkt-size-xs); font-size: var(--mkt-font-size-xs); }
+.mkt-multi-select[data-size="sm"] { min-height: var(--mkt-size-sm); font-size: var(--mkt-font-size-sm); }
+.mkt-multi-select[data-size="md"] { min-height: var(--mkt-size-md); font-size: var(--mkt-font-size-sm); }
+.mkt-multi-select[data-size="lg"] { min-height: var(--mkt-size-lg); font-size: var(--mkt-font-size-md); }
+.mkt-multi-select[data-size="xl"] { min-height: var(--mkt-size-xl); font-size: var(--mkt-font-size-md); }
+
+.mkt-multi-select:focus-within {
+  border-color: var(--mkt-color-focus-ring);
+  box-shadow: 0 0 0 1px var(--mkt-color-focus-ring);
+}
+
+.mkt-multi-select[data-invalid] {
+  border-color: var(--mkt-color-error);
+}
+
+.mkt-multi-select[data-disabled] {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background: var(--mkt-color-bg-subtle);
+}
+
+.mkt-multi-select__input {
+  flex: 1;
+  min-width: 60px;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  padding: 0;
+  line-height: 1.5;
+}
+
+.mkt-multi-select__input::placeholder {
+  color: var(--mkt-color-text-dimmed);
+}
+
+.mkt-multi-select__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--mkt-space-1);
+  background: var(--mkt-color-bg-subtle);
+  color: var(--mkt-color-text);
+  border-radius: var(--mkt-radius-sm);
+  padding: 2px var(--mkt-space-2);
+  font-size: var(--mkt-font-size-xs);
+  line-height: 1.4;
+}
+
+[data-mkt-color-scheme="dark"] .mkt-multi-select__pill {
+  background: color-mix(in srgb, var(--mkt-color-primary-6) 25%, transparent);
+}
+
+.mkt-multi-select__pill-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: none;
+  border: 0;
+  color: var(--mkt-color-text-dimmed);
+  cursor: pointer;
+  border-radius: var(--mkt-radius-xs);
+}
+
+.mkt-multi-select__pill-remove:hover {
+  color: var(--mkt-color-text);
+  background: var(--mkt-color-bg-hover);
+}
+
+.mkt-multi-select__clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  background: none;
+  border: 0;
+  color: var(--mkt-color-text-dimmed);
+  cursor: pointer;
+  border-radius: var(--mkt-radius-xs);
+}
+
+.mkt-multi-select__clear:hover {
+  color: var(--mkt-color-text);
+  background: var(--mkt-color-bg-hover);
+}
+
+.mkt-multi-select__dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: var(--mkt-z-dropdown);
+  margin: var(--mkt-space-1) 0 0 0;
+  padding: var(--mkt-space-1);
+  list-style: none;
+  background: var(--mkt-color-bg);
+  color: var(--mkt-color-text);
+  border: 1px solid var(--mkt-color-border);
+  border-radius: var(--mkt-radius-sm);
+  box-shadow: var(--mkt-shadow-md);
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.mkt-multi-select__option {
+  padding: var(--mkt-space-2) var(--mkt-space-3);
+  font-size: var(--mkt-font-size-sm);
+  border-radius: var(--mkt-radius-xs);
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mkt-space-2);
+}
+
+.mkt-multi-select__option::after {
+  content: "";
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.mkt-multi-select__option[data-selected]::after {
+  content: "\2713";
+  color: var(--mkt-color-primary-6);
+  font-weight: var(--mkt-font-weight-bold);
+}
+
+.mkt-multi-select__option[data-disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.mkt-multi-select__option:hover:not([data-disabled]),
+.mkt-multi-select__option[data-active]:not([data-disabled]) {
+  background: var(--mkt-color-bg-hover);
+}
+
+.mkt-multi-select__empty {
+  padding: var(--mkt-space-3);
+  text-align: center;
+  color: var(--mkt-color-text-dimmed);
+  font-size: var(--mkt-font-size-sm);
+}

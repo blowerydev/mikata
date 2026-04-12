@@ -1,0 +1,24 @@
+.mkt-loading-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: var(--mkt-z-overlay, 300);
+  transition: opacity var(--mkt-transition-duration) var(--mkt-transition-timing);
+}
+
+.mkt-loading-overlay[data-hidden] {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.mkt-loading-overlay__overlay {
+  position: absolute;
+  inset: 0;
+  background-color: color-mix(in srgb, var(--mkt-color-bg) 75%, transparent);
+}
+
+.mkt-loading-overlay__loader {
+  position: relative;
+}

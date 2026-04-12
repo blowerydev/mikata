@@ -1,0 +1,32 @@
+.mkt-spoiler {
+  display: block;
+  color: var(--mkt-color-text);
+  font-family: var(--mkt-font-family);
+}
+
+.mkt-spoiler__content {
+  overflow: hidden;
+  transition: max-height var(--mkt-transition-duration) var(--mkt-transition-timing);
+}
+
+.mkt-spoiler__control {
+  display: inline-block;
+  margin-top: var(--mkt-space-2);
+  padding: 0;
+  background: none;
+  border: 0;
+  color: var(--mkt-color-primary-6);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: var(--mkt-font-size-sm);
+}
+
+.mkt-spoiler__control:hover {
+  text-decoration: underline;
+}
+
+.mkt-spoiler__control:focus-visible {
+  outline: 2px solid var(--mkt-color-focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--mkt-radius-xs);
+}

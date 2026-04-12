@@ -1,5 +1,5 @@
 import { mergeClasses } from '../../utils/class-merge';
-import { useId } from '../../utils/use-id';
+import { uniqueId } from '../../utils/unique-id';
 import type { SwitchProps } from './Switch.types';
 import './Switch.css';
 
@@ -19,7 +19,7 @@ export function Switch(props: SwitchProps = {}): HTMLLabelElement {
     ref,
   } = props;
 
-  const id = useId('switch');
+  const id = uniqueId('switch');
 
   const root = document.createElement('label');
   root.className = mergeClasses(

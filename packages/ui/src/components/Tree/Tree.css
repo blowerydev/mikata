@@ -1,0 +1,65 @@
+.mkt-tree, .mkt-tree__node-children {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-family: var(--mkt-font-family);
+  color: var(--mkt-color-text);
+}
+
+.mkt-tree__node {
+  --_tree-level: 0;
+}
+
+.mkt-tree__node-label {
+  display: flex;
+  align-items: center;
+  gap: var(--mkt-space-1);
+  padding: var(--mkt-space-1) var(--mkt-space-2);
+  padding-left: calc(var(--mkt-space-2) + var(--_tree-level, 0) * var(--mkt-space-4));
+  border-radius: var(--mkt-radius-sm);
+  cursor: pointer;
+  user-select: none;
+  outline: none;
+}
+
+.mkt-tree__node-label:hover {
+  background: var(--mkt-color-bg-hover);
+}
+
+.mkt-tree__node-label:focus-visible {
+  outline: 2px solid var(--mkt-color-focus-ring);
+  outline-offset: -2px;
+}
+
+.mkt-tree__node[data-selected] > .mkt-tree__node-label {
+  background: var(--mkt-color-primary-1);
+  color: var(--mkt-color-primary-7);
+}
+
+[data-mkt-color-scheme="dark"] .mkt-tree__node[data-selected] > .mkt-tree__node-label {
+  background: color-mix(in srgb, var(--mkt-color-primary-6) 25%, transparent);
+  color: var(--mkt-color-primary-3);
+}
+
+.mkt-tree__expander {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  color: var(--mkt-color-text-dimmed);
+  transition: transform var(--mkt-transition-duration) var(--mkt-transition-timing);
+  flex-shrink: 0;
+}
+
+.mkt-tree__expander[data-open] {
+  transform: rotate(90deg);
+}
+
+.mkt-tree__node-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

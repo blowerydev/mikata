@@ -1,0 +1,9 @@
+.mkt-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mkt-center[data-inline] {
+  display: inline-flex;
+}

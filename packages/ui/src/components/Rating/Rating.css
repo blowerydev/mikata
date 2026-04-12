@@ -1,0 +1,73 @@
+.mkt-rating {
+  display: inline-flex;
+  gap: 2px;
+  --_rating-color: var(--mkt-color-yellow-5);
+  --_rating-empty: var(--mkt-color-gray-3);
+}
+
+[data-mkt-color-scheme="dark"] .mkt-rating {
+  --_rating-empty: var(--mkt-color-border);
+}
+
+.mkt-rating[data-size="xs"] { font-size: 14px; }
+.mkt-rating[data-size="sm"] { font-size: 18px; }
+.mkt-rating[data-size="md"] { font-size: 22px; }
+.mkt-rating[data-size="lg"] { font-size: 28px; }
+.mkt-rating[data-size="xl"] { font-size: 34px; }
+
+.mkt-rating__symbol-group {
+  position: relative;
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  line-height: 0;
+}
+
+.mkt-rating__input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.mkt-rating__input:focus-visible + .mkt-rating__label {
+  outline: 2px solid var(--mkt-color-focus-ring);
+  outline-offset: 2px;
+}
+
+.mkt-rating__label {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  cursor: pointer;
+  z-index: 2;
+}
+
+.mkt-rating[data-readonly] .mkt-rating__label {
+  cursor: default;
+  pointer-events: none;
+}
+
+.mkt-rating__symbol-body {
+  position: absolute;
+  inset: 0;
+  display: block;
+  overflow: hidden;
+}
+
+.mkt-rating__symbol-body--bg {
+  color: var(--_rating-empty);
+}
+
+.mkt-rating__symbol-body--fill {
+  color: var(--_rating-color);
+  width: 0%;
+}
+
+.mkt-rating__symbol-body svg {
+  width: 1em;
+  height: 1em;
+  display: block;
+  flex-shrink: 0;
+}

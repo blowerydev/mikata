@@ -1,0 +1,35 @@
+.mkt-fieldset {
+  margin: 0;
+  padding: var(--mkt-space-4);
+  border: 1px solid var(--mkt-color-border);
+  border-radius: var(--mkt-radius-sm);
+  color: var(--mkt-color-text);
+  font-family: var(--mkt-font-family);
+  background-color: var(--mkt-color-bg);
+}
+
+.mkt-fieldset[data-variant="filled"] {
+  background-color: var(--mkt-color-bg-subtle);
+  border-color: transparent;
+}
+
+.mkt-fieldset[data-variant="unstyled"] {
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+
+.mkt-fieldset:disabled {
+  opacity: 0.6;
+}
+
+.mkt-fieldset__legend {
+  padding: 0 var(--mkt-space-2);
+  font-weight: var(--mkt-font-weight-semibold);
+  font-size: var(--mkt-font-size-sm);
+  color: var(--mkt-color-text);
+}
+
+.mkt-fieldset[data-variant="unstyled"] .mkt-fieldset__legend {
+  padding: 0 0 var(--mkt-space-2);
+}

@@ -1,0 +1,69 @@
+.mkt-app-shell {
+  --_shell-header: 0px;
+  --_shell-footer: 0px;
+  --_shell-navbar: 0px;
+  --_shell-aside: 0px;
+  --_shell-padding: 0px;
+  position: relative;
+  min-height: 100vh;
+  font-family: var(--mkt-font-family);
+  color: var(--mkt-color-text);
+  background: var(--mkt-color-bg);
+}
+
+.mkt-app-shell__header {
+  position: sticky;
+  top: 0;
+  z-index: var(--mkt-z-sticky);
+  height: var(--_shell-header);
+  background: var(--mkt-color-bg);
+  border-bottom: 1px solid var(--mkt-color-border);
+  display: flex;
+  align-items: center;
+  padding: 0 var(--mkt-space-4);
+}
+
+.mkt-app-shell__footer {
+  height: var(--_shell-footer);
+  background: var(--mkt-color-bg);
+  border-top: 1px solid var(--mkt-color-border);
+  display: flex;
+  align-items: center;
+  padding: 0 var(--mkt-space-4);
+  margin-left: var(--_shell-navbar);
+  margin-right: var(--_shell-aside);
+}
+
+.mkt-app-shell__navbar {
+  position: fixed;
+  top: var(--_shell-header);
+  bottom: var(--_shell-footer);
+  left: 0;
+  width: var(--_shell-navbar);
+  background: var(--mkt-color-bg);
+  border-right: 1px solid var(--mkt-color-border);
+  overflow-y: auto;
+  padding: var(--mkt-space-4);
+  box-sizing: border-box;
+}
+
+.mkt-app-shell__aside {
+  position: fixed;
+  top: var(--_shell-header);
+  bottom: var(--_shell-footer);
+  right: 0;
+  width: var(--_shell-aside);
+  background: var(--mkt-color-bg);
+  border-left: 1px solid var(--mkt-color-border);
+  overflow-y: auto;
+  padding: var(--mkt-space-4);
+  box-sizing: border-box;
+}
+
+.mkt-app-shell__main {
+  margin-left: var(--_shell-navbar);
+  margin-right: var(--_shell-aside);
+  padding: var(--_shell-padding);
+  min-height: calc(100vh - var(--_shell-header) - var(--_shell-footer));
+  box-sizing: border-box;
+}

@@ -1,0 +1,52 @@
+.mkt-code {
+  font-family: var(--mkt-font-family-mono);
+  font-size: 0.875em;
+  padding: 2px 6px;
+  border-radius: var(--mkt-radius-sm);
+  background-color: var(--mkt-color-gray-1);
+  color: var(--mkt-color-text);
+  border: 1px solid transparent;
+}
+
+[data-mkt-color-scheme="dark"] .mkt-code {
+  background-color: var(--mkt-color-bg-subtle);
+  border-color: var(--mkt-color-border);
+}
+
+.mkt-code--block {
+  display: block;
+  padding: var(--mkt-space-3) var(--mkt-space-4);
+  line-height: 1.55;
+  overflow-x: auto;
+  white-space: pre;
+}
+
+.mkt-code--block > code {
+  padding: 0;
+  background: transparent;
+  border: 0;
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+}
+
+/* Color variants */
+.mkt-code[data-color="red"] { background-color: var(--mkt-color-red-0); color: var(--mkt-color-red-8); }
+.mkt-code[data-color="green"] { background-color: var(--mkt-color-green-0); color: var(--mkt-color-green-8); }
+.mkt-code[data-color="blue"] { background-color: var(--mkt-color-blue-0); color: var(--mkt-color-blue-8); }
+.mkt-code[data-color="yellow"] { background-color: var(--mkt-color-yellow-0); color: var(--mkt-color-yellow-8); }
+.mkt-code[data-color="violet"] { background-color: var(--mkt-color-violet-0); color: var(--mkt-color-violet-8); }
+.mkt-code[data-color="pink"] { background-color: var(--mkt-color-pink-0); color: var(--mkt-color-pink-8); }
+.mkt-code[data-color="orange"] { background-color: var(--mkt-color-orange-0); color: var(--mkt-color-orange-8); }
+.mkt-code[data-color="cyan"] { background-color: var(--mkt-color-cyan-0); color: var(--mkt-color-cyan-8); }
+.mkt-code[data-color="teal"] { background-color: var(--mkt-color-teal-0); color: var(--mkt-color-teal-8); }
+
+[data-mkt-color-scheme="dark"] .mkt-code[data-color="red"] { background-color: color-mix(in srgb, var(--mkt-color-red-9) 25%, transparent); color: var(--mkt-color-red-3); }
+[data-mkt-color-scheme="dark"] .mkt-code[data-color="green"] { background-color: color-mix(in srgb, var(--mkt-color-green-9) 25%, transparent); color: var(--mkt-color-green-3); }
+[data-mkt-color-scheme="dark"] .mkt-code[data-color="blue"] { background-color: color-mix(in srgb, var(--mkt-color-blue-9) 25%, transparent); color: var(--mkt-color-blue-3); }
+[data-mkt-color-scheme="dark"] .mkt-code[data-color="yellow"] { background-color: color-mix(in srgb, var(--mkt-color-yellow-9) 25%, transparent); color: var(--mkt-color-yellow-3); }
+[data-mkt-color-scheme="dark"] .mkt-code[data-color="violet"] { background-color: color-mix(in srgb, var(--mkt-color-violet-9) 25%, transparent); color: var(--mkt-color-violet-3); }
+[data-mkt-color-scheme="dark"] .mkt-code[data-color="pink"] { background-color: color-mix(in srgb, var(--mkt-color-pink-9) 25%, transparent); color: var(--mkt-color-pink-3); }
+[data-mkt-color-scheme="dark"] .mkt-code[data-color="orange"] { background-color: color-mix(in srgb, var(--mkt-color-orange-9) 25%, transparent); color: var(--mkt-color-orange-3); }
+[data-mkt-color-scheme="dark"] .mkt-code[data-color="cyan"] { background-color: color-mix(in srgb, var(--mkt-color-cyan-9) 25%, transparent); color: var(--mkt-color-cyan-3); }
+[data-mkt-color-scheme="dark"] .mkt-code[data-color="teal"] { background-color: color-mix(in srgb, var(--mkt-color-teal-9) 25%, transparent); color: var(--mkt-color-teal-3); }

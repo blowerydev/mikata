@@ -1,0 +1,91 @@
+.mkt-hover-card {
+  position: relative;
+  display: inline-block;
+}
+
+.mkt-hover-card__dropdown {
+  position: absolute;
+  z-index: var(--mkt-z-popover);
+  background: var(--mkt-color-bg);
+  color: var(--mkt-color-text);
+  border: 1px solid var(--mkt-color-border);
+  border-radius: var(--mkt-radius-md);
+  box-shadow: var(--mkt-shadow-md);
+  padding: var(--mkt-space-3);
+  min-width: 200px;
+  animation: mkt-hover-card-in var(--mkt-transition-duration) var(--mkt-transition-timing);
+}
+
+@keyframes mkt-hover-card-in {
+  from { opacity: 0; transform: translateY(-4px) translateX(-50%); }
+  to { opacity: 1; }
+}
+
+.mkt-hover-card__dropdown[data-position="top"] {
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: var(--mkt-space-2);
+}
+
+.mkt-hover-card__dropdown[data-position="bottom"] {
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: var(--mkt-space-2);
+}
+
+.mkt-hover-card__dropdown[data-position="left"] {
+  right: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  margin-right: var(--mkt-space-2);
+}
+
+.mkt-hover-card__dropdown[data-position="right"] {
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  margin-left: var(--mkt-space-2);
+}
+
+.mkt-hover-card__arrow {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: var(--mkt-color-bg);
+  border: 1px solid var(--mkt-color-border);
+  transform: rotate(45deg);
+}
+
+.mkt-hover-card__dropdown[data-position="top"] > .mkt-hover-card__arrow {
+  bottom: -5px;
+  left: 50%;
+  margin-left: -4px;
+  border-top: none;
+  border-left: none;
+}
+
+.mkt-hover-card__dropdown[data-position="bottom"] > .mkt-hover-card__arrow {
+  top: -5px;
+  left: 50%;
+  margin-left: -4px;
+  border-bottom: none;
+  border-right: none;
+}
+
+.mkt-hover-card__dropdown[data-position="left"] > .mkt-hover-card__arrow {
+  right: -5px;
+  top: 50%;
+  margin-top: -4px;
+  border-bottom: none;
+  border-left: none;
+}
+
+.mkt-hover-card__dropdown[data-position="right"] > .mkt-hover-card__arrow {
+  left: -5px;
+  top: 50%;
+  margin-top: -4px;
+  border-top: none;
+  border-right: none;
+}

@@ -1,0 +1,101 @@
+.mkt-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--mkt-space-1);
+  padding: 0 var(--mkt-space-3);
+  border: 1px solid var(--mkt-color-border);
+  background-color: var(--mkt-color-bg);
+  color: var(--mkt-color-text);
+  font-family: var(--mkt-font-family);
+  font-size: var(--mkt-font-size-sm);
+  cursor: pointer;
+  user-select: none;
+  transition: background-color var(--mkt-transition-duration), border-color var(--mkt-transition-duration);
+  --_chip-color: var(--mkt-color-primary-6);
+  --_chip-color-subtle: var(--mkt-color-primary-1);
+}
+
+.mkt-chip[data-disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.mkt-chip[data-size="xs"] { height: var(--mkt-size-xs); font-size: var(--mkt-font-size-xs); }
+.mkt-chip[data-size="sm"] { height: var(--mkt-size-sm); font-size: var(--mkt-font-size-xs); }
+.mkt-chip[data-size="md"] { height: var(--mkt-size-md); font-size: var(--mkt-font-size-sm); }
+.mkt-chip[data-size="lg"] { height: var(--mkt-size-lg); font-size: var(--mkt-font-size-md); }
+.mkt-chip[data-size="xl"] { height: var(--mkt-size-xl); font-size: var(--mkt-font-size-md); }
+
+.mkt-chip[data-radius="xs"] { border-radius: var(--mkt-radius-xs); }
+.mkt-chip[data-radius="sm"] { border-radius: var(--mkt-radius-sm); }
+.mkt-chip[data-radius="md"] { border-radius: var(--mkt-radius-md); }
+.mkt-chip[data-radius="lg"] { border-radius: var(--mkt-radius-lg); }
+.mkt-chip[data-radius="xl"] { border-radius: var(--mkt-radius-xl); }
+.mkt-chip[data-radius="full"] { border-radius: var(--mkt-radius-full); }
+
+.mkt-chip[data-color="primary"] { --_chip-color: var(--mkt-color-primary-6); --_chip-color-subtle: var(--mkt-color-primary-1); }
+.mkt-chip[data-color="gray"] { --_chip-color: var(--mkt-color-gray-6); --_chip-color-subtle: var(--mkt-color-gray-1); }
+.mkt-chip[data-color="red"] { --_chip-color: var(--mkt-color-red-6); --_chip-color-subtle: var(--mkt-color-red-1); }
+.mkt-chip[data-color="green"] { --_chip-color: var(--mkt-color-green-6); --_chip-color-subtle: var(--mkt-color-green-1); }
+.mkt-chip[data-color="blue"] { --_chip-color: var(--mkt-color-blue-6); --_chip-color-subtle: var(--mkt-color-blue-1); }
+.mkt-chip[data-color="yellow"] { --_chip-color: var(--mkt-color-yellow-6); --_chip-color-subtle: var(--mkt-color-yellow-1); }
+.mkt-chip[data-color="cyan"] { --_chip-color: var(--mkt-color-cyan-6); --_chip-color-subtle: var(--mkt-color-cyan-1); }
+.mkt-chip[data-color="teal"] { --_chip-color: var(--mkt-color-teal-6); --_chip-color-subtle: var(--mkt-color-teal-1); }
+.mkt-chip[data-color="violet"] { --_chip-color: var(--mkt-color-violet-6); --_chip-color-subtle: var(--mkt-color-violet-1); }
+.mkt-chip[data-color="pink"] { --_chip-color: var(--mkt-color-pink-6); --_chip-color-subtle: var(--mkt-color-pink-1); }
+.mkt-chip[data-color="orange"] { --_chip-color: var(--mkt-color-orange-6); --_chip-color-subtle: var(--mkt-color-orange-1); }
+
+.mkt-chip__input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+  width: 0;
+  height: 0;
+}
+
+.mkt-chip__icon {
+  display: none;
+  width: 10px;
+  height: 7px;
+}
+
+.mkt-chip:has(.mkt-chip__input:focus-visible) {
+  outline: 2px solid var(--mkt-color-focus-ring);
+  outline-offset: 2px;
+}
+
+/* Checked styles */
+.mkt-chip:has(.mkt-chip__input:checked) .mkt-chip__icon {
+  display: inline-flex;
+}
+
+.mkt-chip[data-variant="outline"]:has(.mkt-chip__input:checked) {
+  border-color: var(--_chip-color);
+  color: var(--_chip-color);
+}
+
+.mkt-chip[data-variant="filled"]:has(.mkt-chip__input:checked) {
+  background-color: var(--_chip-color);
+  border-color: var(--_chip-color);
+  color: #fff;
+}
+
+.mkt-chip[data-variant="light"]:has(.mkt-chip__input:checked) {
+  background-color: var(--_chip-color-subtle);
+  border-color: var(--_chip-color-subtle);
+  color: var(--_chip-color);
+}
+
+[data-mkt-color-scheme="dark"] .mkt-chip[data-variant="light"]:has(.mkt-chip__input:checked) {
+  background-color: color-mix(in srgb, var(--_chip-color) 25%, transparent);
+  border-color: transparent;
+  color: var(--_chip-color);
+}
+
+.mkt-chip:not([data-disabled]):hover {
+  background-color: var(--mkt-color-gray-0);
+}
+
+[data-mkt-color-scheme="dark"] .mkt-chip:not([data-disabled]):hover {
+  background-color: var(--mkt-color-bg-subtle);
+}

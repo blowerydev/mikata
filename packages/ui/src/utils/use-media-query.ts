@@ -1,20 +1,2 @@
-import { signal, onCleanup, type ReadSignal } from '@mikata/reactivity';
-
-/**
- * Reactive wrapper around `matchMedia`.
- * Returns a signal that updates when the media query match changes.
- *
- * Usage:
- *   const isMobile = useMediaQuery('(max-width: 768px)');
- *   effect(() => console.log('Mobile:', isMobile()));
- */
-export function useMediaQuery(query: string): ReadSignal<boolean> {
-  const mql = window.matchMedia(query);
-  const [matches, setMatches] = signal(mql.matches);
-
-  const handler = (e: MediaQueryListEvent) => setMatches(e.matches);
-  mql.addEventListener('change', handler);
-  onCleanup(() => mql.removeEventListener('change', handler));
-
-  return matches;
-}
+/** @deprecated Import `createMediaQuery` from `../utils/create-media-query` instead. */
+export { useMediaQuery, createMediaQuery } from './create-media-query';

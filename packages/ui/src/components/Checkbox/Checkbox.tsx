@@ -1,5 +1,5 @@
 import { mergeClasses } from '../../utils/class-merge';
-import { useId } from '../../utils/use-id';
+import { uniqueId } from '../../utils/unique-id';
 import type { CheckboxProps } from './Checkbox.types';
 import './Checkbox.css';
 
@@ -19,7 +19,7 @@ export function Checkbox(props: CheckboxProps = {}): HTMLLabelElement {
     ref,
   } = props;
 
-  const id = useId('checkbox');
+  const id = uniqueId('checkbox');
 
   const root = document.createElement('label');
   root.className = mergeClasses(

@@ -1,6 +1,6 @@
 import { onCleanup } from '@mikata/reactivity';
 import { mergeClasses } from '../../utils/class-merge';
-import { useId } from '../../utils/use-id';
+import { uniqueId } from '../../utils/unique-id';
 import type { TooltipProps } from './Tooltip.types';
 import './Tooltip.css';
 
@@ -15,7 +15,7 @@ export function Tooltip(props: TooltipProps): HTMLSpanElement {
     ref,
   } = props;
 
-  const tooltipId = useId('tooltip');
+  const tooltipId = uniqueId('tooltip');
   let timer: ReturnType<typeof setTimeout> | null = null;
   let tooltipEl: HTMLDivElement | null = null;
 

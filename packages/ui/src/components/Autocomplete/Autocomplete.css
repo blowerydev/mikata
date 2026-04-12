@@ -1,0 +1,71 @@
+.mkt-autocomplete {
+  position: relative;
+  display: block;
+}
+
+.mkt-autocomplete__input {
+  width: 100%;
+  border: 1px solid var(--mkt-color-border);
+  border-radius: var(--mkt-radius-sm);
+  font-family: var(--mkt-font-family);
+  color: var(--mkt-color-text);
+  background: var(--mkt-color-bg);
+  outline: none;
+  transition: border-color var(--mkt-transition-duration) var(--mkt-transition-timing);
+}
+
+.mkt-autocomplete__input:focus {
+  border-color: var(--mkt-color-focus-ring);
+  box-shadow: 0 0 0 1px var(--mkt-color-focus-ring);
+}
+
+.mkt-autocomplete__input[aria-invalid="true"] {
+  border-color: var(--mkt-color-error);
+}
+
+.mkt-autocomplete__input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background: var(--mkt-color-bg-subtle);
+}
+
+.mkt-autocomplete__input::placeholder {
+  color: var(--mkt-color-text-dimmed);
+}
+
+.mkt-autocomplete__input[data-size="xs"] { height: var(--mkt-size-xs); padding: 0 var(--mkt-space-2); font-size: var(--mkt-font-size-xs); }
+.mkt-autocomplete__input[data-size="sm"] { height: var(--mkt-size-sm); padding: 0 var(--mkt-space-3); font-size: var(--mkt-font-size-sm); }
+.mkt-autocomplete__input[data-size="md"] { height: var(--mkt-size-md); padding: 0 var(--mkt-space-3); font-size: var(--mkt-font-size-sm); }
+.mkt-autocomplete__input[data-size="lg"] { height: var(--mkt-size-lg); padding: 0 var(--mkt-space-4); font-size: var(--mkt-font-size-md); }
+.mkt-autocomplete__input[data-size="xl"] { height: var(--mkt-size-xl); padding: 0 var(--mkt-space-4); font-size: var(--mkt-font-size-md); }
+
+.mkt-autocomplete__dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: var(--mkt-z-dropdown);
+  margin: var(--mkt-space-1) 0 0 0;
+  padding: var(--mkt-space-1);
+  list-style: none;
+  background: var(--mkt-color-bg);
+  color: var(--mkt-color-text);
+  border: 1px solid var(--mkt-color-border);
+  border-radius: var(--mkt-radius-sm);
+  box-shadow: var(--mkt-shadow-md);
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.mkt-autocomplete__option {
+  padding: var(--mkt-space-2) var(--mkt-space-3);
+  font-size: var(--mkt-font-size-sm);
+  border-radius: var(--mkt-radius-xs);
+  cursor: pointer;
+  user-select: none;
+}
+
+.mkt-autocomplete__option:hover,
+.mkt-autocomplete__option[data-active] {
+  background: var(--mkt-color-bg-hover);
+}

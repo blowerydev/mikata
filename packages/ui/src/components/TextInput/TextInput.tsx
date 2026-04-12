@@ -1,5 +1,5 @@
 import { mergeClasses } from '../../utils/class-merge';
-import { useId } from '../../utils/use-id';
+import { uniqueId } from '../../utils/unique-id';
 import { InputWrapper } from '../_internal/InputWrapper';
 import type { TextInputProps } from './TextInput.types';
 import './TextInput.css';
@@ -24,7 +24,7 @@ export function TextInput(props: TextInputProps = {}): HTMLDivElement {
     ref,
   } = props;
 
-  const id = useId('text-input');
+  const id = uniqueId('text-input');
 
   const input = document.createElement('input');
   input.type = 'text';

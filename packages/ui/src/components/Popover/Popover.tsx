@@ -1,6 +1,6 @@
 import { createRef, onCleanup } from '@mikata/runtime';
 import { mergeClasses } from '../../utils/class-merge';
-import { useClickOutside } from '../../utils/use-click-outside';
+import { onClickOutside } from '../../utils/on-click-outside';
 import type { PopoverProps } from './Popover.types';
 import './Popover.css';
 
@@ -46,7 +46,7 @@ export function Popover(props: PopoverProps): HTMLSpanElement {
   if (closeOnClickOutside && onClose) {
     const wrapperRef = createRef<HTMLElement>();
     wrapperRef(wrapper);
-    useClickOutside(wrapperRef, onClose);
+    onClickOutside(wrapperRef, onClose);
   }
 
   // Escape key

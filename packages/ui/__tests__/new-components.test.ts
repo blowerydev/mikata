@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { _resetIdCounter } from '../src/utils/use-id';
+import { _resetIdCounter } from '../src/utils/unique-id';
 
 import { Card } from '../src/components/Card';
 import { Tabs } from '../src/components/Tabs';

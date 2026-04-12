@@ -1,0 +1,83 @@
+.mkt-timeline {
+  --_tl-bullet-size: 20px;
+  --_tl-line-width: 2px;
+  --_tl-color: var(--mkt-color-primary-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--mkt-space-4);
+  color: var(--mkt-color-text);
+  font-family: var(--mkt-font-family);
+}
+
+.mkt-timeline__item {
+  position: relative;
+  display: flex;
+  gap: var(--mkt-space-3);
+  padding-bottom: var(--mkt-space-2);
+}
+
+.mkt-timeline[data-align="right"] .mkt-timeline__item {
+  flex-direction: row-reverse;
+  text-align: right;
+}
+
+.mkt-timeline__item::before {
+  content: "";
+  position: absolute;
+  top: var(--_tl-bullet-size);
+  bottom: calc(-1 * var(--mkt-space-4));
+  left: calc(var(--_tl-bullet-size) / 2 - var(--_tl-line-width) / 2);
+  width: var(--_tl-line-width);
+  background: var(--mkt-color-border);
+}
+
+.mkt-timeline[data-align="right"] .mkt-timeline__item::before {
+  left: auto;
+  right: calc(var(--_tl-bullet-size) / 2 - var(--_tl-line-width) / 2);
+}
+
+.mkt-timeline__item:last-child::before {
+  display: none;
+}
+
+.mkt-timeline__item[data-active]::before {
+  background: var(--_tl-color);
+}
+
+.mkt-timeline__item-bullet {
+  flex-shrink: 0;
+  width: var(--_tl-bullet-size);
+  height: var(--_tl-bullet-size);
+  border-radius: 50%;
+  border: var(--_tl-line-width) solid var(--mkt-color-border);
+  background: var(--mkt-color-bg);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--mkt-color-text-dimmed);
+  font-size: calc(var(--_tl-bullet-size) * 0.6);
+  line-height: 1;
+  z-index: 1;
+}
+
+.mkt-timeline__item[data-active] .mkt-timeline__item-bullet {
+  background: var(--_tl-color);
+  border-color: var(--_tl-color);
+  color: var(--mkt-color-white, #fff);
+}
+
+.mkt-timeline__item-body {
+  flex: 1;
+  min-width: 0;
+  padding-top: calc(var(--_tl-bullet-size) / 8);
+}
+
+.mkt-timeline__item-title {
+  font-weight: var(--mkt-font-weight-semibold);
+  margin-bottom: var(--mkt-space-1);
+}
+
+.mkt-timeline__item-content {
+  color: var(--mkt-color-text-dimmed);
+  font-size: var(--mkt-font-size-sm);
+}

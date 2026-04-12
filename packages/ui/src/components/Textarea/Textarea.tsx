@@ -1,5 +1,5 @@
 import { mergeClasses } from '../../utils/class-merge';
-import { useId } from '../../utils/use-id';
+import { uniqueId } from '../../utils/unique-id';
 import { InputWrapper } from '../_internal/InputWrapper';
 import type { TextareaProps } from './Textarea.types';
 import './Textarea.css';
@@ -24,7 +24,7 @@ export function Textarea(props: TextareaProps = {}): HTMLDivElement {
     ref,
   } = props;
 
-  const id = useId('textarea');
+  const id = uniqueId('textarea');
 
   const textarea = document.createElement('textarea');
   textarea.id = id;

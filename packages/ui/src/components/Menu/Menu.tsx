@@ -1,5 +1,5 @@
 import { mergeClasses } from '../../utils/class-merge';
-import { useId } from '../../utils/use-id';
+import { uniqueId } from '../../utils/unique-id';
 import type { MenuProps, MenuItemDef } from './Menu.types';
 import './Menu.css';
 
@@ -15,7 +15,7 @@ export function Menu(props: MenuProps): HTMLElement {
     ref,
   } = props;
 
-  const id = useId('menu');
+  const id = uniqueId('menu');
   let isOpen = false;
 
   const root = document.createElement('div');

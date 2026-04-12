@@ -1,5 +1,5 @@
 import { mergeClasses } from '../../utils/class-merge';
-import { useId } from '../../utils/use-id';
+import { uniqueId } from '../../utils/unique-id';
 import type { SliderProps } from './Slider.types';
 import './Slider.css';
 
@@ -20,7 +20,7 @@ export function Slider(props: SliderProps = {}): HTMLDivElement {
     ref,
   } = props;
 
-  const id = useId('slider');
+  const id = uniqueId('slider');
 
   const root = document.createElement('div');
   root.className = mergeClasses('mkt-slider', className, classNames?.root);

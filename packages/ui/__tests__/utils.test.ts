@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { mergeClasses } from '../src/utils/class-merge';
-import { useId, _resetIdCounter } from '../src/utils/use-id';
-import { useDisclosure } from '../src/utils/use-disclosure';
+import { uniqueId, _resetIdCounter } from '../src/utils/unique-id';
+import { createDisclosure } from '../src/utils/create-disclosure';
 
 describe('mergeClasses', () => {
   it('joins multiple class names', () => {
@@ -25,57 +25,57 @@ describe('mergeClasses', () => {
   });
 });
 
-describe('useId', () => {
+describe('uniqueId', () => {
   beforeEach(() => {
     _resetIdCounter();
   });
 
   it('generates unique IDs with default prefix', () => {
-    const id1 = useId();
-    const id2 = useId();
+    const id1 = uniqueId();
+    const id2 = uniqueId();
     expect(id1).toBe('mkt-1');
     expect(id2).toBe('mkt-2');
     expect(id1).not.toBe(id2);
   });
 
   it('uses custom prefix', () => {
-    const id = useId('btn');
+    const id = uniqueId('btn');
     expect(id).toBe('btn-1');
   });
 
   it('increments counter across different prefixes', () => {
-    const id1 = useId('a');
-    const id2 = useId('b');
+    const id1 = uniqueId('a');
+    const id2 = uniqueId('b');
     expect(id1).toBe('a-1');
     expect(id2).toBe('b-2');
   });
 });
 
-describe('useDisclosure', () => {
+describe('createDisclosure', () => {
   it('starts closed by default', () => {
-    const { opened } = useDisclosure();
+    const { opened } = createDisclosure();
     expect(opened()).toBe(false);
   });
 
   it('accepts initial state', () => {
-    const { opened } = useDisclosure(true);
+    const { opened } = createDisclosure(true);
     expect(opened()).toBe(true);
   });
 
   it('open() sets state to true', () => {
-    const { opened, open } = useDisclosure();
+    const { opened, open } = createDisclosure();
     open();
     expect(opened()).toBe(true);
   });
 
   it('close() sets state to false', () => {
-    const { opened, close } = useDisclosure(true);
+    const { opened, close } = createDisclosure(true);
     close();
     expect(opened()).toBe(false);
   });
 
   it('toggle() flips state', () => {
-    const { opened, toggle } = useDisclosure();
+    const { opened, toggle } = createDisclosure();
     toggle();
     expect(opened()).toBe(true);
     toggle();

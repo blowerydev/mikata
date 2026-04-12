@@ -1,5 +1,5 @@
 import { mergeClasses } from '../../utils/class-merge';
-import { useId } from '../../utils/use-id';
+import { uniqueId } from '../../utils/unique-id';
 import type { TabsProps } from './Tabs.types';
 import './Tabs.css';
 
@@ -18,7 +18,7 @@ export function Tabs(props: TabsProps): HTMLElement {
     ref,
   } = props;
 
-  const id = useId('tabs');
+  const id = uniqueId('tabs');
   let activeValue = value ?? defaultValue ?? items[0]?.value ?? '';
 
   const root = document.createElement('div');

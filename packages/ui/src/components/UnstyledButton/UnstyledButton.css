@@ -1,0 +1,28 @@
+.mkt-unstyled-button {
+  display: inline-block;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: inherit;
+  cursor: pointer;
+  outline: none;
+  user-select: none;
+  text-decoration: none;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.mkt-unstyled-button:disabled,
+.mkt-unstyled-button[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.mkt-unstyled-button:focus-visible {
+  outline: 2px solid var(--mkt-color-focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--mkt-radius-xs);
+}

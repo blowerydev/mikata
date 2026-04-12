@@ -1,0 +1,73 @@
+.mkt-scroll-area {
+  position: relative;
+  overflow: hidden;
+}
+
+.mkt-scroll-area__viewport {
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--mkt-color-gray-4) transparent;
+}
+
+[data-mkt-color-scheme="dark"] .mkt-scroll-area__viewport {
+  scrollbar-color: var(--mkt-color-gray-6) transparent;
+}
+
+/* Custom webkit scrollbar */
+.mkt-scroll-area__viewport::-webkit-scrollbar {
+  width: var(--_scrollbar-size, 10px);
+  height: var(--_scrollbar-size, 10px);
+}
+
+.mkt-scroll-area__viewport::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.mkt-scroll-area__viewport::-webkit-scrollbar-thumb {
+  background: var(--mkt-color-gray-3);
+  border-radius: var(--mkt-radius-sm);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  transition: background-color var(--mkt-transition-duration);
+}
+
+[data-mkt-color-scheme="dark"] .mkt-scroll-area__viewport::-webkit-scrollbar-thumb {
+  background: var(--mkt-color-border);
+  background-clip: padding-box;
+}
+
+.mkt-scroll-area__viewport::-webkit-scrollbar-thumb:hover {
+  background: var(--mkt-color-gray-5);
+  background-clip: padding-box;
+}
+
+[data-mkt-color-scheme="dark"] .mkt-scroll-area__viewport::-webkit-scrollbar-thumb:hover {
+  background: var(--mkt-color-gray-6);
+  background-clip: padding-box;
+}
+
+/* hover type: hide scrollbar until hover */
+.mkt-scroll-area[data-type="hover"] .mkt-scroll-area__viewport::-webkit-scrollbar-thumb {
+  background-color: transparent;
+}
+
+.mkt-scroll-area[data-type="hover"]:hover .mkt-scroll-area__viewport::-webkit-scrollbar-thumb {
+  background-color: var(--mkt-color-gray-3);
+  background-clip: padding-box;
+}
+
+[data-mkt-color-scheme="dark"] .mkt-scroll-area[data-type="hover"]:hover .mkt-scroll-area__viewport::-webkit-scrollbar-thumb {
+  background-color: var(--mkt-color-border);
+  background-clip: padding-box;
+}
+
+/* direction */
+.mkt-scroll-area[data-direction="vertical"] .mkt-scroll-area__viewport {
+  overflow-x: hidden;
+}
+
+.mkt-scroll-area[data-direction="horizontal"] .mkt-scroll-area__viewport {
+  overflow-y: hidden;
+}

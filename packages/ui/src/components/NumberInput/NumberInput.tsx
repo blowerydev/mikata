@@ -1,5 +1,5 @@
 import { mergeClasses } from '../../utils/class-merge';
-import { useId } from '../../utils/use-id';
+import { uniqueId } from '../../utils/unique-id';
 import { InputWrapper } from '../_internal/InputWrapper';
 import type { NumberInputProps } from './NumberInput.types';
 import './NumberInput.css';
@@ -26,7 +26,7 @@ export function NumberInput(props: NumberInputProps = {}): HTMLDivElement {
     ref,
   } = props;
 
-  const id = useId('number-input');
+  const id = uniqueId('number-input');
 
   const input = document.createElement('input');
   input.type = 'number';

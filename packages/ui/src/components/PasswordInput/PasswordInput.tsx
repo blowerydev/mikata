@@ -1,5 +1,5 @@
 import { mergeClasses } from '../../utils/class-merge';
-import { useId } from '../../utils/use-id';
+import { uniqueId } from '../../utils/unique-id';
 import { useUILabels } from '../../utils/use-i18n-optional';
 import { InputWrapper } from '../_internal/InputWrapper';
 import type { PasswordInputProps } from './PasswordInput.types';
@@ -23,7 +23,7 @@ export function PasswordInput(props: PasswordInputProps = {}): HTMLDivElement {
     ref,
   } = props;
 
-  const id = useId('password-input');
+  const id = uniqueId('password-input');
   const labels = useUILabels();
   let visible = false;
 

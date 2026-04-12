@@ -1,0 +1,7 @@
+.mkt-flex {
+  display: flex;
+}
+
+.mkt-flex[data-inline] {
+  display: inline-flex;
+}

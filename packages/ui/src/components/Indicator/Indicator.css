@@ -1,0 +1,81 @@
+.mkt-indicator {
+  position: relative;
+  display: inline-block;
+}
+
+.mkt-indicator[data-inline] {
+  position: static;
+}
+
+.mkt-indicator__indicator {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--_indicator-size, 10px);
+  height: var(--_indicator-size, 10px);
+  background-color: var(--_indicator-color, var(--mkt-color-primary-6));
+  color: #fff;
+  font-size: calc(var(--_indicator-size, 10px) * 0.65);
+  font-family: var(--mkt-font-family);
+  font-weight: var(--mkt-font-weight-semibold);
+  line-height: 1;
+  z-index: 1;
+  box-sizing: border-box;
+  box-shadow: 0 0 0 2px var(--mkt-color-bg);
+}
+
+.mkt-indicator__indicator[data-with-label] {
+  width: auto;
+  min-width: var(--_indicator-size, 16px);
+  height: auto;
+  min-height: var(--_indicator-size, 16px);
+  padding: 0 calc(var(--_indicator-size, 16px) * 0.35);
+  font-size: calc(var(--_indicator-size, 16px) * 0.7);
+}
+
+/* Radius */
+.mkt-indicator__indicator[data-radius="full"] { border-radius: var(--mkt-radius-full); }
+.mkt-indicator__indicator[data-radius="xs"] { border-radius: var(--mkt-radius-xs); }
+.mkt-indicator__indicator[data-radius="sm"] { border-radius: var(--mkt-radius-sm); }
+.mkt-indicator__indicator[data-radius="md"] { border-radius: var(--mkt-radius-md); }
+.mkt-indicator__indicator[data-radius="lg"] { border-radius: var(--mkt-radius-lg); }
+.mkt-indicator__indicator[data-radius="xl"] { border-radius: var(--mkt-radius-xl); }
+
+/* Colors */
+.mkt-indicator__indicator[data-color="primary"] { --_indicator-color: var(--mkt-color-primary-6); }
+.mkt-indicator__indicator[data-color="gray"] { --_indicator-color: var(--mkt-color-gray-6); }
+.mkt-indicator__indicator[data-color="red"] { --_indicator-color: var(--mkt-color-red-6); }
+.mkt-indicator__indicator[data-color="green"] { --_indicator-color: var(--mkt-color-green-6); }
+.mkt-indicator__indicator[data-color="blue"] { --_indicator-color: var(--mkt-color-blue-6); }
+.mkt-indicator__indicator[data-color="yellow"] { --_indicator-color: var(--mkt-color-yellow-6); }
+.mkt-indicator__indicator[data-color="cyan"] { --_indicator-color: var(--mkt-color-cyan-6); }
+.mkt-indicator__indicator[data-color="teal"] { --_indicator-color: var(--mkt-color-teal-6); }
+.mkt-indicator__indicator[data-color="violet"] { --_indicator-color: var(--mkt-color-violet-6); }
+.mkt-indicator__indicator[data-color="pink"] { --_indicator-color: var(--mkt-color-pink-6); }
+.mkt-indicator__indicator[data-color="orange"] { --_indicator-color: var(--mkt-color-orange-6); }
+
+/* Positions */
+.mkt-indicator__indicator[data-position="top-start"] { top: var(--_indicator-offset); left: var(--_indicator-offset); transform: translate(-50%, -50%); }
+.mkt-indicator__indicator[data-position="top-center"] { top: var(--_indicator-offset); left: 50%; transform: translate(-50%, -50%); }
+.mkt-indicator__indicator[data-position="top-end"] { top: var(--_indicator-offset); right: var(--_indicator-offset); transform: translate(50%, -50%); }
+.mkt-indicator__indicator[data-position="middle-start"] { top: 50%; left: var(--_indicator-offset); transform: translate(-50%, -50%); }
+.mkt-indicator__indicator[data-position="middle-center"] { top: 50%; left: 50%; transform: translate(-50%, -50%); }
+.mkt-indicator__indicator[data-position="middle-end"] { top: 50%; right: var(--_indicator-offset); transform: translate(50%, -50%); }
+.mkt-indicator__indicator[data-position="bottom-start"] { bottom: var(--_indicator-offset); left: var(--_indicator-offset); transform: translate(-50%, 50%); }
+.mkt-indicator__indicator[data-position="bottom-center"] { bottom: var(--_indicator-offset); left: 50%; transform: translate(-50%, 50%); }
+.mkt-indicator__indicator[data-position="bottom-end"] { bottom: var(--_indicator-offset); right: var(--_indicator-offset); transform: translate(50%, 50%); }
+
+/* Processing pulse */
+.mkt-indicator__indicator[data-processing] {
+  animation: mkt-indicator-pulse 1.8s infinite;
+}
+
+@keyframes mkt-indicator-pulse {
+  0%, 100% { box-shadow: 0 0 0 2px var(--mkt-color-bg), 0 0 0 0 color-mix(in srgb, var(--_indicator-color) 50%, transparent); }
+  70% { box-shadow: 0 0 0 2px var(--mkt-color-bg), 0 0 0 8px transparent; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mkt-indicator__indicator[data-processing] { animation: none; }
+}

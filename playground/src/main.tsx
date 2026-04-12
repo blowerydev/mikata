@@ -55,6 +55,53 @@ import {
   Breadcrumb,
   NavLink,
   toast,
+  // New components
+  Flex,
+  SimpleGrid,
+  Center,
+  AspectRatio,
+  Paper,
+  VisuallyHidden,
+  Kbd,
+  Code,
+  Mark,
+  Blockquote,
+  List,
+  ListItem,
+  ThemeIcon,
+  ColorSwatch,
+  Image,
+  BackgroundImage,
+  Highlight,
+  Spoiler,
+  Indicator,
+  RingProgress,
+  LoadingOverlay,
+  Notification,
+  Input,
+  PinInput,
+  Rating,
+  Chip,
+  ChipGroup,
+  Fieldset,
+  FileInput,
+  FileButton,
+  Collapse,
+  ScrollArea,
+  HoverCard,
+  Timeline,
+  Stepper,
+  Tree,
+  Autocomplete,
+  MultiSelect,
+  TagsInput,
+  AppShell,
+  Affix,
+  UnstyledButton,
+  Burger,
+  CopyButton,
+  Overlay,
+  RangeSlider,
 } from '@mikata/ui';
 import enMessages from './locales/en.json';
 import jaMessages from './locales/ja.json';
@@ -971,6 +1018,408 @@ function UIContent() {
 }
 
 // ============================================================
+// Demo 8: Extras — new components showcase
+// ============================================================
+function ExtrasDemo() {
+  const themeEl = ThemeProvider({}) as HTMLElement;
+
+  const wrapper = _createElement('div');
+  _setProp(wrapper, 'style', {
+    background: 'var(--mkt-color-bg)',
+    color: 'var(--mkt-color-text)',
+    padding: '1.5rem',
+    borderRadius: '8px',
+    marginTop: '1.5rem',
+    transition: 'background 150ms, color 150ms',
+  });
+
+  wrapper.appendChild(_createComponent(ExtrasContent, {}));
+  themeEl.appendChild(wrapper);
+  return themeEl;
+}
+
+function ExtrasContent() {
+  const { t } = useI18n();
+  const el = _createElement('div');
+
+  el.appendChild(Title({ order: 2, children: t.node('extras.title') }));
+  el.appendChild(Text({ size: 'sm', children: t.node('extras.description') }));
+
+  // ─── Typography ────────────────────────────
+  el.appendChild(Title({ order: 3, children: t.node('extras.typographyTitle') }));
+
+  const typoStack = Stack({ gap: 'sm', children: [
+    Group({ gap: 'xs', align: 'center', children: [
+      Text({ size: 'sm', children: t.node('extras.kbdTitle') }),
+      Kbd({ children: t('extras.kbdCtrl') }),
+      Text({ size: 'sm', children: '+' }),
+      Kbd({ children: t('extras.kbdShift') }),
+      Text({ size: 'sm', children: '+' }),
+      Kbd({ children: t('extras.kbdK') }),
+    ] }),
+    Code({ children: t('extras.codeDemo') }),
+    Text({ children: (() => {
+      const span = document.createElement('span');
+      span.textContent = 'Contains ';
+      span.appendChild(Mark({ color: 'yellow', children: t('extras.markedText') }));
+      span.appendChild(document.createTextNode(' text inline.'));
+      return span;
+    })() }),
+    Blockquote({
+      color: 'primary',
+      cite: t('extras.blockquoteCite'),
+      children: t.node('extras.blockquote'),
+    }),
+    Highlight({
+      highlight: t('extras.highlightTerm'),
+      color: 'yellow',
+      children: t('extras.highlightText'),
+    }),
+    Spoiler({
+      maxHeight: 48,
+      showLabel: t('extras.spoilerShow'),
+      hideLabel: t('extras.spoilerHide'),
+      children: (() => {
+        const p = document.createElement('p');
+        p.textContent = t('extras.spoilerContent') + ' ' + t('extras.spoilerContent');
+        return p;
+      })(),
+    }),
+    List({ children: [
+      ListItem({ children: 'First item' }),
+      ListItem({ children: 'Second item' }),
+      ListItem({ children: 'Third item' }),
+    ] }),
+  ] });
+  el.appendChild(typoStack);
+
+  // ─── ThemeIcons & ColorSwatch ──────────────
+  el.appendChild(Title({ order: 3, children: t.node('extras.themeIconTitle') }));
+  const icon = () => {
+    const s = document.createElement('span');
+    s.innerHTML = '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 8L7 12L13 4"/></svg>';
+    return s.firstChild as Node;
+  };
+  el.appendChild(Group({ gap: 'sm', children: [
+    ThemeIcon({ color: 'primary', children: icon() }),
+    ThemeIcon({ color: 'green', variant: 'light', children: icon() }),
+    ThemeIcon({ color: 'red', variant: 'outline', children: icon() }),
+    ThemeIcon({ color: 'violet', variant: 'gradient', size: 'lg', children: icon() }),
+  ] }));
+
+  el.appendChild(Text({ size: 'sm', children: t.node('extras.colorSwatchTitle') }));
+  el.appendChild(Group({ gap: 'xs', children: [
+    ColorSwatch({ color: '#7c3aed' }),
+    ColorSwatch({ color: '#10b981' }),
+    ColorSwatch({ color: '#ef4444' }),
+    ColorSwatch({ color: '#f59e0b' }),
+    ColorSwatch({ color: 'transparent' }),
+  ] }));
+
+  el.appendChild(Divider({}));
+
+  // ─── Layout ───────────────────────────────
+  el.appendChild(Title({ order: 3, children: t.node('extras.layoutTitle') }));
+
+  const layoutGrid = SimpleGrid({ cols: 3, spacing: 'md', children: [
+    Paper({ padding: 'md', withBorder: true, shadow: 'sm', children: Text({ children: t.node('extras.paperContent') }) }),
+    Center({ children: Badge({ color: 'primary', children: t.node('extras.centerContent') }) }),
+    AspectRatio({ ratio: 16 / 9, children: (() => {
+      const d = document.createElement('div');
+      d.style.background = 'var(--mkt-color-primary-1)';
+      d.style.display = 'flex';
+      d.style.alignItems = 'center';
+      d.style.justifyContent = 'center';
+      d.style.color = 'var(--mkt-color-primary-7)';
+      d.style.borderRadius = 'var(--mkt-radius-sm)';
+      d.textContent = '16:9';
+      return d;
+    })() }),
+  ] });
+  el.appendChild(layoutGrid);
+
+  el.appendChild(Flex({ gap: 'sm', wrap: 'wrap', children: [
+    Indicator({ label: '3', color: 'red', children: Badge({ color: 'gray', children: t.node('extras.indicatorContent') }) }),
+    RingProgress({ size: 80, thickness: 8, sections: [{ value: 70, color: 'primary' }], label: Text({ size: 'sm', children: t.node('extras.ringProgressLabel') }) }),
+  ] }));
+
+  el.appendChild(Divider({}));
+
+  // ─── Inputs & Forms ────────────────────────
+  el.appendChild(Title({ order: 3, children: t.node('extras.chipsTitle') }));
+  el.appendChild(ChipGroup({
+    multiple: true,
+    defaultValue: ['mikata'],
+    onChange: (v) => console.log('Chips:', v),
+    children: [
+      Chip({ value: 'react', children: t.node('extras.chipOption1') }),
+      Chip({ value: 'vue', children: t.node('extras.chipOption2') }),
+      Chip({ value: 'solid', children: t.node('extras.chipOption3') }),
+      Chip({ value: 'mikata', color: 'violet', children: t.node('extras.chipOption4') }),
+    ],
+  }));
+
+  el.appendChild(Title({ order: 3, children: t.node('extras.ratingTitle') }));
+  el.appendChild(Rating({ defaultValue: 4, fractions: 2, color: '#f59e0b' }));
+
+  el.appendChild(Title({ order: 3, children: t.node('extras.pinTitle') }));
+  el.appendChild(PinInput({ length: 6, onChange: (v) => console.log('PIN:', v) }));
+
+  el.appendChild(Title({ order: 3, children: t.node('extras.fileTitle') }));
+  el.appendChild(Stack({ gap: 'sm', children: [
+    FileInput({ label: t.node('extras.fileTitle'), placeholder: t('extras.fileSelectBtn'), clearable: true }),
+    FileButton({
+      onChange: (f) => console.log('Picked file:', f),
+      children: (open: () => void) => Button({ variant: 'outline', children: t.node('extras.fileSelectBtn'), onClick: open }),
+    }),
+  ] }));
+
+  el.appendChild(Fieldset({ legend: t.node('extras.autocompleteTitle'), children: Stack({ gap: 'sm', children: [
+    Autocomplete({
+      label: t.node('extras.autocompleteTitle'),
+      placeholder: t('extras.autocompletePlaceholder'),
+      data: ['Apple', 'Apricot', 'Banana', 'Blueberry', 'Cherry', 'Cranberry', 'Date', 'Grape', 'Lemon', 'Mango', 'Orange', 'Pear'],
+      onOptionSubmit: (v) => console.log('Autocomplete:', v),
+    }),
+    MultiSelect({
+      label: t.node('extras.multiSelectTitle'),
+      placeholder: t('extras.multiSelectPlaceholder'),
+      clearable: true,
+      data: [
+        { value: 'js', label: 'JavaScript' },
+        { value: 'ts', label: 'TypeScript' },
+        { value: 'rs', label: 'Rust' },
+        { value: 'go', label: 'Go' },
+        { value: 'py', label: 'Python' },
+      ],
+      onChange: (v) => console.log('Multi:', v),
+    }),
+    TagsInput({
+      label: t.node('extras.tagsTitle'),
+      placeholder: t('extras.tagsPlaceholder'),
+      defaultValue: ['one', 'two'],
+      onChange: (v) => console.log('Tags:', v),
+    }),
+    Input({ placeholder: 'Primitive Input' }),
+  ] }) }));
+
+  el.appendChild(Divider({}));
+
+  // ─── Navigation ────────────────────────────
+  el.appendChild(Title({ order: 3, children: t.node('extras.timelineTitle') }));
+  el.appendChild(Timeline({
+    active: 1,
+    color: 'primary',
+    items: [
+      { title: t.node('extras.timelineStep1'), children: Text({ size: 'sm', children: t.node('extras.timelineStep1Desc') }) },
+      { title: t.node('extras.timelineStep2'), children: Text({ size: 'sm', children: t.node('extras.timelineStep2Desc') }) },
+      { title: t.node('extras.timelineStep3'), children: Text({ size: 'sm', children: t.node('extras.timelineStep3Desc') }) },
+    ],
+  }));
+
+  el.appendChild(Title({ order: 3, children: t.node('extras.stepperTitle') }));
+  const [activeStep, setActiveStep] = signal(1);
+  const stepperContainer = _createElement('div');
+  effect(() => {
+    stepperContainer.textContent = '';
+    stepperContainer.appendChild(Stepper({
+      active: activeStep(),
+      color: 'primary',
+      onStepClick: (i) => setActiveStep(i),
+      steps: [
+        { label: t.node('extras.stepperAccount'), description: t.node('extras.stepperAccountDesc') },
+        { label: t.node('extras.stepperProfile'), description: t.node('extras.stepperProfileDesc') },
+        { label: t.node('extras.stepperConfirm'), description: t.node('extras.stepperConfirmDesc') },
+      ],
+    }));
+    stepperContainer.appendChild(Group({ gap: 'sm', children: [
+      Button({ variant: 'outline', children: 'Prev', onClick: () => setActiveStep(Math.max(0, activeStep() - 1)) }),
+      Button({ children: 'Next', onClick: () => setActiveStep(Math.min(3, activeStep() + 1)) }),
+    ] }));
+  });
+  el.appendChild(stepperContainer);
+
+  el.appendChild(Title({ order: 3, children: t.node('extras.treeTitle') }));
+  el.appendChild(Tree({
+    defaultExpanded: ['src'],
+    data: [
+      {
+        value: 'src',
+        label: t('extras.treeSrc'),
+        children: [
+          { value: 'components', label: t('extras.treeComponents'), children: [
+            { value: 'button', label: 'Button' },
+            { value: 'input', label: 'Input' },
+          ] },
+          { value: 'utils', label: t('extras.treeUtils') },
+        ],
+      },
+      { value: 'tests', label: t('extras.treeTests') },
+    ],
+    onSelect: (v) => console.log('Tree:', v),
+  }));
+
+  el.appendChild(Divider({}));
+
+  // ─── Overlays & Feedback ───────────────────
+  el.appendChild(Title({ order: 3, children: t.node('extras.hoverCardTitle') }));
+  el.appendChild(HoverCard({
+    position: 'bottom',
+    withArrow: true,
+    target: Button({ variant: 'outline', children: t.node('extras.hoverCardTitle') }),
+    children: Text({ size: 'sm', children: t.node('extras.hoverCardBody') }),
+  }));
+
+  el.appendChild(Notification({
+    title: t.node('extras.notificationTitle'),
+    color: 'primary',
+    onClose: () => console.log('Notification closed'),
+    children: t.node('extras.notificationDesc'),
+  }));
+
+  // Loading overlay demo inside a Paper wrapper
+  const loadingWrap = Paper({ padding: 'md', withBorder: true, children: (() => {
+    const inner = _createElement('div');
+    _setProp(inner, 'style', { position: 'relative', minHeight: '100px' });
+    const label = _createElement('div');
+    label.textContent = 'Content behind overlay';
+    inner.appendChild(label);
+    inner.appendChild(LoadingOverlay({ visible: true }));
+    return inner;
+  })() });
+  el.appendChild(loadingWrap);
+
+  // ─── Collapse + ScrollArea ─────────────────
+  const [opened, setOpened] = signal(false);
+  const toggleBtn = Button({
+    variant: 'light',
+    children: 'Show details',
+    onClick: () => setOpened(!opened()),
+  });
+  effect(() => {
+    const label = toggleBtn.querySelector('.mkt-button__label');
+    if (label) label.textContent = opened() ? 'Hide details' : 'Show details';
+  });
+  el.appendChild(toggleBtn);
+  el.appendChild(Collapse({
+    in: () => opened(),
+    children: (() => {
+      const d = _createElement('div');
+      _setProp(d, 'style', { padding: 'var(--mkt-space-3)' });
+      d.appendChild(Text({ children: 'This content is animated via Collapse.' }));
+      return d;
+    })(),
+  }));
+
+  const scrollDiv = _createElement('div');
+  _setProp(scrollDiv, 'style', { height: '120px', border: '1px solid var(--mkt-color-border)', borderRadius: 'var(--mkt-radius-sm)' });
+  scrollDiv.appendChild(ScrollArea({
+    type: 'hover',
+    children: (() => {
+      const frag = _createElement('div');
+      _setProp(frag, 'style', { padding: 'var(--mkt-space-3)' });
+      for (let i = 1; i <= 30; i++) {
+        const p = _createElement('p');
+        p.textContent = `Line ${i} — scroll to see custom scrollbars.`;
+        frag.appendChild(p);
+      }
+      return frag;
+    })(),
+  }));
+  el.appendChild(scrollDiv);
+
+  el.appendChild(Divider({}));
+
+  // ─── UnstyledButton + Burger ────────────────────
+  el.appendChild(Title({ order: 3, children: t.node('extras.unstyledTitle') }));
+  const [burgerOpen, setBurgerOpen] = signal(false);
+  const burgerEl = Burger({
+    opened: false,
+    ariaLabel: 'Toggle navigation',
+    onClick: () => {
+      const next = !burgerOpen();
+      setBurgerOpen(next);
+      if (next) burgerEl.dataset.opened = '';
+      else delete burgerEl.dataset.opened;
+      burgerEl.setAttribute('aria-expanded', String(next));
+    },
+  });
+  el.appendChild(Group({ gap: 'md', align: 'center', children: [
+    burgerEl,
+    UnstyledButton({
+      children: t.node('extras.unstyledButton'),
+      onClick: () => console.log('Unstyled clicked'),
+    }),
+  ] }));
+
+  // ─── CopyButton ────────────────────────────────
+  el.appendChild(Title({ order: 3, children: t.node('extras.copyTitle') }));
+  el.appendChild(Group({ gap: 'sm', align: 'center', children: [
+    Code({ children: t('extras.copyValue') }),
+    CopyButton({
+      value: t('extras.copyValue'),
+      children: ({ copy, copied }) => Button({
+        variant: copied ? 'filled' : 'outline',
+        color: copied ? 'green' : 'primary',
+        size: 'sm',
+        onClick: copy,
+        children: copied ? t.node('extras.copyDone') : t.node('extras.copyIdle'),
+      }),
+    }),
+  ] }));
+
+  // ─── Overlay ───────────────────────────────────
+  el.appendChild(Title({ order: 3, children: t.node('extras.overlayTitle') }));
+  const [overlayShown, setOverlayShown] = signal(false);
+  const overlayHost = _createElement('div');
+  _setProp(overlayHost, 'style', {
+    position: 'relative',
+    padding: 'var(--mkt-space-4)',
+    minHeight: '120px',
+    border: '1px solid var(--mkt-color-border)',
+    borderRadius: 'var(--mkt-radius-sm)',
+    overflow: 'hidden',
+  });
+  overlayHost.appendChild(Text({ children: 'Hidden content under overlay.' }));
+  overlayHost.appendChild(Text({ size: 'sm', children: 'Click the button below to dim.' }));
+  effect(() => {
+    const existing = overlayHost.querySelector('.mkt-overlay');
+    if (existing) existing.remove();
+    if (overlayShown()) {
+      overlayHost.appendChild(Overlay({
+        color: '#000',
+        opacity: 0.55,
+        blur: 3,
+        onClick: () => setOverlayShown(false),
+        children: Text({ children: t.node('extras.overlayContent') }),
+      }));
+    }
+  });
+  el.appendChild(overlayHost);
+  el.appendChild(Button({
+    variant: 'outline',
+    size: 'sm',
+    children: t.node('extras.overlayToggle'),
+    onClick: () => setOverlayShown(!overlayShown()),
+  }));
+
+  // ─── RangeSlider ───────────────────────────────
+  el.appendChild(Title({ order: 3, children: t.node('extras.rangeTitle') }));
+  el.appendChild(RangeSlider({
+    defaultValue: [20, 80],
+    min: 0,
+    max: 100,
+    step: 1,
+    minRange: 5,
+    color: 'primary',
+    label: ([a, b]) => `${t('extras.rangeLabel')}: $${a} – $${b}`,
+    onValueChange: (v) => console.log('Range:', v),
+  }));
+
+  return el;
+}
+
+// ============================================================
 // App — compose all demos
 // ============================================================
 function App() {
@@ -989,6 +1438,7 @@ function App() {
   el.appendChild(subtitle);
 
   el.appendChild(_createComponent(UIComponentsDemo, {}));
+  el.appendChild(_createComponent(ExtrasDemo, {}));
   el.appendChild(_createComponent(Counter, {}));
   el.appendChild(_createComponent(FormDemo, {}));
   el.appendChild(_createComponent(TodoList, {}));

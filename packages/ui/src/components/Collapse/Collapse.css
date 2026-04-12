@@ -1,0 +1,9 @@
+.mkt-collapse {
+  display: block;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mkt-collapse {
+    transition-duration: 0ms !important;
+  }
+}

@@ -1,0 +1,4 @@
+.mkt-affix {
+  position: fixed;
+  z-index: var(--mkt-z-sticky, 200);
+}

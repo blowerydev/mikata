@@ -1,5 +1,5 @@
 import { mergeClasses } from '../../utils/class-merge';
-import { useId } from '../../utils/use-id';
+import { uniqueId } from '../../utils/unique-id';
 import type { SegmentedControlProps, SegmentedControlItem } from './SegmentedControl.types';
 import './SegmentedControl.css';
 
@@ -21,7 +21,7 @@ export function SegmentedControl(props: SegmentedControlProps): HTMLElement {
     ref,
   } = props;
 
-  const id = useId('segmented');
+  const id = uniqueId('segmented');
   const items = data.map(normalizeItem);
   let activeValue = value ?? defaultValue ?? items[0]?.value ?? '';
 

@@ -332,6 +332,13 @@ function App() {
 - Dark mode via `[data-mkt-color-scheme="dark"]` CSS selectors
 - `ThemeProvider` uses `provide()`/`inject()` context -- child components access via `useTheme()`
 
+**Utilities:** `@mikata/ui` ships scope-aware helpers for common UI concerns. Because components run setup-once, naming follows Mikata conventions rather than React hook names:
+
+- `createX` — returns reactive state: `createDisclosure`, `createMediaQuery`, `createLocalStorage`, `createClipboard`, `createToggle`, `createDebouncedSignal`, `createThrottledSignal`, `createPrevious`, `createViewportSize`, `createInterval`, `createTimeout`, `createIdle`, `createNetworkStatus`, `createOs`, `createReducedMotion`, `createPageVisibility`, `createIntersection`, `createResizeObserver`
+- `onX` — attaches a side effect, auto-cleaned on scope dispose: `onClickOutside`, `onFocusTrap`, `onScrollLock`, `onHotkeys`, `onWindowEvent`, `onDocumentEvent`, `onPageLeave`, `onDocumentTitle`
+- `useX` — reserved for context consumers: `useTheme`, `useUILabels`
+- Pure utilities: `uniqueId`, `mergeClasses`, `mergeRefs`
+
 ---
 
 ## Project Structure

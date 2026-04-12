@@ -1,9 +1,9 @@
 import { createRef, onCleanup } from '@mikata/runtime';
 import { mergeClasses } from '../../utils/class-merge';
-import { useFocusTrap } from '../../utils/use-focus-trap';
-import { useScrollLock } from '../../utils/use-scroll-lock';
+import { onFocusTrap } from '../../utils/on-focus-trap';
+import { onScrollLock } from '../../utils/on-scroll-lock';
 import { useUILabels } from '../../utils/use-i18n-optional';
-import { useId } from '../../utils/use-id';
+import { uniqueId } from '../../utils/unique-id';
 import { applyThemeToPortal } from '../../utils/get-color-scheme';
 import type { DrawerProps } from './Drawer.types';
 import './Drawer.css';
@@ -24,7 +24,7 @@ export function Drawer(props: DrawerProps): Comment {
   } = props;
 
   const contentRef = createRef<HTMLElement>();
-  const id = useId('drawer');
+  const id = uniqueId('drawer');
   const labels = useUILabels();
 
   // Overlay (backdrop)
@@ -95,10 +95,10 @@ export function Drawer(props: DrawerProps): Comment {
   document.body.appendChild(root);
 
   // Focus trap
-  useFocusTrap(contentRef);
+  onFocusTrap(contentRef);
 
   // Scroll lock
-  useScrollLock();
+  onScrollLock();
 
   // Escape key
   if (closeOnEscape) {

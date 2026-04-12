@@ -1,0 +1,25 @@
+.mkt-ring-progress {
+  position: relative;
+  display: inline-block;
+  --mkt-ring-root: var(--mkt-color-gray-2);
+}
+
+[data-mkt-color-scheme="dark"] .mkt-ring-progress {
+  --mkt-ring-root: var(--mkt-color-border);
+}
+
+.mkt-ring-progress__svg {
+  display: block;
+}
+
+.mkt-ring-progress__label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: var(--mkt-color-text);
+  font-family: var(--mkt-font-family);
+  font-size: var(--mkt-font-size-sm);
+}

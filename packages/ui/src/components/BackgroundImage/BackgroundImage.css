@@ -1,0 +1,12 @@
+.mkt-background-image {
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.mkt-background-image[data-radius="xs"] { border-radius: var(--mkt-radius-xs); }
+.mkt-background-image[data-radius="sm"] { border-radius: var(--mkt-radius-sm); }
+.mkt-background-image[data-radius="md"] { border-radius: var(--mkt-radius-md); }
+.mkt-background-image[data-radius="lg"] { border-radius: var(--mkt-radius-lg); }
+.mkt-background-image[data-radius="xl"] { border-radius: var(--mkt-radius-xl); }
+.mkt-background-image[data-radius="full"] { border-radius: var(--mkt-radius-full); }

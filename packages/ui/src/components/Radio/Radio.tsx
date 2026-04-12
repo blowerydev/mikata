@@ -1,5 +1,5 @@
 import { mergeClasses } from '../../utils/class-merge';
-import { useId } from '../../utils/use-id';
+import { uniqueId } from '../../utils/unique-id';
 import type { RadioProps } from './Radio.types';
 import './Radio.css';
 
@@ -21,7 +21,7 @@ export function Radio(props: RadioProps = {}): HTMLLabelElement {
     ref,
   } = props;
 
-  const id = useId('radio');
+  const id = uniqueId('radio');
 
   const root = document.createElement('label');
   root.className = mergeClasses(

@@ -10,6 +10,8 @@ export interface UILabels {
   optional: string;
   showPassword: string;
   hidePassword: string;
+  clear: string;
+  remove: string;
 }
 
 const defaultLabels: UILabels = {
@@ -22,6 +24,8 @@ const defaultLabels: UILabels = {
   optional: 'Optional',
   showPassword: 'Show password',
   hidePassword: 'Hide password',
+  clear: 'Clear',
+  remove: 'Remove',
 };
 
 const UILabelsContext = createContext<UILabels>(defaultLabels);

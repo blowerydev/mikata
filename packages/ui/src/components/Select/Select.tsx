@@ -1,5 +1,5 @@
 import { mergeClasses } from '../../utils/class-merge';
-import { useId } from '../../utils/use-id';
+import { uniqueId } from '../../utils/unique-id';
 import { InputWrapper } from '../_internal/InputWrapper';
 import type { SelectProps } from './Select.types';
 import './Select.css';
@@ -22,7 +22,7 @@ export function Select(props: SelectProps): HTMLDivElement {
     ref,
   } = props;
 
-  const id = useId('select');
+  const id = uniqueId('select');
 
   const select = document.createElement('select');
   select.id = id;
