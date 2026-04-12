@@ -23,6 +23,12 @@ export function _createComponent<P extends Record<string, unknown>>(
   Comp: (props: P) => Node | null,
   props: P
 ): Node {
+  // Freeze props in dev so `props.foo = x` throws a clear TypeError instead of
+  // silently mutating the parent's prop bag. `freeze` is shallow and doesn't
+  // interfere with getter-backed reactive props — it only blocks reassignment.
+  if (__DEV__ && props && typeof props === 'object' && !Object.isFrozen(props)) {
+    Object.freeze(props);
+  }
   let result: Node | null = null;
   const scope = createScope(() => {
     result = Comp(props);

@@ -175,6 +175,17 @@ describe('Component', () => {
     flushSync();
     expect(container.textContent).toBe('Bob');
   });
+
+  it('freezes props to block mutation inside the component', () => {
+    function Bad(props: { x: number }) {
+      // Reading works; writing must throw.
+      expect(() => {
+        (props as { x: number }).x = 99;
+      }).toThrow(TypeError);
+      return _createElement('span');
+    }
+    _createComponent(Bad, { x: 1 });
+  });
 });
 
 describe('render', () => {
