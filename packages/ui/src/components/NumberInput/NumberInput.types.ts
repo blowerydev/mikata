@@ -17,7 +17,7 @@ export interface NumberInputProps extends MikataBaseProps {
   max?: number;
   step?: number;
   onValueChange?: (n: number) => void;
-  onInput?: (e: InputEvent) => void;
-  onChange?: (e: Event) => void;
+  onInput?: (e: InputEvent & { currentTarget: HTMLInputElement }) => void;
+  onChange?: (e: Event & { currentTarget: HTMLInputElement }) => void;
   classNames?: ClassNamesInput<NumberInputParts>;
 }

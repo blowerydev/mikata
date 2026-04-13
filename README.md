@@ -23,7 +23,7 @@ function TodoList() {
     <div>
       <input
         value={input()}
-        onInput={(e) => setInput((e.target as HTMLInputElement).value)}
+        onInput={(e) => setInput(e.currentTarget.value)}
         onKeydown={(e) => e.key === 'Enter' && add()}
       />
       <button onClick={add}>Add</button>
@@ -48,6 +48,26 @@ function TodoList() {
 }
 
 render(() => <TodoList />, document.getElementById('app')!);
+```
+
+### Form bindings — two styles
+
+Native form events are typed against the element they're attached to, so `e.currentTarget.value` is typed for you — no `as HTMLInputElement` dance:
+
+```tsx
+<input value={name()} onInput={(e) => setName(e.currentTarget.value)} />
+<input type="checkbox" checked={agree()} onChange={(e) => setAgree(e.currentTarget.checked)} />
+```
+
+For the common case, `model()` is shorter still — one spread wires up value + handler + coercion:
+
+```tsx
+import { model } from 'mikata';
+
+<input {...model(name, setName)} />
+<input type="number" {...model(age, setAge, 'number')} />
+<input type="checkbox" {...model(agree, setAgree, 'checkbox')} />
+<select {...model(color, setColor, 'select')}>…</select>
 ```
 
 ### With `@mikata/ui`
@@ -79,12 +99,12 @@ function SignupCard() {
         label="Email"
         placeholder="you@example.com"
         value={email()}
-        onInput={(e) => setEmail((e.target as HTMLInputElement).value)}
+        onInput={(e) => setEmail(e.currentTarget.value)}
       />
       <Switch
         label="Subscribe to updates"
         checked={subscribed()}
-        onChange={(e) => setSubscribed((e.target as HTMLInputElement).checked)}
+        onChange={(e) => setSubscribed(e.currentTarget.checked)}
       />
       <Button disabled={!isValid()}>Sign up</Button>
       {isValid() && <Badge color="green">Looks good</Badge>}

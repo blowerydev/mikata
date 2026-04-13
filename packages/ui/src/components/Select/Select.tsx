@@ -101,7 +101,7 @@ export function Select(userProps: SelectProps): HTMLDivElement {
     else if (defaultValue != null) select.value = defaultValue;
   }
 
-  if (onChange) select.addEventListener('change', onChange);
+  if (onChange) select.addEventListener('change', onChange as EventListener);
 
   if (ref) {
     if (typeof ref === 'function') ref(select as any);

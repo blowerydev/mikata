@@ -15,9 +15,9 @@ export interface TextInputProps extends MikataBaseProps {
   size?: MikataSize;
   leftSection?: Node;
   rightSection?: Node;
-  onInput?: (e: InputEvent) => void;
-  onChange?: (e: Event) => void;
-  onBlur?: (e: FocusEvent) => void;
+  onInput?: (e: InputEvent & { currentTarget: HTMLInputElement }) => void;
+  onChange?: (e: Event & { currentTarget: HTMLInputElement }) => void;
+  onBlur?: (e: FocusEvent & { currentTarget: HTMLInputElement }) => void;
   'aria-invalid'?: boolean;
   classNames?: ClassNamesInput<TextInputParts>;
 }

@@ -23,8 +23,8 @@ export interface InputProps extends MikataBaseProps {
   /** Pointer events are enabled on sections (useful for buttons) */
   leftSectionPointerEvents?: 'auto' | 'none';
   rightSectionPointerEvents?: 'auto' | 'none';
-  onInput?: (e: Event) => void;
-  onChange?: (e: Event) => void;
+  onInput?: (e: Event & { currentTarget: HTMLInputElement }) => void;
+  onChange?: (e: Event & { currentTarget: HTMLInputElement }) => void;
   /** id assigned to the underlying <input> */
   id?: string;
   classNames?: ClassNamesInput<InputParts>;

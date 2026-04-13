@@ -11,8 +11,8 @@ export interface CheckboxProps extends MikataBaseProps {
   size?: MikataSize;
   color?: MikataColor;
   disabled?: boolean;
-  onChange?: (e: Event) => void;
-  onBlur?: (e: FocusEvent) => void;
+  onChange?: (e: Event & { currentTarget: HTMLInputElement }) => void;
+  onBlur?: (e: FocusEvent & { currentTarget: HTMLInputElement }) => void;
   'aria-invalid'?: boolean;
   classNames?: ClassNamesInput<CheckboxParts>;
 }

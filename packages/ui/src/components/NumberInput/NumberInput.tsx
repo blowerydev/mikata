@@ -60,7 +60,7 @@ export function NumberInput(userProps: NumberInputProps = {}): HTMLDivElement {
   };
 
   if (onInput) input.addEventListener('input', onInput as EventListener);
-  if (onChange) input.addEventListener('change', onChange);
+  if (onChange) input.addEventListener('change', onChange as EventListener);
 
   input.addEventListener('change', () => {
     const num = parseFloat(input.value);

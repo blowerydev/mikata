@@ -15,9 +15,9 @@ export interface TextareaProps extends MikataBaseProps {
   size?: MikataSize;
   rows?: number;
   autosize?: boolean;
-  onInput?: (e: InputEvent) => void;
-  onChange?: (e: Event) => void;
-  onBlur?: (e: FocusEvent) => void;
+  onInput?: (e: InputEvent & { currentTarget: HTMLTextAreaElement }) => void;
+  onChange?: (e: Event & { currentTarget: HTMLTextAreaElement }) => void;
+  onBlur?: (e: FocusEvent & { currentTarget: HTMLTextAreaElement }) => void;
   'aria-invalid'?: boolean;
   classNames?: ClassNamesInput<TextareaParts>;
 }

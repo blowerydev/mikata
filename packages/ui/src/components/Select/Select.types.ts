@@ -32,6 +32,6 @@ export interface SelectProps extends MikataBaseProps {
   size?: MikataSize;
   /** Text shown in the placeholder slot while an async load is in flight. */
   loadingLabel?: string;
-  onChange?: (e: Event) => void;
+  onChange?: (e: Event & { currentTarget: HTMLSelectElement }) => void;
   classNames?: ClassNamesInput<SelectParts>;
 }

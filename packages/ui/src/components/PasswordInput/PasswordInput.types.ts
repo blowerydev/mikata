@@ -13,9 +13,9 @@ export interface PasswordInputProps extends MikataBaseProps {
   required?: boolean;
   disabled?: boolean;
   size?: MikataSize;
-  onInput?: (e: InputEvent) => void;
-  onChange?: (e: Event) => void;
-  onBlur?: (e: FocusEvent) => void;
+  onInput?: (e: InputEvent & { currentTarget: HTMLInputElement }) => void;
+  onChange?: (e: Event & { currentTarget: HTMLInputElement }) => void;
+  onBlur?: (e: FocusEvent & { currentTarget: HTMLInputElement }) => void;
   'aria-invalid'?: boolean;
   classNames?: ClassNamesInput<PasswordInputParts>;
 }

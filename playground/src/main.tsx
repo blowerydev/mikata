@@ -276,7 +276,7 @@ function TodoList() {
           placeholder={t('todo.placeholder')}
           value={state.input}
           onInput={(e) => {
-            state.input = (e.target as HTMLInputElement).value;
+            state.input = e.currentTarget.value;
           }}
           onKeydown={(e) => {
             if (e.key === 'Enter') addTodo();

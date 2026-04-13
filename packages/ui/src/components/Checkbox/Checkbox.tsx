@@ -51,7 +51,7 @@ export function Checkbox(userProps: CheckboxProps = {}): HTMLLabelElement {
   } else if (error) {
     input.setAttribute('aria-invalid', 'true');
   }
-  if (onChange) input.addEventListener('change', onChange);
+  if (onChange) input.addEventListener('change', onChange as EventListener);
   if (onBlur) input.addEventListener('blur', onBlur as EventListener);
 
   if (ref) {

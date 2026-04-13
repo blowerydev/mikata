@@ -12,98 +12,110 @@ import type { Ref } from './component';
 // Event handler types
 // ---------------------------------------------------------------------------
 
-type EventHandler<E extends Event = Event> = (event: E) => void;
+/**
+ * Event handler type with a narrowed `currentTarget`. The DOM typings widen
+ * `currentTarget` to `EventTarget | null`; in JSX we know statically which
+ * element the handler is attached to, so we re-narrow it to `T` to avoid
+ * repetitive `(e.target as HTMLInputElement).value` casts.
+ *
+ * `target` stays `EventTarget` since bubbled events (e.g. onClick on a
+ * parent) can originate from arbitrary descendants.
+ */
+type EventHandler<
+  E extends Event = Event,
+  T extends EventTarget = EventTarget
+> = (event: E & { readonly currentTarget: T }) => void;
 
-export interface DOMEventHandlers<T extends Element = Element> {
+export interface DOMEventHandlers<T extends EventTarget = Element> {
   // Mouse events
-  onClick?: EventHandler<MouseEvent>;
-  onDblClick?: EventHandler<MouseEvent>;
-  onMouseDown?: EventHandler<MouseEvent>;
-  onMouseUp?: EventHandler<MouseEvent>;
-  onMouseMove?: EventHandler<MouseEvent>;
-  onMouseEnter?: EventHandler<MouseEvent>;
-  onMouseLeave?: EventHandler<MouseEvent>;
-  onMouseOver?: EventHandler<MouseEvent>;
-  onMouseOut?: EventHandler<MouseEvent>;
-  onContextMenu?: EventHandler<MouseEvent>;
+  onClick?: EventHandler<MouseEvent, T>;
+  onDblClick?: EventHandler<MouseEvent, T>;
+  onMouseDown?: EventHandler<MouseEvent, T>;
+  onMouseUp?: EventHandler<MouseEvent, T>;
+  onMouseMove?: EventHandler<MouseEvent, T>;
+  onMouseEnter?: EventHandler<MouseEvent, T>;
+  onMouseLeave?: EventHandler<MouseEvent, T>;
+  onMouseOver?: EventHandler<MouseEvent, T>;
+  onMouseOut?: EventHandler<MouseEvent, T>;
+  onContextMenu?: EventHandler<MouseEvent, T>;
 
   // Keyboard events
-  onKeyDown?: EventHandler<KeyboardEvent>;
-  onKeyUp?: EventHandler<KeyboardEvent>;
-  onKeyPress?: EventHandler<KeyboardEvent>;
+  onKeyDown?: EventHandler<KeyboardEvent, T>;
+  onKeyUp?: EventHandler<KeyboardEvent, T>;
+  onKeyPress?: EventHandler<KeyboardEvent, T>;
 
   // Focus events
-  onFocus?: EventHandler<FocusEvent>;
-  onBlur?: EventHandler<FocusEvent>;
-  onFocusIn?: EventHandler<FocusEvent>;
-  onFocusOut?: EventHandler<FocusEvent>;
+  onFocus?: EventHandler<FocusEvent, T>;
+  onBlur?: EventHandler<FocusEvent, T>;
+  onFocusIn?: EventHandler<FocusEvent, T>;
+  onFocusOut?: EventHandler<FocusEvent, T>;
 
   // Form events
-  onInput?: EventHandler<InputEvent>;
-  onChange?: EventHandler<Event>;
-  onSubmit?: EventHandler<SubmitEvent>;
-  onReset?: EventHandler<Event>;
-  onInvalid?: EventHandler<Event>;
-  onBeforeInput?: EventHandler<InputEvent>;
+  onInput?: EventHandler<InputEvent, T>;
+  onChange?: EventHandler<Event, T>;
+  onSubmit?: EventHandler<SubmitEvent, T>;
+  onReset?: EventHandler<Event, T>;
+  onInvalid?: EventHandler<Event, T>;
+  onBeforeInput?: EventHandler<InputEvent, T>;
 
   // Touch events
-  onTouchStart?: EventHandler<TouchEvent>;
-  onTouchEnd?: EventHandler<TouchEvent>;
-  onTouchMove?: EventHandler<TouchEvent>;
-  onTouchCancel?: EventHandler<TouchEvent>;
+  onTouchStart?: EventHandler<TouchEvent, T>;
+  onTouchEnd?: EventHandler<TouchEvent, T>;
+  onTouchMove?: EventHandler<TouchEvent, T>;
+  onTouchCancel?: EventHandler<TouchEvent, T>;
 
   // Pointer events
-  onPointerDown?: EventHandler<PointerEvent>;
-  onPointerUp?: EventHandler<PointerEvent>;
-  onPointerMove?: EventHandler<PointerEvent>;
-  onPointerEnter?: EventHandler<PointerEvent>;
-  onPointerLeave?: EventHandler<PointerEvent>;
-  onPointerOver?: EventHandler<PointerEvent>;
-  onPointerOut?: EventHandler<PointerEvent>;
-  onPointerCancel?: EventHandler<PointerEvent>;
-  onGotPointerCapture?: EventHandler<PointerEvent>;
-  onLostPointerCapture?: EventHandler<PointerEvent>;
+  onPointerDown?: EventHandler<PointerEvent, T>;
+  onPointerUp?: EventHandler<PointerEvent, T>;
+  onPointerMove?: EventHandler<PointerEvent, T>;
+  onPointerEnter?: EventHandler<PointerEvent, T>;
+  onPointerLeave?: EventHandler<PointerEvent, T>;
+  onPointerOver?: EventHandler<PointerEvent, T>;
+  onPointerOut?: EventHandler<PointerEvent, T>;
+  onPointerCancel?: EventHandler<PointerEvent, T>;
+  onGotPointerCapture?: EventHandler<PointerEvent, T>;
+  onLostPointerCapture?: EventHandler<PointerEvent, T>;
 
   // Drag events
-  onDrag?: EventHandler<DragEvent>;
-  onDragStart?: EventHandler<DragEvent>;
-  onDragEnd?: EventHandler<DragEvent>;
-  onDragEnter?: EventHandler<DragEvent>;
-  onDragLeave?: EventHandler<DragEvent>;
-  onDragOver?: EventHandler<DragEvent>;
-  onDrop?: EventHandler<DragEvent>;
+  onDrag?: EventHandler<DragEvent, T>;
+  onDragStart?: EventHandler<DragEvent, T>;
+  onDragEnd?: EventHandler<DragEvent, T>;
+  onDragEnter?: EventHandler<DragEvent, T>;
+  onDragLeave?: EventHandler<DragEvent, T>;
+  onDragOver?: EventHandler<DragEvent, T>;
+  onDrop?: EventHandler<DragEvent, T>;
 
   // Wheel / scroll
-  onWheel?: EventHandler<WheelEvent>;
-  onScroll?: EventHandler<Event>;
-  onScrollEnd?: EventHandler<Event>;
+  onWheel?: EventHandler<WheelEvent, T>;
+  onScroll?: EventHandler<Event, T>;
+  onScrollEnd?: EventHandler<Event, T>;
 
   // Animation / transition
-  onAnimationStart?: EventHandler<AnimationEvent>;
-  onAnimationEnd?: EventHandler<AnimationEvent>;
-  onAnimationIteration?: EventHandler<AnimationEvent>;
-  onTransitionStart?: EventHandler<TransitionEvent>;
-  onTransitionEnd?: EventHandler<TransitionEvent>;
-  onTransitionRun?: EventHandler<TransitionEvent>;
-  onTransitionCancel?: EventHandler<TransitionEvent>;
+  onAnimationStart?: EventHandler<AnimationEvent, T>;
+  onAnimationEnd?: EventHandler<AnimationEvent, T>;
+  onAnimationIteration?: EventHandler<AnimationEvent, T>;
+  onTransitionStart?: EventHandler<TransitionEvent, T>;
+  onTransitionEnd?: EventHandler<TransitionEvent, T>;
+  onTransitionRun?: EventHandler<TransitionEvent, T>;
+  onTransitionCancel?: EventHandler<TransitionEvent, T>;
 
   // Clipboard
-  onCopy?: EventHandler<ClipboardEvent>;
-  onCut?: EventHandler<ClipboardEvent>;
-  onPaste?: EventHandler<ClipboardEvent>;
+  onCopy?: EventHandler<ClipboardEvent, T>;
+  onCut?: EventHandler<ClipboardEvent, T>;
+  onPaste?: EventHandler<ClipboardEvent, T>;
 
   // Composition
-  onCompositionStart?: EventHandler<CompositionEvent>;
-  onCompositionEnd?: EventHandler<CompositionEvent>;
-  onCompositionUpdate?: EventHandler<CompositionEvent>;
+  onCompositionStart?: EventHandler<CompositionEvent, T>;
+  onCompositionEnd?: EventHandler<CompositionEvent, T>;
+  onCompositionUpdate?: EventHandler<CompositionEvent, T>;
 
   // Selection
-  onSelect?: EventHandler<Event>;
+  onSelect?: EventHandler<Event, T>;
 
   // Media events
-  onLoad?: EventHandler<Event>;
-  onError?: EventHandler<Event | ErrorEvent>;
-  onAbort?: EventHandler<Event>;
+  onLoad?: EventHandler<Event, T>;
+  onError?: EventHandler<Event | ErrorEvent, T>;
+  onAbort?: EventHandler<Event, T>;
 
 }
 

@@ -11,6 +11,6 @@ export interface SwitchProps extends MikataBaseProps {
   size?: MikataSize;
   color?: MikataColor;
   disabled?: boolean;
-  onChange?: (e: Event) => void;
+  onChange?: (e: Event & { currentTarget: HTMLInputElement }) => void;
   classNames?: ClassNamesInput<SwitchParts>;
 }

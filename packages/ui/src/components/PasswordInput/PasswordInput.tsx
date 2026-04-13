@@ -60,7 +60,7 @@ export function PasswordInput(userProps: PasswordInputProps = {}): HTMLDivElemen
   }
 
   if (onInput) input.addEventListener('input', onInput as EventListener);
-  if (onChange) input.addEventListener('change', onChange);
+  if (onChange) input.addEventListener('change', onChange as EventListener);
   if (onBlur) input.addEventListener('blur', onBlur as EventListener);
 
   if (ref) {

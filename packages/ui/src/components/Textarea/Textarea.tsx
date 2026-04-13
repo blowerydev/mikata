@@ -72,7 +72,7 @@ export function Textarea(userProps: TextareaProps = {}): HTMLDivElement {
   }
 
   if (onInput) textarea.addEventListener('input', onInput as EventListener);
-  if (onChange) textarea.addEventListener('change', onChange);
+  if (onChange) textarea.addEventListener('change', onChange as EventListener);
   if (onBlur) textarea.addEventListener('blur', onBlur as EventListener);
 
   if (ref) {

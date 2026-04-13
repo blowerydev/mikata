@@ -42,7 +42,7 @@ export function Switch(userProps: SwitchProps = {}): HTMLLabelElement {
   if (defaultChecked != null && checked == null) input.checked = defaultChecked;
   if (disabled) input.disabled = true;
   if (error) input.setAttribute('aria-invalid', 'true');
-  if (onChange) input.addEventListener('change', onChange);
+  if (onChange) input.addEventListener('change', onChange as EventListener);
 
   if (ref) {
     if (typeof ref === 'function') ref(input);

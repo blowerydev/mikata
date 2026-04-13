@@ -13,6 +13,6 @@ export interface RadioProps extends MikataBaseProps {
   size?: MikataSize;
   color?: MikataColor;
   disabled?: boolean;
-  onChange?: (e: Event) => void;
+  onChange?: (e: Event & { currentTarget: HTMLInputElement }) => void;
   classNames?: ClassNamesInput<RadioParts>;
 }
