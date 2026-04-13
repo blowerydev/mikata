@@ -699,7 +699,7 @@ await waitForUpdate();
 
 ## Form API (`@mikata/form`)
 
-Signal-backed form handling inspired by `@mantine/form`. Setup-once factory, no hooks rules. Field reads via `form.values.x` track fine-grained — no whole-form re-renders. Works with any inputs (`@mikata/ui` or native), schema-agnostic validation with resolvers for zod, yup, valibot, superstruct, joi as sub-path imports.
+Signal-backed form handling. `createForm()` is a setup-once factory (no hooks, no rules-of-hooks). Field reads via `form.values.x` track fine-grained — typing in one field does not re-run subscribers to sibling fields. Works with any inputs (`@mikata/ui` or native). Schema-agnostic: resolvers for zod, yup, valibot, superstruct, and joi ship as sub-path imports (`@mikata/form/resolvers/zod`, etc.).
 
 ### createForm(options) → MikataForm
 
@@ -775,7 +775,7 @@ validate: (values) => values.a < 10 ? { a: 'Too small' } : {}
 
 ### getInputProps
 
-Two shapes, matching Mantine:
+Two shapes, switched by the `type` option:
 
 - Default (`type: 'input'`) — returns `{ value, onInput, onChange, onBlur, error?, ref? }`. Works with TextInput, Textarea, Select, PasswordInput, Autocomplete. `onInput` drives live updates (DOM conventions — Mikata UI inputs fire `input` as you type; `change` fires on blur).
 - `{ type: 'checkbox' }` — returns `{ checked, onChange, onBlur, error?, ref? }`. Works with Checkbox, Switch, Radio.
@@ -1476,7 +1476,7 @@ function App() {
 - CSS uses BEM naming with `mkt-` prefix: `.mkt-button`, `.mkt-button__label`
 - Private CSS variables (`--_btn-color`) for component-internal computed values
 
-**Theming (Mantine-parity, CSS-variable driven):**
+**Theming (CSS-variable driven, no `styled-components` runtime):**
 - `ThemeProvider` — wraps app with CSS variables via `display: contents` div. Emits a sibling `<style data-mkt-generated>` node with per-component rules for custom palettes.
 - `createTheme(overrides)` — accepts the structured `MikataTheme` shape or a flat `Record<string, string>` (flat keys route to `theme.other` at highest precedence, preserving back-compat).
 - `useTheme()` — access `{ colorScheme, resolvedColorScheme, setColorScheme, theme }` signals.
