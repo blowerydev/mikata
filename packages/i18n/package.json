@@ -1,6 +1,26 @@
 {
   "name": "@mikata/i18n",
   "version": "0.1.0",
+  "description": "Internationalization for Mikata — ICU messages, runtime locale switching",
+  "keywords": [
+    "mikata",
+    "reactive",
+    "signals",
+    "i18n",
+    "l10n",
+    "icu",
+    "translation"
+  ],
+  "author": "Brandon Lowery",
+  "homepage": "https://github.com/blowerydev/mikata#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/blowerydev/mikata.git",
+    "directory": "packages/i18n"
+  },
+  "bugs": {
+    "url": "https://github.com/blowerydev/mikata/issues"
+  },
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.cjs",

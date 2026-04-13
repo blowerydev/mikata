@@ -1,4 +1,6 @@
 packages:
   - 'packages/*'
+  - 'integration'
+  - 'playground'
 allowBuilds:
   esbuild: true

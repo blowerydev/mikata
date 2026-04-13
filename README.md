@@ -58,12 +58,20 @@ Install individually (`pnpm add @mikata/runtime @mikata/reactivity`) or all at o
 
 ```bash
 pnpm install
-pnpm -r build           # build every package
-pnpm test               # run the full test suite (~725 tests)
+pnpm -r build                  # build every package
+pnpm test:run                  # run the full test suite
+pnpm dev                       # launch the playground (live demo of every package)
 pnpm --filter @mikata/ui dev   # watch-build a single package
 ```
 
-Requires Node 18+ and pnpm 9+.
+Repo layout:
+
+- `packages/*` — publishable packages
+- `playground/` — dev-only SPA wired to every package via `workspace:*`
+- `integration/` — cross-package integration tests (`@mikata/integration-tests`, private)
+- `docs/` — long-form docs (will grow into the docs site)
+
+Requires Node 18+ and pnpm 10+.
 
 ## License
 

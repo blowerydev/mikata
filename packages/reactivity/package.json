@@ -1,6 +1,25 @@
 {
   "name": "@mikata/reactivity",
   "version": "0.1.0",
+  "description": "Fine-grained reactive primitives: signals, computed, effects, reactive proxies",
+  "keywords": [
+    "mikata",
+    "reactive",
+    "signals",
+    "computed",
+    "effect",
+    "proxy"
+  ],
+  "author": "Brandon Lowery",
+  "homepage": "https://github.com/blowerydev/mikata#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/blowerydev/mikata.git",
+    "directory": "packages/reactivity"
+  },
+  "bugs": {
+    "url": "https://github.com/blowerydev/mikata/issues"
+  },
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.cjs",

@@ -1,6 +1,3 @@
-# Local-only workspaces
-/playground
-
 # Dependencies & build output
 node_modules
 dist

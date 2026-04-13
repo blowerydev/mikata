@@ -1,6 +1,25 @@
 {
   "name": "@mikata/runtime",
   "version": "0.1.0",
+  "description": "JSX runtime and DOM rendering for Mikata — setup pattern, control flow, context",
+  "keywords": [
+    "mikata",
+    "reactive",
+    "signals",
+    "jsx",
+    "dom",
+    "runtime"
+  ],
+  "author": "Brandon Lowery",
+  "homepage": "https://github.com/blowerydev/mikata#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/blowerydev/mikata.git",
+    "directory": "packages/runtime"
+  },
+  "bugs": {
+    "url": "https://github.com/blowerydev/mikata/issues"
+  },
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.cjs",

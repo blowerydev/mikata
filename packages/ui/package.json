@@ -1,6 +1,25 @@
 {
   "name": "@mikata/ui",
   "version": "0.1.0",
+  "description": "Component library for Mikata — 80+ accessible, themeable components",
+  "keywords": [
+    "mikata",
+    "reactive",
+    "signals",
+    "ui",
+    "components",
+    "design-system"
+  ],
+  "author": "Brandon Lowery",
+  "homepage": "https://github.com/blowerydev/mikata#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/blowerydev/mikata.git",
+    "directory": "packages/ui"
+  },
+  "bugs": {
+    "url": "https://github.com/blowerydev/mikata/issues"
+  },
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.cjs",

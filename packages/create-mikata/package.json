@@ -1,6 +1,25 @@
 {
   "name": "create-mikata",
   "version": "0.1.0",
+  "keywords": [
+    "mikata",
+    "reactive",
+    "signals",
+    "create",
+    "scaffold",
+    "cli",
+    "starter"
+  ],
+  "author": "Brandon Lowery",
+  "homepage": "https://github.com/blowerydev/mikata#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/blowerydev/mikata.git",
+    "directory": "packages/create-mikata"
+  },
+  "bugs": {
+    "url": "https://github.com/blowerydev/mikata/issues"
+  },
   "license": "MIT",
   "description": "Scaffold a new Mikata app",
   "type": "module",

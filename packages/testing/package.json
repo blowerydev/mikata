@@ -1,6 +1,25 @@
 {
   "name": "@mikata/testing",
   "version": "0.1.0",
+  "description": "Test utilities for Mikata apps — renderComponent, fireEvent, flushSync",
+  "keywords": [
+    "mikata",
+    "reactive",
+    "signals",
+    "testing",
+    "vitest",
+    "jsdom"
+  ],
+  "author": "Brandon Lowery",
+  "homepage": "https://github.com/blowerydev/mikata#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/blowerydev/mikata.git",
+    "directory": "packages/testing"
+  },
+  "bugs": {
+    "url": "https://github.com/blowerydev/mikata/issues"
+  },
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.cjs",

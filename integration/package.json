@@ -1,5 +1,6 @@
 {
-  "name": "@mikata/test-app",
+  "name": "@mikata/integration-tests",
+  "description": "Internal cross-package integration tests (not published)",
   "version": "0.1.0",
   "license": "MIT",
   "private": true,

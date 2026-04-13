@@ -1,6 +1,27 @@
 {
   "name": "mikata",
   "version": "0.1.0",
+  "description": "Reactive UI framework — signals + no-VDOM + JSX, runs components exactly once",
+  "keywords": [
+    "mikata",
+    "reactive",
+    "signals",
+    "ui",
+    "framework",
+    "jsx",
+    "no-vdom",
+    "fine-grained"
+  ],
+  "author": "Brandon Lowery",
+  "homepage": "https://github.com/blowerydev/mikata#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/blowerydev/mikata.git",
+    "directory": "packages/mikata"
+  },
+  "bugs": {
+    "url": "https://github.com/blowerydev/mikata/issues"
+  },
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.cjs",

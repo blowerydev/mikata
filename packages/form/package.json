@@ -1,6 +1,27 @@
 {
   "name": "@mikata/form",
   "version": "0.1.0",
+  "description": "Form state and validation for Mikata — zod, yup, and valibot resolvers",
+  "keywords": [
+    "mikata",
+    "reactive",
+    "signals",
+    "form",
+    "validation",
+    "zod",
+    "yup",
+    "valibot"
+  ],
+  "author": "Brandon Lowery",
+  "homepage": "https://github.com/blowerydev/mikata#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/blowerydev/mikata.git",
+    "directory": "packages/form"
+  },
+  "bugs": {
+    "url": "https://github.com/blowerydev/mikata/issues"
+  },
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.cjs",

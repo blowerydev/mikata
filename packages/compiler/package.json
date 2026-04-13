@@ -1,6 +1,26 @@
 {
   "name": "@mikata/compiler",
   "version": "0.1.0",
+  "description": "Vite/Babel plugin that compiles Mikata JSX to direct DOM operations",
+  "keywords": [
+    "mikata",
+    "reactive",
+    "signals",
+    "compiler",
+    "vite",
+    "babel",
+    "jsx"
+  ],
+  "author": "Brandon Lowery",
+  "homepage": "https://github.com/blowerydev/mikata#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/blowerydev/mikata.git",
+    "directory": "packages/compiler"
+  },
+  "bugs": {
+    "url": "https://github.com/blowerydev/mikata/issues"
+  },
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.cjs",

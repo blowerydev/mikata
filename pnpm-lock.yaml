@@ -24,6 +24,30 @@ importers:
         specifier: ^3.1.0
         version: 3.2.4(@types/node@22.19.17)(jsdom@29.0.2)
 
+  integration:
+    dependencies:
+      '@mikata/i18n':
+        specifier: workspace:*
+        version: link:../packages/i18n
+      '@mikata/reactivity':
+        specifier: workspace:*
+        version: link:../packages/reactivity
+      '@mikata/router':
+        specifier: workspace:*
+        version: link:../packages/router
+      '@mikata/runtime':
+        specifier: workspace:*
+        version: link:../packages/runtime
+      '@mikata/store':
+        specifier: workspace:*
+        version: link:../packages/store
+      '@mikata/testing':
+        specifier: workspace:*
+        version: link:../packages/testing
+      '@mikata/ui':
+        specifier: workspace:*
+        version: link:../packages/ui
+
   packages/compiler:
     dependencies:
       '@babel/core':
@@ -156,30 +180,6 @@ importers:
         specifier: workspace:*
         version: link:../reactivity
 
-  packages/test-app:
-    dependencies:
-      '@mikata/i18n':
-        specifier: workspace:*
-        version: link:../i18n
-      '@mikata/reactivity':
-        specifier: workspace:*
-        version: link:../reactivity
-      '@mikata/router':
-        specifier: workspace:*
-        version: link:../router
-      '@mikata/runtime':
-        specifier: workspace:*
-        version: link:../runtime
-      '@mikata/store':
-        specifier: workspace:*
-        version: link:../store
-      '@mikata/testing':
-        specifier: workspace:*
-        version: link:../testing
-      '@mikata/ui':
-        specifier: workspace:*
-        version: link:../ui
-
   packages/testing:
     dependencies:
       '@mikata/reactivity':
@@ -203,6 +203,40 @@ importers:
       '@mikata/runtime':
         specifier: workspace:*
         version: link:../runtime
+
+  playground:
+    dependencies:
+      '@mikata/form':
+        specifier: workspace:*
+        version: link:../packages/form
+      '@mikata/i18n':
+        specifier: workspace:*
+        version: link:../packages/i18n
+      '@mikata/icons':
+        specifier: workspace:*
+        version: link:../packages/icons
+      '@mikata/reactivity':
+        specifier: workspace:*
+        version: link:../packages/reactivity
+      '@mikata/runtime':
+        specifier: workspace:*
+        version: link:../packages/runtime
+      '@mikata/store':
+        specifier: workspace:*
+        version: link:../packages/store
+      '@mikata/ui':
+        specifier: workspace:*
+        version: link:../packages/ui
+      lucide:
+        specifier: ^0.460.0
+        version: 0.460.0
+    devDependencies:
+      '@mikata/compiler':
+        specifier: workspace:*
+        version: link:../packages/compiler
+      vite:
+        specifier: ^6.0.0
+        version: 6.4.2(@types/node@22.19.17)
 
 packages:
 
@@ -1339,6 +1373,9 @@ packages:
 
   lru-cache@5.1.1:
     resolution: {integrity: sha512-KpNARQA3Iwv+jTA0utUVVbrh+Jlrr1Fv0e56GGzAFOXN7dk/FviaDW8LHmK52DlcH4WP2n6gI8vN1aesBFgo9w==}
+
+  lucide@0.460.0:
+    resolution: {integrity: sha512-kEqx3yHU+q4S0k7RH183QFaDy6xepEcN3yVjiBhxM1qX/tSMrmOSuUQJCobiIYzB1q9m8RmAN0efPiXZq79JSQ==}
 
   lucide@1.8.0:
     resolution: {integrity: sha512-JjV/QnadgFLj1Pyu9IKl0lknrolFEzo04B64QcYLLeRzZl/iEHpdbSrRRKbyXcv45SZNv+WGjIUCT33e7xHO6Q==}
@@ -2813,6 +2850,8 @@ snapshots:
   lru-cache@5.1.1:
     dependencies:
       yallist: 3.1.1
+
+  lucide@0.460.0: {}
 
   lucide@1.8.0: {}
 

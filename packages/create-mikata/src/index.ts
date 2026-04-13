@@ -132,7 +132,7 @@ function printSuccess(cfg: ResolvedConfig, targetDir: string): void {
       (cfg.features.includes('testing')
         ? `  ${pc.dim(`${pmRun} test    # run the sample test`)}\n`
         : '') +
-      `${pc.dim('Docs:')} ${pc.underline('https://github.com/your-org/mikata')}\n`
+      `${pc.dim('Docs:')} ${pc.underline('https://github.com/blowerydev/mikata')}\n`
   );
 }
 

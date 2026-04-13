@@ -1,6 +1,26 @@
 {
   "name": "@mikata/store",
   "version": "0.1.0",
+  "description": "Reactive stores, queries, and mutations for Mikata",
+  "keywords": [
+    "mikata",
+    "reactive",
+    "signals",
+    "store",
+    "query",
+    "mutation",
+    "state-management"
+  ],
+  "author": "Brandon Lowery",
+  "homepage": "https://github.com/blowerydev/mikata#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/blowerydev/mikata.git",
+    "directory": "packages/store"
+  },
+  "bugs": {
+    "url": "https://github.com/blowerydev/mikata/issues"
+  },
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.cjs",

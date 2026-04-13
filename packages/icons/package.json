@@ -1,6 +1,26 @@
 {
   "name": "@mikata/icons",
   "version": "0.1.0",
+  "description": "Icon factory for Mikata — Lucide/Tabler interop plus built-in SVG set",
+  "keywords": [
+    "mikata",
+    "reactive",
+    "signals",
+    "icons",
+    "svg",
+    "lucide",
+    "tabler"
+  ],
+  "author": "Brandon Lowery",
+  "homepage": "https://github.com/blowerydev/mikata#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/blowerydev/mikata.git",
+    "directory": "packages/icons"
+  },
+  "bugs": {
+    "url": "https://github.com/blowerydev/mikata/issues"
+  },
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.cjs",
