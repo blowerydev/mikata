@@ -1,0 +1,27 @@
+{
+  "name": "create-mikata",
+  "version": "0.1.0",
+  "description": "Scaffold a new Mikata app",
+  "type": "module",
+  "bin": {
+    "create-mikata": "./bin/cli.js"
+  },
+  "files": [
+    "bin",
+    "dist",
+    "templates"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch"
+  },
+  "dependencies": {
+    "mri": "^1.2.0",
+    "picocolors": "^1.1.1",
+    "prompts": "^2.4.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/prompts": "^2.4.9"
+  }
+}

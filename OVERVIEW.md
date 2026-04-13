@@ -474,6 +474,43 @@ For zero-dep projects, `@mikata/icons` also ships ~25 built-in nodes mirroring L
 
 ---
 
+## Getting Started
+
+Scaffold a new project with `create-mikata`:
+
+```bash
+pnpm create mikata my-app            # interactive prompts
+pnpm create mikata my-app -y         # accept defaults (minimal)
+pnpm create mikata my-app --template full
+pnpm create mikata my-app --router --ui --icons --testing
+```
+
+**Presets** (`--template`):
+
+- `minimal` — just `mikata` + Vite + TypeScript. A counter page in `src/App.tsx`.
+- `spa` — `minimal` + router + testing. Nav with Home/About routes, sample vitest spec.
+- `full` — everything: router, `@mikata/ui` + `ThemeProvider`, icons, form, i18n (en/fr with ICU plurals), store (`createQuery` demo), testing, ESLint.
+
+**Feature flags** — each can be added to any preset (or used alone with `--yes`):
+
+| Flag | What it adds |
+|---|---|
+| `--router` | `createRouter` + `Link` + `routeOutlet()` shell with Home/About pages |
+| `--ui` | `@mikata/ui` as a dep; wraps `<App />` in `<ThemeProvider>`; swaps demo to UI components |
+| `--icons` | `@mikata/icons` usage in the demo (`IconSparkles`) |
+| `--form` | `ContactForm.tsx` using `createForm` with zod-free inline validation |
+| `--i18n` | `src/i18n.ts` with en/fr messages, `provideI18n` in `main.tsx`, `useI18n` in `App.tsx` |
+| `--store` | `createQuery` example fetching todos from jsonplaceholder |
+| `--testing` | Vitest + `@mikata/testing` + sample `App.test.tsx` |
+| `--eslint` | Flat config with `@mikata/eslint-plugin` rules |
+| `--tailwind` | Tailwind v4 via `@tailwindcss/postcss` + `src/index.css` |
+
+Negation form (`--no-<feature>`) removes a feature from a preset. The package manager for the "next steps" hint is selected with `--pm <pnpm|npm|yarn|bun>`.
+
+Under the hood, `create-mikata` layers a base template + per-feature overlays, strips `/* @if:<feature> */…/* @endif */` blocks for unselected features, and generates `src/main.tsx` + `src/App.tsx` programmatically based on the feature set (rather than maintaining one template per combination).
+
+---
+
 ## Project Structure
 
 ```
@@ -491,6 +528,7 @@ mikata/
     testing/       # Test utilities (renderComponent, fireEvent, flush)
     eslint-plugin/ # Lint rules for setup-once, props, and async components
     mikata/        # Umbrella package re-exporting everything
+    create-mikata/ # Project scaffolder -- `pnpm create mikata my-app`
 ```
 
 All packages are available individually (`@mikata/reactivity`, `@mikata/runtime`, etc.) or through the umbrella package (`import { signal, render, createStore } from 'mikata'`).
