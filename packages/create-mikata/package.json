@@ -1,6 +1,7 @@
 {
   "name": "create-mikata",
   "version": "0.1.0",
+  "license": "MIT",
   "description": "Scaffold a new Mikata app",
   "type": "module",
   "bin": {

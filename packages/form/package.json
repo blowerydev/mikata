@@ -1,6 +1,7 @@
 {
   "name": "@mikata/form",
   "version": "0.1.0",
+  "license": "MIT",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -38,7 +39,9 @@
     }
   },
   "sideEffects": false,
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch"
@@ -54,10 +57,20 @@
     "joi": "*"
   },
   "peerDependenciesMeta": {
-    "zod": { "optional": true },
-    "yup": { "optional": true },
-    "valibot": { "optional": true },
-    "superstruct": { "optional": true },
-    "joi": { "optional": true }
+    "zod": {
+      "optional": true
+    },
+    "yup": {
+      "optional": true
+    },
+    "valibot": {
+      "optional": true
+    },
+    "superstruct": {
+      "optional": true
+    },
+    "joi": {
+      "optional": true
+    }
   }
 }

@@ -1,11 +1,11 @@
 {
   "name": "mikata-monorepo",
   "private": true,
+  "license": "MIT",
   "scripts": {
     "build": "pnpm -r --filter './packages/*' run build",
     "test": "vitest",
     "test:run": "vitest run",
-    "dev": "pnpm --filter playground dev",
     "lint": "eslint packages/*/src/**/*.ts"
   },
   "devDependencies": {

@@ -1,6 +1,7 @@
 {
   "name": "@mikata/icons",
   "version": "0.1.0",
+  "license": "MIT",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -13,7 +14,9 @@
     }
   },
   "sideEffects": false,
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch"
@@ -23,7 +26,11 @@
     "@tabler/icons": "*"
   },
   "peerDependenciesMeta": {
-    "lucide": { "optional": true },
-    "@tabler/icons": { "optional": true }
+    "lucide": {
+      "optional": true
+    },
+    "@tabler/icons": {
+      "optional": true
+    }
   }
 }

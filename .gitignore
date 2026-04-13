@@ -1,6 +1,54 @@
+# Local-only workspaces
+/playground
+
+# Dependencies & build output
 node_modules
 dist
-*.tsbuildinfo
-.DS_Store
 coverage
-.claude/
+*.tsbuildinfo
+.turbo
+.vite
+.next
+.nyc_output
+
+# Env & secrets
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Editors
+.vscode
+.idea
+*.swp
+*.swo
+
+# AI assistants
+.claude
+CLAUDE.md
+.cursor
+.cursorignore
+.cursorrules
+.aider*
+.windsurf
+.windsurfrules
+.continue
+.codeium
+.roo
+.cline
+.github/copilot-instructions.md
