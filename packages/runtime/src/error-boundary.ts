@@ -1,5 +1,5 @@
 /**
- * ErrorBoundary — catches errors thrown during component rendering
+ * ErrorBoundary - catches errors thrown during component rendering
  * and displays a fallback UI.
  */
 
@@ -58,7 +58,7 @@ export function ErrorBoundary(props: ErrorBoundaryProps): Node {
     container.textContent = '';
     const result = renderChildren();
     if (result.error) {
-      // Render fallback synchronously — no signal/effect needed
+      // Render fallback synchronously - no signal/effect needed
       const fallbackNode = props.fallback(result.error, reset);
       container.appendChild(fallbackNode);
     } else {

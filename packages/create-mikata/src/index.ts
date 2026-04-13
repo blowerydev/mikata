@@ -1,5 +1,5 @@
 /**
- * create-mikata — scaffold a new Mikata app.
+ * create-mikata - scaffold a new Mikata app.
  *
  * Usage:
  *   pnpm create mikata my-app [--router] [--ui] [--icons] ...
@@ -21,7 +21,7 @@ const PRESETS: Record<string, Feature[]> = {
 };
 
 const HELP = `
-${pc.bold(pc.cyan('create-mikata'))} — scaffold a new Mikata app
+${pc.bold(pc.cyan('create-mikata'))} - scaffold a new Mikata app
 
 ${pc.bold('Usage')}
   ${pc.dim('$')} pnpm create mikata ${pc.italic('<name>')} [options]

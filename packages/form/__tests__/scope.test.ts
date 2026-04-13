@@ -1,5 +1,5 @@
 /**
- * Tests for form.scope(path) — scoped sub-form handles for nested/array fields.
+ * Tests for form.scope(path) - scoped sub-form handles for nested/array fields.
  */
 
 import { describe, it, expect } from 'vitest';

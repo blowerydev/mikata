@@ -65,7 +65,7 @@ export function flattenTheme(theme: MikataTheme, scheme: 'light' | 'dark'): Reco
     }
   }
 
-  // ── 4. primaryColor — alias primary-* to the chosen palette ──
+  // ── 4. primaryColor - alias primary-* to the chosen palette ──
   const primaryName = theme.primaryColor ?? 'primary';
   if (primaryName !== 'primary') {
     if (!allColorNames.has(primaryName)) {
@@ -97,7 +97,7 @@ export function flattenTheme(theme: MikataTheme, scheme: 'light' | 'dark'): Reco
     out[`${h}-lh`] = user.lineHeight ?? d.lineHeight;
   }
 
-  // ── 8. cssVariablesResolver — user hook for extras ──
+  // ── 8. cssVariablesResolver - user hook for extras ──
   if (theme.cssVariablesResolver) {
     const extra = theme.cssVariablesResolver({ theme, colorScheme: scheme });
     if (extra.variables) Object.assign(out, extra.variables);
@@ -105,7 +105,7 @@ export function flattenTheme(theme: MikataTheme, scheme: 'light' | 'dark'): Reco
     if (schemeOverrides) Object.assign(out, schemeOverrides);
   }
 
-  // ── 9. `other` — highest precedence scalar overrides ──
+  // ── 9. `other` - highest precedence scalar overrides ──
   if (theme.other) Object.assign(out, theme.other);
 
   return out;

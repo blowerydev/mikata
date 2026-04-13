@@ -90,7 +90,7 @@ export function getCalleeName(call: CallExpression): string | null {
 }
 
 /**
- * Walk up from a node, yielding each ancestor. Requires parent references —
+ * Walk up from a node, yielding each ancestor. Requires parent references -
  * ESLint sets these on SourceCode#getAncestors or directly via context.getAncestors().
  */
 export function* ancestors(node: Node, context: Rule.RuleContext): Generator<Node> {

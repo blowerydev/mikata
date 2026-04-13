@@ -53,7 +53,7 @@ export interface I18nOptions<T extends Record<string, unknown>> {
   /**
    * Override the ICU formatter. The default subset covers `{arg}`,
    * `{n, number}`, `{d, date}`, `{t, time}`, `{n, plural, ...}`,
-   * `{g, select, ...}`, and `#` — use this to plug in a full-grammar
+   * `{g, select, ...}`, and `#` - use this to plug in a full-grammar
    * formatter (e.g. `intl-messageformat`) when you need `selectordinal`,
    * `offset:`, or `'`-quote escaping.
    */
@@ -83,7 +83,7 @@ export interface Formatters {
 export interface I18nInstance<T extends Record<string, unknown>> {
   /** Reactive getter for the current locale */
   locale: ReadSignal<string>;
-  /** Switch locale — loads translations via loader if needed */
+  /** Switch locale - loads translations via loader if needed */
   setLocale: (locale: string) => Promise<void>;
   /** Reactive getter for loading state (true while fetching translations) */
   loading: ReadSignal<boolean>;

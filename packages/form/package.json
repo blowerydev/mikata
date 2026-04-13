@@ -1,7 +1,7 @@
 {
   "name": "@mikata/form",
   "version": "0.1.0",
-  "description": "Form state and validation for Mikata — zod, yup, and valibot resolvers",
+  "description": "Form state and validation for Mikata - zod, yup, and valibot resolvers",
   "keywords": [
     "mikata",
     "reactive",

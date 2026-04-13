@@ -106,7 +106,7 @@ export function getMonthMatrix(viewDate: Date, firstDayOfWeek = 1): Date[][] {
 /** Short weekday labels ordered from `firstDayOfWeek`. */
 export function getWeekdayLabels(locale: string, firstDayOfWeek = 1, format: 'narrow' | 'short' = 'short'): string[] {
   const fmt = new Intl.DateTimeFormat(locale, { weekday: format, timeZone: 'UTC' });
-  // 2024-01-07 UTC is a Sunday — anchor for deterministic output regardless
+  // 2024-01-07 UTC is a Sunday - anchor for deterministic output regardless
   // of the host timezone.
   const sunday = new Date(Date.UTC(2024, 0, 7));
   const labels: string[] = [];

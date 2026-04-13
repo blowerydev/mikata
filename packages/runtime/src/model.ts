@@ -1,5 +1,5 @@
 /**
- * model() — two-way form bindings for signals.
+ * model() - two-way form bindings for signals.
  *
  * Returns an object of props to spread onto a form element.
  * Works with input (text, number, checkbox, radio), textarea, and select.
@@ -15,7 +15,7 @@
 type ModelType = 'text' | 'checkbox' | 'radio' | 'number' | 'select';
 
 interface ModelProps {
-  /** Getter-backed value prop — stays reactive when spread */
+  /** Getter-backed value prop - stays reactive when spread */
   readonly value?: unknown;
   readonly checked?: boolean;
   /** Input handler */

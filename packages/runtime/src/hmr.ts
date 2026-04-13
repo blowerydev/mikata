@@ -5,7 +5,7 @@
  * functions and accepts hot updates. When a module is updated, the
  * runtime swaps the component function and re-renders affected instances.
  *
- * State is NOT preserved across HMR — components re-run from scratch
+ * State is NOT preserved across HMR - components re-run from scratch
  * with fresh state. This matches SolidJS's approach: since components
  * are setup functions that run once, preserving the old reactive scope
  * while running new setup code would create inconsistencies.
@@ -106,7 +106,7 @@ export function _registerComponent<P extends Record<string, unknown>>(
 export function _hotReplace(id: string, NewComp: (props: any) => Node | null): void {
   const entry = registry.get(id);
   if (!entry) {
-    // First registration — nothing to replace
+    // First registration - nothing to replace
     registry.set(id, { current: NewComp, instances: new Set() });
     return;
   }
@@ -129,7 +129,7 @@ export function _hotReplace(id: string, NewComp: (props: any) => Node | null): v
     disposeComponent(node);
     parent.removeChild(node);
 
-    // Create new instance — the proxy will track it automatically
+    // Create new instance - the proxy will track it automatically
     try {
       const newNode = _createComponent(NewComp, props);
       parent.insertBefore(newNode, nextSibling);
@@ -167,7 +167,7 @@ export function _hotReplace(id: string, NewComp: (props: any) => Node | null): v
  */
 export function _isHMRActive(): boolean {
   try {
-    // @ts-expect-error — import.meta.hot is Vite-specific
+    // @ts-expect-error - import.meta.hot is Vite-specific
     return !!import.meta.hot;
   } catch {
     return false;

@@ -8,7 +8,7 @@ export function uniqueId(prefix: string = 'mkt'): string {
   return `${prefix}-${++counter}`;
 }
 
-/** Reset counter — only for tests. */
+/** Reset counter - only for tests. */
 export function _resetIdCounter(): void {
   counter = 0;
 }

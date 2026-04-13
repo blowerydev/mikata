@@ -1,5 +1,5 @@
 /**
- * Computed — lazy, cached, pull-based derived value.
+ * Computed - lazy, cached, pull-based derived value.
  *
  * Only recomputes when dependencies change AND when read.
  * Returns a getter function consistent with signal getters.
@@ -27,7 +27,7 @@ export function computed<T>(fn: () => T, label?: string): ReadSignal<T> {
   let initialized = false;
   let computing = false;
   // If fn() throws, cache the error and re-throw on every read until sources
-  // change — otherwise subsequent reads would silently return the stale value.
+  // change - otherwise subsequent reads would silently return the stale value.
   let error: unknown = undefined;
   let hasError = false;
 

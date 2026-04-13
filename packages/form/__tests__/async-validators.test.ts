@@ -1,5 +1,5 @@
 /**
- * Tests for async field validators — cancellation, debounce, isValidating.
+ * Tests for async field validators - cancellation, debounce, isValidating.
  */
 
 import { describe, it, expect, vi } from 'vitest';
@@ -49,7 +49,7 @@ describe('async validators', () => {
     form.setFieldValue('email', 'second'); // cancels first
 
     await nextTick(0);
-    // Resolve the (now stale) first one with an error — it must be ignored.
+    // Resolve the (now stale) first one with an error - it must be ignored.
     resolveFirst('stale error');
     await nextTick(0);
     await nextTick(0);

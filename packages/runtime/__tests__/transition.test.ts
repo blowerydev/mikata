@@ -6,7 +6,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { transition, transitionGroup } from '../src/transition';
 import { signal, flushSync } from '@mikata/reactivity';
 
-// @ts-expect-error — define __DEV__ for tests
+// @ts-expect-error - define __DEV__ for tests
 globalThis.__DEV__ = true;
 
 describe('transition()', () => {
@@ -509,7 +509,7 @@ describe('transitionGroup()', () => {
 
     expect(container.textContent).toBe('ab');
 
-    // Clear list — items should animate out
+    // Clear list - items should animate out
     setItems([]);
     flushSync();
 

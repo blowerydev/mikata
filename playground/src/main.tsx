@@ -579,7 +579,7 @@ function ErrorBoundaryDemo() {
 // Demo 7: UI Component Library
 // ============================================================
 function UIComponentsDemo() {
-  // Shares the App-level ThemeProvider — don't create a nested one, or the
+  // Shares the App-level ThemeProvider - don't create a nested one, or the
   // dark-mode toggle's setColorScheme only flips this scope.
   const wrapper = _createElement('div');
   _setProp(wrapper, 'style', {
@@ -1056,10 +1056,10 @@ function UIContent() {
 }
 
 // ============================================================
-// Demo 8: Extras — new components showcase
+// Demo 8: Extras - new components showcase
 // ============================================================
 function ExtrasDemo() {
-  // Shares the App-level ThemeProvider — avoid nesting providers so the
+  // Shares the App-level ThemeProvider - avoid nesting providers so the
   // dark-mode toggle in the UI demo also affects this section.
   const wrapper = _createElement('div');
   _setProp(wrapper, 'style', {
@@ -1352,7 +1352,7 @@ function ExtrasContent() {
       _setProp(frag, 'style', { padding: 'var(--mkt-space-3)' });
       for (let i = 1; i <= 30; i++) {
         const p = _createElement('p');
-        p.textContent = `Line ${i} — scroll to see custom scrollbars.`;
+        p.textContent = `Line ${i} - scroll to see custom scrollbars.`;
         frag.appendChild(p);
       }
       return frag;
@@ -1453,7 +1453,7 @@ function ExtrasContent() {
 }
 
 // ============================================================
-// Demo 9: @mikata/form — signal-backed form handle
+// Demo 9: @mikata/form - signal-backed form handle
 // ============================================================
 function FormPackageDemo() {
   // Shares the App-level ThemeProvider.
@@ -1551,7 +1551,7 @@ function FormPackageContent() {
   });
   formEl.appendChild(fields);
 
-  // Dynamic list — each item bound via `items.${i}.name`.
+  // Dynamic list - each item bound via `items.${i}.name`.
   const listWrap = _createElement('div');
   _setProp(listWrap, 'style', { marginTop: '1rem' });
   listWrap.appendChild(
@@ -1586,7 +1586,7 @@ function FormPackageContent() {
         },
         () => {
           const p = _createElement('p');
-          p.textContent = '—';
+          p.textContent = '-';
           return p;
         },
         { key: (item: { id: number }) => item.id }
@@ -1636,7 +1636,7 @@ function FormPackageContent() {
 
   el.appendChild(formEl);
 
-  // Live status — shows dirty/valid/touched reactively so reviewers can see
+  // Live status - shows dirty/valid/touched reactively so reviewers can see
   // the signals doing their job.
   const status = _createElement('p');
   _setProp(status, 'style', {
@@ -1655,7 +1655,7 @@ function FormPackageContent() {
 }
 
 // ============================================================
-// DatesDemo — Calendar, DatePicker, pickers, TimeInput
+// DatesDemo - Calendar, DatePicker, pickers, TimeInput
 // ============================================================
 function DatesDemo() {
   const wrapper = _createElement('div');
@@ -1675,7 +1675,7 @@ function DatesContent() {
   const el = _createElement('div');
 
   el.appendChild(Title({ order: 2, children: 'Dates & Time' }));
-  el.appendChild(Text({ size: 'sm', children: 'Calendar, DatePicker, Month/YearPicker, DateInput, TimeInput — all powered by Intl with zero date-library deps.' }));
+  el.appendChild(Text({ size: 'sm', children: 'Calendar, DatePicker, Month/YearPicker, DateInput, TimeInput - all powered by Intl with zero date-library deps.' }));
 
   // ─── Inline Calendar ──────────────────────────
   el.appendChild(Title({ order: 3, children: 'Calendar (inline)' }));
@@ -1745,7 +1745,7 @@ function DatesContent() {
 
   // ─── Virtualization ────────────────────────
   el.appendChild(Title({ order: 2, children: 'Virtualization' }));
-  el.appendChild(Text({ size: 'sm', children: 'VirtualList renders only the items in view. Scroll the list below — only ~12 nodes exist in the DOM at any time despite 10,000 items.' }));
+  el.appendChild(Text({ size: 'sm', children: 'VirtualList renders only the items in view. Scroll the list below - only ~12 nodes exist in the DOM at any time despite 10,000 items.' }));
 
   const bigData = Array.from({ length: 10000 }, (_, i) => ({
     id: i,
@@ -1804,7 +1804,7 @@ function DatesContent() {
 }
 
 // ============================================================
-// IconsDemo — @mikata/icons + Lucide interop
+// IconsDemo - @mikata/icons + Lucide interop
 // ============================================================
 function IconsDemo() {
   const wrapper = _createElement('div');
@@ -1903,7 +1903,7 @@ function IconsContent() {
 }
 
 // ============================================================
-// ThemingDemo — custom palette, primaryColor, primaryShade, component defaults
+// ThemingDemo - custom palette, primaryColor, primaryShade, component defaults
 // ============================================================
 const BRAND_PALETTE: ColorPalette = [
   '#f3f0ff', '#e5dbff', '#d0bfff', '#b197fc', '#9775fa',
@@ -1954,7 +1954,7 @@ function ThemingDemo() {
   ] }));
   wrapper.appendChild(controls);
 
-  // Single provider with a reactive theme getter — CSS vars + palette rules
+  // Single provider with a reactive theme getter - CSS vars + palette rules
   // update live when the signals above change.
   const provider = ThemeProvider({
     theme: (): MikataTheme => ({
@@ -2002,7 +2002,7 @@ function ThemingDemo() {
 }
 
 // ============================================================
-// App — compose all demos
+// App - compose all demos
 // ============================================================
 function App() {
   provideI18n(i18n);

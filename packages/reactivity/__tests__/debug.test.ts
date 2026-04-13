@@ -18,7 +18,7 @@ import {
   flushSync,
 } from '../src/index';
 
-// @ts-expect-error — define __DEV__ for tests
+// @ts-expect-error - define __DEV__ for tests
 globalThis.__DEV__ = true;
 
 describe('Debug Registry', () => {

@@ -33,7 +33,7 @@ const SCOPE_REQUIRED = new Set([
 ]);
 
 /**
- * Wrappers that DO establish a scope for their callback — calls inside these
+ * Wrappers that DO establish a scope for their callback - calls inside these
  * are safe even from non-component helpers.
  */
 const SCOPE_ESTABLISHING = new Set(['_createComponent', 'createComponent', 'createScope', 'render']);
@@ -70,7 +70,7 @@ export const rulesOfSetup: Rule.RuleModule = {
         'Callbacks to effect/setTimeout/Promise.then run after setup has returned and have no scope. ' +
         'Move the call to the top level of the component.',
       asyncComponent:
-        "`{{name}}` is inside an async function. Component setup must be synchronous — after the first `await`, the reactive scope is gone.",
+        "`{{name}}` is inside an async function. Component setup must be synchronous - after the first `await`, the reactive scope is gone.",
       atTopLevel:
         "`{{name}}` must run during component setup, but it's at module top level. " +
         'Move it inside a component function or inside `createScope`/`render`.',

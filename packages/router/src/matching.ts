@@ -1,5 +1,5 @@
 /**
- * URL pattern matching — matches a pathname against a route tree
+ * URL pattern matching - matches a pathname against a route tree
  * and extracts path parameters.
  */
 
@@ -165,14 +165,14 @@ function matchChildRoute(
   remaining: string,
   child: NormalizedRoute
 ): RouteMatch[] | null {
-  // Get the child's own path segments (not fullPath — that includes parent prefix)
+  // Get the child's own path segments (not fullPath - that includes parent prefix)
   const ownPath = child.segments;
 
   // Compile a regex from the child's own segments
   const { regex, paramNames } = compileSegments(ownPath);
 
   if (child.children.length > 0) {
-    // Child is also a parent — match as prefix
+    // Child is also a parent - match as prefix
     const { regex: prefixRegex, paramNames: prefixParamNames } = compilePrefixSegments(ownPath);
     const prefixMatch = prefixRegex.exec(remaining);
     if (!prefixMatch) return null;

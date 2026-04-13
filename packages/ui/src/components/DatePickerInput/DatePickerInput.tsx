@@ -38,7 +38,7 @@ function displayFor(
 }
 
 /**
- * DatePickerInput — button trigger + DatePicker dropdown. Supports the same
+ * DatePickerInput - button trigger + DatePicker dropdown. Supports the same
  * `type` modes as DatePicker (default / multiple / range).
  */
 export function DatePickerInput(userProps: DatePickerInputProps = {}): HTMLDivElement {

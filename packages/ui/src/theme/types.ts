@@ -62,7 +62,7 @@ export interface MikataTheme {
 export interface ThemeProviderProps {
   /**
    * Theme object or a getter for one. Pass a getter (`() => theme`) if you
-   * need the provider to react to signal-driven token changes — CSS variables
+   * need the provider to react to signal-driven token changes - CSS variables
    * and palette rules update live. `theme.components` defaults are read once
    * at mount.
    */

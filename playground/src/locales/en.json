@@ -5,7 +5,7 @@
   },
   "ui": {
     "title": "UI Component Library",
-    "description": "These components are from @mikata/ui — fully themed, accessible, and composable.",
+    "description": "These components are from @mikata/ui - fully themed, accessible, and composable.",
     "darkMode": "Dark mode",
     "language": "Language"
   },
@@ -218,7 +218,7 @@
     "kbdK": "K",
     "markedText": "highlighted",
     "blockquote": "Simplicity is the ultimate sophistication.",
-    "blockquoteCite": "— Leonardo da Vinci",
+    "blockquoteCite": "- Leonardo da Vinci",
     "highlightText": "Search within this long sentence for the word mikata to see it highlighted.",
     "highlightTerm": "mikata",
     "spoilerShow": "Show more",
@@ -296,7 +296,7 @@
     "alertTitle": "Heads up",
     "alertBody": "Icons pass through Alert.icon as any Node.",
     "notifTitle": "Saved",
-    "notifBody": "Built-in Check icon used here — no external dep.",
+    "notifBody": "Built-in Check icon used here - no external dep.",
     "navigation": "In navigation",
     "navHome": "Home",
     "navSettings": "Settings",

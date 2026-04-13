@@ -62,7 +62,7 @@ export function Autocomplete(props: AutocompleteProps): HTMLDivElement {
   let current: string[] = [];
   let remoteItems: string[] = [];
   let loading = false;
-  // Keyed reconciliation — reuse <li> nodes by option value so fast typing
+  // Keyed reconciliation - reuse <li> nodes by option value so fast typing
   // doesn't blow away and recreate the entire dropdown on every keystroke.
   const liByOption = new Map<string, HTMLLIElement>();
   let loadingLi: HTMLLIElement | null = null;

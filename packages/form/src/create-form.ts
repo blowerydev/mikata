@@ -45,7 +45,7 @@ export function createForm<Values extends object>(
   const [errorsSignal, setErrorsSignal] = signal<FormErrors>({});
   const [touchedSignal, setTouchedSignal] = signal<Record<string, boolean>>({});
   const [validatingSignal, setValidatingSignal] = signal<Record<string, boolean>>({});
-  // Per-path monotonic token — every new async run increments it, stale
+  // Per-path monotonic token - every new async run increments it, stale
   // resolutions compare their captured token against the current and bail if
   // they've been superseded.
   const validationTokens = new Map<string, number>();
@@ -269,7 +269,7 @@ export function createForm<Values extends object>(
     const onBlur = (): void => {
       markTouched(path);
       if (validateInputOnBlur) {
-        // Blur bypasses debounce — commit-time signals should feel immediate.
+        // Blur bypasses debounce - commit-time signals should feel immediate.
         runFieldValidation(path);
       }
     };
@@ -390,7 +390,7 @@ export function createForm<Values extends object>(
 
   /**
    * Subscribe to changes of a single field. Returns an unsubscribe function.
-   * Built on top of signals via a lightweight polling effect — for heavier use
+   * Built on top of signals via a lightweight polling effect - for heavier use
    * callers can just read `form.values.field` inside their own `effect(...)`.
    */
   function watch(path: string, callback: (value: unknown) => void): () => void {

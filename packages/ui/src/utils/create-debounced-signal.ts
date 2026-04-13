@@ -1,7 +1,7 @@
 import { signal, effect, onCleanup, type ReadSignal } from '@mikata/reactivity';
 
 /**
- * Returns a debounced view of a source signal — updates only after `delay` ms
+ * Returns a debounced view of a source signal - updates only after `delay` ms
  * of quiet. Useful for filter/search inputs that trigger expensive work.
  *
  * Usage:

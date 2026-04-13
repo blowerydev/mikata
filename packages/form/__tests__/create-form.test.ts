@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { flushSync } from '@mikata/reactivity';
 import { createForm } from '../src/create-form';
 
-describe('createForm — values', () => {
+describe('createForm - values', () => {
   it('starts with a deep clone of initialValues', () => {
     const initial = { a: { b: 1 }, items: [{ n: 1 }] };
     const form = createForm({ initialValues: initial });
@@ -46,7 +46,7 @@ describe('createForm — values', () => {
   });
 });
 
-describe('createForm — errors', () => {
+describe('createForm - errors', () => {
   it('setFieldError / clearFieldError round-trip', () => {
     const form = createForm({ initialValues: { a: 1 } });
     form.setFieldError('a', 'bad');
@@ -70,7 +70,7 @@ describe('createForm — errors', () => {
   });
 });
 
-describe('createForm — validation', () => {
+describe('createForm - validation', () => {
   it('runs object spec and returns errors', () => {
     const form = createForm({
       initialValues: { email: '', password: '' },
@@ -127,7 +127,7 @@ describe('createForm — validation', () => {
   });
 });
 
-describe('createForm — dirty / touched', () => {
+describe('createForm - dirty / touched', () => {
   it('isDirty toggles after setFieldValue', () => {
     const form = createForm({ initialValues: { a: 1 } });
     expect(form.isDirty()).toBe(false);
@@ -156,7 +156,7 @@ describe('createForm — dirty / touched', () => {
   });
 });
 
-describe('createForm — submit', () => {
+describe('createForm - submit', () => {
   it('calls onValid with raw values when valid', () => {
     const form = createForm({ initialValues: { a: 'hi' }, validate: { a: () => null } });
     const onValid = vi.fn();
@@ -194,7 +194,7 @@ describe('createForm — submit', () => {
   });
 });
 
-describe('createForm — getInputProps', () => {
+describe('createForm - getInputProps', () => {
   it("default type='input' returns value/onChange/onBlur", () => {
     const form = createForm({ initialValues: { name: 'alice' } });
     const props = form.getInputProps('name');
@@ -244,7 +244,7 @@ describe('createForm — getInputProps', () => {
   });
 });
 
-describe('createForm — list helpers', () => {
+describe('createForm - list helpers', () => {
   it('insertListItem appends by default', () => {
     const form = createForm({ initialValues: { items: [{ n: 1 }] } });
     form.insertListItem('items', { n: 2 });
@@ -286,7 +286,7 @@ describe('createForm — list helpers', () => {
   });
 });
 
-describe('createForm — watch', () => {
+describe('createForm - watch', () => {
   it('fires when the watched path changes', () => {
     const form = createForm({ initialValues: { a: 1 } });
     const cb = vi.fn();

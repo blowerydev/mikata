@@ -7,7 +7,7 @@ const ComponentDefaultsContext = createContext<ComponentDefaultsMap>(EMPTY_DEFAU
 
 /**
  * Install per-component default props. ThemeProvider wires this from
- * `theme.components` — callers should generally not use it directly.
+ * `theme.components` - callers should generally not use it directly.
  */
 export function provideComponentDefaults(defaults: ComponentDefaultsMap | undefined): void {
   provide(ComponentDefaultsContext, defaults ?? EMPTY_DEFAULTS);

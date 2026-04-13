@@ -35,7 +35,7 @@ export type ValidatorObject<Values = unknown> = {
 };
 
 /**
- * Full-values validator function — returns a flat FormErrors map.
+ * Full-values validator function - returns a flat FormErrors map.
  */
 export type ValidatorFunction<Values> = (values: Values) => FormErrors;
 
@@ -61,13 +61,13 @@ export interface FormOptions<Values> {
   clearInputErrorOnChange?: boolean;
   /** Transformed snapshot exposed via `getTransformedValues()`. */
   transformValues?: (values: Values) => unknown;
-  /** Enhance the form handle — called once at creation. */
+  /** Enhance the form handle - called once at creation. */
   enhance?: (form: MikataForm<Values>) => void;
   /**
    * Debounce window (ms) applied before invoking validators triggered by
    * `validateInputOnChange`. Useful when validators are async and hit the
-   * network — set to 300–500 so fast typing doesn't fire a request per key.
-   * Default: 0 (no debounce — validator runs on every change).
+   * network - set to 300–500 so fast typing doesn't fire a request per key.
+   * Default: 0 (no debounce - validator runs on every change).
    */
   asyncDebounceMs?: number;
 }
@@ -98,7 +98,7 @@ export interface InputProps {
 
 /**
  * One item in a field array's reactive entries list. `key` is stable across
- * inserts/removes/reorders driven through the handle — use it as the iteration
+ * inserts/removes/reorders driven through the handle - use it as the iteration
  * key so focused inputs survive list mutations. `path` is the fully-qualified
  * dotted path to this item on the parent form.
  */
@@ -111,7 +111,7 @@ export interface FieldArrayEntry<T> {
 
 /**
  * Handle returned by `form.fieldArray(path)`. All reads (`items`, `entries`,
- * `keys`, `length`) are reactive — subscribe in an `effect` / `each` and they
+ * `keys`, `length`) are reactive - subscribe in an `effect` / `each` and they
  * re-run when the underlying array changes. Mutators update the form's values
  * and the internal key array atomically.
  */
@@ -124,7 +124,7 @@ export interface FieldArrayHandle<T = unknown> {
   items: () => T[];
   /** Reactive stable keys aligned with `items()`. */
   keys: () => string[];
-  /** Reactive `{ key, path, value, index }` entries — convenient for `each()`. */
+  /** Reactive `{ key, path, value, index }` entries - convenient for `each()`. */
   entries: () => FieldArrayEntry<T>[];
   append: (item: T) => void;
   prepend: (item: T) => void;
@@ -209,7 +209,7 @@ export interface MikataForm<Values> {
   replaceListItem: (path: string, index: number, item: unknown) => void;
   /**
    * Bind a dynamic list at `path` to a stable-key handle. See
-   * `FieldArrayHandle` — use `entries()` inside `each(...)` and pass `key` as
+   * `FieldArrayHandle` - use `entries()` inside `each(...)` and pass `key` as
    * the iteration key so focused inputs survive inserts/removes/reorders.
    */
   fieldArray: <T = unknown>(path: string) => FieldArrayHandle<T>;

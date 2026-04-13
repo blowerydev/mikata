@@ -570,13 +570,13 @@ describe('Autocomplete keyed reconciliation', () => {
     const firstApple = dropdown.querySelector('li')!;
     expect(firstApple.textContent).toBe('apple');
 
-    // Type "a" — apple/apricot/avocado still present; banana goes away
+    // Type "a" - apple/apricot/avocado still present; banana goes away
     input.value = 'a';
     input.dispatchEvent(new Event('input'));
 
     const applesAfter = Array.from(dropdown.querySelectorAll('li'))
       .find((li) => li.textContent === 'apple')!;
-    expect(applesAfter).toBe(firstApple); // same node — reused
+    expect(applesAfter).toBe(firstApple); // same node - reused
   });
 
   it('removes <li> nodes that no longer match', () => {

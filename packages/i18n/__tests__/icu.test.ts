@@ -19,7 +19,7 @@ describe('looksLikeIcu', () => {
   });
 });
 
-describe('formatIcu — simple interpolation', () => {
+describe('formatIcu - simple interpolation', () => {
   it('formats a bare arg', () => {
     expect(formatIcu('Hello {name}', { name: 'World' }, 'en')).toBe('Hello World');
   });
@@ -29,7 +29,7 @@ describe('formatIcu — simple interpolation', () => {
   });
 });
 
-describe('formatIcu — plural', () => {
+describe('formatIcu - plural', () => {
   const msg = '{count, plural, =0 {No items} one {# item} other {# items}}';
 
   it('picks exact =0 arm', () => {
@@ -65,7 +65,7 @@ describe('formatIcu — plural', () => {
   });
 });
 
-describe('formatIcu — select', () => {
+describe('formatIcu - select', () => {
   const msg = '{g, select, female {She} male {He} other {They}} replied';
 
   it('picks matching arm', () => {
@@ -78,7 +78,7 @@ describe('formatIcu — select', () => {
   });
 });
 
-describe('formatIcu — number', () => {
+describe('formatIcu - number', () => {
   it('formats with no style', () => {
     expect(formatIcu('{n, number}', { n: 1234.5 }, 'en')).toBe('1,234.5');
   });
@@ -104,7 +104,7 @@ describe('formatIcu — number', () => {
   });
 });
 
-describe('formatIcu — date/time', () => {
+describe('formatIcu - date/time', () => {
   const d = new Date(Date.UTC(2026, 3, 12, 15, 30, 0));
 
   it('formats date short', () => {
@@ -123,7 +123,7 @@ describe('formatIcu — date/time', () => {
   });
 });
 
-describe('formatIcu — nested', () => {
+describe('formatIcu - nested', () => {
   it('plural arms can contain other ICU tags', () => {
     const msg =
       '{count, plural, one {You have # {kind} item} other {You have # {kind} items}}';
@@ -139,7 +139,7 @@ describe('formatIcu — nested', () => {
   });
 });
 
-describe('parseIcu — caching', () => {
+describe('parseIcu - caching', () => {
   it('returns same AST for same input', () => {
     const a = parseIcu('{n, plural, one {#} other {#}}');
     const b = parseIcu('{n, plural, one {#} other {#}}');
@@ -147,7 +147,7 @@ describe('parseIcu — caching', () => {
   });
 });
 
-describe('formatMessage — legacy + ICU coexistence', () => {
+describe('formatMessage - legacy + ICU coexistence', () => {
   it('handles pure legacy {{param}}', () => {
     expect(formatMessage('Hello {{name}}', { name: 'World' }, 'en')).toBe('Hello World');
   });
@@ -172,7 +172,7 @@ describe('formatMessage — legacy + ICU coexistence', () => {
   });
 });
 
-describe('createI18n — ICU integration', () => {
+describe('createI18n - ICU integration', () => {
   const en = {
     cart: '{count, plural, =0 {Your cart is empty} one {# item in cart} other {# items in cart}}',
     priced: 'Total: {amt, number, ::currency/USD}',

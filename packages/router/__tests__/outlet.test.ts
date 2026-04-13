@@ -10,7 +10,7 @@ import { provideRouter, routeOutlet } from '../src/outlet';
 import { Link } from '../src/link';
 import type { Router } from '../src/types';
 
-// @ts-expect-error — define __DEV__ for tests
+// @ts-expect-error - define __DEV__ for tests
 globalThis.__DEV__ = true;
 
 describe('routeOutlet()', () => {

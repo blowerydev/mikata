@@ -20,7 +20,7 @@ describe('computed', () => {
     expect(doubled()).toBe(20);
   });
 
-  it('is lazy — does not recompute until read', () => {
+  it('is lazy - does not recompute until read', () => {
     const fn = vi.fn();
     const [count, setCount] = signal(0);
 
@@ -34,7 +34,7 @@ describe('computed', () => {
     doubled(); // first read triggers computation
     expect(fn).toHaveBeenCalledTimes(1);
 
-    doubled(); // cached — no recomputation
+    doubled(); // cached - no recomputation
     expect(fn).toHaveBeenCalledTimes(1);
 
     setCount(1); // mark dirty
@@ -134,7 +134,7 @@ describe('computed', () => {
     });
 
     expect(() => risky()).toThrow('bad');
-    // Second read — must still throw (not silently return a stale value)
+    // Second read - must still throw (not silently return a stale value)
     expect(() => risky()).toThrow('bad');
 
     // Changing the dependency clears the error and returns the fresh value

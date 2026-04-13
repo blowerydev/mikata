@@ -64,7 +64,7 @@ describe('formatters', () => {
     const [locale] = signal('en-US');
     const fmt = createFormatters(locale);
 
-    // Call twice with same options — should use cache (no error, consistent results)
+    // Call twice with same options - should use cache (no error, consistent results)
     const a = fmt.number(100, { style: 'percent' });
     const b = fmt.number(100, { style: 'percent' });
     expect(a).toBe(b);

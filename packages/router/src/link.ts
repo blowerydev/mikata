@@ -1,5 +1,5 @@
 /**
- * Link component — declarative navigation with active state.
+ * Link component - declarative navigation with active state.
  */
 
 import { computed, renderEffect } from '@mikata/reactivity';
@@ -103,7 +103,7 @@ export function Link(props: LinkProps): Node {
     el.className = classes.join(' ');
   });
 
-  // Click handler — intercept navigation
+  // Click handler - intercept navigation
   el.addEventListener('click', (e: MouseEvent) => {
     // Allow normal behavior for modified clicks
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;

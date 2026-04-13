@@ -1,5 +1,5 @@
 /**
- * @mikata/compiler — Vite plugin for Mikata JSX transform.
+ * @mikata/compiler - Vite plugin for Mikata JSX transform.
  *
  * Transforms JSX in .tsx/.jsx files into direct DOM operations
  * using @mikata/runtime helpers. No virtual DOM.
@@ -78,10 +78,10 @@ export default function mikata(options: MikataPluginOptions = {}): Plugin {
  * - Is exported or declared at the top level
  *
  * We look for patterns like:
- * - `function Counter(` — function declaration
- * - `const Counter = (` — arrow function / function expression
- * - `export function Counter(` — exported function
- * - `export const Counter = (` — exported arrow
+ * - `function Counter(` - function declaration
+ * - `const Counter = (` - arrow function / function expression
+ * - `export function Counter(` - exported function
+ * - `export const Counter = (` - exported arrow
  */
 function injectHMR(code: string, filePath: string): string {
   // Match component function declarations and expressions

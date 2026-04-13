@@ -1,6 +1,6 @@
 // Generate src/main.tsx, src/App.tsx, src/pages/Home.tsx, and src/App.test.tsx
 // based on the selected feature set. Programmatic generation avoids the
-// combinatorial matrix in conditional template blocks — especially inside
+// combinatorial matrix in conditional template blocks - especially inside
 // JSX where /* @if */ markers would leave orphan braces.
 //
 // main.tsx mounts Root, which wires whichever providers (ThemeProvider, i18n,
@@ -56,7 +56,7 @@ export function generateAppTsx(features: Set<Feature>): string {
 }
 
 /**
- * Home page when router is selected — mirrors the simple-app demo so
+ * Home page when router is selected - mirrors the simple-app demo so
  * form/i18n/icons/store aren't orphaned by the router shell.
  */
 export function generateRouterHome(features: Set<Feature>): string {

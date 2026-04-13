@@ -1,7 +1,7 @@
 import { signal, effect, onCleanup, type ReadSignal } from '@mikata/reactivity';
 
 /**
- * Returns a throttled view of a source signal — updates at most once per
+ * Returns a throttled view of a source signal - updates at most once per
  * `interval` ms. The latest pending value is emitted when the throttle clears.
  *
  * Usage:

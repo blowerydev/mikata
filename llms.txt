@@ -1,6 +1,6 @@
 # Mikata
 
-> Mikata is a reactive UI framework for building web applications. It uses fine-grained reactivity (signals + reactive proxies), compiles JSX to direct DOM operations (no virtual DOM), and runs component functions exactly once (setup pattern). It is NOT React, Vue, or SolidJS — do not use patterns from those frameworks.
+> Mikata is a reactive UI framework for building web applications. It uses fine-grained reactivity (signals + reactive proxies), compiles JSX to direct DOM operations (no virtual DOM), and runs component functions exactly once (setup pattern). It is NOT React, Vue, or SolidJS - do not use patterns from those frameworks.
 
 ## Core Mental Model
 
@@ -12,15 +12,15 @@
 
 ## Packages
 
-- `@mikata/reactivity` — signals, computed, reactive proxies, effects, scopes, batching
-- `@mikata/runtime` — DOM rendering, components, control flow, context, lifecycle, portals, form bindings, error boundaries
-- `@mikata/store` — createStore, derived, createSelector, createQuery, createMutation
-- `@mikata/compiler` — Vite/Babel plugin that transforms JSX to runtime calls
-- `@mikata/testing` — testing utilities: renderComponent, fireEvent, waitForUpdate, query helpers
-- `@mikata/ui` — component library: buttons, inputs, layout, feedback, overlays with CSS variables theming
-- `@mikata/form` — form state, validation, schema resolvers (zod, yup, valibot, superstruct, joi)
-- `@mikata/icons` — zero-dep icon factory; Lucide/Tabler interop + ~25 built-in IconNodes
-- `mikata` — umbrella re-export of all packages
+- `@mikata/reactivity` - signals, computed, reactive proxies, effects, scopes, batching
+- `@mikata/runtime` - DOM rendering, components, control flow, context, lifecycle, portals, form bindings, error boundaries
+- `@mikata/store` - createStore, derived, createSelector, createQuery, createMutation
+- `@mikata/compiler` - Vite/Babel plugin that transforms JSX to runtime calls
+- `@mikata/testing` - testing utilities: renderComponent, fireEvent, waitForUpdate, query helpers
+- `@mikata/ui` - component library: buttons, inputs, layout, feedback, overlays with CSS variables theming
+- `@mikata/form` - form state, validation, schema resolvers (zod, yup, valibot, superstruct, joi)
+- `@mikata/icons` - zero-dep icon factory; Lucide/Tabler interop + ~25 built-in IconNodes
+- `mikata` - umbrella re-export of all packages
 
 ---
 
@@ -61,7 +61,7 @@ setCount(5);
 doubled()  // 10
 ```
 
-Computed values must be pure — no signal writes or side effects inside computed.
+Computed values must be pure - no signal writes or side effects inside computed.
 
 ### reactive(object) → proxy
 
@@ -118,8 +118,8 @@ Read reactive values without subscribing. The effect will not re-run when untrac
 
 ```tsx
 effect(() => {
-  const id = userId();              // tracked — effect re-runs when userId changes
-  const name = untrack(() => userName()); // NOT tracked — changes to userName are ignored
+  const id = userId();              // tracked - effect re-runs when userId changes
+  const name = untrack(() => userName()); // NOT tracked - changes to userName are ignored
 });
 ```
 
@@ -181,11 +181,11 @@ Returns the raw (non-reactive) underlying object from a reactive proxy.
 
 ### Type exports
 
-- `Signal<T>` — `[ReadSignal<T>, WriteSignal<T>]`
-- `ReadSignal<T>` — getter function type
-- `WriteSignal<T>` — setter function type
-- `Scope` — reactive scope type
-- `ReactiveNode` — internal dependency graph node type
+- `Signal<T>` - `[ReadSignal<T>, WriteSignal<T>]`
+- `ReadSignal<T>` - getter function type
+- `WriteSignal<T>` - setter function type
+- `Scope` - reactive scope type
+- `ReactiveNode` - internal dependency graph node type
 
 ---
 
@@ -404,12 +404,12 @@ Catches errors thrown during child rendering and displays a fallback UI with a r
 </ErrorBoundary>
 ```
 
-### lazy(loader, options?) — Code-split components
+### lazy(loader, options?) - Code-split components
 
 Wrap a dynamic `import()` to create a lazily-loaded component. The component loads on first render, shows a fallback while loading, and caches the result for subsequent renders.
 
 ```tsx
-// Basic usage — component loads on first render
+// Basic usage - component loads on first render
 const Dashboard = lazy(() => import('./Dashboard'));
 
 // With loading and error fallbacks
@@ -434,7 +434,7 @@ Behavior:
 - First render shows fallback (or empty comment if none), then swaps to component once loaded
 - On error, shows error fallback with a `retry` function, or an empty comment if none
 - After first successful load, subsequent renders are synchronous (cached)
-- `preload()` starts the import without rendering — useful for prefetching on hover/route transitions
+- `preload()` starts the import without rendering - useful for prefetching on hover/route transitions
 - If the component is removed from the DOM before loading completes, the loaded component is not inserted
 - Works with `show()`, `each()`, and all other control flow
 
@@ -474,15 +474,15 @@ Mikata provides full TypeScript JSX type definitions via `JSX.IntrinsicElements`
 <input onInput={(e: InputEvent) => { /* e is InputEvent */ }} />
 <form onSubmit={(e: SubmitEvent) => { /* e is SubmitEvent */ }} />
 
-// Mikata class syntax — string, object, or array
+// Mikata class syntax - string, object, or array
 <div class="static" />
 <div class={{ active: true, hidden: false }} />
 <div class={['base', { highlight: selected() }]} />
 
-// Mikata style syntax — string or camelCase object
+// Mikata style syntax - string or camelCase object
 <div style={{ fontSize: '14px', backgroundColor: 'red' }} />
 
-// ref — callback or Ref object
+// ref - callback or Ref object
 const myRef = createRef<HTMLInputElement>();
 <input ref={myRef} />
 <input ref={(el) => { /* el is HTMLInputElement */ }} />
@@ -532,7 +532,7 @@ setStore({ user: { ...store.user, name: 'Bob' } });
 
 WRONG:
 ```tsx
-store.user.name = 'Bob';  // Throws in dev mode — use setState
+store.user.name = 'Bob';  // Throws in dev mode - use setState
 ```
 
 ### derived(fn) → getter
@@ -553,7 +553,7 @@ Efficient O(1) selection tracking for lists. Only the previously-selected and ne
 const [selectedId, setSelectedId] = signal(1);
 const isSelected = createSelector(() => selectedId());
 
-// In a list item — only re-runs for the specific item that changes selection:
+// In a list item - only re-runs for the specific item that changes selection:
 effect(() => {
   if (isSelected(item.id)) {
     // this item is selected
@@ -567,7 +567,7 @@ Reactive async data fetching with caching, loading/error states, abort, and retr
 
 ```tsx
 const user = createQuery({
-  key: () => userId(),  // reactive — re-fetches when key changes
+  key: () => userId(),  // reactive - re-fetches when key changes
   fn: async (id, { signal }) => {
     const res = await fetch(`/api/users/${id}`, { signal });
     return res.json();
@@ -699,7 +699,7 @@ await waitForUpdate();
 
 ## Form API (`@mikata/form`)
 
-Signal-backed form handling. `createForm()` is a setup-once factory (no hooks, no rules-of-hooks). Field reads via `form.values.x` track fine-grained — typing in one field does not re-run subscribers to sibling fields. Works with any inputs (`@mikata/ui` or native). Schema-agnostic: resolvers for zod, yup, valibot, superstruct, and joi ship as sub-path imports (`@mikata/form/resolvers/zod`, etc.).
+Signal-backed form handling. `createForm()` is a setup-once factory (no hooks, no rules-of-hooks). Field reads via `form.values.x` track fine-grained - typing in one field does not re-run subscribers to sibling fields. Works with any inputs (`@mikata/ui` or native). Schema-agnostic: resolvers for zod, yup, valibot, superstruct, and joi ship as sub-path imports (`@mikata/form/resolvers/zod`, etc.).
 
 ### createForm(options) → MikataForm
 
@@ -729,17 +729,17 @@ const form = createForm({
 
 ### Options
 
-- `initialValues` — initial shape (required). Form uses deep-clone snapshots.
-- `validate` — validator spec: object (mirrors values shape), function `(values) => FormErrors`, or a resolver.
-- `validateInputOnChange` (default `false`) — validate a field on every change.
-- `validateInputOnBlur` (default `false`) — validate a field on blur.
-- `clearInputErrorOnChange` (default `true`) — clear a field's error when its value changes.
-- `transformValues` — optional transform for `getTransformedValues()`.
-- `enhance` — called once with the form handle; attach custom helpers.
+- `initialValues` - initial shape (required). Form uses deep-clone snapshots.
+- `validate` - validator spec: object (mirrors values shape), function `(values) => FormErrors`, or a resolver.
+- `validateInputOnChange` (default `false`) - validate a field on every change.
+- `validateInputOnBlur` (default `false`) - validate a field on blur.
+- `clearInputErrorOnChange` (default `true`) - clear a field's error when its value changes.
+- `transformValues` - optional transform for `getTransformedValues()`.
+- `enhance` - called once with the form handle; attach custom helpers.
 
 ### Validator spec shapes
 
-**Object spec** — mirrors the values tree; leaves are `(value, values, path) => string | Node | null`. For arrays, pass the element-shape spec and it's applied to each element.
+**Object spec** - mirrors the values tree; leaves are `(value, values, path) => string | Node | null`. For arrays, pass the element-shape spec and it's applied to each element.
 ```ts
 validate: {
   email: (v) => /@/.test(v) ? null : 'Invalid email',
@@ -748,39 +748,39 @@ validate: {
 }
 ```
 
-**Function spec** — whole values in, `FormErrors` out.
+**Function spec** - whole values in, `FormErrors` out.
 ```ts
 validate: (values) => values.a < 10 ? { a: 'Too small' } : {}
 ```
 
-**Resolver** — from `@mikata/form/resolvers/{zod,yup,valibot,superstruct,joi}`. Each accepts optional `messages` for translation.
+**Resolver** - from `@mikata/form/resolvers/{zod,yup,valibot,superstruct,joi}`. Each accepts optional `messages` for translation.
 
 ### Form handle
 
-- `form.values` / `form.errors` — reactive proxies; reads track fine-grained.
+- `form.values` / `form.errors` - reactive proxies; reads track fine-grained.
 - `getValues()` / `getValue(path)` / `setValues(patchOrFn)` / `setFieldValue(path, value)`
-- `reset()` — restore initial values; clear errors and touched.
-- `initialize(values)` — replace the initial snapshot with new values (use after loading from server).
+- `reset()` - restore initial values; clear errors and touched.
+- `initialize(values)` - replace the initial snapshot with new values (use after loading from server).
 - `setErrors` / `setFieldError` / `clearErrors` / `clearFieldError`
-- `isValid()` / `isDirty(path?)` / `isTouched(path?)` — all computeds, track reactively.
+- `isValid()` / `isDirty(path?)` / `isTouched(path?)` - all computeds, track reactively.
 - `getTouched()` / `getDirty()` / `resetTouched()` / `resetDirty()`
-- `validate()` — run the full spec, update errors, return `{ hasErrors, errors }`.
-- `validateField(path)` — run one field; return `{ hasError, error }`.
-- `getInputProps(path, options)` — see below.
+- `validate()` - run the full spec, update errors, return `{ hasErrors, errors }`.
+- `validateField(path)` - run one field; return `{ hasError, error }`.
+- `getInputProps(path, options)` - see below.
 - `insertListItem(path, item, index?)` / `removeListItem(path, index)` / `reorderListItem(path, {from, to})` / `replaceListItem(path, index, item)`
-- `onSubmit(onValid, onInvalid?)` — returns a submit handler; calls `preventDefault`, runs full validation, focuses the first invalid field that registered a ref, then calls the appropriate callback.
-- `onReset(handler?)` — returns a reset handler.
-- `getTransformedValues()` — values run through `transformValues` (or raw values).
-- `watch(path, callback)` — subscribe to a single field; returns dispose.
+- `onSubmit(onValid, onInvalid?)` - returns a submit handler; calls `preventDefault`, runs full validation, focuses the first invalid field that registered a ref, then calls the appropriate callback.
+- `onReset(handler?)` - returns a reset handler.
+- `getTransformedValues()` - values run through `transformValues` (or raw values).
+- `watch(path, callback)` - subscribe to a single field; returns dispose.
 
 ### getInputProps
 
 Two shapes, switched by the `type` option:
 
-- Default (`type: 'input'`) — returns `{ value, onInput, onChange, onBlur, error?, ref? }`. Works with TextInput, Textarea, Select, PasswordInput, Autocomplete. `onInput` drives live updates (DOM conventions — Mikata UI inputs fire `input` as you type; `change` fires on blur).
-- `{ type: 'checkbox' }` — returns `{ checked, onChange, onBlur, error?, ref? }`. Works with Checkbox, Switch, Radio.
+- Default (`type: 'input'`) - returns `{ value, onInput, onChange, onBlur, error?, ref? }`. Works with TextInput, Textarea, Select, PasswordInput, Autocomplete. `onInput` drives live updates (DOM conventions - Mikata UI inputs fire `input` as you type; `change` fires on blur).
+- `{ type: 'checkbox' }` - returns `{ checked, onChange, onBlur, error?, ref? }`. Works with Checkbox, Switch, Radio.
 
-`error` is a **getter function** (`() => FormError | null | undefined`) bound to the field's path, not a static snapshot. Spread it into a Mikata UI input and `InputWrapper` subscribes via `effect()` so errors appear, update, and clear reactively as validation state changes — no manual re-render, no `aria-invalid` plumbing. Read the current value by calling it: `form.getInputProps('email').error?.()`.
+`error` is a **getter function** (`() => FormError | null | undefined`) bound to the field's path, not a static snapshot. Spread it into a Mikata UI input and `InputWrapper` subscribes via `effect()` so errors appear, update, and clear reactively as validation state changes - no manual re-render, no `aria-invalid` plumbing. Read the current value by calling it: `form.getInputProps('email').error?.()`.
 
 For inputs with `onValueChange` (NumberInput, Slider, Rating) or array-shaped changes (MultiSelect, TagsInput, FileInput), bind manually. Pass `error` as a getter to keep it reactive:
 ```tsx
@@ -795,7 +795,7 @@ For inputs with `onValueChange` (NumberInput, Slider, Rating) or array-shaped ch
 
 ### Accessibility
 
-- `InputWrapper` in `@mikata/ui` auto-wires `aria-invalid`, `aria-errormessage`, `aria-describedby`, `role="alert"` from the `error`/`description` props — `getInputProps` feeds the error as a reactive getter, so ARIA flips on/off automatically as errors appear and clear.
+- `InputWrapper` in `@mikata/ui` auto-wires `aria-invalid`, `aria-errormessage`, `aria-describedby`, `role="alert"` from the `error`/`description` props - `getInputProps` feeds the error as a reactive getter, so ARIA flips on/off automatically as errors appear and clear.
 - `onSubmit` with `withFocus: true` (default, via `getInputProps`) moves focus to the first invalid field's registered element after a failed validation.
 - Errors announce via `role="alert"` live region.
 
@@ -807,7 +807,7 @@ For inputs with `onValueChange` (NumberInput, Slider, Rating) or array-shaped ch
   ```
   The `Node` form updates when locale changes, without re-validating.
 - Every resolver accepts a `messages` callback for translation. E.g. `zodResolver(schema, { messages: (issue) => t(`errors.${issue.code}`) })`.
-- `@mikata/form` has no dependency on `@mikata/i18n` — translation is an opt-in consumer pattern.
+- `@mikata/form` has no dependency on `@mikata/i18n` - translation is an opt-in consumer pattern.
 
 ### Schema resolvers
 
@@ -861,12 +861,12 @@ createIcon(Camera, { 'aria-label': 'Open camera' });  // role="img" + aria-label
 ```
 
 Props:
-- `size?: number | string` — width + height (default `24`; accepts `'60%'` etc.)
-- `color?: string` — sets the `stroke` attribute
-- `strokeWidth?: number | string` — overrides stroke width
-- `class?: string` — CSS class on the root `<svg>`
-- `'aria-label'?: string` — sets `role="img"` + `aria-label`
-- `'aria-hidden'?: boolean` — defaults to `true` when no `aria-label`
+- `size?: number | string` - width + height (default `24`; accepts `'60%'` etc.)
+- `color?: string` - sets the `stroke` attribute
+- `strokeWidth?: number | string` - overrides stroke width
+- `class?: string` - CSS class on the root `<svg>`
+- `'aria-label'?: string` - sets `role="img"` + `aria-label`
+- `'aria-hidden'?: boolean` - defaults to `true` when no `aria-label`
 
 A11y: decorative by default (no label → `aria-hidden="true"`). Pass `aria-label` for an announced icon; the factory also sets `focusable="false"` on every svg.
 
@@ -903,7 +903,7 @@ type IconChild = [tag: string, attrs: IconAttrs];
 type IconNode  = [rootTag: string, rootAttrs: IconAttrs, children: IconChild[]];
 ```
 
-You can hand-author custom nodes for bespoke icons — every UI component that accepts an icon slot (`Button.leftIcon`, `Input.leftSection`, `Alert.icon`, `Notification.icon`, `NavLink.icon`, `Menu.icon`, etc.) takes an `SVGSVGElement`, so `createIcon(...)` drops in directly.
+You can hand-author custom nodes for bespoke icons - every UI component that accepts an icon slot (`Button.leftIcon`, `Input.leftSection`, `Alert.icon`, `Notification.icon`, `NavLink.icon`, `Menu.icon`, etc.) takes an `SVGSVGElement`, so `createIcon(...)` drops in directly.
 
 ---
 
@@ -954,7 +954,7 @@ Mikata includes built-in HMR support via the Vite plugin. When a `.tsx` file is 
 
 ### Behavior
 
-- **State is NOT preserved.** Components re-run from scratch with fresh signals/reactive state. This is intentional — since components are setup functions that run once, mixing old reactive scopes with new setup code would create inconsistencies.
+- **State is NOT preserved.** Components re-run from scratch with fresh signals/reactive state. This is intentional - since components are setup functions that run once, mixing old reactive scopes with new setup code would create inconsistencies.
 - **Props ARE preserved.** The same props object is passed to the new component version.
 - **DOM position is preserved.** The new component output replaces the old one at the exact same position among siblings.
 - **Errors are caught.** If the new component throws during re-render, an error overlay is shown in place. The next successful HMR update replaces the error overlay.
@@ -1195,7 +1195,7 @@ function ModalDemo() {
 Animated enter/exit for conditional rendering and lists. Supports CSS classes (like Vue's `<Transition>`) and JavaScript hooks (for GSAP, Web Animations API, etc).
 
 ```tsx
-// Basic CSS transition — shows/hides with fade animation
+// Basic CSS transition - shows/hides with fade animation
 function FadeModal() {
   const [open, setOpen] = signal(false);
   return (
@@ -1235,7 +1235,7 @@ function FadeModal() {
   }
 )}
 
-// List transitions — per-item enter/exit
+// List transitions - per-item enter/exit
 function AnimatedList() {
   const [items, setItems] = signal(['a', 'b', 'c']);
   return transitionGroup(
@@ -1328,7 +1328,7 @@ function App() {
   );
 }
 
-// Nested layout — just a component with another routeOutlet()
+// Nested layout - just a component with another routeOutlet()
 function DashboardLayout() {
   return (
     <div class="dashboard">
@@ -1352,14 +1352,14 @@ function UserPage() {
 ```
 
 **Key features:**
-- `defineRoutes()` — type-inferred route definitions (not JSX)
-- `routeOutlet()` — function-based (like `show()`), not a component
-- **Typed search params** — `searchParam.string()`, `.number()`, `.boolean()`, `.json()`, `.enum()` with defaults
-- **Guards** — return `true` to allow, `false` to block, `'/path'` to redirect. Two types: per-route + `useGuard()` (component-scoped)
-- **Nested routes** — layouts persist, only inner outlet swaps
-- **Lazy routes** — `lazy: () => import('./Page')` integrates with `lazy()` from runtime
-- **Scroll restoration** — built-in, including nested scrollable containers
-- **History modes** — `'browser'` (pushState), `'hash'` (#), `'memory'` (testing/SSR)
+- `defineRoutes()` - type-inferred route definitions (not JSX)
+- `routeOutlet()` - function-based (like `show()`), not a component
+- **Typed search params** - `searchParam.string()`, `.number()`, `.boolean()`, `.json()`, `.enum()` with defaults
+- **Guards** - return `true` to allow, `false` to block, `'/path'` to redirect. Two types: per-route + `useGuard()` (component-scoped)
+- **Nested routes** - layouts persist, only inner outlet swaps
+- **Lazy routes** - `lazy: () => import('./Page')` integrates with `lazy()` from runtime
+- **Scroll restoration** - built-in, including nested scrollable containers
+- **History modes** - `'browser'` (pushState), `'hash'` (#), `'memory'` (testing/SSR)
 
 ### i18n
 
@@ -1411,15 +1411,15 @@ function MyPage() {
 ```
 
 **Key features:**
-- **Runtime loading** — `loader` function fetches translations from any source (CDN, API, bundled JSON)
-- **Typed keys** — inferred from base locale object via TypeScript generics, no codegen
-- **Reactive** — locale is a signal; `t()` reads it transitively, only affected effects re-run
-- **Single API** — one `t()` function with `t.plural()` for pluralization
-- **Fallback chain** — missing key in current locale falls back to `fallbackLocale`, then raw key
-- **Formatters** — `fmt.number()`, `fmt.date()`, `fmt.relativeTime()`, `fmt.list()` wrap browser `Intl.*` APIs (zero bundle cost)
-- **Lazy locale loading** — `setLocale()` is async, loads via `loader`, caches results
-- **Pluralization** — `t.plural(key, count)` uses `Intl.PluralRules` for locale-aware plural categories
-- **Loading state** — `loading` signal for showing UI indicators during async locale fetch
+- **Runtime loading** - `loader` function fetches translations from any source (CDN, API, bundled JSON)
+- **Typed keys** - inferred from base locale object via TypeScript generics, no codegen
+- **Reactive** - locale is a signal; `t()` reads it transitively, only affected effects re-run
+- **Single API** - one `t()` function with `t.plural()` for pluralization
+- **Fallback chain** - missing key in current locale falls back to `fallbackLocale`, then raw key
+- **Formatters** - `fmt.number()`, `fmt.date()`, `fmt.relativeTime()`, `fmt.list()` wrap browser `Intl.*` APIs (zero bundle cost)
+- **Lazy locale loading** - `setLocale()` is async, loads via `loader`, caches results
+- **Pluralization** - `t.plural(key, count)` uses `Intl.PluralRules` for locale-aware plural categories
+- **Loading state** - `loading` signal for showing UI indicators during async locale fetch
 
 ### UI Components (`@mikata/ui`)
 
@@ -1431,7 +1431,7 @@ Component library with CSS variables theming, `data-*` attribute styling, and WA
 import { ThemeProvider, createTheme, Button, TextInput, Stack, Modal } from '@mikata/ui';
 import '@mikata/ui/styles.css';
 
-// Structured theme — custom palette + primaryColor + per-component defaults.
+// Structured theme - custom palette + primaryColor + per-component defaults.
 const theme = createTheme({
   colors: {
     brand: ['#f3f0ff', '#e5dbff', '#d0bfff', '#b197fc', '#9775fa',
@@ -1467,43 +1467,43 @@ function App() {
 - **Behavior:** Collapse
 
 **Key patterns:**
-- `variant` — visual style: `'filled' | 'outline' | 'light' | 'subtle'`
-- `size` — `'xs' | 'sm' | 'md' | 'lg' | 'xl'` using design token heights
-- `color` — palette: `'primary' | 'red' | 'green' | 'blue'` etc.
-- `classNames` — target inner parts: `classNames={{ root: '...', label: '...' }}`
-- `ref` — callback ref or `createRef()` object
+- `variant` - visual style: `'filled' | 'outline' | 'light' | 'subtle'`
+- `size` - `'xs' | 'sm' | 'md' | 'lg' | 'xl'` using design token heights
+- `color` - palette: `'primary' | 'red' | 'green' | 'blue'` etc.
+- `classNames` - target inner parts: `classNames={{ root: '...', label: '...' }}`
+- `ref` - callback ref or `createRef()` object
 - Form inputs include `InputWrapper` with label, description, error, required indicator, and proper ARIA
 - CSS uses BEM naming with `mkt-` prefix: `.mkt-button`, `.mkt-button__label`
 - Private CSS variables (`--_btn-color`) for component-internal computed values
 
 **Theming (CSS-variable driven, no `styled-components` runtime):**
-- `ThemeProvider` — wraps app with CSS variables via `display: contents` div. Emits a sibling `<style data-mkt-generated>` node with per-component rules for custom palettes.
-- `createTheme(overrides)` — accepts the structured `MikataTheme` shape or a flat `Record<string, string>` (flat keys route to `theme.other` at highest precedence, preserving back-compat).
-- `useTheme()` — access `{ colorScheme, resolvedColorScheme, setColorScheme, theme }` signals.
-- `useComponentDefaults<P>(name)` — read per-component `defaultProps` from context; each shipped component already merges these under user props.
-- `colorScheme` — `'light' | 'dark' | 'auto'` (auto uses `prefers-color-scheme`).
+- `ThemeProvider` - wraps app with CSS variables via `display: contents` div. Emits a sibling `<style data-mkt-generated>` node with per-component rules for custom palettes.
+- `createTheme(overrides)` - accepts the structured `MikataTheme` shape or a flat `Record<string, string>` (flat keys route to `theme.other` at highest precedence, preserving back-compat).
+- `useTheme()` - access `{ colorScheme, resolvedColorScheme, setColorScheme, theme }` signals.
+- `useComponentDefaults<P>(name)` - read per-component `defaultProps` from context; each shipped component already merges these under user props.
+- `colorScheme` - `'light' | 'dark' | 'auto'` (auto uses `prefers-color-scheme`).
 - **`MikataTheme` fields:**
-  - `colors?: Record<string, [s0..s9]>` — custom palettes alongside the 11 built-ins (`primary`, `gray`, `red`, `green`, `yellow`, `blue`, `cyan`, `teal`, `violet`, `pink`, `orange`).
-  - `primaryColor?: string` — aliases `--mkt-color-primary-*` onto the chosen palette. Default `'primary'`.
-  - `primaryShade?: number | { light: number; dark: number }` — canonical filled shade per scheme. Default `{ light: 6, dark: 8 }`.
-  - `defaultRadius?: MikataSize | string` — exposed as `--mkt-radius-default`.
+  - `colors?: Record<string, [s0..s9]>` - custom palettes alongside the 11 built-ins (`primary`, `gray`, `red`, `green`, `yellow`, `blue`, `cyan`, `teal`, `violet`, `pink`, `orange`).
+  - `primaryColor?: string` - aliases `--mkt-color-primary-*` onto the chosen palette. Default `'primary'`.
+  - `primaryShade?: number | { light: number; dark: number }` - canonical filled shade per scheme. Default `{ light: 6, dark: 8 }`.
+  - `defaultRadius?: MikataSize | string` - exposed as `--mkt-radius-default`.
   - `fontFamily?`, `fontFamilyMono?`, `headings?: { h1..h6: { size, weight, lineHeight } }`.
-  - `components?: { [Name]: Partial<Props> }` — per-component `defaultProps`.
-  - `cssVariablesResolver?(ctx): { variables?, light?, dark? }` — escape hatch for injecting arbitrary tokens per scheme.
-  - `other?: Record<string, string>` — raw token overrides at highest precedence.
-- **Semantic aliases** (emitted per palette, per scheme): `--mkt-color-<name>-filled`, `-filled-hover`, `-light`, `-light-hover`, `-border`. Dark `-light` composites via `color-mix(in srgb, …-filled 15%, transparent)` — no hand-baked rgba.
+  - `components?: { [Name]: Partial<Props> }` - per-component `defaultProps`.
+  - `cssVariablesResolver?(ctx): { variables?, light?, dark? }` - escape hatch for injecting arbitrary tokens per scheme.
+  - `other?: Record<string, string>` - raw token overrides at highest precedence.
+- **Semantic aliases** (emitted per palette, per scheme): `--mkt-color-<name>-filled`, `-filled-hover`, `-light`, `-light-hover`, `-border`. Dark `-light` composites via `color-mix(in srgb, …-filled 15%, transparent)` - no hand-baked rgba.
 - **`MikataColor`** type accepts `BuiltInColor | (string & {})` so custom palette names are assignable while preserving autocomplete on the 11 built-ins.
 - **Performance:** zero per-render JS cost. Theme changes only call `style.setProperty` on the wrapper and regenerate one `<style>` node for custom palettes.
 - 170+ design tokens: 11 color palettes × 10 shades + 5 semantic aliases per palette, spacing, typography, sizing, radius, shadows, transitions, z-index.
 
-**Utilities — naming convention:**
+**Utilities - naming convention:**
 
 Mikata components run setup-once (no hooks rules), so `useX` naming is misleading. `@mikata/ui` follows these prefixes:
 
-- `createX` — returns reactive state (signal/object with signals). Example: `createDisclosure`, `createMediaQuery`, `createClipboard`.
-- `onX` — attaches a side effect for the current scope, auto-cleaned on dispose. Example: `onClickOutside`, `onFocusTrap`, `onHotkeys`.
-- `useX` — reserved for **context consumers** only (mirrors `provide`/`inject`). Example: `useTheme`, `useUILabels`.
-- Bare name — pure utility with no reactivity or lifecycle. Example: `uniqueId`, `mergeClasses`, `mergeRefs`.
+- `createX` - returns reactive state (signal/object with signals). Example: `createDisclosure`, `createMediaQuery`, `createClipboard`.
+- `onX` - attaches a side effect for the current scope, auto-cleaned on dispose. Example: `onClickOutside`, `onFocusTrap`, `onHotkeys`.
+- `useX` - reserved for **context consumers** only (mirrors `provide`/`inject`). Example: `useTheme`, `useUILabels`.
+- Bare name - pure utility with no reactivity or lifecycle. Example: `uniqueId`, `mergeClasses`, `mergeRefs`.
 
 Old `useX` names from the early iteration (`useId`, `useDisclosure`, `useClickOutside`, `useFocusTrap`, `useScrollLock`, `useMediaQuery`, `useLocalStorage`) are kept as `@deprecated` aliases but should not be used in new code.
 
@@ -1537,15 +1537,15 @@ function CommandPalette() {
 - No hooks rules (call order doesn't matter, can use in conditions/loops).
 - No dependency arrays. Dependencies are tracked automatically.
 - `signal()` returns `[getter, setter]` where getter is a function call, not a state variable.
-- No JSX key prop on list items — use `each()` with a `key` option instead.
+- No JSX key prop on list items - use `each()` with a `key` option instead.
 - No virtual DOM, no reconciliation of component trees.
 
 ### vs Vue (Composition API)
 - No `.value`. Signal getter is a function call: `count()` not `count.value`.
-- No `ref()` for reactive primitives — use `signal()`.
-- No `watch()` or `watchEffect()` — use `effect()` or `on()`.
-- No `<template>` or SFC format — plain `.tsx` files.
-- No `v-if`, `v-for`, `v-model` directives — use `show()`, `each()`, `model()`.
+- No `ref()` for reactive primitives - use `signal()`.
+- No `watch()` or `watchEffect()` - use `effect()` or `on()`.
+- No `<template>` or SFC format - plain `.tsx` files.
+- No `v-if`, `v-for`, `v-model` directives - use `show()`, `each()`, `model()`.
 - `computed()` returns a getter function, not a ref.
 
 ### vs SolidJS
@@ -1562,15 +1562,15 @@ function CommandPalette() {
 ```
 mikata/
   packages/
-    reactivity/    # @mikata/reactivity — signals, computed, reactive, effects, scopes
-    runtime/       # @mikata/runtime — DOM rendering, components, control flow, context
-    compiler/      # @mikata/compiler — Vite plugin + Babel JSX transform
-    store/         # @mikata/store — createStore, createQuery, createMutation
-    router/        # @mikata/router — client-side routing, guards, nested layouts
-    i18n/          # @mikata/i18n — internationalization, runtime loading, typed keys
-    ui/            # @mikata/ui — component library, CSS variables theming, 80+ components
-    testing/       # @mikata/testing — renderComponent, fireEvent, flush, waitForUpdate
-    mikata/        # mikata — umbrella re-exports
+    reactivity/    # @mikata/reactivity - signals, computed, reactive, effects, scopes
+    runtime/       # @mikata/runtime - DOM rendering, components, control flow, context
+    compiler/      # @mikata/compiler - Vite plugin + Babel JSX transform
+    store/         # @mikata/store - createStore, createQuery, createMutation
+    router/        # @mikata/router - client-side routing, guards, nested layouts
+    i18n/          # @mikata/i18n - internationalization, runtime loading, typed keys
+    ui/            # @mikata/ui - component library, CSS variables theming, 80+ components
+    testing/       # @mikata/testing - renderComponent, fireEvent, flush, waitForUpdate
+    mikata/        # mikata - umbrella re-exports
   playground/      # Vite dev app for testing
 ```
 

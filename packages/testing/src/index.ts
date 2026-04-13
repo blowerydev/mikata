@@ -1,5 +1,5 @@
 /**
- * @mikata/testing — testing utilities for Mikata components.
+ * @mikata/testing - testing utilities for Mikata components.
  *
  * Provides renderComponent(), fireEvent(), waitForUpdate(), and
  * DOM query helpers to make testing ergonomic.
@@ -9,7 +9,7 @@ import { flushSync } from '@mikata/reactivity';
 import { render, _createComponent } from '@mikata/runtime';
 
 /**
- * Result of renderComponent() — provides query helpers and cleanup.
+ * Result of renderComponent() - provides query helpers and cleanup.
  */
 export interface RenderResult {
   /** The container element the component was rendered into */
@@ -110,7 +110,7 @@ export function renderComponent<P extends Record<string, unknown>>(
 
 /**
  * Render raw JSX/DOM content into a container for testing.
- * Use this when you don't have a component function — just a render function.
+ * Use this when you don't have a component function - just a render function.
  *
  * Usage:
  *   const { text, dispose } = renderContent(() => {

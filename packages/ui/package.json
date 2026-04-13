@@ -1,7 +1,7 @@
 {
   "name": "@mikata/ui",
   "version": "0.1.0",
-  "description": "Component library for Mikata — 80+ accessible, themeable components",
+  "description": "Component library for Mikata - 80+ accessible, themeable components",
   "keywords": [
     "mikata",
     "reactive",
@@ -35,7 +35,9 @@
     "./css": "./dist/index.css"
   },
   "sideEffects": [
-    "*.css"
+    "*.css",
+    "./src/theme/registrations.ts",
+    "./src/theme/index.ts"
   ],
   "files": [
     "dist"

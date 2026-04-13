@@ -7,7 +7,7 @@ import { _registerComponent, _hotReplace } from '../src/hmr';
 import { _createComponent } from '../src/component';
 import { signal, flushSync } from '@mikata/reactivity';
 
-// @ts-expect-error — define __DEV__ for tests
+// @ts-expect-error - define __DEV__ for tests
 globalThis.__DEV__ = true;
 
 describe('HMR Runtime', () => {

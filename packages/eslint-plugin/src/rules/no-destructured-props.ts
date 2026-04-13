@@ -7,7 +7,7 @@ import { getFunctionName, isFunctionNode, isPascalCase } from '../utils';
  * list collapses each getter to its value at setup time, breaking reactivity.
  *
  * ```ts
- * // BAD — `label` is frozen at the first render.
+ * // BAD - `label` is frozen at the first render.
  * function Button({ label, onClick }: Props) { return <button>{label}</button>; }
  *
  * // GOOD
@@ -21,13 +21,13 @@ export const noDestructuredProps: Rule.RuleModule = {
     type: 'problem',
     docs: {
       description:
-        'Disallow destructuring the props parameter of a component — it breaks reactivity.',
+        'Disallow destructuring the props parameter of a component - it breaks reactivity.',
       recommended: true,
     },
     schema: [],
     messages: {
       destructured:
-        'Destructuring props in the parameter of component `{{name}}` breaks reactivity — each destructured name is frozen at setup. ' +
+        'Destructuring props in the parameter of component `{{name}}` breaks reactivity - each destructured name is frozen at setup. ' +
         'Use `props` and access fields as `props.foo`, or use `_destructureProps(props, [...])`.',
     },
   },

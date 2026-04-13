@@ -706,7 +706,7 @@ export interface SVGAttributes extends AriaAttributes, DOMEventHandlers<SVGEleme
 }
 
 // ---------------------------------------------------------------------------
-// JSX namespace — this is what TypeScript resolves for JSX expressions
+// JSX namespace - this is what TypeScript resolves for JSX expressions
 // ---------------------------------------------------------------------------
 
 export namespace JSX {

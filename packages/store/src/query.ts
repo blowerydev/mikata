@@ -1,5 +1,5 @@
 /**
- * createQuery — reactive async data fetching with caching,
+ * createQuery - reactive async data fetching with caching,
  * loading/error states, abort, and retry.
  *
  * Inspired by TanStack Query but integrated with Mikata's reactivity.
@@ -39,7 +39,7 @@ function findSuspenseBoundary(): SuspenseBoundaryLike | null {
 }
 
 export interface QueryOptions<T, K = unknown> {
-  /** Reactive cache key — re-fetches when key changes */
+  /** Reactive cache key - re-fetches when key changes */
   key: () => K;
   /** The async function that fetches data */
   fn: (key: K, info: { signal: AbortSignal }) => Promise<T>;
@@ -49,14 +49,14 @@ export interface QueryOptions<T, K = unknown> {
   retry?: number | false;
   /** Delay between retries in ms, or function of attempt (default: exponential backoff) */
   retryDelay?: number | ((attempt: number) => number);
-  /** Reactive condition — query won't run when false */
+  /** Reactive condition - query won't run when false */
   enabled?: () => boolean;
   /** Initial data to use before first fetch */
   initialData?: T;
   /**
    * When true, register with the nearest `<Suspense>` boundary ancestor so
    * the boundary shows its fallback until this query resolves once. Later
-   * refetches do not re-trigger the fallback — use `isFetching` for
+   * refetches do not re-trigger the fallback - use `isFetching` for
    * per-query spinners instead.
    */
   suspend?: boolean;
@@ -158,7 +158,7 @@ export function createQuery<T, K = unknown>(
     }
   }
 
-  // Watch the key reactively — re-fetch when key changes
+  // Watch the key reactively - re-fetch when key changes
   effect(() => {
     const enabled = options.enabled?.() ?? true;
     if (!enabled) return;
@@ -183,7 +183,7 @@ export function createQuery<T, K = unknown>(
     const boundary = findSuspenseBoundary();
     // Report "loading" until the first fetch resolves (success or error).
     // Once status leaves 'idle'/'loading', the query counts as resolved for
-    // Suspense purposes — an error should surface through ErrorBoundary /
+    // Suspense purposes - an error should surface through ErrorBoundary /
     // a local error view, not keep the fallback shown forever.
     const suspending = computed(() => {
       const s = status();

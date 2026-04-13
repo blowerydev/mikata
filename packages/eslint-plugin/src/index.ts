@@ -1,5 +1,5 @@
 /**
- * @mikata/eslint-plugin — lint rules that catch common Mikata misuse.
+ * @mikata/eslint-plugin - lint rules that catch common Mikata misuse.
  *
  * Flat-config usage:
  *
@@ -41,7 +41,7 @@ const plugin: ESLint.Plugin = {
   configs: {},
 };
 
-// Flat config — the user spreads this directly.
+// Flat config - the user spreads this directly.
 const recommendedFlat: Linter.FlatConfig = {
   plugins: {
     '@mikata': plugin,
@@ -53,7 +53,7 @@ const recommendedFlat: Linter.FlatConfig = {
   },
 };
 
-// Legacy config — `"extends": ["plugin:@mikata/recommended"]`.
+// Legacy config - `"extends": ["plugin:@mikata/recommended"]`.
 const recommendedLegacy: Linter.LegacyConfig = {
   plugins: ['@mikata'],
   rules: recommendedFlat.rules,

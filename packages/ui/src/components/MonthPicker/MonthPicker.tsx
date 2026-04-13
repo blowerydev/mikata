@@ -57,7 +57,7 @@ export function MonthPicker(userProps: MonthPickerProps = {}): HTMLElement {
   root.className = mergeClasses('mkt-month-picker', 'mkt-calendar', className, classNames?.root);
   root.dataset.size = size;
 
-  // Header — year nav
+  // Header - year nav
   const header = document.createElement('div');
   header.className = mergeClasses('mkt-calendar__header', classNames?.header);
 

@@ -1,7 +1,7 @@
 {
   "name": "@mikata/runtime",
   "version": "0.1.0",
-  "description": "JSX runtime and DOM rendering for Mikata — setup pattern, control flow, context",
+  "description": "JSX runtime and DOM rendering for Mikata - setup pattern, control flow, context",
   "keywords": [
     "mikata",
     "reactive",

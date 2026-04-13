@@ -1,12 +1,12 @@
 /**
- * Tests for lazy() — dynamic component loading.
+ * Tests for lazy() - dynamic component loading.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { lazy } from '../src/lazy';
 import { _createComponent } from '../src/component';
 
-// @ts-expect-error — define __DEV__ for tests
+// @ts-expect-error - define __DEV__ for tests
 globalThis.__DEV__ = true;
 
 describe('lazy()', () => {
@@ -198,7 +198,7 @@ describe('lazy()', () => {
       Promise.resolve({ default: Widget })
     );
 
-    // First render — triggers load
+    // First render - triggers load
     const node1 = _createComponent(LazyWidget as any, {});
     container.appendChild(node1);
 
@@ -207,7 +207,7 @@ describe('lazy()', () => {
 
     expect(container.textContent).toBe('Widget');
 
-    // Second render — should be instant (no fallback flash)
+    // Second render - should be instant (no fallback flash)
     const container2 = document.createElement('div');
     document.body.appendChild(container2);
     const node2 = _createComponent(LazyWidget as any, {});
@@ -233,11 +233,11 @@ describe('lazy()', () => {
       Promise.resolve({ default: HeavyComponent })
     ) as any;
 
-    // Preload — component function is loaded but not called
+    // Preload - component function is loaded but not called
     await LazyHeavy.preload();
     expect(loaded).toBe(false); // Component not rendered yet
 
-    // Now render — should be instant
+    // Now render - should be instant
     const node = _createComponent(LazyHeavy, {});
     container.appendChild(node);
     expect(container.textContent).toBe('Heavy');
@@ -266,7 +266,7 @@ describe('lazy()', () => {
     await new Promise<void>((r) => queueMicrotask(r));
     await new Promise<void>((r) => queueMicrotask(r));
 
-    // Container should be empty — component was not inserted
+    // Container should be empty - component was not inserted
     expect(container.textContent).toBe('');
   });
 

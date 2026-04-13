@@ -44,19 +44,19 @@
   background-color: rgba(255, 255, 255, 0.04);
 }
 
-/* Active — light variant */
+/* Active - light variant */
 .mkt-navlink--active[data-variant="light"] {
   background-color: var(--_navlink-bg);
   color: var(--_navlink-color);
 }
 
-/* Active — filled variant */
+/* Active - filled variant */
 .mkt-navlink--active[data-variant="filled"] {
   background-color: var(--_navlink-color);
   color: #fff;
 }
 
-/* Active — subtle variant */
+/* Active - subtle variant */
 .mkt-navlink--active[data-variant="subtle"] {
   color: var(--_navlink-color);
 }
@@ -98,7 +98,7 @@
   line-height: 1.3;
 }
 
-/* Chevron — points toward the inline-end edge. In RTL the collapsed state
+/* Chevron - points toward the inline-end edge. In RTL the collapsed state
    flips to point inline-end (visually left); when expanded it rotates down,
    same as LTR. */
 .mkt-navlink__chevron {

@@ -45,11 +45,11 @@ describe('effect', () => {
 
     expect(fn).toHaveBeenCalledTimes(1);
 
-    setB(1); // untracked — should not trigger
+    setB(1); // untracked - should not trigger
     flushSync();
     expect(fn).toHaveBeenCalledTimes(1);
 
-    setA(1); // tracked — should trigger
+    setA(1); // tracked - should trigger
     flushSync();
     expect(fn).toHaveBeenCalledTimes(2);
   });
@@ -112,7 +112,7 @@ describe('effect', () => {
     flushSync();
     expect(values).toEqual(['A']);
 
-    // Switch branch — now b is tracked, a is not
+    // Switch branch - now b is tracked, a is not
     setBranch(false);
     flushSync();
     expect(values).toEqual(['A', 'B2']);

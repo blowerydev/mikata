@@ -1,5 +1,5 @@
 /**
- * Tests for createTestRouter — ergonomic in-memory factory for unit tests.
+ * Tests for createTestRouter - ergonomic in-memory factory for unit tests.
  */
 
 import { describe, it, expect, afterEach } from 'vitest';
@@ -8,7 +8,7 @@ import { createMemoryHistory } from '../src/history';
 import { createRouter } from '../src/router';
 import type { Router } from '../src/types';
 
-// @ts-expect-error — define __DEV__ for tests
+// @ts-expect-error - define __DEV__ for tests
 globalThis.__DEV__ = true;
 
 describe('createTestRouter()', () => {

@@ -32,7 +32,7 @@ export interface DebugNodeInfo {
   getValue?: () => unknown;
   /** The reactive scope active when this node was created (used to attribute to a component) */
   scope?: Scope;
-  /** Last `_version` we observed — used to derive updateCount/lastChangedAt lazily at snapshot time. */
+  /** Last `_version` we observed - used to derive updateCount/lastChangedAt lazily at snapshot time. */
   lastSeenVersion: number;
   /** Number of times the node's version has changed since registration. */
   updateCount: number;
@@ -136,7 +136,7 @@ export interface DebugNodeSnapshot {
   owner?: { scopeId: number; label: string };
   /** Number of times this node's value/version has changed since creation. */
   updateCount: number;
-  /** performance.now() of most recent change — 0 if never changed. */
+  /** performance.now() of most recent change - 0 if never changed. */
   lastChangedAt: number;
   /** For effects: last run duration in ms. */
   lastRunMs?: number;

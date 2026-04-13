@@ -4,7 +4,7 @@ let warnedNonPlain = false;
 
 /**
  * Clones plain JSON-ish values plus Dates. Map/Set/class instances still pass
- * through by reference — form reset would not restore them and user mutation
+ * through by reference - form reset would not restore them and user mutation
  * would corrupt the pristine state. In dev, warn once when a non-plain value
  * slips in.
  */
@@ -19,7 +19,7 @@ export function deepClone<T>(value: T): T {
       warnedNonPlain = true;
       console.warn(
         '[mikata/form] initialValues contain a non-plain object (Map, Set, or class instance). ' +
-        'These pass through by reference — form.reset() will not restore them and user mutation ' +
+        'These pass through by reference - form.reset() will not restore them and user mutation ' +
         'will corrupt the pristine state. Convert to plain objects before passing to the form.'
       );
     }

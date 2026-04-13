@@ -14,7 +14,7 @@
   position: relative;
 }
 
-/* Sizes — square: width = height */
+/* Sizes - square: width = height */
 .mkt-action-icon[data-size="xs"] { width: var(--mkt-size-xs); height: var(--mkt-size-xs); font-size: var(--mkt-font-size-xs); }
 .mkt-action-icon[data-size="sm"] { width: var(--mkt-size-sm); height: var(--mkt-size-sm); font-size: var(--mkt-font-size-sm); }
 .mkt-action-icon[data-size="md"] { width: var(--mkt-size-md); height: var(--mkt-size-md); font-size: var(--mkt-font-size-md); }

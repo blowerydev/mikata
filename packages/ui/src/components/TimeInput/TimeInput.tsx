@@ -6,7 +6,7 @@ import type { TimeInputProps } from './TimeInput.types';
 import '../TextInput/TextInput.css';
 
 /**
- * TimeInput — thin wrapper over a native `<input type="time">`. Browsers
+ * TimeInput - thin wrapper over a native `<input type="time">`. Browsers
  * render locale-aware hour/minute fields and handle 12/24h formatting
  * automatically based on the user's system. `withSeconds` toggles the
  * seconds field via the `step` attribute.

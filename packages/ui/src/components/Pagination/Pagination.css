@@ -49,7 +49,7 @@
   outline-offset: 2px;
 }
 
-/* Active state — color */
+/* Active state - color */
 .mkt-pagination[data-color="primary"] .mkt-pagination__item[data-active] { background-color: var(--mkt-color-primary-filled); color: #fff; }
 .mkt-pagination[data-color="gray"]    .mkt-pagination__item[data-active] { background-color: var(--mkt-color-gray-filled);    color: #fff; }
 .mkt-pagination[data-color="red"]     .mkt-pagination__item[data-active] { background-color: var(--mkt-color-red-filled);     color: #fff; }

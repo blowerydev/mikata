@@ -1,5 +1,5 @@
 /**
- * Router hooks — convenience wrappers around inject(RouterContext).
+ * Router hooks - convenience wrappers around inject(RouterContext).
  */
 
 import { computed, onCleanup } from '@mikata/reactivity';

@@ -97,7 +97,7 @@ describe('DOM helpers', () => {
     el.dispatchEvent(new MouseEvent('click'));
     expect(counts).toEqual({ a: 1, b: 0 });
 
-    // Swap handler — the old one must be removed so the click only fires B.
+    // Swap handler - the old one must be removed so the click only fires B.
     setHandler(() => handlerB);
     flushSync();
     el.dispatchEvent(new MouseEvent('click'));

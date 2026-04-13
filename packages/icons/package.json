@@ -1,7 +1,7 @@
 {
   "name": "@mikata/icons",
   "version": "0.1.0",
-  "description": "Icon factory for Mikata — Lucide/Tabler interop plus built-in SVG set",
+  "description": "Icon factory for Mikata - Lucide/Tabler interop plus built-in SVG set",
   "keywords": [
     "mikata",
     "reactive",

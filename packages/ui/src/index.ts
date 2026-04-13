@@ -53,7 +53,7 @@ export { onDocumentTitle } from './utils/on-document-title';
 export { mergeRefs } from './utils/merge-refs';
 export { provideUILabels, useUILabels } from './utils/use-i18n-optional';
 
-// Deprecated aliases — prefer the new names above.
+// Deprecated aliases - prefer the new names above.
 /** @deprecated Use `uniqueId` instead. */
 export { useId } from './utils/unique-id';
 /** @deprecated Use `createDisclosure` instead. */

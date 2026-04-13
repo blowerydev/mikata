@@ -19,10 +19,10 @@ render(Counter, document.getElementById('app')!);
 
 ## Why
 
-- **No virtual DOM.** JSX compiles to direct `createElement` / `textContent` operations. A signal change updates exactly the text node or attribute that reads it — no diffing, no reconciliation pass.
+- **No virtual DOM.** JSX compiles to direct `createElement` / `textContent` operations. A signal change updates exactly the text node or attribute that reads it - no diffing, no reconciliation pass.
 - **Components run once.** A component is a setup function that wires up reactive bindings and returns DOM nodes. It never re-runs. Your `console.log` at the top fires exactly one time, forever.
-- **Fine-grained reactivity.** Signals track reads automatically. An effect that reads `count()` re-runs only when `count` changes — not when the parent "renders."
-- **Functions over components for control flow.** `show`, `each`, `switchMatch`, `portal`, `transition`, `routeOutlet` — all plain functions you call in JSX, not special elements the framework has to interpret.
+- **Fine-grained reactivity.** Signals track reads automatically. An effect that reads `count()` re-runs only when `count` changes - not when the parent "renders."
+- **Functions over components for control flow.** `show`, `each`, `switchMatch`, `portal`, `transition`, `routeOutlet` - all plain functions you call in JSX, not special elements the framework has to interpret.
 
 ## Quick start
 
@@ -38,7 +38,7 @@ Available features: `router`, `ui`, `icons`, `form`, `i18n`, `store`, `testing`,
 
 | Package | What it does |
 |---|---|
-| `mikata` | Umbrella — re-exports the runtime, reactivity, store, router, i18n, form, and icons |
+| `mikata` | Umbrella - re-exports the runtime, reactivity, store, router, i18n, form, and icons |
 | `@mikata/reactivity` | Signals, computed, reactive proxies, effects, scopes |
 | `@mikata/runtime` | DOM rendering, setup pattern, control flow, context, transitions |
 | `@mikata/compiler` | Vite plugin that lowers JSX to DOM operations |
@@ -66,10 +66,10 @@ pnpm --filter @mikata/ui dev   # watch-build a single package
 
 Repo layout:
 
-- `packages/*` — publishable packages
-- `playground/` — dev-only SPA wired to every package via `workspace:*`
-- `integration/` — cross-package integration tests (`@mikata/integration-tests`, private)
-- `docs/` — long-form docs (will grow into the docs site)
+- `packages/*` - publishable packages
+- `playground/` - dev-only SPA wired to every package via `workspace:*`
+- `integration/` - cross-package integration tests (`@mikata/integration-tests`, private)
+- `docs/` - long-form docs (will grow into the docs site)
 
 Requires Node 18+ and pnpm 10+.
 

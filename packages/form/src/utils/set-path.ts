@@ -22,6 +22,6 @@ export function setPath<T>(obj: T, path: string, value: unknown): T {
 function cloneContainer(value: unknown, nextKey: string): unknown {
   if (Array.isArray(value)) return value.slice();
   if (value && typeof value === 'object') return { ...(value as object) };
-  // Need to create a container — choose array vs object based on nextKey shape
+  // Need to create a container - choose array vs object based on nextKey shape
   return /^\d+$/.test(nextKey) ? [] : {};
 }

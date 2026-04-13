@@ -1,5 +1,5 @@
 /**
- * Suspense — render a fallback until every registered async query has
+ * Suspense - render a fallback until every registered async query has
  * resolved at least once. After the first successful mount of children,
  * the boundary stays "ready" and later refetches do not re-trigger the
  * fallback (use `isFetching` locally for per-query spinners).
@@ -35,8 +35,8 @@ export interface SuspenseProps {
   /** Node (or a factory that returns one) shown while any registered query is in initial load. */
   fallback: Node | (() => Node);
   /**
-   * Factory that returns the child nodes. Pass a function — not an already-
-   * rendered node — so queries created inside run within the boundary's
+   * Factory that returns the child nodes. Pass a function - not an already-
+   * rendered node - so queries created inside run within the boundary's
    * scope and can auto-register. Components are eagerly evaluated in Mikata,
    * so a bare `_createComponent(Child, {})` would run outside the boundary.
    */
@@ -46,7 +46,7 @@ export interface SuspenseProps {
 /**
  * Render `fallback` until every query created inside `children` (with
  * `suspend: true`) has resolved once, then swap in `children`. Never
- * reverts back — refetches after the initial load do not re-trigger the
+ * reverts back - refetches after the initial load do not re-trigger the
  * fallback.
  */
 export function Suspense(props: SuspenseProps): Node {

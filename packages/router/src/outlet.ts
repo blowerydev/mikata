@@ -1,6 +1,6 @@
 /**
- * routeOutlet() — renders the matched route component at the current depth.
- * provideRouter() — provides the router to the component tree via context.
+ * routeOutlet() - renders the matched route component at the current depth.
+ * provideRouter() - provides the router to the component tree via context.
  *
  * Follows the same DOM-swapping pattern as show() in control-flow.ts:
  * renderEffect + createScope + replaceChild.
@@ -102,7 +102,7 @@ export function routeOutlet(options?: {
     const routeDef = match?.route;
     const key = routeDef?.fullPath ?? null;
 
-    // Same route component — don't swap
+    // Same route component - don't swap
     if (key === currentKey) return;
     currentKey = key;
 
@@ -115,7 +115,7 @@ export function routeOutlet(options?: {
     let newNode: Node;
 
     if (!routeDef) {
-      // No match at this depth — show notFound or empty
+      // No match at this depth - show notFound or empty
       const notFound = (router as any)._options.notFound;
       if (notFound) {
         const scope = createScope(() => {

@@ -1,5 +1,5 @@
 /**
- * Signal — reactive primitive value container.
+ * Signal - reactive primitive value container.
  *
  * Returns a [getter, setter] tuple. The getter is a plain function call
  * (no .value). Reading inside a tracked scope (effect/computed) subscribes

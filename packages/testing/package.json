@@ -1,7 +1,7 @@
 {
   "name": "@mikata/testing",
   "version": "0.1.0",
-  "description": "Test utilities for Mikata apps — renderComponent, fireEvent, flushSync",
+  "description": "Test utilities for Mikata apps - renderComponent, fireEvent, flushSync",
   "keywords": [
     "mikata",
     "reactive",

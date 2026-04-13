@@ -13,7 +13,7 @@ export type AutocompleteParts =
 
 /**
  * Async fetcher. Return the suggestions for `query`. `signal` aborts when a
- * newer query supersedes this one — respect it to avoid wasted work.
+ * newer query supersedes this one - respect it to avoid wasted work.
  */
 export type AutocompleteFetcher = (
   query: string,

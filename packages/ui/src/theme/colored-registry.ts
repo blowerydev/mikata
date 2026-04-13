@@ -1,14 +1,14 @@
 /**
  * Registry of per-palette CSS rules. ThemeProvider uses it to emit runtime
- * CSS for custom palettes added via `theme.colors` — built-in palettes are
+ * CSS for custom palettes added via `theme.colors` - built-in palettes are
  * already covered by each component's static stylesheet.
  *
  * Each rule names a selector template (with `{name}` token for the palette)
  * and a set of declarations. A declaration value can be:
  *
- *   - a `ColorVarAlias` — `var(--mkt-color-<name>-<alias>)`
- *   - a number 0–9    — `var(--mkt-color-<name>-<N>)`
- *   - a `=literal`     — used verbatim (e.g., `=#fff`)
+ *   - a `ColorVarAlias` - `var(--mkt-color-<name>-<alias>)`
+ *   - a number 0–9    - `var(--mkt-color-<name>-<N>)`
+ *   - a `=literal`     - used verbatim (e.g., `=#fff`)
  */
 
 export type ColorVarAlias =

@@ -1,5 +1,5 @@
 /**
- * Mikata DevTools — in-page debugging overlay + console API.
+ * Mikata DevTools - in-page debugging overlay + console API.
  *
  * Installs window.__MIKATA_DEVTOOLS__ for console-based inspection
  * and renders a floating panel showing reactive state at a glance.
@@ -87,7 +87,7 @@ interface ComponentTreeSnapshot {
   name: string;
   children: ComponentTreeSnapshot[];
   inDOM: boolean;
-  /** Live reference to the DOM node — used for hover/highlight. */
+  /** Live reference to the DOM node - used for hover/highlight. */
   domNode: Node;
   mountedAt: number;
 }
@@ -118,7 +118,7 @@ function findComponentForElement(el: Node | null): ComponentTreeNode | null {
 }
 
 // ---------------------------------------------------------------------------
-// Console API — window.__MIKATA_DEVTOOLS__
+// Console API - window.__MIKATA_DEVTOOLS__
 // ---------------------------------------------------------------------------
 
 export interface MikataDevTools {
@@ -477,7 +477,7 @@ function createOverlay(): HTMLElement {
     <div class="__mdt-header">
       <span class="__mdt-title">Mikata DevTools</span>
       <div class="__mdt-btns">
-        <button class="__mdt-btn" id="__mdt-pick" title="Inspect element — click a DOM node to find its component">Pick</button>
+        <button class="__mdt-btn" id="__mdt-pick" title="Inspect element - click a DOM node to find its component">Pick</button>
         <button class="__mdt-btn" id="__mdt-pause" title="Pause auto-refresh (every 500ms)">Pause</button>
         <button class="__mdt-btn" id="__mdt-close" aria-label="Close">X</button>
       </div>
@@ -660,11 +660,11 @@ function renderOverview(body: HTMLElement): void {
     <div class="__mdt-section">
       <div class="__mdt-section-title">Console API</div>
       <div style="color:#888;font-size:11px;line-height:1.55">
-        <code style="color:#7ec8e3">__MIKATA_DEVTOOLS__.graph()</code> — full graph<br>
-        <code style="color:#7ec8e3">.inspect(id)</code> — node details<br>
-        <code style="color:#7ec8e3">.why(id)</code> / <code style="color:#7ec8e3">.subscribers(id)</code> — dependency chain<br>
-        <code style="color:#7ec8e3">.search("label")</code> — find by label<br>
-        <code style="color:#7ec8e3">.findComponent(el)</code> — DOM element → component
+        <code style="color:#7ec8e3">__MIKATA_DEVTOOLS__.graph()</code> - full graph<br>
+        <code style="color:#7ec8e3">.inspect(id)</code> - node details<br>
+        <code style="color:#7ec8e3">.why(id)</code> / <code style="color:#7ec8e3">.subscribers(id)</code> - dependency chain<br>
+        <code style="color:#7ec8e3">.search("label")</code> - find by label<br>
+        <code style="color:#7ec8e3">.findComponent(el)</code> - DOM element → component
       </div>
     </div>
   `;
@@ -946,7 +946,7 @@ function formatValueFull(value: unknown): string {
 }
 
 function formatMs(ms: number | undefined): string {
-  if (ms == null) return '—';
+  if (ms == null) return '-';
   if (ms < 0.05) return '<0.1ms';
   if (ms < 10) return `${ms.toFixed(1)}ms`;
   return `${Math.round(ms)}ms`;

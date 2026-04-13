@@ -10,7 +10,7 @@
 
 import type { PluginObj, types as BabelTypes } from '@babel/core';
 
-// Runtime import identifiers — these are added as imports to each file
+// Runtime import identifiers - these are added as imports to each file
 const RUNTIME_MODULE = '@mikata/runtime';
 const REACTIVITY_MODULE = '@mikata/reactivity';
 
@@ -105,7 +105,7 @@ export function mikataJSXPlugin({ types: t }: { types: typeof BabelTypes }): Plu
       return value.expression;
     }
     if (t.isJSXElement(value) || t.isJSXFragment(value)) {
-      // Nested JSX — will be transformed by the visitor
+      // Nested JSX - will be transformed by the visitor
       return value as any;
     }
     return t.identifier('undefined');
@@ -292,7 +292,7 @@ export function mikataJSXPlugin({ types: t }: { types: typeof BabelTypes }): Plu
         }
       } else {
         // Child element (already transformed by exit visitor into an expression)
-        // or any other expression — appendChild it
+        // or any other expression - appendChild it
         stmts.push(
           t.expressionStatement(
             t.callExpression(

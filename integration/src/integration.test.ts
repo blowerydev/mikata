@@ -120,7 +120,7 @@ beforeEach(() => {
 // ============================================================
 // 1. SIGNALS
 // ============================================================
-describe('Signals — primitive reactive values', () => {
+describe('Signals - primitive reactive values', () => {
   it('basic read/write cycle', () => {
     const [count, setCount] = signal(0);
     expect(count()).toBe(0);
@@ -159,7 +159,7 @@ describe('Signals — primitive reactive values', () => {
 // ============================================================
 // 2. COMPUTED
 // ============================================================
-describe('Computed — derived reactive values', () => {
+describe('Computed - derived reactive values', () => {
   it('derives from signals', () => {
     const [price, setPrice] = signal(100);
     const [quantity, setQuantity] = signal(3);
@@ -212,7 +212,7 @@ describe('Computed — derived reactive values', () => {
 // ============================================================
 // 3. REACTIVE PROXIES
 // ============================================================
-describe('Reactive — proxy-based object tracking', () => {
+describe('Reactive - proxy-based object tracking', () => {
   it('tracks deeply nested mutations', () => {
     const state = reactive({
       user: {
@@ -283,7 +283,7 @@ describe('Reactive — proxy-based object tracking', () => {
 // ============================================================
 // 4. EFFECTS
 // ============================================================
-describe('Effects — side effects and lifecycle', () => {
+describe('Effects - side effects and lifecycle', () => {
   it('cleanup runs before re-execution and on dispose', () => {
     const [id, setId] = signal(1);
     const events: string[] = [];
@@ -400,7 +400,7 @@ describe('Effects — side effects and lifecycle', () => {
 // ============================================================
 // 5. SCOPES
 // ============================================================
-describe('Scopes — automatic cleanup', () => {
+describe('Scopes - automatic cleanup', () => {
   it('disposes all children when scope is disposed', () => {
     const [count, setCount] = signal(0);
     const fn1 = vi.fn();
@@ -430,7 +430,7 @@ describe('Scopes — automatic cleanup', () => {
 // ============================================================
 // 6. DOM RENDERING
 // ============================================================
-describe('DOM rendering — createElement, props, insert', () => {
+describe('DOM rendering - createElement, props, insert', () => {
   it('creates elements and sets properties', () => {
     const el = _createElement('div');
     _setProp(el, 'class', 'container');
@@ -470,7 +470,7 @@ describe('DOM rendering — createElement, props, insert', () => {
 // ============================================================
 // 7. COMPONENTS
 // ============================================================
-describe('Components — setup functions with props', () => {
+describe('Components - setup functions with props', () => {
   it('creates a component with reactive props', () => {
     const [name, setName] = signal('Alice');
 
@@ -530,7 +530,7 @@ describe('Components — setup functions with props', () => {
 // ============================================================
 // 8. CONTROL FLOW
 // ============================================================
-describe('Control flow — show, each, switchMatch', () => {
+describe('Control flow - show, each, switchMatch', () => {
   it('show() toggles between branches', () => {
     const [loggedIn, setLoggedIn] = signal(false);
 
@@ -619,7 +619,7 @@ describe('Control flow — show, each, switchMatch', () => {
 // ============================================================
 // 9. CONTEXT
 // ============================================================
-describe('Context — provide/inject through component tree', () => {
+describe('Context - provide/inject through component tree', () => {
   it('provides and injects values across components', () => {
     const ThemeCtx = createContext<'light' | 'dark'>('light');
     const UserCtx = createContext<{ name: string }>();
@@ -676,7 +676,7 @@ describe('Context — provide/inject through component tree', () => {
 // ============================================================
 // 10. RENDER / MOUNT
 // ============================================================
-describe('Render — mounting and unmounting', () => {
+describe('Render - mounting and unmounting', () => {
   it('mounts and disposes correctly', () => {
     const cleanup = vi.fn();
 
@@ -713,7 +713,7 @@ describe('Render — mounting and unmounting', () => {
 // ============================================================
 // 11. STORE
 // ============================================================
-describe('Store — managed reactive state', () => {
+describe('Store - managed reactive state', () => {
   it('creates and updates a store', () => {
     const [store, setStore] = createStore({
       users: [] as User[],
@@ -762,9 +762,9 @@ describe('Store — managed reactive state', () => {
 });
 
 // ============================================================
-// 12. QUERY — Async data fetching with mock API
+// 12. QUERY - Async data fetching with mock API
 // ============================================================
-describe('Query — async data fetching with simulated AJAX', () => {
+describe('Query - async data fetching with simulated AJAX', () => {
   it('fetches a list of users', async () => {
     const query = createQuery({
       key: () => 'all-users',
@@ -797,7 +797,7 @@ describe('Query — async data fetching with simulated AJAX', () => {
     });
     expect(query.data()!.name).toBe('Alice Johnson');
 
-    // Change key — should refetch
+    // Change key - should refetch
     setUserId(2);
     flushSync();
 
@@ -861,7 +861,7 @@ describe('Query — async data fetching with simulated AJAX', () => {
     await new Promise((r) => setTimeout(r, 50));
     expect(fn).not.toHaveBeenCalled();
 
-    // Enable — should now fetch
+    // Enable - should now fetch
     setEnabled(true);
     flushSync();
 
@@ -872,9 +872,9 @@ describe('Query — async data fetching with simulated AJAX', () => {
 });
 
 // ============================================================
-// 13. MUTATION — Async data modification
+// 13. MUTATION - Async data modification
 // ============================================================
-describe('Mutation — async data modification with simulated AJAX', () => {
+describe('Mutation - async data modification with simulated AJAX', () => {
   it('creates a new user', async () => {
     const mutation = createMutation({
       fn: async (data: Omit<User, 'id'>) =>
@@ -950,7 +950,7 @@ describe('Mutation — async data modification with simulated AJAX', () => {
     });
     expect(createMut.status()).toBe('success');
 
-    // 3. Refetch — should now include the new user
+    // 3. Refetch - should now include the new user
     await usersQuery.refetch();
 
     await vi.waitFor(() => {
@@ -963,7 +963,7 @@ describe('Mutation — async data modification with simulated AJAX', () => {
 // ============================================================
 // 14. FULL APP SIMULATION
 // ============================================================
-describe('Full app simulation — all features together', () => {
+describe('Full app simulation - all features together', () => {
   it('builds a user management dashboard', async () => {
     // --- App State ---
     const [selectedUserId, setSelectedUserId] = signal<number | null>(null);
@@ -1080,9 +1080,9 @@ describe('Full app simulation — all features together', () => {
 });
 
 // ============================================================
-// Refs — DOM element access
+// Refs - DOM element access
 // ============================================================
-describe('Refs — DOM element access', () => {
+describe('Refs - DOM element access', () => {
   it('createRef captures element', () => {
     const myRef = createRef<HTMLDivElement>();
     expect(myRef.current).toBeNull();
@@ -1118,9 +1118,9 @@ describe('Refs — DOM element access', () => {
 });
 
 // ============================================================
-// Model — two-way form bindings
+// Model - two-way form bindings
 // ============================================================
-describe('Model — two-way form bindings', () => {
+describe('Model - two-way form bindings', () => {
   it('model() returns value getter for text input', () => {
     const [name, setName] = signal('hello');
     const props = model(name, setName);
@@ -1173,9 +1173,9 @@ describe('Model — two-way form bindings', () => {
 });
 
 // ============================================================
-// Portal — rendering outside component tree
+// Portal - rendering outside component tree
 // ============================================================
-describe('Portal — rendering outside component tree', () => {
+describe('Portal - rendering outside component tree', () => {
   let portalTarget: HTMLElement;
 
   beforeEach(() => {
@@ -1225,9 +1225,9 @@ describe('Portal — rendering outside component tree', () => {
 });
 
 // ============================================================
-// CSS class/style — object and array syntax
+// CSS class/style - object and array syntax
 // ============================================================
-describe('CSS class/style — object and array syntax', () => {
+describe('CSS class/style - object and array syntax', () => {
   it('class as object with boolean values', () => {
     const el = _createElement('div');
     _setProp(el, 'class', { active: true, hidden: false, bold: true });
@@ -1281,9 +1281,9 @@ describe('CSS class/style — object and array syntax', () => {
 });
 
 // ============================================================
-// ErrorBoundary — catch and recover from errors
+// ErrorBoundary - catch and recover from errors
 // ============================================================
-describe('ErrorBoundary — catch and recover from errors', () => {
+describe('ErrorBoundary - catch and recover from errors', () => {
   it('renders children normally when no error', () => {
     const child = _createElement('span');
     child.textContent = 'All good';
@@ -1323,9 +1323,9 @@ describe('ErrorBoundary — catch and recover from errors', () => {
 });
 
 // ============================================================
-// createSelector — efficient O(1) selection tracking
+// createSelector - efficient O(1) selection tracking
 // ============================================================
-describe('createSelector — efficient selection tracking', () => {
+describe('createSelector - efficient selection tracking', () => {
   it('returns true for selected item, false for others', () => {
     const [selected, setSelected] = signal(1);
     const isSelected = createSelector(() => selected());
@@ -1368,9 +1368,9 @@ describe('createSelector — efficient selection tracking', () => {
 });
 
 // ============================================================
-// _spread — spread props onto elements
+// _spread - spread props onto elements
 // ============================================================
-describe('_spread — spread props onto elements', () => {
+describe('_spread - spread props onto elements', () => {
   it('applies static props', () => {
     const el = _createElement('div');
     _spread(el, () => ({
@@ -1399,9 +1399,9 @@ describe('_spread — spread props onto elements', () => {
 });
 
 // ============================================================
-// _createFragment — document fragment creation
+// _createFragment - document fragment creation
 // ============================================================
-describe('_createFragment — document fragments', () => {
+describe('_createFragment - document fragments', () => {
   it('creates fragment from mixed children', () => {
     const frag = _createFragment([
       _createElement('span'),
@@ -1429,9 +1429,9 @@ describe('_createFragment — document fragments', () => {
 });
 
 // ============================================================
-// disposeComponent — manual component disposal
+// disposeComponent - manual component disposal
 // ============================================================
-describe('disposeComponent — manual component disposal', () => {
+describe('disposeComponent - manual component disposal', () => {
   it('disposes component scope and runs cleanup', () => {
     let cleanedUp = false;
 
@@ -1625,7 +1625,7 @@ describe('Dev-mode warnings', () => {
 // ============================================================
 // 16. LAZY COMPONENTS
 // ============================================================
-describe('Lazy components — code-split via dynamic import', () => {
+describe('Lazy components - code-split via dynamic import', () => {
   it('loads and renders a component from a dynamic import', async () => {
     function UserProfile(props: { name: string }) {
       const el = document.createElement('div');
@@ -1749,7 +1749,7 @@ describe('Lazy components — code-split via dynamic import', () => {
     dispose();
   });
 
-  it('caches the loaded module — second render is instant', async () => {
+  it('caches the loaded module - second render is instant', async () => {
     function CachedComp() {
       const el = document.createElement('div');
       el.textContent = 'Cached';
@@ -1760,14 +1760,14 @@ describe('Lazy components — code-split via dynamic import', () => {
       Promise.resolve({ default: CachedComp })
     );
 
-    // First render — async
+    // First render - async
     const r1 = renderComponent(LazyCached as any, {});
     await waitForUpdate();
     await waitForUpdate();
     expect(r1.container.textContent).toContain('Cached');
     r1.dispose();
 
-    // Second render — should be immediate (no loading state)
+    // Second render - should be immediate (no loading state)
     const r2 = renderComponent(LazyCached as any, {});
     expect(r2.container.textContent).toContain('Cached');
     r2.dispose();
@@ -1791,7 +1791,7 @@ describe('Lazy components — code-split via dynamic import', () => {
     await LazyHeavy.preload();
     expect(constructed).toBe(false);
 
-    // Now render — instant
+    // Now render - instant
     const { container, dispose } = renderComponent(LazyHeavy, {});
     expect(container.textContent).toContain('Heavy component');
     expect(constructed).toBe(true);

@@ -7,7 +7,7 @@ import { renderEffect } from '@mikata/reactivity';
 
 declare const __DEV__: boolean;
 
-// Matches `<script`, `javascript:`, or inline `onXxx=` handlers — the three
+// Matches `<script`, `javascript:`, or inline `onXxx=` handlers - the three
 // common XSS shapes people paste into innerHTML without thinking.
 const SUSPICIOUS_INNER_HTML = /<script\b|javascript:|\son\w+\s*=/i;
 
@@ -80,7 +80,7 @@ export function _setProp(
     if (__DEV__ && key === 'innerHTML' && typeof value === 'string' && SUSPICIOUS_INNER_HTML.test(value)) {
       console.warn(
         '[mikata] innerHTML contains content that looks like a script or inline event handler. ' +
-        'Use textContent or sanitize the input — innerHTML bypasses all escaping.'
+        'Use textContent or sanitize the input - innerHTML bypasses all escaping.'
       );
     }
     (el as any)[key] = value;
@@ -114,7 +114,7 @@ export function _insert(
   marker?: Node
 ): void {
   if (typeof accessor === 'function') {
-    // Reactive child — set up an effect
+    // Reactive child - set up an effect
     let currentNodes: Node[] = [];
 
     renderEffect(() => {

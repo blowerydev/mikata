@@ -1,5 +1,5 @@
 /**
- * Effect — reactive side effect that re-runs when dependencies change.
+ * Effect - reactive side effect that re-runs when dependencies change.
  *
  * One effect API to rule them all. The optional return value is a cleanup
  * function that runs before each re-execution and on disposal.

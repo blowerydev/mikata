@@ -1,5 +1,5 @@
 /**
- * Route definition helpers — defineRoutes() for type inference
+ * Route definition helpers - defineRoutes() for type inference
  * and route tree normalization for the matching engine.
  */
 
@@ -7,12 +7,12 @@ import type { RouteDefinition, NormalizedRoute } from './types';
 import { parseSegments, compilePath } from './matching';
 
 // ---------------------------------------------------------------------------
-// defineRoutes — identity function for type inference
+// defineRoutes - identity function for type inference
 // ---------------------------------------------------------------------------
 
 /**
  * Define routes with full type inference for path params.
- * This is an identity function — it returns the same array,
+ * This is an identity function - it returns the same array,
  * but TypeScript infers literal path string types.
  *
  * Usage:

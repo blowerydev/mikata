@@ -80,7 +80,7 @@ export function MultiSelect(props: MultiSelectProps): HTMLDivElement {
   let activeIdx = -1;
   let currentFiltered: MultiSelectOption[] = [];
   let loading = false;
-  // Keyed reconciliation by option value — see Autocomplete for the same
+  // Keyed reconciliation by option value - see Autocomplete for the same
   // pattern. Avoids full dropdown rebuild on each keystroke.
   const liByValue = new Map<string, HTMLLIElement>();
   let emptyLi: HTMLLIElement | null = null;

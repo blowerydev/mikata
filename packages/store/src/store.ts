@@ -1,5 +1,5 @@
 /**
- * createStore — higher-level reactive state management.
+ * createStore - higher-level reactive state management.
  *
  * Returns a read-only proxy + setState function.
  * Direct mutation throws in dev mode with a clear error message.

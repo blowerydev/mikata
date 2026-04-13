@@ -4,7 +4,7 @@ import type { Direction } from '../theme/types';
  * Arrow-key pairs for directional keyboard nav.
  *
  * On a horizontal axis, "previous" is ArrowLeft in LTR and ArrowRight in RTL.
- * On a vertical axis, direction is irrelevant — returns ArrowUp/ArrowDown.
+ * On a vertical axis, direction is irrelevant - returns ArrowUp/ArrowDown.
  */
 export function directionalArrowKeys(
   isHorizontal: boolean,

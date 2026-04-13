@@ -1,7 +1,7 @@
 import type { FormErrors, ValidatorResolver } from '../types';
 
 /**
- * Zod (v3/v4) resolver. Pass a Zod schema — returns a resolver that maps
+ * Zod (v3/v4) resolver. Pass a Zod schema - returns a resolver that maps
  * ZodError's issues to a flat `FormErrors` map keyed by dotted path.
  *
  * Optional `messages` lets you override Zod's default English messages by

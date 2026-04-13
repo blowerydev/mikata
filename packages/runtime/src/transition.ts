@@ -1,8 +1,8 @@
 /**
  * Transition primitives for animated enter/exit of DOM nodes.
  *
- * transition()      — like show() but with enter/exit animations
- * transitionGroup() — like each() but with per-item enter/exit animations
+ * transition()      - like show() but with enter/exit animations
+ * transitionGroup() - like each() but with per-item enter/exit animations
  *
  * Supports both CSS class-based transitions (like Vue's <Transition>)
  * and JavaScript animation hooks (for GSAP, Web Animations API, etc).
@@ -213,7 +213,7 @@ async function runLeave(
 }
 
 // ---------------------------------------------------------------------------
-// transition() — animated show()
+// transition() - animated show()
 // ---------------------------------------------------------------------------
 
 /**
@@ -385,7 +385,7 @@ async function doSimultaneous(
 }
 
 // ---------------------------------------------------------------------------
-// transitionGroup() — animated each()
+// transitionGroup() - animated each()
 // ---------------------------------------------------------------------------
 
 /**

@@ -6,7 +6,7 @@ import type { VirtualListProps } from './VirtualList.types';
 import './VirtualList.css';
 
 /**
- * VirtualList — thin component wrapper over `createVirtualizer`. For more
+ * VirtualList - thin component wrapper over `createVirtualizer`. For more
  * control (programmatic scrolling, custom layouts), use the virtualizer
  * directly with your own scroll container.
  */

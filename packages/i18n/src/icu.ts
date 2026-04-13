@@ -2,13 +2,13 @@
  * ICU MessageFormat subset.
  *
  * Supports the forms that cover ~95% of real-world translation strings:
- *   - `{arg}`                            — interpolation
- *   - `{count, number[, style]}`         — Intl.NumberFormat
- *   - `{date, date[, style]}`            — Intl.DateTimeFormat (dateStyle)
- *   - `{when, time[, style]}`            — Intl.DateTimeFormat (timeStyle)
- *   - `{count, plural, one {#} other {# items}}` — CLDR plural rules
+ *   - `{arg}`                            - interpolation
+ *   - `{count, number[, style]}`         - Intl.NumberFormat
+ *   - `{date, date[, style]}`            - Intl.DateTimeFormat (dateStyle)
+ *   - `{when, time[, style]}`            - Intl.DateTimeFormat (timeStyle)
+ *   - `{count, plural, one {#} other {# items}}` - CLDR plural rules
  *   - `{gender, select, female {...} male {...} other {...}}`
- *   - `#` inside a plural arm            — the selector, number-formatted
+ *   - `#` inside a plural arm            - the selector, number-formatted
  *
  * Does NOT cover: selectordinal, `offset:`, `'` quote-escape, or rich-text
  * arms. For the full grammar, pass a custom `formatter` in `I18nOptions`
@@ -26,7 +26,7 @@ type Ast =
 const ICU_PROBE = /\{\s*\w+\s*,\s*(?:plural|select|number|date|time)\b/;
 
 /**
- * Cheap check — returns true if the message looks like it contains any
+ * Cheap check - returns true if the message looks like it contains any
  * ICU tag. Used to skip the parser entirely for plain strings.
  */
 export function looksLikeIcu(message: string): boolean {

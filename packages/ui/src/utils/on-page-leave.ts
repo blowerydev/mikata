@@ -2,7 +2,7 @@ import { onCleanup } from '@mikata/reactivity';
 
 /**
  * Warn the user before they leave the page. `shouldBlock` is evaluated at
- * `beforeunload` time — make it a function that reads a signal if the answer
+ * `beforeunload` time - make it a function that reads a signal if the answer
  * depends on reactive state.
  *
  * Usage:

@@ -1,7 +1,7 @@
 {
   "name": "@mikata/i18n",
   "version": "0.1.0",
-  "description": "Internationalization for Mikata — ICU messages, runtime locale switching",
+  "description": "Internationalization for Mikata - ICU messages, runtime locale switching",
   "keywords": [
     "mikata",
     "reactive",

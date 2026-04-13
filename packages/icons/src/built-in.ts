@@ -13,7 +13,7 @@ const defaultAttrs = {
 const icon = (...children: [string, Record<string, string | number>][]): IconNode =>
   ['svg', { ...defaultAttrs }, children];
 
-/** X — close / dismiss. */
+/** X - close / dismiss. */
 export const Close: IconNode = icon(
   ['path', { d: 'M18 6 6 18' }],
   ['path', { d: 'm6 6 12 12' }]
@@ -31,12 +31,12 @@ export const ChevronLeft: IconNode = icon(['path', { d: 'm15 18-6-6 6-6' }]);
 /** Chevron pointing right. */
 export const ChevronRight: IconNode = icon(['path', { d: 'm9 18 6-6-6-6' }]);
 
-/** Eye — show password / reveal. */
+/** Eye - show password / reveal. */
 export const Eye: IconNode = icon(
   ['path', { d: 'M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z' }],
   ['circle', { cx: 12, cy: 12, r: 3 }]
 );
-/** Eye with slash — hide password. */
+/** Eye with slash - hide password. */
 export const EyeOff: IconNode = icon(
   ['path', { d: 'M9.88 9.88a3 3 0 1 0 4.24 4.24' }],
   ['path', { d: 'M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68' }],
@@ -71,13 +71,13 @@ export const Warning: IconNode = icon(
   ['path', { d: 'M12 9v4' }],
   ['path', { d: 'M12 17h.01' }]
 );
-/** Circle with an X — error. */
+/** Circle with an X - error. */
 export const ErrorCircle: IconNode = icon(
   ['circle', { cx: 12, cy: 12, r: 10 }],
   ['path', { d: 'm15 9-6 6' }],
   ['path', { d: 'm9 9 6 6' }]
 );
-/** Circle with a check — success. */
+/** Circle with a check - success. */
 export const CheckCircle: IconNode = icon(
   ['path', { d: 'M21.801 10A10 10 0 1 1 17 3.335' }],
   ['path', { d: 'm9 11 3 3L22 4' }]
@@ -91,14 +91,14 @@ export const Plus: IconNode = icon(
 /** Minus sign. */
 export const Minus: IconNode = icon(['path', { d: 'M5 12h14' }]);
 
-/** Pencil — edit. */
+/** Pencil - edit. */
 export const Edit: IconNode = icon([
   'path',
   {
     d: 'M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z',
   },
 ]);
-/** Trash can — delete. */
+/** Trash can - delete. */
 export const Trash: IconNode = icon(
   ['path', { d: 'M3 6h18' }],
   ['path', { d: 'M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6' }],
@@ -115,7 +115,7 @@ export const Home: IconNode = icon(
   ['path', { d: 'm3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z' }],
   ['polyline', { points: '9 22 9 12 15 12 15 22' }]
 );
-/** Gear — settings. */
+/** Gear - settings. */
 export const Settings: IconNode = icon(
   [
     'path',
@@ -125,25 +125,25 @@ export const Settings: IconNode = icon(
   ],
   ['circle', { cx: 12, cy: 12, r: 3 }]
 );
-/** Three horizontal lines — hamburger menu. */
+/** Three horizontal lines - hamburger menu. */
 export const Menu: IconNode = icon(
   ['line', { x1: 4, x2: 20, y1: 12, y2: 12 }],
   ['line', { x1: 4, x2: 20, y1: 6, y2: 6 }],
   ['line', { x1: 4, x2: 20, y1: 18, y2: 18 }]
 );
-/** Arrow out of a box — external link. */
+/** Arrow out of a box - external link. */
 export const ExternalLink: IconNode = icon(
   ['path', { d: 'M15 3h6v6' }],
   ['path', { d: 'M10 14 21 3' }],
   ['path', { d: 'M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6' }]
 );
-/** Three vertical dots — kebab menu. */
+/** Three vertical dots - kebab menu. */
 export const DotsVertical: IconNode = icon(
   ['circle', { cx: 12, cy: 12, r: 1 }],
   ['circle', { cx: 12, cy: 5, r: 1 }],
   ['circle', { cx: 12, cy: 19, r: 1 }]
 );
-/** Circular arrow — refresh. */
+/** Circular arrow - refresh. */
 export const Refresh: IconNode = icon(
   ['path', { d: 'M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8' }],
   ['path', { d: 'M21 3v5h-5' }],

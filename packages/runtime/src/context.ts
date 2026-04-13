@@ -1,5 +1,5 @@
 /**
- * Context — provide/inject pattern for passing data through
+ * Context - provide/inject pattern for passing data through
  * the component tree without prop drilling.
  */
 

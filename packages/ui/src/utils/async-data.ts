@@ -88,7 +88,7 @@ export function createAsyncDataController<T>(
     dispose(): void {
       disposed = true;
       cancel();
-      // Loading state belongs to the caller — we don't flip it on dispose.
+      // Loading state belongs to the caller - we don't flip it on dispose.
     },
   };
 }

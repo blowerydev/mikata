@@ -25,7 +25,7 @@ export function resolveKey(
 
 /**
  * Replace {{param}} placeholders with values from the params object.
- * Legacy syntax — coexists with ICU `{param}`. Kept exported for callers
+ * Legacy syntax - coexists with ICU `{param}`. Kept exported for callers
  * that want interpolation without ICU parsing.
  */
 export function interpolate(
@@ -38,7 +38,7 @@ export function interpolate(
 }
 
 /**
- * Full formatter — runs legacy `{{param}}` interpolation, then ICU if the
+ * Full formatter - runs legacy `{{param}}` interpolation, then ICU if the
  * result contains any ICU tag (`,plural`/`,select`/`,number`/`,date`/
  * `,time`). A locale is required for ICU; callers can pass a custom
  * `icuFormatter` (e.g. a full-grammar formatter from `@mikata/i18n/icu`)
@@ -59,7 +59,7 @@ export function formatMessage(
 /**
  * Create the t() function that resolves keys against the current messages.
  *
- * - `getCurrentMessages` returns the messages for the active locale (reactive — reads locale signal)
+ * - `getCurrentMessages` returns the messages for the active locale (reactive - reads locale signal)
  * - `getFallbackMessages` returns fallback locale messages
  * - `getLocale` returns the current locale string (reactive)
  */
@@ -95,7 +95,7 @@ export function createTranslateFunction<T extends Record<string, unknown>>(
       return key;
     }
 
-    // Value is an object (likely a plural or nested namespace) — not a string
+    // Value is an object (likely a plural or nested namespace) - not a string
     if (typeof value !== 'string') {
       if (__DEV__) {
         console.warn(

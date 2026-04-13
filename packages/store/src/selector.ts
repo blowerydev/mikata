@@ -1,5 +1,5 @@
 /**
- * createSelector — efficient O(1) selection tracking for lists.
+ * createSelector - efficient O(1) selection tracking for lists.
  *
  * Avoids re-rendering the entire list when the selected item changes.
  * Only the previously-selected and newly-selected items are notified.
@@ -22,7 +22,7 @@ interface SelectorEntry<U> {
  *   const [selectedId, setSelectedId] = signal(1);
  *   const isSelected = createSelector(() => selectedId());
  *
- *   // In a list item — only re-runs for the specific item that changes selection:
+ *   // In a list item - only re-runs for the specific item that changes selection:
  *   effect(() => {
  *     if (isSelected(item.id)) {
  *       // Only runs when this specific item becomes selected/deselected

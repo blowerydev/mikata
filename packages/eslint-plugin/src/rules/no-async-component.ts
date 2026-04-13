@@ -12,13 +12,13 @@ export const noAsyncComponent: Rule.RuleModule = {
     type: 'problem',
     docs: {
       description:
-        'Disallow async component functions. Setup must be synchronous — after `await` the reactive scope is gone.',
+        'Disallow async component functions. Setup must be synchronous - after `await` the reactive scope is gone.',
       recommended: true,
     },
     schema: [],
     messages: {
       async:
-        'Component `{{name}}` is declared async. Setup must be synchronous — after the first `await`, the reactive scope is gone and `provide`/`inject`/`onCleanup` will fail. Move async work into `effect(async () => ...)` or a handler.',
+        'Component `{{name}}` is declared async. Setup must be synchronous - after the first `await`, the reactive scope is gone and `provide`/`inject`/`onCleanup` will fail. Move async work into `effect(async () => ...)` or a handler.',
     },
   },
 

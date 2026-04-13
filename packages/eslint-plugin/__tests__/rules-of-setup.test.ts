@@ -23,10 +23,10 @@ describe('rules-of-setup', () => {
         { code: `createScope(() => { onCleanup(() => {}); });` },
         // render wrapper
         { code: `render(() => { provide(Ctx, v); return null; }, el);` },
-        // Helper called inside a component — we allow unnamed/camelCase helpers
+        // Helper called inside a component - we allow unnamed/camelCase helpers
         // only when they bubble up to a component, so this nested form is valid.
         { code: `function App() { function setup() { onCleanup(() => {}); } setup(); }` },
-        // Not a scope-required name — should be ignored entirely
+        // Not a scope-required name - should be ignored entirely
         { code: `effect(() => { console.log('fine'); });` },
       ],
       invalid: [

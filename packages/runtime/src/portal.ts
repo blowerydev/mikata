@@ -1,7 +1,7 @@
 /**
- * portal() — render children into a different DOM subtree.
+ * portal() - render children into a different DOM subtree.
  *
- * Consistent with show()/each()/switchMatch() — functions not components.
+ * Consistent with show()/each()/switchMatch() - functions not components.
  * Manages its own scope for cleanup when the parent is disposed.
  *
  * Usage:

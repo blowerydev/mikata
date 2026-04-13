@@ -31,7 +31,7 @@ describe('date utilities', () => {
     const d = new Date(2026, 0, 31);
     expect(addDays(d, 1).getDate()).toBe(1);
     expect(addDays(d, 1).getMonth()).toBe(1);
-    // Feb has 28 days in 2026 — clamps to 28.
+    // Feb has 28 days in 2026 - clamps to 28.
     expect(addMonths(d, 1).getMonth()).toBe(1);
     expect(addMonths(d, 1).getDate()).toBe(28);
     expect(addYears(d, 1).getFullYear()).toBe(2027);
@@ -67,7 +67,7 @@ describe('date utilities', () => {
     const m = getMonthMatrix(new Date(2026, 3, 1), 1);
     expect(m.length).toBe(6);
     expect(m[0].length).toBe(7);
-    // First day of Apr 2026 is Wednesday — with Mon start, it's column 2.
+    // First day of Apr 2026 is Wednesday - with Mon start, it's column 2.
     expect(m[0][2].getDate()).toBe(1);
     expect(m[0][2].getMonth()).toBe(3);
   });

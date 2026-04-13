@@ -1,5 +1,5 @@
 /**
- * lazy() — code-split components via dynamic import().
+ * lazy() - code-split components via dynamic import().
  *
  * Wraps a dynamic import that resolves to a component module.
  * Returns a component function that renders a fallback while loading,
@@ -15,7 +15,7 @@
  *     error: (err, retry) => <button onClick={retry}>Retry</button>,
  *   });
  *
- *   // In JSX — used like any other component:
+ *   // In JSX - used like any other component:
  *   <Dashboard userId={userId()} />
  */
 
@@ -84,7 +84,7 @@ export function lazy<P extends Record<string, unknown>>(
   }
 
   function LazyComponent(props: P): Node {
-    // Already resolved — render immediately
+    // Already resolved - render immediately
     if (resolved) {
       return _createComponent(resolved, props);
     }

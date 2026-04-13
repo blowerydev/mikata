@@ -1,5 +1,5 @@
 /**
- * derived — alias for computed, named for discoverability
+ * derived - alias for computed, named for discoverability
  * when used with stores.
  */
 

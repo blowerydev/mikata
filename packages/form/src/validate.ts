@@ -9,7 +9,7 @@ export function isThenable(v: unknown): v is PromiseLike<unknown> {
 
 /**
  * Run the full validator spec against the values, returning a flat FormErrors
- * map. Any fields whose validators return a Promise are skipped here — async
+ * map. Any fields whose validators return a Promise are skipped here - async
  * validators are handled per-field via `validateSingleFieldMaybeAsync`.
  */
 export function runValidator<Values>(
@@ -35,7 +35,7 @@ export function runValidator<Values>(
  * runs only that leaf. For function/resolver: runs the whole validator and
  * extracts the single path.
  *
- * Synchronous overload — drops Promise returns (the async pipeline in
+ * Synchronous overload - drops Promise returns (the async pipeline in
  * create-form handles those directly). Use `validateSingleFieldMaybeAsync`
  * when you need to distinguish sync vs async.
  */
@@ -94,7 +94,7 @@ function findValidatorForPath<Values>(
       return cur as (v: unknown, vs: Values, p: string) => unknown;
     }
     // If the CURRENT VALUE at this prefix is an array and the key is numeric,
-    // the spec doesn't descend by index — the whole spec already represents
+    // the spec doesn't descend by index - the whole spec already represents
     // the element shape, so keep `cur` as-is and advance curValue.
     if (Array.isArray(curValue) && /^\d+$/.test(key)) {
       curValue = (curValue as unknown[])[Number(key)];

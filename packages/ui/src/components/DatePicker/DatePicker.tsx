@@ -214,18 +214,22 @@ export function DatePicker(userProps: DatePickerProps = {}): HTMLElement {
     }
   });
 
-  // Body — swaps based on level
+  // Body - swaps based on level
   const body = document.createElement('div');
   body.setAttribute('role', 'grid');
+
+  // Keep button elements stable across selection/hover updates so a real-browser
+  // mouseleave-on-removal doesn't race with the click when selecting the end
+  // date in range mode.
+  let dayButtons: { day: Date; btn: HTMLButtonElement }[] = [];
 
   function renderDayGrid() {
     body.className = mergeClasses('mkt-calendar__grid', classNames?.monthRow);
     body.innerHTML = '';
+    dayButtons = [];
     const matrix = getMonthMatrix(viewDate(), fdow);
     const today = new Date();
     const viewMonth = viewDate();
-    const v = selected();
-    const rangeTuple = type === 'range' && Array.isArray(v) ? (v as [Date | null, Date | null]) : null;
 
     for (const row of matrix) {
       for (const day of row) {
@@ -245,12 +249,6 @@ export function DatePicker(userProps: DatePickerProps = {}): HTMLElement {
         if (!inMonth) btn.dataset.outside = '';
         if (isSameDay(day, today)) btn.dataset.today = '';
         if (day.getDay() === 0 || day.getDay() === 6) btn.dataset.weekend = '';
-        if (isSelectedDay(day)) { btn.dataset.selected = ''; btn.setAttribute('aria-selected', 'true'); }
-        if (isInSelectedRange(day)) btn.dataset.inRange = '';
-        if (rangeTuple) {
-          if (rangeTuple[0] && isSameDay(rangeTuple[0], day)) btn.dataset.rangeStart = '';
-          if (rangeTuple[1] && isSameDay(rangeTuple[1], day)) btn.dataset.rangeEnd = '';
-        }
         if (dateDisabled(day)) btn.disabled = true;
         btn.addEventListener('click', () => pickDay(day));
         if (type === 'range') {
@@ -258,6 +256,29 @@ export function DatePicker(userProps: DatePickerProps = {}): HTMLElement {
           btn.addEventListener('mouseleave', () => setHover(null));
         }
         body.appendChild(btn);
+        dayButtons.push({ day, btn });
+      }
+    }
+  }
+
+  function applyDayState() {
+    const v = selected();
+    const rangeTuple = type === 'range' && Array.isArray(v) ? (v as [Date | null, Date | null]) : null;
+    for (const { day, btn } of dayButtons) {
+      if (isSelectedDay(day)) {
+        btn.dataset.selected = '';
+        btn.setAttribute('aria-selected', 'true');
+      } else {
+        delete btn.dataset.selected;
+        btn.removeAttribute('aria-selected');
+      }
+      if (isInSelectedRange(day)) btn.dataset.inRange = '';
+      else delete btn.dataset.inRange;
+      if (rangeTuple) {
+        if (rangeTuple[0] && isSameDay(rangeTuple[0], day)) btn.dataset.rangeStart = '';
+        else delete btn.dataset.rangeStart;
+        if (rangeTuple[1] && isSameDay(rangeTuple[1], day)) btn.dataset.rangeEnd = '';
+        else delete btn.dataset.rangeEnd;
       }
     }
   }
@@ -309,16 +330,23 @@ export function DatePicker(userProps: DatePickerProps = {}): HTMLElement {
     }
   }
 
+  // Structure: depends on level + viewDate only. Day buttons stay mounted
+  // across selection/hover changes so clicks don't race with DOM removal.
   effect(() => {
-    // Reads: level, viewDate, selected, hover — re-run whenever any changes.
-    selected(); hover();
     const l = level();
+    viewDate();
     if (l === 'day') renderDayGrid();
     else if (l === 'month') renderMonthGrid();
     else renderYearGrid();
   });
 
-  // Keyboard nav (day level only — month/year are arrowless for brevity).
+  // State overlay for the day level - toggles attributes on the stable button set.
+  effect(() => {
+    selected(); hover();
+    if (level() === 'day') applyDayState();
+  });
+
+  // Keyboard nav (day level only - month/year are arrowless for brevity).
   body.addEventListener('keydown', (e: KeyboardEvent) => {
     if (level() !== 'day') return;
     const target = e.target as HTMLElement;

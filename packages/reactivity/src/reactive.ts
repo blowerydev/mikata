@@ -1,5 +1,5 @@
 /**
- * Reactive — deep Proxy wrapper for objects and arrays.
+ * Reactive - deep Proxy wrapper for objects and arrays.
  *
  * Provides transparent read/write tracking at the property level.
  * Nested objects are lazily wrapped in proxies on access.
@@ -131,7 +131,7 @@ function createProxy<T extends object>(target: T): T {
     },
 
     ownKeys(target) {
-      // Track iteration — anyone iterating should re-run when keys change
+      // Track iteration - anyone iterating should re-run when keys change
       trackProperty(target, Symbol.iterator);
       return Reflect.ownKeys(target);
     },

@@ -7,7 +7,7 @@ import { compilePath, matchPath, matchRouteTree, parseSegments } from '../src/ma
 import { normalizeRoutes } from '../src/route-definition';
 import type { NormalizedRoute } from '../src/types';
 
-// @ts-expect-error — define __DEV__ for tests
+// @ts-expect-error - define __DEV__ for tests
 globalThis.__DEV__ = true;
 
 describe('parseSegments()', () => {

@@ -1,5 +1,5 @@
 /**
- * Core router — createRouter() factory.
+ * Core router - createRouter() factory.
  *
  * Owns signal state, orchestrates navigation (guards, history, signals,
  * scroll restoration), and exposes the Router interface.
@@ -308,7 +308,7 @@ export function createRouter(options: RouterOptions): Router {
       scrollManager?.dispose();
     },
 
-    // Internal — used by useGuard
+    // Internal - used by useGuard
     _componentGuards: componentGuards,
     _options: options,
     _normalizedRoutes: normalizedRoutes,

@@ -8,7 +8,7 @@ import { createRouter } from '../src/router';
 import { searchParam } from '../src/search-params';
 import type { Router, MatchedRoute } from '../src/types';
 
-// @ts-expect-error — define __DEV__ for tests
+// @ts-expect-error - define __DEV__ for tests
 globalThis.__DEV__ = true;
 
 describe('createRouter()', () => {

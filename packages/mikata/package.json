@@ -1,7 +1,7 @@
 {
   "name": "mikata",
   "version": "0.1.0",
-  "description": "Reactive UI framework — signals + no-VDOM + JSX, runs components exactly once",
+  "description": "Reactive UI framework - signals + no-VDOM + JSX, runs components exactly once",
   "keywords": [
     "mikata",
     "reactive",

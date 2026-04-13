@@ -5,7 +5,7 @@
   },
   "ui": {
     "title": "UIコンポーネントライブラリ",
-    "description": "@mikata/ui のコンポーネント — テーマ対応、アクセシブル、コンポーザブル。",
+    "description": "@mikata/ui のコンポーネント - テーマ対応、アクセシブル、コンポーザブル。",
     "darkMode": "ダークモード",
     "language": "言語"
   },
@@ -218,7 +218,7 @@
     "kbdK": "K",
     "markedText": "ハイライト",
     "blockquote": "シンプルさは究極の洗練である。",
-    "blockquoteCite": "— レオナルド・ダ・ヴィンチ",
+    "blockquoteCite": "- レオナルド・ダ・ヴィンチ",
     "highlightText": "この長い文章の中から「mikata」という単語を探してハイライトされる様子をご覧ください。",
     "highlightTerm": "mikata",
     "spoilerShow": "もっと見る",
@@ -296,7 +296,7 @@
     "alertTitle": "お知らせ",
     "alertBody": "アイコンはAlert.iconにNodeとして渡せます。",
     "notifTitle": "保存しました",
-    "notifBody": "ここでは内蔵のCheckアイコンを使用しています — 外部依存なし。",
+    "notifBody": "ここでは内蔵のCheckアイコンを使用しています - 外部依存なし。",
     "navigation": "ナビゲーション",
     "navHome": "ホーム",
     "navSettings": "設定",

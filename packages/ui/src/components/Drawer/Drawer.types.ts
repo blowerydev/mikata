@@ -2,9 +2,9 @@ import type { MikataBaseProps, ClassNamesInput } from '../../types';
 
 /**
  * Drawer anchor edge.
- * - `'left' | 'right'` — **physical**: always visual left/right regardless of writing direction.
- * - `'start' | 'end'` — **logical**: flips with the ThemeProvider direction (`ltr` anchors `start` to the left, `rtl` anchors `start` to the right).
- * - `'top' | 'bottom'` — physical vertical edges; unaffected by direction.
+ * - `'left' | 'right'` - **physical**: always visual left/right regardless of writing direction.
+ * - `'start' | 'end'` - **logical**: flips with the ThemeProvider direction (`ltr` anchors `start` to the left, `rtl` anchors `start` to the right).
+ * - `'top' | 'bottom'` - physical vertical edges; unaffected by direction.
  *
  * New code should prefer `'start' | 'end'`.
  */

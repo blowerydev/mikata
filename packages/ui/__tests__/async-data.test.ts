@@ -41,7 +41,7 @@ describe('createAsyncDataController', () => {
       if (q === 'one') {
         firstAbortSignal = signal;
         return new Promise<string[]>((resolve) => {
-          // Never resolves on its own — we'll check it gets aborted.
+          // Never resolves on its own - we'll check it gets aborted.
           signal.addEventListener('abort', () => resolve([]));
         });
       }

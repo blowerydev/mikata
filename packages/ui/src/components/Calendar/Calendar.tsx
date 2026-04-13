@@ -180,11 +180,17 @@ export function Calendar(userProps: CalendarProps = {}): HTMLElement {
     return false;
   };
 
+  // Structure: rebuilt only when the visible month changes. Keeping the button
+  // elements stable across selection/hover updates prevents a real-browser
+  // flicker where rebuilding the grid during hover caused mouseleave-on-removal
+  // to fire and race with clicks (end date appeared unselectable).
+  const dayButtons: { day: Date; btn: HTMLButtonElement }[] = [];
   effect(() => {
     const matrix = getMonthMatrix(viewDate(), fdow);
     const today = new Date();
     const viewMonth = viewDate();
     grid.innerHTML = '';
+    dayButtons.length = 0;
 
     for (const row of matrix) {
       for (const day of row) {
@@ -207,16 +213,6 @@ export function Calendar(userProps: CalendarProps = {}): HTMLElement {
         if (!inMonth) btn.dataset.outside = '';
         if (isSameDay(day, today)) btn.dataset.today = '';
         if (day.getDay() === 0 || day.getDay() === 6) btn.dataset.weekend = '';
-        if (isSelectedCell(day)) {
-          btn.dataset.selected = '';
-          btn.setAttribute('aria-selected', 'true');
-        }
-        if (isInSelectedRange(day)) btn.dataset.inRange = '';
-        if (type === 'range') {
-          const [s, e] = range();
-          if (s && isSameDay(s, day)) btn.dataset.rangeStart = '';
-          if (e && isSameDay(e, day)) btn.dataset.rangeEnd = '';
-        }
         if (dateDisabled(day)) btn.disabled = true;
 
         btn.addEventListener('click', () => handleSelect(day));
@@ -226,6 +222,30 @@ export function Calendar(userProps: CalendarProps = {}): HTMLElement {
         }
 
         grid.appendChild(btn);
+        dayButtons.push({ day, btn });
+      }
+    }
+  });
+
+  // State overlay: toggles selection / range / hover attributes on the stable
+  // button set without replacing any DOM.
+  effect(() => {
+    for (const { day, btn } of dayButtons) {
+      if (isSelectedCell(day)) {
+        btn.dataset.selected = '';
+        btn.setAttribute('aria-selected', 'true');
+      } else {
+        delete btn.dataset.selected;
+        btn.removeAttribute('aria-selected');
+      }
+      if (isInSelectedRange(day)) btn.dataset.inRange = '';
+      else delete btn.dataset.inRange;
+      if (type === 'range') {
+        const [s, e] = range();
+        if (s && isSameDay(s, day)) btn.dataset.rangeStart = '';
+        else delete btn.dataset.rangeStart;
+        if (e && isSameDay(e, day)) btn.dataset.rangeEnd = '';
+        else delete btn.dataset.rangeEnd;
       }
     }
   });

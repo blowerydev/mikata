@@ -1,5 +1,5 @@
 /**
- * Dev-mode error overlay — a fixed-position banner that surfaces uncaught
+ * Dev-mode error overlay - a fixed-position banner that surfaces uncaught
  * errors and unhandled promise rejections from inside the running app. Mirrors
  * the React/Vite DX so failures don't hide silently in the console.
  *

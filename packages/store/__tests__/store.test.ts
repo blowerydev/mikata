@@ -204,7 +204,7 @@ describe('createSelector', () => {
 
   it('prunes stale item signals when the reading scope disposes', () => {
     const [selected, setSelected] = signal(0);
-    // Custom equals that counts how many entries the watcher iterates —
+    // Custom equals that counts how many entries the watcher iterates -
     // this reflects itemSignals.size each time the source changes.
     let equalsCalls = 0;
     const isSelected = createSelector<number, number>(
@@ -256,7 +256,7 @@ describe('createSelector', () => {
     scope1.dispose();
 
     // After scope1 disposes, item 1's entry should be gone. Changing source
-    // shouldn't keep notifying — verify by toggling back and seeing no throw
+    // shouldn't keep notifying - verify by toggling back and seeing no throw
     // and that a new scope observing the same item starts fresh.
     setSelected(1);
     flushSync();

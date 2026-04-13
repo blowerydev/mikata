@@ -6,7 +6,7 @@ import { superstructResolver } from '../src/resolvers/superstruct';
 import { joiResolver } from '../src/resolvers/joi';
 
 // Minimal Zod-shaped mock (we don't depend on the real package for these unit
-// tests — resolvers are ~15 LOC translators and we verify the mapping).
+// tests - resolvers are ~15 LOC translators and we verify the mapping).
 function mockZod() {
   return {
     safeParse(value: unknown) {

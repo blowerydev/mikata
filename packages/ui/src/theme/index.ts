@@ -18,7 +18,7 @@ const STRUCTURED_KEYS = new Set([
  * Create a custom theme.
  *
  * Accepts the structured `MikataTheme` shape, or a flat `{ 'token-name': value }`
- * record for back-compat — flat keys are routed into `theme.other` so they still
+ * record for back-compat - flat keys are routed into `theme.other` so they still
  * override base tokens at the same precedence.
  */
 export function createTheme(

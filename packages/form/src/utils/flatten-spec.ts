@@ -4,7 +4,7 @@ import { getPath } from './get-path';
 /**
  * Walk a nested validator object against the values tree and run every leaf
  * validator, producing a flat FormErrors map. Array leaves in the values are
- * iterated — the spec for an array field is applied to every element.
+ * iterated - the spec for an array field is applied to every element.
  */
 export function runValidatorObject<Values>(
   spec: ValidatorObject<Values>,
@@ -42,7 +42,7 @@ function walk<Values>(
   }
 
   if (node == null || typeof node !== 'object') {
-    // Spec expects nested structure but value is primitive/undefined — skip.
+    // Spec expects nested structure but value is primitive/undefined - skip.
     return;
   }
 

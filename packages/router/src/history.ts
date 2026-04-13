@@ -1,5 +1,5 @@
 /**
- * History adapters — thin wrappers around the browser History API,
+ * History adapters - thin wrappers around the browser History API,
  * hash-based routing, and in-memory routing (for testing/SSR).
  */
 

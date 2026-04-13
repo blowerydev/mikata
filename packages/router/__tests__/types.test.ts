@@ -1,6 +1,6 @@
 /**
  * Type-level tests for Phase A router additions (ExtractParams, PathParams,
- * InferSearchSchema, typed navigate). Runs under `vitest` via expectTypeOf —
+ * InferSearchSchema, typed navigate). Runs under `vitest` via expectTypeOf -
  * no runtime assertions, but the file must type-check to pass.
  */
 
@@ -65,7 +65,7 @@ describe('InferSearchSchema<T>', () => {
 describe('NavigateTarget<P> typing', () => {
   it('requires the declared params when path is a literal', () => {
     type T = NavigateTarget<'/users/:id'>;
-    // Valid — params shape matches path.
+    // Valid - params shape matches path.
     const ok: T = { path: '/users/:id', params: { id: 1 } };
     expectTypeOf(ok).toMatchTypeOf<T>();
 

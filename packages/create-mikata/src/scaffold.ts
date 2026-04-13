@@ -1,5 +1,5 @@
 /**
- * Scaffold engine — copy base template, overlay selected features, apply
+ * Scaffold engine - copy base template, overlay selected features, apply
  * conditional blocks and package.json merges, write to disk.
  */
 
@@ -106,9 +106,9 @@ function writeProject(cfg: ResolvedConfig, targetDir: string): void {
   const selected = new Set<Feature>(cfg.features);
   const unknownTags = new Set<string>();
   for (const [relPath, content] of files) {
-    // feature.json files only carry package.json patches — not project output.
+    // feature.json files only carry package.json patches - not project output.
     if (relPath === 'feature.json') continue;
-    // _package.json is the merge source — the final package.json is written below.
+    // _package.json is the merge source - the final package.json is written below.
     if (relPath === '_package.json') continue;
 
     const processed = applyConditionalBlocks(content, selected, unknownTags);
@@ -121,7 +121,7 @@ function writeProject(cfg: ResolvedConfig, targetDir: string): void {
   if (unknownTags.size > 0) {
     process.stderr.write(
       pc.yellow(
-        `  ! Unknown @if tags in templates: ${[...unknownTags].join(', ')} — blocks were stripped.\n`
+        `  ! Unknown @if tags in templates: ${[...unknownTags].join(', ')} - blocks were stripped.\n`
       )
     );
   }

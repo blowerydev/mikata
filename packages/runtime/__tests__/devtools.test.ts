@@ -8,7 +8,7 @@ import { _createComponent } from '../src/component';
 import { installDevTools } from '../src/devtools';
 import { signal, flushSync, _resetDebugRegistry } from '@mikata/reactivity';
 
-// @ts-expect-error — define __DEV__ for tests
+// @ts-expect-error - define __DEV__ for tests
 globalThis.__DEV__ = true;
 
 describe('DevTools', () => {

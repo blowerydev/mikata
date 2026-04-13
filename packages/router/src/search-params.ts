@@ -78,7 +78,7 @@ export const searchParam = {
   },
 
   /**
-   * Enum search param — validates against allowed values.
+   * Enum search param - validates against allowed values.
    * @param values - array of allowed values
    * @param defaultValue - value when param is missing or invalid
    */
