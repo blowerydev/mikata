@@ -10,19 +10,9 @@ import mri from 'mri';
 import pc from 'picocolors';
 import { scaffold } from './scaffold.js';
 import { runPrompts } from './prompts.js';
+import { FEATURES } from './types.js';
 import type { Feature, PackageManager, ResolvedConfig } from './types.js';
-
-const FEATURES: Feature[] = [
-  'router',
-  'ui',
-  'icons',
-  'form',
-  'i18n',
-  'store',
-  'testing',
-  'eslint',
-  'tailwind',
-];
+import { isValidProjectName, PROJECT_NAME_HINT } from './validate.js';
 
 const PRESETS: Record<string, Feature[]> = {
   minimal: [],
@@ -72,6 +62,12 @@ async function main(): Promise<void> {
 
   const cwdName = args._[0] as string | undefined;
   const preset = args.template as string | undefined;
+
+  if (cwdName !== undefined && !isValidProjectName(cwdName)) {
+    process.stderr.write(pc.red(`✗ Invalid project name "${cwdName}". ${PROJECT_NAME_HINT}\n`));
+    process.exitCode = 1;
+    return;
+  }
 
   // Explicit --feature / --no-feature flags beat the preset; everything else
   // falls through to the preset's defaults, then to the interactive prompt.

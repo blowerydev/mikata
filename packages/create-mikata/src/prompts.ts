@@ -1,6 +1,7 @@
 import prompts from 'prompts';
 import pc from 'picocolors';
 import type { Feature, PackageManager, ResolvedConfig } from './types.js';
+import { isValidProjectName, PROJECT_NAME_HINT } from './validate.js';
 
 interface PromptInput {
   name?: string;
@@ -30,10 +31,7 @@ export async function runPrompts(input: PromptInput): Promise<ResolvedConfig> {
         name: 'name',
         message: 'Project name',
         initial: 'mikata-app',
-        validate: (v: string) =>
-          /^[a-z0-9][a-z0-9-]*$/.test(v)
-            ? true
-            : 'Use lowercase letters, digits, and hyphens (must start with letter/digit).',
+        validate: (v: string) => (isValidProjectName(v) ? true : PROJECT_NAME_HINT),
       },
       {
         type: 'multiselect',

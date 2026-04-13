@@ -1,13 +1,16 @@
-export type Feature =
-  | 'router'
-  | 'ui'
-  | 'icons'
-  | 'form'
-  | 'i18n'
-  | 'store'
-  | 'testing'
-  | 'eslint'
-  | 'tailwind';
+export const FEATURES = [
+  'router',
+  'ui',
+  'icons',
+  'form',
+  'i18n',
+  'store',
+  'testing',
+  'eslint',
+  'tailwind',
+] as const;
+
+export type Feature = (typeof FEATURES)[number];
 
 export type PackageManager = 'pnpm' | 'npm' | 'yarn' | 'bun';
 

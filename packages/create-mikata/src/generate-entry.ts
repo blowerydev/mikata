@@ -1,14 +1,21 @@
-/**
- * Generate `src/main.tsx` and `src/App.tsx` based on the selected feature
- * set. Doing this programmatically is simpler than expressing the
- * combinatorial matrix in conditional template blocks.
- *
- * - `main.tsx` always mounts `<Root />`, which wires whichever providers
- *   (ThemeProvider, i18n) are selected and renders `<App />`.
- * - `App.tsx` shows a simple demo that opts into UI / icons / store / form.
- *   When router is selected, `App.tsx` becomes the shell with nav +
- *   `routeOutlet()`, and each route lives in `src/pages/`.
- */
+// Generate src/main.tsx, src/App.tsx, src/pages/Home.tsx, and src/App.test.tsx
+// based on the selected feature set. Programmatic generation avoids the
+// combinatorial matrix in conditional template blocks — especially inside
+// JSX where /* @if */ markers would leave orphan braces.
+//
+// main.tsx mounts Root, which wires whichever providers (ThemeProvider, i18n,
+// router) are selected and renders App.
+//
+// App.tsx shows a simple demo that opts into ui / icons / store / form. When
+// router is selected, App.tsx becomes the shell with nav + routeOutlet(), and
+// routes live in src/pages/.
+//
+// pages/Home.tsx is generated only when router is selected; it mirrors the
+// simple-app demo content (form, i18n, icons, store) so those features aren't
+// orphaned when the router shell replaces the App demo.
+//
+// App.test.tsx is generated only when testing is selected, and it
+// conditionally wires provideRouter so rendering App doesn't blow up.
 
 import type { Feature } from './types.js';
 
@@ -48,6 +55,61 @@ export function generateAppTsx(features: Set<Feature>): string {
   return generateSimpleApp(features);
 }
 
+/**
+ * Home page when router is selected — mirrors the simple-app demo so
+ * form/i18n/icons/store aren't orphaned by the router shell.
+ */
+export function generateRouterHome(features: Set<Feature>): string {
+  return generateDemoModule(features, { exportName: 'Home', contactFormPath: '../ContactForm' });
+}
+
+export function generateRouterAbout(): string {
+  return (
+    `export function About() {\n` +
+    `  return (\n` +
+    `    <section>\n` +
+    `      <h1>About</h1>\n` +
+    `      <p>Mikata is a signals-first framework with no virtual DOM.</p>\n` +
+    `    </section>\n` +
+    `  );\n` +
+    `}\n`
+  );
+}
+
+export function generateAppTest(features: Set<Feature>): string {
+  const hasRouter = features.has('router');
+  const hasUi = features.has('ui');
+
+  const imports: string[] = [
+    `import { describe, it, expect } from 'vitest';`,
+    `import { renderComponent, flushSync } from '@mikata/testing';`,
+  ];
+  if (hasUi) imports.push(`import { ThemeProvider } from '@mikata/ui';`);
+  if (hasRouter) imports.push(`import { provideRouter } from 'mikata';`, `import { router } from './router';`);
+  imports.push(`import { App } from './App';`);
+
+  const setup: string[] = [];
+  if (hasRouter) setup.push(`    provideRouter(router);`);
+
+  const rendered = hasUi
+    ? `renderComponent(() => <ThemeProvider><App /></ThemeProvider>, {})`
+    : `renderComponent(App, {})`;
+
+  return (
+    imports.join('\n') +
+    '\n\n' +
+    `describe('App', () => {\n` +
+    `  it('renders without crashing', () => {\n` +
+    (setup.length ? setup.join('\n') + '\n' : '') +
+    `    const r = ${rendered};\n` +
+    `    flushSync();\n` +
+    `    expect(r.container.textContent?.length ?? 0).toBeGreaterThan(0);\n` +
+    `    r.dispose();\n` +
+    `  });\n` +
+    `});\n`
+  );
+}
+
 function generateRouterShell(features: Set<Feature>): string {
   const hasUi = features.has('ui');
   const imports: string[] = [`import { routeOutlet, Link } from 'mikata';`];
@@ -72,6 +134,18 @@ function generateRouterShell(features: Set<Feature>): string {
 }
 
 function generateSimpleApp(features: Set<Feature>): string {
+  return generateDemoModule(features, { exportName: 'App', contactFormPath: './ContactForm' });
+}
+
+/**
+ * Shared demo content used by the non-router App.tsx and by the router
+ * Home.tsx. The only differences are the exported name and the relative
+ * path used to import ContactForm.
+ */
+function generateDemoModule(
+  features: Set<Feature>,
+  opts: { exportName: string; contactFormPath: string }
+): string {
   const hasUi = features.has('ui');
   const hasIcons = features.has('icons');
   const hasStore = features.has('store');
@@ -82,7 +156,7 @@ function generateSimpleApp(features: Set<Feature>): string {
   if (hasUi) imports.push(`import { Button, Card, Group, Stack, Text, Title } from '@mikata/ui';`);
   if (hasIcons) imports.push(`import { IconSparkles } from '@mikata/icons';`);
   if (hasStore) imports.push(`import { createQuery } from 'mikata';`);
-  if (hasForm) imports.push(`import { ContactForm } from './ContactForm';`);
+  if (hasForm) imports.push(`import { ContactForm } from '${opts.contactFormPath}';`);
   if (hasI18n) imports.push(`import { useI18n } from 'mikata';`);
 
   const body: string[] = [];
@@ -134,7 +208,7 @@ function generateSimpleApp(features: Set<Feature>): string {
   return (
     imports.join('\n') +
     '\n\n' +
-    'export function App() {\n' +
+    `export function ${opts.exportName}() {\n` +
     body.join('\n') +
     '\n' +
     '  return (\n' +
