@@ -1,0 +1,19 @@
+.mkt-date-input {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+}
+
+.mkt-date-input__dropdown {
+  position: absolute;
+  z-index: var(--mkt-z-popover);
+  margin-top: var(--mkt-space-1);
+  inset-inline-start: 0;
+  background: var(--mkt-color-bg);
+  border: 1px solid var(--mkt-color-border);
+  border-radius: var(--mkt-radius-md);
+  box-shadow: var(--mkt-shadow-md);
+  padding: var(--mkt-space-3);
+}
+
+.mkt-date-input__dropdown[hidden] { display: none; }

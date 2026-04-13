@@ -360,6 +360,10 @@ function App() {
 
 **Components:** Button, ActionIcon, CloseButton, ButtonGroup, TextInput, Textarea, PasswordInput, NumberInput, Checkbox, Radio, Switch, Select, Autocomplete, MultiSelect, Slider, Stack, Group, Grid, Container, Divider, Space, Text, Title, Anchor, Alert, Badge, Loader, Progress, Skeleton, Modal, Drawer, Tooltip, Popover.
 
+**Dates & time:** `Calendar`, `DatePicker` (day/month/year drill-down, single/multiple/range modes), `MonthPicker`, `YearPicker`, `DateInput` (typeable text field + popover), `DatePickerInput`/`MonthPickerInput`/`YearPickerInput` (button + dropdown), and `TimeInput` (native `<input type="time">` with `withSeconds`). Pure `Intl` — no `dayjs` / `date-fns` / `luxon` dependency. `minDate`/`maxDate`/`excludeDate` constraints, `locale` + `firstDayOfWeek` respected, keyboard nav (arrows, PageUp/PageDown, Home/End), RTL-aware.
+
+**Virtualization:** `VirtualList` renders only visible rows for arbitrarily large datasets. `createVirtualizer({ count, itemSize, scrollElement, overscan, orientation })` exposes `virtualItems()`, `totalSize()`, `scrollToIndex()`, `measure()` for custom surfaces. Fixed or per-index variable sizes; horizontal or vertical. Binary-search visible-range computation; `ResizeObserver` keeps viewport in sync.
+
 **Async data:** `Select`, `Autocomplete`, and `MultiSelect` accept a fetcher in place of a static `data` array — e.g. `data={(query, signal) => fetch(...).then(r => r.json())}`. Debouncing (`debounceMs`, default 300ms), AbortController-based cancellation of superseded requests, and a loading indicator are built in.
 
 **Theming:** Mantine-parity CSS-variable system. Zero per-render JS cost — the cascade does the work, theme changes only touch `style.setProperty` on a wrapper element.

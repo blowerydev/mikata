@@ -142,6 +142,41 @@ export { Fieldset } from './components/Fieldset';
 export { FileInput } from './components/FileInput';
 export { FileButton } from './components/FileButton';
 
+// Dates
+export { Calendar } from './components/Calendar';
+export type { CalendarProps, CalendarParts, CalendarLevel } from './components/Calendar';
+export { MonthPicker } from './components/MonthPicker';
+export type { MonthPickerProps } from './components/MonthPicker';
+export { YearPicker } from './components/YearPicker';
+export type { YearPickerProps } from './components/YearPicker';
+export { DatePicker } from './components/DatePicker';
+export type { DatePickerProps } from './components/DatePicker';
+export { DateInput } from './components/DateInput';
+export type { DateInputProps, DateInputParts } from './components/DateInput';
+export {
+  DatePickerInput,
+  MonthPickerInput,
+  YearPickerInput,
+} from './components/DatePickerInput';
+export type {
+  DatePickerInputProps,
+  MonthPickerInputProps,
+  YearPickerInputProps,
+  PickerInputParts,
+} from './components/DatePickerInput';
+export { TimeInput } from './components/TimeInput';
+export type { TimeInputProps, TimeInputParts } from './components/TimeInput';
+
+// Virtualization
+export { VirtualList, createVirtualizer } from './components/VirtualList';
+export type {
+  VirtualListProps,
+  VirtualListParts,
+  VirtualizerOptions,
+  VirtualItem,
+  Virtualizer,
+} from './components/VirtualList';
+
 // Data Display
 export { Card } from './components/Card';
 export { Table } from './components/Table';

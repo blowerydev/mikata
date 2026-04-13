@@ -1,0 +1,27 @@
+.mkt-virtual-list {
+  position: relative;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  contain: strict;
+}
+
+.mkt-virtual-list__inner {
+  position: relative;
+  width: 100%;
+}
+
+.mkt-virtual-list[data-orientation="horizontal"] {
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.mkt-virtual-list__item {
+  position: absolute;
+  inset-inline-start: 0;
+  top: 0;
+}
+
+.mkt-virtual-list[data-orientation="horizontal"] .mkt-virtual-list__item {
+  top: 0;
+  height: 100%;
+}

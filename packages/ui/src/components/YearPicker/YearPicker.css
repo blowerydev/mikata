@@ -1,0 +1,41 @@
+.mkt-year-picker__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--mkt-space-1);
+}
+
+.mkt-year-picker__year {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--mkt-space-2) var(--mkt-space-3);
+  border: 1px solid transparent;
+  background: transparent;
+  border-radius: var(--mkt-radius-sm);
+  color: inherit;
+  font-family: inherit;
+  font-size: var(--mkt-font-size-sm);
+  cursor: pointer;
+}
+
+.mkt-year-picker__year:hover:not(:disabled):not([data-selected]) {
+  background: var(--mkt-color-gray-0);
+}
+
+[data-mkt-color-scheme="dark"] .mkt-year-picker__year:hover:not(:disabled):not([data-selected]) {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.mkt-year-picker__year[data-selected] {
+  background: var(--mkt-color-primary-filled);
+  color: #fff;
+}
+
+.mkt-year-picker__year[data-outside] { color: var(--mkt-color-text-dimmed); opacity: 0.55; }
+
+.mkt-year-picker__year:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.mkt-year-picker__year:focus-visible {
+  outline: 2px solid var(--mkt-color-focus-ring);
+  outline-offset: 1px;
+}

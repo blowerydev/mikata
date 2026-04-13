@@ -119,6 +119,16 @@ import {
   Overlay,
   RangeSlider,
   ActionIcon,
+  Calendar,
+  DatePicker,
+  MonthPicker,
+  YearPicker,
+  DateInput,
+  DatePickerInput,
+  MonthPickerInput,
+  YearPickerInput,
+  TimeInput,
+  VirtualList,
 } from '@mikata/ui';
 import enMessages from './locales/en.json';
 import jaMessages from './locales/ja.json';
@@ -1645,6 +1655,155 @@ function FormPackageContent() {
 }
 
 // ============================================================
+// DatesDemo — Calendar, DatePicker, pickers, TimeInput
+// ============================================================
+function DatesDemo() {
+  const wrapper = _createElement('div');
+  _setProp(wrapper, 'style', {
+    background: 'var(--mkt-color-bg)',
+    color: 'var(--mkt-color-text)',
+    padding: '1.5rem',
+    borderRadius: '8px',
+    marginTop: '1.5rem',
+    transition: 'background 150ms, color 150ms',
+  });
+  wrapper.appendChild(_createComponent(DatesContent, {}));
+  return wrapper;
+}
+
+function DatesContent() {
+  const el = _createElement('div');
+
+  el.appendChild(Title({ order: 2, children: 'Dates & Time' }));
+  el.appendChild(Text({ size: 'sm', children: 'Calendar, DatePicker, Month/YearPicker, DateInput, TimeInput — all powered by Intl with zero date-library deps.' }));
+
+  // ─── Inline Calendar ──────────────────────────
+  el.appendChild(Title({ order: 3, children: 'Calendar (inline)' }));
+  el.appendChild(SimpleGrid({ cols: 3, spacing: 'md', children: [
+    Stack({ gap: 'xs', children: [
+      Text({ size: 'sm', fw: 500, children: 'Default' }),
+      Calendar({ defaultValue: new Date() }),
+    ] }),
+    Stack({ gap: 'xs', children: [
+      Text({ size: 'sm', fw: 500, children: 'Multiple' }),
+      Calendar({ type: 'multiple' }),
+    ] }),
+    Stack({ gap: 'xs', children: [
+      Text({ size: 'sm', fw: 500, children: 'Range' }),
+      Calendar({ type: 'range' }),
+    ] }),
+  ] }));
+
+  // ─── DatePicker ─────────────────────────────
+  el.appendChild(Title({ order: 3, children: 'DatePicker (drills day → month → year)' }));
+  el.appendChild(Group({ gap: 'md', align: 'flex-start', children: [
+    DatePicker({ defaultValue: new Date() }),
+    DatePicker({ type: 'range' }),
+  ] }));
+
+  // ─── Month / Year pickers ──────────────────
+  el.appendChild(Title({ order: 3, children: 'MonthPicker / YearPicker' }));
+  el.appendChild(Group({ gap: 'md', align: 'flex-start', children: [
+    MonthPicker({ defaultValue: new Date() }),
+    YearPicker({ defaultValue: new Date() }),
+  ] }));
+
+  // ─── Inputs ────────────────────────────────
+  el.appendChild(Title({ order: 3, children: 'DateInput / DatePickerInput' }));
+  el.appendChild(SimpleGrid({ cols: 2, spacing: 'md', children: [
+    DateInput({
+      label: 'DateInput (typeable)',
+      placeholder: 'YYYY-MM-DD',
+      defaultValue: new Date(),
+    }),
+    DatePickerInput({
+      label: 'DatePickerInput',
+      placeholder: 'Pick a date',
+      defaultValue: new Date(),
+    }),
+    DatePickerInput({
+      label: 'Range',
+      type: 'range',
+      placeholder: 'Pick a range',
+    }),
+    MonthPickerInput({
+      label: 'MonthPickerInput',
+      placeholder: 'Pick a month',
+    }),
+    YearPickerInput({
+      label: 'YearPickerInput',
+      placeholder: 'Pick a year',
+    }),
+    TimeInput({
+      label: 'TimeInput',
+      defaultValue: '14:30',
+      withSeconds: false,
+    }),
+  ] }));
+
+  el.appendChild(Divider({}));
+
+  // ─── Virtualization ────────────────────────
+  el.appendChild(Title({ order: 2, children: 'Virtualization' }));
+  el.appendChild(Text({ size: 'sm', children: 'VirtualList renders only the items in view. Scroll the list below — only ~12 nodes exist in the DOM at any time despite 10,000 items.' }));
+
+  const bigData = Array.from({ length: 10000 }, (_, i) => ({
+    id: i,
+    name: `Row ${i + 1}`,
+    detail: `Value ${(i * 7919) % 1000}`,
+  }));
+
+  el.appendChild(VirtualList({
+    data: bigData,
+    itemSize: 44,
+    size: 320,
+    renderItem: (item) => {
+      const row = _createElement('div');
+      _setProp(row, 'style', {
+        display: 'flex',
+        alignItems: 'center',
+        gap: '0.75rem',
+        padding: '0 1rem',
+        height: '44px',
+        borderBottom: '1px solid var(--mkt-color-border)',
+      });
+      const left = _createElement('div');
+      _setProp(left, 'style', { fontWeight: '500', flex: '1' });
+      left.textContent = item.name;
+      const right = _createElement('div');
+      _setProp(right, 'style', { opacity: '0.7', fontSize: '0.875rem' });
+      right.textContent = item.detail;
+      row.appendChild(left);
+      row.appendChild(right);
+      return row;
+    },
+  }));
+
+  // Variable-size variant
+  el.appendChild(Title({ order: 3, children: 'Variable-size items' }));
+  el.appendChild(VirtualList({
+    data: Array.from({ length: 500 }, (_, i) => i),
+    itemSize: (i) => 30 + (i % 5) * 14,
+    size: 240,
+    renderItem: (n, i) => {
+      const row = _createElement('div');
+      _setProp(row, 'style', {
+        display: 'flex',
+        alignItems: 'center',
+        padding: '0 1rem',
+        height: '100%',
+        borderBottom: '1px solid var(--mkt-color-border)',
+        background: i % 2 ? 'var(--mkt-color-bg-subtle)' : 'transparent',
+      });
+      row.textContent = `Item ${n} (size ${30 + (i % 5) * 14}px)`;
+      return row;
+    },
+  }));
+
+  return el;
+}
+
+// ============================================================
 // IconsDemo — @mikata/icons + Lucide interop
 // ============================================================
 function IconsDemo() {
@@ -1866,6 +2025,7 @@ function App() {
   theme.appendChild(_createComponent(UIComponentsDemo, {}));
   theme.appendChild(_createComponent(ExtrasDemo, {}));
   theme.appendChild(_createComponent(FormPackageDemo, {}));
+  theme.appendChild(_createComponent(DatesDemo, {}));
   theme.appendChild(_createComponent(IconsDemo, {}));
   theme.appendChild(_createComponent(ThemingDemo, {}));
   el.appendChild(theme);
