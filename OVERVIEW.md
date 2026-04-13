@@ -315,6 +315,7 @@ transitionGroup(
 - **Lazy loading** -- `lazy(() => import('./Page'))` with fallback and error UI, plus `preload()` for prefetching
 - **Portals** -- `portal(() => <Modal />, document.body)` renders into a different DOM subtree
 - **Error boundaries** -- `<ErrorBoundary fallback={(err, reset) => ...}>` catches render errors
+- **Suspense** -- `<Suspense fallback={<Loader />}>{() => <Page />}</Suspense>` shows the fallback until every `createQuery({ suspend: true, ... })` inside the subtree resolves once. Sticky: later refetches don't re-trigger the fallback (use `isFetching` for per-query spinners). Children are a factory so queries register with the nearest boundary; package wiring uses `Symbol.for` so `@mikata/store` doesn't depend on `@mikata/runtime`.
 - **Form bindings** -- `model(getter, setter)` for two-way binding on inputs, checkboxes, selects
 - **Refs** -- `createRef()` captures DOM elements, works as both object and callback ref
 - **DevTools** -- Floating overlay + `window.__MIKATA_DEVTOOLS__` console API. Every signal/computed/effect is attributed to its owning component (`in <Button />`), with update counts, time-since-last-change, and effect run timings (last + cumulative). The panel has a search filter, click-to-expand rows (sources, subscribers, value, creation stack), a component tree, and an element picker (hover to highlight, click to jump to the owning component). Top-5 slowest effects and most-updated signals surface in the Overview tab. Toggle with `Ctrl+Shift+M`.
@@ -421,6 +422,8 @@ const form = createForm({
 ```
 
 **Features:** `getInputProps` (spread-compatible), path-based access (`items.0.name`), array helpers (`insertListItem`, `removeListItem`, `reorderListItem`, `replaceListItem`), dirty/touched tracking, reset, transform, watch. Schema resolvers for **zod, yup, valibot, superstruct, joi** as sub-path imports so tree-shaking keeps unused ones out.
+
+**Dynamic lists:** `form.fieldArray<T>(path)` returns a handle with reactive `items()`, `length()`, `keys()`, and `entries()` (for `each(...)`), plus mutators `append`, `prepend`, `insert`, `remove`, `move`, `swap`, `replace`, `clear`. Every item gets a stable key that travels with it through reorders — iterate with `each(() => arr.entries(), (e) => ..., (e) => e.key)` so focused inputs survive inserts, removes, and reorders. Keys reconcile automatically if the array is replaced outside the handle (`setFieldValue`, `reset`). Works on the root form or any `scope()`-returned sub-form.
 
 **Scoped sub-forms:** `form.scope('addresses.0')` returns a handle whose `getInputProps`, `setFieldValue`, `getValue`, `errors`, and array helpers are rooted at the given path — nested forms without string-concatenating paths. `.scope(sub)` composes further.
 

@@ -39,6 +39,10 @@ export type { Context } from './context';
 // Error boundary
 export { ErrorBoundary } from './error-boundary';
 
+// Suspense
+export { Suspense, SUSPENSE_CONTEXT_KEY } from './suspense';
+export type { SuspenseProps, SuspenseBoundary } from './suspense';
+
 // Lazy loading
 export { lazy } from './lazy';
 export type { LazyOptions } from './lazy';

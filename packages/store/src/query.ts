@@ -11,10 +11,32 @@ import {
   effect,
   untrack,
   onCleanup,
+  getCurrentScope,
   type ReadSignal,
 } from '@mikata/reactivity';
 
 declare const __DEV__: boolean;
+
+/**
+ * Wire-compatible with `@mikata/runtime`'s `SUSPENSE_CONTEXT_KEY`. Uses
+ * `Symbol.for` so both packages resolve to the same key without @mikata/store
+ * having to depend on @mikata/runtime.
+ */
+const SUSPENSE_CONTEXT_KEY: symbol = Symbol.for('mikata:suspense-boundary');
+
+interface SuspenseBoundaryLike {
+  register(isLoading: ReadSignal<boolean>): void;
+}
+
+function findSuspenseBoundary(): SuspenseBoundaryLike | null {
+  let scope = getCurrentScope();
+  while (scope) {
+    const entry = scope.contexts.get(SUSPENSE_CONTEXT_KEY);
+    if (entry) return entry as SuspenseBoundaryLike;
+    scope = scope.parent;
+  }
+  return null;
+}
 
 export interface QueryOptions<T, K = unknown> {
   /** Reactive cache key — re-fetches when key changes */
@@ -31,6 +53,13 @@ export interface QueryOptions<T, K = unknown> {
   enabled?: () => boolean;
   /** Initial data to use before first fetch */
   initialData?: T;
+  /**
+   * When true, register with the nearest `<Suspense>` boundary ancestor so
+   * the boundary shows its fallback until this query resolves once. Later
+   * refetches do not re-trigger the fallback — use `isFetching` for
+   * per-query spinners instead.
+   */
+  suspend?: boolean;
 }
 
 export interface QueryResult<T> {
@@ -148,12 +177,27 @@ export function createQuery<T, K = unknown>(
     abortController?.abort();
   });
 
+  const isLoading = computed(() => status() === 'loading');
+
+  if (options.suspend) {
+    const boundary = findSuspenseBoundary();
+    // Report "loading" until the first fetch resolves (success or error).
+    // Once status leaves 'idle'/'loading', the query counts as resolved for
+    // Suspense purposes — an error should surface through ErrorBoundary /
+    // a local error view, not keep the fallback shown forever.
+    const suspending = computed(() => {
+      const s = status();
+      return s === 'idle' || s === 'loading';
+    });
+    boundary?.register(suspending);
+  }
+
   return {
     data,
     error,
     status,
     isFetching,
-    isLoading: computed(() => status() === 'loading'),
+    isLoading,
     isError: computed(() => status() === 'error'),
     isSuccess: computed(() => status() === 'success'),
     refetch: () => execute(untrack(options.key)),

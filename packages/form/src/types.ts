@@ -97,6 +97,50 @@ export interface InputProps {
 }
 
 /**
+ * One item in a field array's reactive entries list. `key` is stable across
+ * inserts/removes/reorders driven through the handle — use it as the iteration
+ * key so focused inputs survive list mutations. `path` is the fully-qualified
+ * dotted path to this item on the parent form.
+ */
+export interface FieldArrayEntry<T> {
+  key: string;
+  path: string;
+  value: T;
+  index: number;
+}
+
+/**
+ * Handle returned by `form.fieldArray(path)`. All reads (`items`, `entries`,
+ * `keys`, `length`) are reactive — subscribe in an `effect` / `each` and they
+ * re-run when the underlying array changes. Mutators update the form's values
+ * and the internal key array atomically.
+ */
+export interface FieldArrayHandle<T = unknown> {
+  /** Fully-qualified dotted path this handle targets. */
+  readonly path: string;
+  /** Reactive length of the array. */
+  length: () => number;
+  /** Reactive values of the array. */
+  items: () => T[];
+  /** Reactive stable keys aligned with `items()`. */
+  keys: () => string[];
+  /** Reactive `{ key, path, value, index }` entries — convenient for `each()`. */
+  entries: () => FieldArrayEntry<T>[];
+  append: (item: T) => void;
+  prepend: (item: T) => void;
+  insert: (index: number, item: T) => void;
+  remove: (index: number) => void;
+  /** Move an item from `from` to `to`, shifting others. */
+  move: (from: number, to: number) => void;
+  /** Swap two items at `a` and `b`. Per-index errors are not migrated. */
+  swap: (a: number, b: number) => void;
+  /** Replace the item at `index`. Emits a new key for it. */
+  replace: (index: number, item: T) => void;
+  /** Remove every item. */
+  clear: () => void;
+}
+
+/**
  * A scoped view of a form, rooted at a dotted path. Every method appends the
  * scope's prefix before delegating to the underlying form, so
  * `form.scope('addresses.0').getInputProps('street')` writes to
@@ -116,6 +160,7 @@ export interface FormScope {
   removeListItem: (path: string, index: number) => void;
   reorderListItem: (path: string, range: { from: number; to: number }) => void;
   replaceListItem: (path: string, index: number, item: unknown) => void;
+  fieldArray: <T = unknown>(path: string) => FieldArrayHandle<T>;
   scope: (subPath: string) => FormScope;
 }
 
@@ -162,6 +207,12 @@ export interface MikataForm<Values> {
   removeListItem: (path: string, index: number) => void;
   reorderListItem: (path: string, range: { from: number; to: number }) => void;
   replaceListItem: (path: string, index: number, item: unknown) => void;
+  /**
+   * Bind a dynamic list at `path` to a stable-key handle. See
+   * `FieldArrayHandle` — use `entries()` inside `each(...)` and pass `key` as
+   * the iteration key so focused inputs survive inserts/removes/reorders.
+   */
+  fieldArray: <T = unknown>(path: string) => FieldArrayHandle<T>;
 
   // Submit
   onSubmit: (

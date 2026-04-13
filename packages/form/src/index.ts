@@ -1,4 +1,5 @@
 export { createForm } from './create-form';
+export { createFieldArray } from './field-array';
 export type {
   FormOptions,
   FormError,
@@ -12,6 +13,8 @@ export type {
   InputProps,
   MikataForm,
   FormScope,
+  FieldArrayHandle,
+  FieldArrayEntry,
 } from './types';
 
 // Utilities (exported for advanced users / custom resolvers)

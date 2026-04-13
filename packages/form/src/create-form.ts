@@ -1,5 +1,6 @@
 import { signal, computed, batch, untrack, effect } from '@mikata/reactivity';
 import type {
+  FieldArrayHandle,
   FormError,
   FormErrors,
   FormOptions,
@@ -8,6 +9,7 @@ import type {
   InputProps,
   MikataForm,
 } from './types';
+import { createFieldArray } from './field-array';
 import { deepClone } from './utils/deep-clone';
 import { deepEqual } from './utils/deep-equal';
 import { getPath } from './utils/get-path';
@@ -436,6 +438,8 @@ export function createForm<Values extends object>(
       removeListItem: (path, index) => removeListItem(join(path), index),
       reorderListItem: (path, range) => reorderListItem(join(path), range),
       replaceListItem: (path, index, item) => replaceListItem(join(path), index, item),
+      fieldArray: <T = unknown>(path: string): FieldArrayHandle<T> =>
+        createFieldArray<T, Values>(form, join(path)),
       scope: (subPath) => scope(scopePath ? `${scopePath}.${subPath}` : subPath),
     };
   }
@@ -472,6 +476,8 @@ export function createForm<Values extends object>(
     removeListItem,
     reorderListItem,
     replaceListItem,
+    fieldArray: <T = unknown>(path: string): FieldArrayHandle<T> =>
+      createFieldArray<T, Values>(form, path),
     onSubmit,
     onReset,
     getTransformedValues,
