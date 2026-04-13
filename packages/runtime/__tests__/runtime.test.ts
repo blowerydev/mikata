@@ -461,6 +461,37 @@ describe('context', () => {
     expect(injectedValue).toBe('dark');
   });
 
+  it('provider with lazy children getter resolves context for descendants', () => {
+    // Mirrors what the JSX compiler emits: children passed as a getter so
+    // they evaluate inside the provider's setup scope, after provide() runs.
+    const Ctx = createContext<string>('default');
+    let injectedValue: string | undefined;
+
+    function Provider(props: { children: Node }) {
+      provide(Ctx, 'from-provider');
+      const div = _createElement('div');
+      div.appendChild(props.children);
+      return div;
+    }
+
+    function Child() {
+      injectedValue = inject(Ctx);
+      return _createElement('span');
+    }
+
+    render(
+      () =>
+        _createComponent(Provider, {
+          get children() {
+            return _createComponent(Child, {});
+          },
+        } as any),
+      _createElement('div'),
+    );
+
+    expect(injectedValue).toBe('from-provider');
+  });
+
   it('uses default value when no provider', () => {
     const ThemeCtx = createContext<string>('light');
     let injectedValue: string | undefined;

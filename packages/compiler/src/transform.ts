@@ -461,16 +461,29 @@ export function mikataJSXPlugin({ types: t }: { types: typeof BabelTypes }): Plu
         }
       }
 
+      // Children are emitted as a getter so they evaluate inside the parent
+      // component's setup scope. Without this, `<Provider><Child /></Provider>`
+      // would eagerly create Child before Provider's `provide()` ran, and
+      // Child's `inject()` would walk a scope chain that doesn't include
+      // Provider. Convention: components must read `props.children` at most
+      // once during setup (destructuring counts as one read).
       if (childExprs.length === 1) {
         propsProperties.push(
-          t.objectProperty(t.identifier('children'), childExprs[0])
+          t.objectMethod(
+            'get',
+            t.identifier('children'),
+            [],
+            t.blockStatement([t.returnStatement(childExprs[0])])
+          ) as any
         );
       } else if (childExprs.length > 1) {
         propsProperties.push(
-          t.objectProperty(
+          t.objectMethod(
+            'get',
             t.identifier('children'),
-            t.arrayExpression(childExprs)
-          )
+            [],
+            t.blockStatement([t.returnStatement(t.arrayExpression(childExprs))])
+          ) as any
         );
       }
     }

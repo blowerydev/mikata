@@ -125,6 +125,19 @@ export function ThemeProvider(props: ThemeProviderProps): Node {
     el.setAttribute('dir', direction());
   });
 
+  // Mount children. Reading `props.children` here (inside ThemeProvider's
+  // setup scope) ensures descendants' `inject()` walks through this scope
+  // and finds the ThemeContext provided above. The compiler emits children
+  // as a getter so this is a one-shot evaluation in the right scope.
+  const children = (props as { children?: Node | Node[] }).children;
+  if (children) {
+    if (Array.isArray(children)) {
+      for (const child of children) el.appendChild(child);
+    } else {
+      el.appendChild(children);
+    }
+  }
+
   return el;
 }
 

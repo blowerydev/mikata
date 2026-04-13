@@ -72,7 +72,7 @@ export interface ThemeProviderProps {
   colorScheme?: ColorScheme;
   /** Writing direction. Wins over `theme.direction`. Default: 'ltr'. */
   direction?: Direction;
-  children?: Node;
+  children?: Node | Node[];
 }
 
 export interface ThemeContextValue {
