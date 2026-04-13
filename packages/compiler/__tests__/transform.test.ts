@@ -77,4 +77,28 @@ describe('JSX transform', () => {
     expect(output).toContain('_setProp');
     expect(output).not.toContain('renderEffect');
   });
+
+  it('emits anchor markers for dynamic children followed by siblings', () => {
+    const output = transform(
+      `const el = <p>Count: {count()} | Doubled: {doubled()}</p>;`
+    );
+    // A followed-by-sibling dynamic child must get a marker passed to _insert
+    // so updates preserve position instead of re-appending to the end.
+    expect(output).toContain('createTextNode("")');
+    // The first dynamic child ({count()}) has a following sibling → must have
+    // three args to _insert (element, accessor, marker).
+    expect(output).toMatch(/_insert\([^,]+,\s*\(\)\s*=>\s*count\(\),\s*_m/);
+    // The last dynamic child ({doubled()}) has no sibling → two args.
+    expect(output).toMatch(/_insert\([^,]+,\s*\(\)\s*=>\s*doubled\(\)\)/);
+  });
+
+  it('preserves inline whitespace in JSX text', () => {
+    const output = transform(
+      `const el = <p>Count: {count()} done</p>;`
+    );
+    // Trailing space after "Count:" and surrounding spaces around "done" must
+    // survive so rendered text doesn't squash together.
+    expect(output).toContain('"Count: "');
+    expect(output).toContain('" done"');
+  });
 });

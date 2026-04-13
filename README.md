@@ -3,18 +3,103 @@
 A reactive UI framework for the web. Signals for state, JSX compiled to real DOM operations (no virtual DOM), and components that run exactly once.
 
 ```tsx
-import { signal, render } from 'mikata';
+import { signal, computed, render, show, each } from 'mikata';
 
-function Counter() {
-  const [count, setCount] = signal(0);
+function TodoList() {
+  const [todos, setTodos] = signal<{ id: number; text: string; done: boolean }[]>([]);
+  const [input, setInput] = signal('');
+  const remaining = computed(() => todos().filter((t) => !t.done).length);
+
+  const add = () => {
+    if (!input().trim()) return;
+    setTodos([...todos(), { id: Date.now(), text: input(), done: false }]);
+    setInput('');
+  };
+
+  const toggle = (id: number) =>
+    setTodos(todos().map((t) => (t.id === id ? { ...t, done: !t.done } : t)));
+
   return (
-    <button onClick={() => setCount(count() + 1)}>
-      Clicked {count()} times
-    </button>
+    <div>
+      <input
+        value={input()}
+        onInput={(e) => setInput((e.target as HTMLInputElement).value)}
+        onKeydown={(e) => e.key === 'Enter' && add()}
+      />
+      <button onClick={add}>Add</button>
+
+      <ul>
+        {each(todos, (todo) => (
+          <li
+            style={{ textDecoration: todo.done ? 'line-through' : 'none' }}
+            onClick={() => toggle(todo.id)}
+          >
+            {todo.text}
+          </li>
+        ))}
+      </ul>
+
+      {show(
+        () => todos().length > 0,
+        () => <p>{remaining()} remaining</p>
+      )}
+    </div>
   );
 }
 
-render(Counter, document.getElementById('app')!);
+render(() => <TodoList />, document.getElementById('app')!);
+```
+
+### With `@mikata/ui`
+
+`@mikata/ui` components are plain JSX - same signals, same fine-grained updates, no extra ceremony.
+
+```tsx
+import { signal, render } from 'mikata';
+import {
+  ThemeProvider,
+  Button,
+  TextInput,
+  Stack,
+  Title,
+  Switch,
+  Badge,
+} from '@mikata/ui';
+import '@mikata/ui/styles.css';
+
+function SignupCard() {
+  const [email, setEmail] = signal('');
+  const [subscribed, setSubscribed] = signal(false);
+  const isValid = () => /@/.test(email());
+
+  return (
+    <Stack gap="md">
+      <Title order={2}>Join the beta</Title>
+      <TextInput
+        label="Email"
+        placeholder="you@example.com"
+        value={email()}
+        onInput={(e) => setEmail((e.target as HTMLInputElement).value)}
+      />
+      <Switch
+        label="Subscribe to updates"
+        checked={subscribed()}
+        onChange={(e) => setSubscribed((e.target as HTMLInputElement).checked)}
+      />
+      <Button disabled={!isValid()}>Sign up</Button>
+      {isValid() && <Badge color="green">Looks good</Badge>}
+    </Stack>
+  );
+}
+
+render(
+  () => (
+    <ThemeProvider>
+      <SignupCard />
+    </ThemeProvider>
+  ),
+  document.getElementById('app')!
+);
 ```
 
 ## Why

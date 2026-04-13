@@ -7,4 +7,4 @@
  * For projects using jsx: "preserve", import this module or use
  * the global type declarations from jsx-global.d.ts instead.
  */
-export { JSX } from './jsx';
+export type { JSX } from './jsx';

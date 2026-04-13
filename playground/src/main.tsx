@@ -17,11 +17,6 @@ import {
 import '@mikata/ui/styles.css';
 import '@mikata/ui/css';
 import {
-  _createElement,
-  _setProp,
-  _insert,
-  _createComponent,
-  _spread,
   show,
   each,
   switchMatch,
@@ -146,7 +141,7 @@ const i18n = createI18n({
 });
 
 // ============================================================
-// Demo 1: Counter (signals + computed + refs)
+// Demo 1: Counter (signals + computed + refs) - JSX version
 // ============================================================
 function Counter() {
   const { t } = useI18n();
@@ -158,47 +153,25 @@ function Counter() {
     console.log('Counter mounted! Display ref:', displayRef.current);
   });
 
-  const el = _createElement('div');
-  _setProp(el, 'class', 'card');
-
-  const h2 = _createElement('h2');
-  h2.appendChild(t.node('counter.title'));
-  el.appendChild(h2);
-
-  const display = _createElement('p');
-  _setProp(display, 'ref', displayRef);
-  _insert(display, () => `Count: ${count()} | Doubled: ${doubled()}`);
-  el.appendChild(display);
-
-  // Reactive class styling
-  const badge = _createElement('span');
-  effect(() => {
-    _setProp(badge, 'class', {
-      badge: true,
-      'badge-positive': count() > 0,
-      'badge-negative': count() < 0,
-      'badge-zero': count() === 0,
-    });
-  });
-  _insert(badge, () => count() >= 0 ? 'positive' : 'negative');
-  el.appendChild(badge);
-
-  const incBtn = _createElement('button');
-  incBtn.textContent = '+1';
-  incBtn.addEventListener('click', () => setCount((c) => c + 1));
-  el.appendChild(incBtn);
-
-  const decBtn = _createElement('button');
-  decBtn.textContent = '-1';
-  decBtn.addEventListener('click', () => setCount((c) => c - 1));
-  el.appendChild(decBtn);
-
-  const resetBtn = _createElement('button');
-  resetBtn.appendChild(t.node('counter.reset'));
-  resetBtn.addEventListener('click', () => setCount(0));
-  el.appendChild(resetBtn);
-
-  return el;
+  return (
+    <div class="card">
+      <h2>{t.node('counter.title')}</h2>
+      <p ref={displayRef}>Count: {count()} | Doubled: {doubled()}</p>
+      <span
+        class={{
+          badge: true,
+          'badge-positive': count() > 0,
+          'badge-negative': count() < 0,
+          'badge-zero': count() === 0,
+        }}
+      >
+        {count() >= 0 ? 'positive' : 'negative'}
+      </span>
+      <button onClick={() => setCount((c) => c + 1)}>+1</button>
+      <button onClick={() => setCount((c) => c - 1)}>-1</button>
+      <button onClick={() => setCount(0)}>{t.node('counter.reset')}</button>
+    </div>
+  );
 }
 
 // ============================================================
@@ -212,70 +185,47 @@ function FormDemo() {
   const [color, setColor] = signal('blue');
   const nameRef = createRef<HTMLInputElement>();
 
-  const el = _createElement('div');
-  _setProp(el, 'class', 'card');
+  return (
+    <div class="card">
+      <h2>{t.node('formBindings.title')}</h2>
 
-  const h2 = _createElement('h2');
-  h2.appendChild(t.node('formBindings.title'));
-  el.appendChild(h2);
+      <label>
+        {t.node('formBindings.name')}
+        <input
+          ref={nameRef}
+          placeholder={t('formBindings.namePlaceholder')}
+          {...model(name, setName)}
+        />
+      </label>
 
-  // Text input with model()
-  const nameLabel = _createElement('label');
-  nameLabel.appendChild(t.node('formBindings.name'));
-  const nameInput = _createElement('input') as HTMLInputElement;
-  _setProp(nameInput, 'ref', nameRef);
-  effect(() => { nameInput.placeholder = t('formBindings.namePlaceholder'); });
-  _spread(nameInput, () => model(name, setName));
-  nameLabel.appendChild(nameInput);
-  el.appendChild(nameLabel);
+      <label>
+        {t.node('formBindings.age')}
+        <input type="number" {...model(age, setAge, 'number')} />
+      </label>
 
-  // Number input
-  const ageLabel = _createElement('label');
-  ageLabel.appendChild(t.node('formBindings.age'));
-  const ageInput = _createElement('input') as HTMLInputElement;
-  _setProp(ageInput, 'type', 'number');
-  _spread(ageInput, () => model(age, setAge, 'number'));
-  ageLabel.appendChild(ageInput);
-  el.appendChild(ageLabel);
+      <label>
+        <input type="checkbox" {...model(agree, setAgree, 'checkbox')} />
+        {t.node('formBindings.agree')}
+      </label>
 
-  // Checkbox
-  const agreeLabel = _createElement('label');
-  const agreeInput = _createElement('input') as HTMLInputElement;
-  _setProp(agreeInput, 'type', 'checkbox');
-  _spread(agreeInput, () => model(agree, setAgree, 'checkbox'));
-  agreeLabel.appendChild(agreeInput);
-  agreeLabel.appendChild(t.node('formBindings.agree'));
-  el.appendChild(agreeLabel);
+      <label>
+        {t.node('formBindings.color')}
+        <select {...model(color, setColor, 'select')}>
+          <option value="blue">blue</option>
+          <option value="red">red</option>
+          <option value="green">green</option>
+        </select>
+      </label>
 
-  // Select
-  const colorLabel = _createElement('label');
-  colorLabel.appendChild(t.node('formBindings.color'));
-  const colorSelect = _createElement('select') as HTMLSelectElement;
-  for (const c of ['blue', 'red', 'green']) {
-    const opt = _createElement('option');
-    _setProp(opt, 'value', c);
-    opt.textContent = c;
-    colorSelect.appendChild(opt);
-  }
-  _spread(colorSelect, () => model(color, setColor, 'select'));
-  colorLabel.appendChild(colorSelect);
-  el.appendChild(colorLabel);
+      <p style={{ color: color(), fontWeight: 'bold' }}>
+        {`${name() || '?'}, age ${age()}, ${agree() ? t('formBindings.agreed') : t('formBindings.notAgreed')}`}
+      </p>
 
-  // Output with reactive style
-  const output = _createElement('p');
-  _insert(output, () => `${name() || '?'}, age ${age()}, ${agree() ? t('formBindings.agreed') : t('formBindings.notAgreed')}`);
-  effect(() => {
-    _setProp(output, 'style', { color: color(), fontWeight: 'bold' });
-  });
-  el.appendChild(output);
-
-  // Focus button
-  const focusBtn = _createElement('button');
-  focusBtn.appendChild(t.node('formBindings.focusName'));
-  focusBtn.addEventListener('click', () => nameRef.current?.focus());
-  el.appendChild(focusBtn);
-
-  return el;
+      <button onClick={() => nameRef.current?.focus()}>
+        {t.node('formBindings.focusName')}
+      </button>
+    </div>
+  );
 }
 
 // ============================================================
@@ -302,93 +252,69 @@ function TodoList() {
   }
 
   function toggleTodo(id: number) {
-    state.todos = state.todos.map((t) =>
-      t.id === id ? { ...t, done: !t.done } : t
+    state.todos = state.todos.map((td) =>
+      td.id === id ? { ...td, done: !td.done } : td
     );
   }
 
   function removeTodo(id: number) {
-    state.todos = state.todos.filter((t) => t.id !== id);
+    state.todos = state.todos.filter((td) => td.id !== id);
   }
 
-  const el = _createElement('div');
-  _setProp(el, 'class', 'card');
-
-  const h2 = _createElement('h2');
-  h2.appendChild(t.node('todo.title'));
-  el.appendChild(h2);
-
-  // Input row
-  const inputRow = _createElement('div');
-  const input = _createElement('input') as HTMLInputElement;
-  effect(() => { input.placeholder = t('todo.placeholder'); });
-  input.addEventListener('input', (e) => {
-    state.input = (e.target as HTMLInputElement).value;
-  });
-  effect(() => {
-    input.value = state.input;
-  });
-  input.addEventListener('keydown', (e) => {
-    if ((e as KeyboardEvent).key === 'Enter') addTodo();
-  });
-  inputRow.appendChild(input);
-
-  const addBtn = _createElement('button');
-  addBtn.appendChild(t.node('todo.add'));
-  addBtn.addEventListener('click', addTodo);
-  inputRow.appendChild(addBtn);
-  el.appendChild(inputRow);
-
-  // List
-  const listContainer = _createElement('div');
-  _insert(
-    listContainer,
-    () =>
-      each(
-        () => state.todos,
-        (todo) => {
-          const item = _createElement('div');
-          // class array + object syntax
-          _setProp(item, 'class', ['todo-item', { done: todo.done }]);
-
-          const checkbox = _createElement('input') as HTMLInputElement;
-          _setProp(checkbox, 'type', 'checkbox');
-          checkbox.checked = todo.done;
-          checkbox.addEventListener('change', () => toggleTodo(todo.id));
-          item.appendChild(checkbox);
-
-          const text = _createElement('span');
-          text.textContent = todo.text;
-          if (todo.done) _setProp(text, 'style', { textDecoration: 'line-through', opacity: '0.6' });
-          item.appendChild(text);
-
-          const removeBtn = _createElement('button');
-          removeBtn.textContent = 'x';
-          removeBtn.addEventListener('click', () => removeTodo(todo.id));
-          item.appendChild(removeBtn);
-
-          return item;
-        },
-        () => {
-          const empty = _createElement('p');
-          empty.appendChild(t.node('todo.empty'));
-          return empty;
-        },
-        { key: (t: Todo) => t.id }
-      )
-  );
-  el.appendChild(listContainer);
-
-  // Count
-  const countDisplay = _createElement('p');
-  _insert(countDisplay, () => {
+  const completedText = () => {
     const total = state.todos.length;
     const doneCount = state.todos.filter((td) => td.done).length;
     return t('todo.completed', { done: doneCount, total });
-  });
-  el.appendChild(countDisplay);
+  };
 
-  return el;
+  return (
+    <div class="card">
+      <h2>{t.node('todo.title')}</h2>
+
+      <div>
+        <input
+          placeholder={t('todo.placeholder')}
+          value={state.input}
+          onInput={(e) => {
+            state.input = (e.target as HTMLInputElement).value;
+          }}
+          onKeydown={(e) => {
+            if (e.key === 'Enter') addTodo();
+          }}
+        />
+        <button onClick={addTodo}>{t.node('todo.add')}</button>
+      </div>
+
+      <div>
+        {each(
+          () => state.todos,
+          (todo) => (
+            <div class={['todo-item', { done: todo.done }]}>
+              <input
+                type="checkbox"
+                checked={todo.done}
+                onChange={() => toggleTodo(todo.id)}
+              />
+              <span
+                style={
+                  todo.done
+                    ? { textDecoration: 'line-through', opacity: '0.6' }
+                    : undefined
+                }
+              >
+                {todo.text}
+              </span>
+              <button onClick={() => removeTodo(todo.id)}>x</button>
+            </div>
+          ),
+          () => <p>{t.node('todo.empty')}</p>,
+          { key: (td: Todo) => td.id }
+        )}
+      </div>
+
+      <p>{completedText()}</p>
+    </div>
+  );
 }
 
 // ============================================================
@@ -398,45 +324,23 @@ function ConditionalDemo() {
   const { t } = useI18n();
   const [status, setStatus] = signal<'loading' | 'success' | 'error'>('loading');
 
-  const el = _createElement('div');
-  _setProp(el, 'class', 'card');
-
-  const h2 = _createElement('h2');
-  h2.appendChild(t.node('conditional.title'));
-  el.appendChild(h2);
-
-  const btnRow = _createElement('div');
-  for (const s of ['loading', 'success', 'error'] as const) {
-    const btn = _createElement('button');
-    btn.textContent = s;
-    btn.addEventListener('click', () => setStatus(s));
-    btnRow.appendChild(btn);
-  }
-  el.appendChild(btnRow);
-
-  const display = _createElement('div');
-  _insert(display, () =>
-    switchMatch(() => status(), {
-      loading: () => {
-        const p = _createElement('p');
-        p.appendChild(t.node('conditional.loading'));
-        return p;
-      },
-      success: () => {
-        const p = _createElement('p');
-        p.appendChild(t.node('conditional.success'));
-        return p;
-      },
-      error: () => {
-        const p = _createElement('p');
-        p.appendChild(t.node('conditional.error'));
-        return p;
-      },
-    })
+  return (
+    <div class="card">
+      <h2>{t.node('conditional.title')}</h2>
+      <div>
+        {(['loading', 'success', 'error'] as const).map((s) => (
+          <button onClick={() => setStatus(s)}>{s}</button>
+        ))}
+      </div>
+      <div>
+        {switchMatch(() => status(), {
+          loading: () => <p>{t.node('conditional.loading')}</p>,
+          success: () => <p>{t.node('conditional.success')}</p>,
+          error: () => <p>{t.node('conditional.error')}</p>,
+        })}
+      </div>
+    </div>
   );
-  el.appendChild(display);
-
-  return el;
 }
 
 // ============================================================
@@ -446,78 +350,60 @@ function PortalDemo() {
   const { t } = useI18n();
   const [showModal, setShowModal] = signal(false);
 
-  const el = _createElement('div');
-  _setProp(el, 'class', 'card');
-
-  const h2 = _createElement('h2');
-  h2.appendChild(t.node('portal.title'));
-  el.appendChild(h2);
-
-  const toggleBtn = _createElement('button');
-  toggleBtn.appendChild(t.node('portal.toggle'));
-  toggleBtn.addEventListener('click', () => setShowModal((v) => !v));
-  el.appendChild(toggleBtn);
-
-  const status = _createElement('p');
-  _insert(status, () => showModal() ? t('portal.open') : t('portal.closed'));
-  el.appendChild(status);
-
-  // Portal renders the modal into document.body
-  const portalContainer = _createElement('div');
-  _insert(portalContainer, () =>
-    show(
-      () => showModal(),
-      () => {
-        return portal(() => {
-          const overlay = _createElement('div');
-          _setProp(overlay, 'class', 'modal-overlay');
-          _setProp(overlay, 'style', {
-            position: 'fixed',
-            top: '0',
-            left: '0',
-            right: '0',
-            bottom: '0',
-            backgroundColor: 'rgba(0,0,0,0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: '1000',
-          });
-          overlay.addEventListener('click', (e) => {
-            if (e.target === overlay) setShowModal(false);
-          });
-
-          const modal = _createElement('div');
-          _setProp(modal, 'style', {
-            background: 'white',
-            padding: '2rem',
-            borderRadius: '8px',
-            maxWidth: '400px',
-            color: '#333',
-          });
-
-          const title = _createElement('h3');
-          title.appendChild(t.node('portal.modalTitle'));
-          modal.appendChild(title);
-
-          const body = _createElement('p');
-          body.appendChild(t.node('portal.modalBody'));
-          modal.appendChild(body);
-
-          const closeBtn = _createElement('button');
-          closeBtn.appendChild(t.node('portal.close'));
-          closeBtn.addEventListener('click', () => setShowModal(false));
-          modal.appendChild(closeBtn);
-
-          overlay.appendChild(modal);
-          return overlay;
-        }, document.body);
-      }
-    )
+  return (
+    <div class="card">
+      <h2>{t.node('portal.title')}</h2>
+      <button onClick={() => setShowModal((v) => !v)}>
+        {t.node('portal.toggle')}
+      </button>
+      <p>{showModal() ? t('portal.open') : t('portal.closed')}</p>
+      <div>
+        {show(
+          () => showModal(),
+          () =>
+            portal(
+              () => (
+                <div
+                  class="modal-overlay"
+                  style={{
+                    position: 'fixed',
+                    top: '0',
+                    left: '0',
+                    right: '0',
+                    bottom: '0',
+                    backgroundColor: 'rgba(0,0,0,0.5)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: '1000',
+                  }}
+                  onClick={(e) => {
+                    if (e.target === e.currentTarget) setShowModal(false);
+                  }}
+                >
+                  <div
+                    style={{
+                      background: 'white',
+                      padding: '2rem',
+                      borderRadius: '8px',
+                      maxWidth: '400px',
+                      color: '#333',
+                    }}
+                  >
+                    <h3>{t.node('portal.modalTitle')}</h3>
+                    <p>{t.node('portal.modalBody')}</p>
+                    <button onClick={() => setShowModal(false)}>
+                      {t.node('portal.close')}
+                    </button>
+                  </div>
+                </div>
+              ),
+              document.body
+            )
+        )}
+      </div>
+    </div>
   );
-  el.appendChild(portalContainer);
-
-  return el;
 }
 
 // ============================================================
@@ -527,52 +413,41 @@ function ErrorBoundaryDemo() {
   const { t } = useI18n();
   const [shouldThrow, setShouldThrow] = signal(false);
 
-  const el = _createElement('div');
-  _setProp(el, 'class', 'card');
-
-  const h2 = _createElement('h2');
-  h2.appendChild(t.node('errorBoundary.title'));
-  el.appendChild(h2);
-
-  const toggleBtn = _createElement('button');
-  toggleBtn.appendChild(t.node('errorBoundary.toggleError'));
-  toggleBtn.addEventListener('click', () => setShouldThrow((v) => !v));
-  el.appendChild(toggleBtn);
-
-  const boundaryContainer = _createElement('div');
-  _insert(boundaryContainer, () =>
-    _createComponent(ErrorBoundary, {
-      fallback: (err: Error, reset: () => void) => {
-        const wrapper = _createElement('div');
-        _setProp(wrapper, 'style', { color: 'red', padding: '1rem', border: '1px solid red', borderRadius: '4px' });
-
-        const msg = _createElement('p');
-        msg.appendChild(t.node('errorBoundary.caught', { message: err.message }));
-        wrapper.appendChild(msg);
-
-        const retryBtn = _createElement('button');
-        retryBtn.appendChild(t.node('errorBoundary.reset'));
-        retryBtn.addEventListener('click', () => {
-          setShouldThrow(false);
-          reset();
-        });
-        wrapper.appendChild(retryBtn);
-
-        return wrapper;
-      },
-      get children() {
-        if (shouldThrow()) {
-          throw new Error('Something broke!');
-        }
-        const safe = _createElement('p');
-        safe.appendChild(t.node('errorBoundary.safe'));
-        return safe;
-      },
-    })
+  return (
+    <div class="card">
+      <h2>{t.node('errorBoundary.title')}</h2>
+      <button onClick={() => setShouldThrow((v) => !v)}>
+        {t.node('errorBoundary.toggleError')}
+      </button>
+      <ErrorBoundary
+        fallback={(err: Error, reset: () => void) => (
+          <div
+            style={{
+              color: 'red',
+              padding: '1rem',
+              border: '1px solid red',
+              borderRadius: '4px',
+            }}
+          >
+            <p>{t.node('errorBoundary.caught', { message: err.message })}</p>
+            <button
+              onClick={() => {
+                setShouldThrow(false);
+                reset();
+              }}
+            >
+              {t.node('errorBoundary.reset')}
+            </button>
+          </div>
+        )}
+      >
+        {(() => {
+          if (shouldThrow()) throw new Error('Something broke!');
+          return <p>{t.node('errorBoundary.safe')}</p>;
+        })()}
+      </ErrorBoundary>
+    </div>
   );
-  el.appendChild(boundaryContainer);
-
-  return el;
 }
 
 // ============================================================
@@ -581,17 +456,19 @@ function ErrorBoundaryDemo() {
 function UIComponentsDemo() {
   // Shares the App-level ThemeProvider - don't create a nested one, or the
   // dark-mode toggle's setColorScheme only flips this scope.
-  const wrapper = _createElement('div');
-  _setProp(wrapper, 'style', {
-    background: 'var(--mkt-color-bg)',
-    color: 'var(--mkt-color-text)',
-    padding: '1.5rem',
-    borderRadius: '8px',
-    transition: 'background 150ms, color 150ms',
-  });
-
-  wrapper.appendChild(_createComponent(UIContent, {}));
-  return wrapper;
+  return (
+    <div
+      style={{
+        background: 'var(--mkt-color-bg)',
+        color: 'var(--mkt-color-text)',
+        padding: '1.5rem',
+        borderRadius: '8px',
+        transition: 'background 150ms, color 150ms',
+      }}
+    >
+      <UIContent />
+    </div>
+  );
 }
 
 /**
@@ -600,13 +477,13 @@ function UIComponentsDemo() {
  */
 function UIContent() {
   const { t, locale, setLocale } = useI18n();
+  void locale;
   const { setColorScheme, resolvedColorScheme, direction, setDirection } = useTheme();
   const [progressVal, setProgressVal] = signal(0);
   const { opened: modalOpened, open: openModal, close: closeModal } = useDisclosure(false);
+  const progressRef = createRef<HTMLElement>();
 
-  // Animate progress bar
   let progressTimer: ReturnType<typeof setInterval> | null = null;
-
   function startProgress() {
     setProgressVal(0);
     if (progressTimer) clearInterval(progressTimer);
@@ -621,438 +498,403 @@ function UIContent() {
     }, 100);
   }
 
-  const el = _createElement('div');
-
-  // ─── Section: Theme Controls ──────────────────────
-  const themeSection = _createElement('div');
-  _setProp(themeSection, 'style', { marginBottom: '1.5rem' });
-
-  themeSection.appendChild(Title({ order: 2, children: t.node('ui.title') }));
-  themeSection.appendChild(Text({ size: 'sm', children: t.node('ui.description') }));
-
-  themeSection.appendChild(Group({ gap: 'md', align: 'end', children: [
-    Switch({
-      label: t.node('ui.darkMode'),
-      onChange: () => {
-        const current = resolvedColorScheme();
-        setColorScheme(current === 'dark' ? 'light' : 'dark');
-      },
-    }),
-    Select({
-      label: t.node('ui.language'),
-      data: [
-        { value: 'en', label: 'English' },
-        { value: 'ja', label: '日本語' },
-      ],
-      value: 'en',
-      onChange: (e) => setLocale((e.target as HTMLSelectElement).value),
-    }),
-    (() => {
-      const wrapper = _createElement('div');
-      const label = _createElement('label');
-      _setProp(label, 'style', { fontSize: '0.875rem', display: 'block', marginBottom: '4px' });
-      label.textContent = 'Direction';
-      wrapper.appendChild(label);
-      wrapper.appendChild(SegmentedControl({
-        data: [
-          { value: 'ltr', label: 'LTR' },
-          { value: 'rtl', label: 'RTL' },
-        ],
-        defaultValue: direction(),
-        onChange: (v) => setDirection(v as 'ltr' | 'rtl'),
-      }));
-      return wrapper;
-    })(),
-  ] }));
-  el.appendChild(themeSection);
-
-  // ─── Section: Badges ──────────────────────────────
-  const badgeSection = _createElement('div');
-  _setProp(badgeSection, 'style', { marginBottom: '1.5rem' });
-  badgeSection.appendChild(Title({ order: 3, children: t.node('badges.title') }));
-  badgeSection.appendChild(Group({ gap: 'sm', wrap: true, children: [
-    Badge({ color: 'primary', children: t.node('badges.primary') }),
-    Badge({ color: 'green', children: t.node('badges.success') }),
-    Badge({ color: 'red', children: t.node('badges.error') }),
-    Badge({ color: 'yellow', variant: 'light', children: t.node('badges.warning') }),
-    Badge({ color: 'violet', variant: 'outline', children: t.node('badges.new') }),
-    Badge({ variant: 'dot', color: 'green', children: t.node('badges.online') }),
-  ] }));
-  el.appendChild(badgeSection);
-
-  // ─── Section: Buttons ─────────────────────────────
-  const btnSection = _createElement('div');
-  _setProp(btnSection, 'style', { marginBottom: '1.5rem' });
-  btnSection.appendChild(Title({ order: 3, children: t.node('buttons.title') }));
-  btnSection.appendChild(Group({ gap: 'sm', wrap: true, children: [
-    Button({ variant: 'filled', children: t.node('buttons.filled') }),
-    Button({ variant: 'outline', children: t.node('buttons.outline') }),
-    Button({ variant: 'light', children: t.node('buttons.light') }),
-    Button({ variant: 'subtle', children: t.node('buttons.subtle') }),
-    Button({ variant: 'filled', color: 'red', children: t.node('buttons.delete') }),
-    Button({ variant: 'filled', color: 'green', children: t.node('buttons.confirm') }),
-    Button({ loading: true, children: t.node('buttons.loading') }),
-    Button({ disabled: true, children: t.node('buttons.disabled') }),
-  ] }));
-  el.appendChild(btnSection);
-
-  // ─── Section: Alerts ──────────────────────────────
-  const alertSection = _createElement('div');
-  _setProp(alertSection, 'style', { marginBottom: '1.5rem' });
-  alertSection.appendChild(Title({ order: 3, children: t.node('alerts.title') }));
-  alertSection.appendChild(Stack({ gap: 'sm', children: [
-    Alert({ color: 'blue', title: t.node('alerts.infoTitle'), children: t.node('alerts.infoMessage') }),
-    Alert({ color: 'green', title: t.node('alerts.successTitle'), children: t.node('alerts.successMessage') }),
-    Alert({
-      color: 'red',
-      title: t.node('alerts.errorTitle'),
-      closable: true,
-      onClose: () => console.log('Alert closed'),
-      children: t.node('alerts.errorMessage'),
-    }),
-    Alert({ color: 'yellow', title: t.node('alerts.warningTitle'), children: t.node('alerts.warningMessage') }),
-  ] }));
-  el.appendChild(alertSection);
-
-  // ─── Section: Progress ────────────────────────────
-  const progressSection = _createElement('div');
-  _setProp(progressSection, 'style', { marginBottom: '1.5rem' });
-  progressSection.appendChild(Title({ order: 3, children: t.node('progress.title') }));
-
-  const progressBar = Progress({ value: 0, color: 'primary' });
   effect(() => {
-    const bar = progressBar.querySelector('.mkt-progress__bar') as HTMLElement;
+    const host = progressRef.current;
+    if (!host) return;
+    const bar = host.querySelector('.mkt-progress__bar') as HTMLElement | null;
     if (bar) bar.style.width = `${progressVal()}%`;
-    progressBar.setAttribute('aria-valuenow', String(progressVal()));
+    host.setAttribute('aria-valuenow', String(progressVal()));
   });
-  progressSection.appendChild(progressBar);
-  progressSection.appendChild(Button({
-    variant: 'light',
-    children: t.node('progress.start'),
-    onClick: startProgress,
-  }));
-  el.appendChild(progressSection);
 
-  // ─── Section: Loader ──────────────────────────────
-  const loaderSection = _createElement('div');
-  _setProp(loaderSection, 'style', { marginBottom: '1.5rem' });
-  loaderSection.appendChild(Title({ order: 3, children: t.node('loader.title') }));
-  loaderSection.appendChild(Group({ gap: 'md', children: [
-    Loader({ size: 'xs' }),
-    Loader({ size: 'sm' }),
-    Loader({ size: 'md' }),
-    Loader({ size: 'lg' }),
-    Loader({ size: 'xl' }),
-  ] }));
-  el.appendChild(loaderSection);
+  const section = { marginBottom: '1.5rem' } as const;
 
-  el.appendChild(Divider({}));
+  return (
+    <div>
+      <div style={section}>
+        <Title order={2}>{t.node('ui.title')}</Title>
+        <Text size="sm">{t.node('ui.description')}</Text>
+        <Group gap="md" align="end">
+          <Switch
+            label={t.node('ui.darkMode')}
+            onChange={() => {
+              const current = resolvedColorScheme();
+              setColorScheme(current === 'dark' ? 'light' : 'dark');
+            }}
+          />
+          <Select
+            label={t.node('ui.language')}
+            data={[
+              { value: 'en', label: 'English' },
+              { value: 'ja', label: '日本語' },
+            ]}
+            value="en"
+            onChange={(e) => setLocale((e.target as HTMLSelectElement).value)}
+          />
+          <div>
+            <label style={{ fontSize: '0.875rem', display: 'block', marginBottom: '4px' }}>
+              Direction
+            </label>
+            <SegmentedControl
+              data={[
+                { value: 'ltr', label: 'LTR' },
+                { value: 'rtl', label: 'RTL' },
+              ]}
+              defaultValue={direction()}
+              onChange={(v) => setDirection(v as 'ltr' | 'rtl')}
+            />
+          </div>
+        </Group>
+      </div>
 
-  // ─── Section: Form ────────────────────────────────
-  const formSection = _createElement('div');
-  _setProp(formSection, 'style', { marginBottom: '1.5rem' });
-  formSection.appendChild(Title({ order: 3, children: t.node('form.title') }));
+      <div style={section}>
+        <Title order={3}>{t.node('badges.title')}</Title>
+        <Group gap="sm" wrap>
+          <Badge color="primary">{t.node('badges.primary')}</Badge>
+          <Badge color="green">{t.node('badges.success')}</Badge>
+          <Badge color="red">{t.node('badges.error')}</Badge>
+          <Badge color="yellow" variant="light">{t.node('badges.warning')}</Badge>
+          <Badge color="violet" variant="outline">{t.node('badges.new')}</Badge>
+          <Badge variant="dot" color="green">{t.node('badges.online')}</Badge>
+        </Group>
+      </div>
 
-  const formStack = Stack({ gap: 'sm', children: [
-    TextInput({
-      label: t.node('form.fullName'),
-      placeholder: t('form.fullNamePlaceholder'),
-      description: t.node('form.displayName'),
-      required: true,
-    }),
-    TextInput({
-      label: t.node('form.email'),
-      placeholder: t('form.emailPlaceholder'),
-      required: true,
-    }),
-    PasswordInput({
-      label: t.node('form.password'),
-      placeholder: t('form.passwordPlaceholder'),
-      required: true,
-    }),
-    Textarea({
-      label: t.node('form.bio'),
-      placeholder: t('form.bioPlaceholder'),
-      description: t.node('form.optional'),
-    }),
-    Select({
-      label: t.node('form.role'),
-      data: [
-        { value: 'admin', label: t('form.roleAdmin') },
-        { value: 'editor', label: t('form.roleEditor') },
-        { value: 'user', label: t('form.roleUser') },
-        { value: 'viewer', label: t('form.roleViewer'), disabled: true },
-      ],
-      value: 'user',
-      placeholder: t('form.rolePlaceholder'),
-    }),
-    Checkbox({ label: t.node('form.agreeTerms'), color: 'primary' }),
-    Switch({ label: t.node('form.emailNotifications'), color: 'primary' }),
-  ] });
-  formSection.appendChild(formStack);
+      <div style={section}>
+        <Title order={3}>{t.node('buttons.title')}</Title>
+        <Group gap="sm" wrap>
+          <Button variant="filled">{t.node('buttons.filled')}</Button>
+          <Button variant="outline">{t.node('buttons.outline')}</Button>
+          <Button variant="light">{t.node('buttons.light')}</Button>
+          <Button variant="subtle">{t.node('buttons.subtle')}</Button>
+          <Button variant="filled" color="red">{t.node('buttons.delete')}</Button>
+          <Button variant="filled" color="green">{t.node('buttons.confirm')}</Button>
+          <Button loading>{t.node('buttons.loading')}</Button>
+          <Button disabled>{t.node('buttons.disabled')}</Button>
+        </Group>
+      </div>
 
-  const formSubmitRow = Group({ gap: 'sm', children: [
-    Button({
-      variant: 'filled',
-      children: t.node('form.createAccount'),
-      onClick: openModal,
-    }),
-    Button({ variant: 'outline', children: t.node('buttons.cancel') }),
-  ] });
-  formSection.appendChild(formSubmitRow);
-  el.appendChild(formSection);
+      <div style={section}>
+        <Title order={3}>{t.node('alerts.title')}</Title>
+        <Stack gap="sm">
+          <Alert color="blue" title={t.node('alerts.infoTitle')}>
+            {t.node('alerts.infoMessage')}
+          </Alert>
+          <Alert color="green" title={t.node('alerts.successTitle')}>
+            {t.node('alerts.successMessage')}
+          </Alert>
+          <Alert
+            color="red"
+            title={t.node('alerts.errorTitle')}
+            closable
+            onClose={() => console.log('Alert closed')}
+          >
+            {t.node('alerts.errorMessage')}
+          </Alert>
+          <Alert color="yellow" title={t.node('alerts.warningTitle')}>
+            {t.node('alerts.warningMessage')}
+          </Alert>
+        </Stack>
+      </div>
 
-  // ─── Section: Modal ───────────────────────────────
-  const modalSection = _createElement('div');
-  _setProp(modalSection, 'style', { marginBottom: '1.5rem' });
-  modalSection.appendChild(Title({ order: 3, children: t.node('modal.title') }));
-  modalSection.appendChild(Button({
-    variant: 'outline',
-    children: t.node('modal.openModal'),
-    onClick: openModal,
-  }));
-  el.appendChild(modalSection);
+      <div style={section}>
+        <Title order={3}>{t.node('progress.title')}</Title>
+        <Progress ref={progressRef} value={0} color="primary" />
+        <Button variant="light" onClick={startProgress}>
+          {t.node('progress.start')}
+        </Button>
+      </div>
 
-  // Conditionally show modal (reactively)
-  const modalContainer = _createElement('div');
-  _insert(modalContainer, () =>
-    show(
-      () => modalOpened(),
-      () => {
-        const bodyText = _createElement('div');
-        bodyText.appendChild(Text({ children: t.node('modal.body') }));
-        bodyText.appendChild(Text({ size: 'sm', children: t.node('modal.bodyDetail') }));
+      <div style={section}>
+        <Title order={3}>{t.node('loader.title')}</Title>
+        <Group gap="md">
+          <Loader size="xs" />
+          <Loader size="sm" />
+          <Loader size="md" />
+          <Loader size="lg" />
+          <Loader size="xl" />
+        </Group>
+      </div>
 
-        return Modal({
-          title: t.node('modal.exampleTitle'),
-          size: 'md',
-          centered: true,
-          onClose: closeModal,
-          children: bodyText,
-        });
-      }
-    )
+      <Divider />
+
+      <div style={section}>
+        <Title order={3}>{t.node('form.title')}</Title>
+        <Stack gap="sm">
+          <TextInput
+            label={t.node('form.fullName')}
+            placeholder={t('form.fullNamePlaceholder')}
+            description={t.node('form.displayName')}
+            required
+          />
+          <TextInput
+            label={t.node('form.email')}
+            placeholder={t('form.emailPlaceholder')}
+            required
+          />
+          <PasswordInput
+            label={t.node('form.password')}
+            placeholder={t('form.passwordPlaceholder')}
+            required
+          />
+          <Textarea
+            label={t.node('form.bio')}
+            placeholder={t('form.bioPlaceholder')}
+            description={t.node('form.optional')}
+          />
+          <Select
+            label={t.node('form.role')}
+            data={[
+              { value: 'admin', label: t('form.roleAdmin') },
+              { value: 'editor', label: t('form.roleEditor') },
+              { value: 'user', label: t('form.roleUser') },
+              { value: 'viewer', label: t('form.roleViewer'), disabled: true },
+            ]}
+            value="user"
+            placeholder={t('form.rolePlaceholder')}
+          />
+          <Checkbox label={t.node('form.agreeTerms')} color="primary" />
+          <Switch label={t.node('form.emailNotifications')} color="primary" />
+        </Stack>
+        <Group gap="sm">
+          <Button variant="filled" onClick={openModal}>
+            {t.node('form.createAccount')}
+          </Button>
+          <Button variant="outline">{t.node('buttons.cancel')}</Button>
+        </Group>
+      </div>
+
+      <div style={section}>
+        <Title order={3}>{t.node('modal.title')}</Title>
+        <Button variant="outline" onClick={openModal}>
+          {t.node('modal.openModal')}
+        </Button>
+      </div>
+
+      <div>
+        {show(
+          () => modalOpened(),
+          () => (
+            <Modal
+              title={t.node('modal.exampleTitle')}
+              size="md"
+              centered
+              onClose={closeModal}
+            >
+              <div>
+                <Text>{t.node('modal.body')}</Text>
+                <Text size="sm">{t.node('modal.bodyDetail')}</Text>
+              </div>
+            </Modal>
+          )
+        )}
+      </div>
+
+      <Divider />
+
+      <div style={section}>
+        <Title order={3}>{t.node('card.title')}</Title>
+        <Group gap="md" wrap>
+          <Card
+            shadow="sm"
+            padding="md"
+            withBorder
+            header={t.node('card.header')}
+            footer={
+              <Button variant="light" size="sm">
+                {t.node('card.viewDetails')}
+              </Button>
+            }
+          >
+            <Text size="sm">{t.node('card.cardDescription')}</Text>
+          </Card>
+          <Card shadow="md" padding="lg">
+            <Text>{t.node('card.simpleCard')}</Text>
+          </Card>
+        </Group>
+      </div>
+
+      <div style={section}>
+        <Title order={3}>{t.node('table.title')}</Title>
+        <Table
+          striped
+          highlightOnHover
+          withBorder
+          columns={[
+            { key: 'name', title: t('table.colName') },
+            { key: 'role', title: t('table.colRole') },
+            { key: 'email', title: t('table.colEmail') },
+            {
+              key: 'status',
+              title: t('table.colStatus'),
+              render: (row: any) => (
+                <Badge color={row.active ? 'green' : 'gray'} size="sm">
+                  {row.active ? t('table.statusActive') : t('table.statusInactive')}
+                </Badge>
+              ),
+            },
+          ]}
+          data={[
+            { name: 'Alice Johnson', role: 'Admin', email: 'alice@example.com', active: true },
+            { name: 'Bob Smith', role: 'Editor', email: 'bob@example.com', active: true },
+            { name: 'Carol White', role: 'Viewer', email: 'carol@example.com', active: false },
+            { name: 'Dave Brown', role: 'Editor', email: 'dave@example.com', active: true },
+          ]}
+        />
+      </div>
+
+      <div style={section}>
+        <Title order={3}>{t.node('tabs.title')}</Title>
+        <Tabs
+          items={[
+            { value: 'overview', label: t.node('tabs.overview'), content: <Text>{t.node('tabs.overviewContent')}</Text> },
+            { value: 'features', label: t.node('tabs.features'), content: <Text>{t.node('tabs.featuresContent')}</Text> },
+            { value: 'disabled', label: t.node('tabs.disabled'), content: '', disabled: true },
+            { value: 'code', label: t.node('tabs.code'), content: <Text>{t.node('tabs.codeContent')}</Text> },
+          ]}
+          color="primary"
+        />
+        <Text size="sm" class="mkt-mt-2">{t.node('tabs.pillsVariant')}</Text>
+        <Tabs
+          variant="pills"
+          color="violet"
+          items={[
+            { value: 'react', label: 'React', content: 'React content' },
+            { value: 'vue', label: 'Vue', content: 'Vue content' },
+            { value: 'solid', label: 'Solid', content: 'Solid content' },
+          ]}
+        />
+      </div>
+
+      <div style={section}>
+        <Title order={3}>{t.node('accordion.title')}</Title>
+        <Accordion
+          variant="separated"
+          items={[
+            { value: 'a11y', label: t.node('accordion.a11yLabel'), content: t.node('accordion.a11yContent') },
+            { value: 'theming', label: t.node('accordion.themingLabel'), content: t.node('accordion.themingContent') },
+            { value: 'perf', label: t.node('accordion.perfLabel'), content: t.node('accordion.perfContent') },
+          ]}
+          defaultValue="a11y"
+        />
+      </div>
+
+      <div style={section}>
+        <Title order={3}>{t.node('menu.title')}</Title>
+        <Menu
+          target={<Button variant="outline">{t.node('menu.actions')}</Button>}
+          items={[
+            { type: 'label', label: t.node('menu.appLabel') },
+            { label: t.node('menu.settings'), onClick: () => console.log('Settings clicked') },
+            { label: t.node('menu.messages'), onClick: () => console.log('Messages clicked') },
+            { type: 'divider' },
+            { type: 'label', label: t.node('menu.dangerLabel') },
+            { label: t.node('menu.deleteAccount'), color: 'red', onClick: () => console.log('Delete clicked') },
+          ]}
+        />
+      </div>
+
+      <div style={section}>
+        <Title order={3}>{t.node('avatar.title')}</Title>
+        <Group gap="md">
+          <Avatar name="Alice Johnson" color="blue" />
+          <Avatar name="Bob Smith" color="red" variant="filled" />
+          <Avatar color="green" size="lg" />
+          <Avatar name="Carol White" color="violet" size="xl" variant="outline" />
+        </Group>
+        <Text size="sm">{t.node('avatar.group')}</Text>
+        <AvatarGroup spacing="sm">
+          <Avatar name="A B" color="blue" variant="filled" />
+          <Avatar name="C D" color="red" variant="filled" />
+          <Avatar name="E F" color="green" variant="filled" />
+          <Avatar name="+3" color="gray" variant="filled" />
+        </AvatarGroup>
+      </div>
+
+      <div style={section}>
+        <Title order={3}>{t.node('breadcrumb.title')}</Title>
+        <Breadcrumb
+          items={[
+            { label: t.node('breadcrumb.home'), href: '#' },
+            { label: t.node('breadcrumb.components'), href: '#' },
+            { label: t.node('breadcrumb.title') },
+          ]}
+        />
+      </div>
+
+      <div style={section}>
+        <Title order={3}>{t.node('pagination.title')}</Title>
+        <Pagination
+          total={20}
+          defaultValue={5}
+          onChange={(page) => console.log('Page:', page)}
+        />
+      </div>
+
+      <div style={section}>
+        <Title order={3}>{t.node('segmented.title')}</Title>
+        <SegmentedControl
+          data={[
+            { value: 'preview', label: t.node('segmented.preview') },
+            { value: 'code', label: t.node('segmented.code') },
+            { value: 'export', label: t.node('segmented.export') },
+          ]}
+          defaultValue="preview"
+          onChange={(val) => console.log('Segment:', val)}
+        />
+      </div>
+
+      <div style={{ ...section, maxWidth: '280px' }}>
+        <Title order={3}>{t.node('navlink.title')}</Title>
+        <NavLink
+          label={t.node('navlink.dashboard')}
+          active
+          onClick={() => console.log('Dashboard')}
+        />
+        <NavLink
+          label={t.node('navlink.settings')}
+          description={t.node('navlink.settingsDesc')}
+        >
+          <NavLink label={t.node('navlink.general')} onClick={() => console.log('General')} />
+          <NavLink label={t.node('navlink.security')} onClick={() => console.log('Security')} />
+          <NavLink label={t.node('navlink.notifications')} disabled />
+        </NavLink>
+        <NavLink label={t.node('navlink.users')} onClick={() => console.log('Users')} />
+      </div>
+
+      <div style={section}>
+        <Title order={3}>{t.node('toast.title')}</Title>
+        <Group gap="sm" wrap>
+          <Button
+            variant="filled"
+            color="green"
+            onClick={() => toast.success(t('toast.savedMessage'), { title: t('toast.savedTitle') })}
+          >
+            {t.node('toast.success')}
+          </Button>
+          <Button
+            variant="filled"
+            color="red"
+            onClick={() => toast.error(t('toast.errorMessage'), { title: t('toast.errorTitle') })}
+          >
+            {t.node('toast.error')}
+          </Button>
+          <Button
+            variant="filled"
+            color="yellow"
+            onClick={() => toast.warning(t('toast.warningMessage'))}
+          >
+            {t.node('toast.warning')}
+          </Button>
+          <Button
+            variant="filled"
+            color="blue"
+            onClick={() => toast.info(t('toast.infoMessage'), { title: t('toast.infoTitle') })}
+          >
+            {t.node('toast.info')}
+          </Button>
+        </Group>
+      </div>
+    </div>
   );
-  el.appendChild(modalContainer);
-
-  el.appendChild(Divider({}));
-
-  // ─── Section: Card ───────────────────────────────
-  const cardSection = _createElement('div');
-  _setProp(cardSection, 'style', { marginBottom: '1.5rem' });
-  cardSection.appendChild(Title({ order: 3, children: t.node('card.title') }));
-  cardSection.appendChild(Group({ gap: 'md', wrap: true, children: [
-    Card({
-      shadow: 'sm',
-      padding: 'md',
-      withBorder: true,
-      header: t.node('card.header'),
-      footer: Button({ variant: 'light', size: 'sm', children: t.node('card.viewDetails') }),
-      children: Text({ size: 'sm', children: t.node('card.cardDescription') }),
-    }),
-    Card({
-      shadow: 'md',
-      padding: 'lg',
-      children: Text({ children: t.node('card.simpleCard') }),
-    }),
-  ] }));
-  el.appendChild(cardSection);
-
-  // ─── Section: Table ──────────────────────────────
-  const tableSection = _createElement('div');
-  _setProp(tableSection, 'style', { marginBottom: '1.5rem' });
-  tableSection.appendChild(Title({ order: 3, children: t.node('table.title') }));
-  tableSection.appendChild(Table({
-    striped: true,
-    highlightOnHover: true,
-    withBorder: true,
-    columns: [
-      { key: 'name', title: t('table.colName') },
-      { key: 'role', title: t('table.colRole') },
-      { key: 'email', title: t('table.colEmail') },
-      { key: 'status', title: t('table.colStatus'), render: (row: any) => Badge({ color: row.active ? 'green' : 'gray', size: 'sm', children: row.active ? t('table.statusActive') : t('table.statusInactive') }) },
-    ],
-    data: [
-      { name: 'Alice Johnson', role: 'Admin', email: 'alice@example.com', active: true },
-      { name: 'Bob Smith', role: 'Editor', email: 'bob@example.com', active: true },
-      { name: 'Carol White', role: 'Viewer', email: 'carol@example.com', active: false },
-      { name: 'Dave Brown', role: 'Editor', email: 'dave@example.com', active: true },
-    ],
-  }));
-  el.appendChild(tableSection);
-
-  // ─── Section: Tabs ───────────────────────────────
-  const tabsSection = _createElement('div');
-  _setProp(tabsSection, 'style', { marginBottom: '1.5rem' });
-  tabsSection.appendChild(Title({ order: 3, children: t.node('tabs.title') }));
-  tabsSection.appendChild(Tabs({
-    items: [
-      { value: 'overview', label: t.node('tabs.overview'), content: Text({ children: t.node('tabs.overviewContent') }) },
-      { value: 'features', label: t.node('tabs.features'), content: Text({ children: t.node('tabs.featuresContent') }) },
-      { value: 'disabled', label: t.node('tabs.disabled'), content: '', disabled: true },
-      { value: 'code', label: t.node('tabs.code'), content: Text({ children: t.node('tabs.codeContent') }) },
-    ],
-    color: 'primary',
-  }));
-  tabsSection.appendChild(Text({ size: 'sm', children: t.node('tabs.pillsVariant'), class: 'mkt-mt-2' }));
-  tabsSection.appendChild(Tabs({
-    variant: 'pills',
-    color: 'violet',
-    items: [
-      { value: 'react', label: 'React', content: 'React content' },
-      { value: 'vue', label: 'Vue', content: 'Vue content' },
-      { value: 'solid', label: 'Solid', content: 'Solid content' },
-    ],
-  }));
-  el.appendChild(tabsSection);
-
-  // ─── Section: Accordion ──────────────────────────
-  const accordionSection = _createElement('div');
-  _setProp(accordionSection, 'style', { marginBottom: '1.5rem' });
-  accordionSection.appendChild(Title({ order: 3, children: t.node('accordion.title') }));
-  accordionSection.appendChild(Accordion({
-    variant: 'separated',
-    items: [
-      { value: 'a11y', label: t.node('accordion.a11yLabel'), content: t.node('accordion.a11yContent') },
-      { value: 'theming', label: t.node('accordion.themingLabel'), content: t.node('accordion.themingContent') },
-      { value: 'perf', label: t.node('accordion.perfLabel'), content: t.node('accordion.perfContent') },
-    ],
-    defaultValue: 'a11y',
-  }));
-  el.appendChild(accordionSection);
-
-  // ─── Section: Menu ───────────────────────────────
-  const menuSection = _createElement('div');
-  _setProp(menuSection, 'style', { marginBottom: '1.5rem' });
-  menuSection.appendChild(Title({ order: 3, children: t.node('menu.title') }));
-  menuSection.appendChild(Menu({
-    target: Button({ variant: 'outline', children: t.node('menu.actions') }),
-    items: [
-      { type: 'label', label: t.node('menu.appLabel') },
-      { label: t.node('menu.settings'), onClick: () => console.log('Settings clicked') },
-      { label: t.node('menu.messages'), onClick: () => console.log('Messages clicked') },
-      { type: 'divider' },
-      { type: 'label', label: t.node('menu.dangerLabel') },
-      { label: t.node('menu.deleteAccount'), color: 'red', onClick: () => console.log('Delete clicked') },
-    ],
-  }));
-  el.appendChild(menuSection);
-
-  // ─── Section: Avatar ─────────────────────────────
-  const avatarSection = _createElement('div');
-  _setProp(avatarSection, 'style', { marginBottom: '1.5rem' });
-  avatarSection.appendChild(Title({ order: 3, children: t.node('avatar.title') }));
-  avatarSection.appendChild(Group({ gap: 'md', children: [
-    Avatar({ name: 'Alice Johnson', color: 'blue' }),
-    Avatar({ name: 'Bob Smith', color: 'red', variant: 'filled' }),
-    Avatar({ color: 'green', size: 'lg' }),
-    Avatar({ name: 'Carol White', color: 'violet', size: 'xl', variant: 'outline' }),
-  ] }));
-  avatarSection.appendChild(Text({ size: 'sm', children: t.node('avatar.group') }));
-  avatarSection.appendChild(AvatarGroup({ spacing: 'sm', children: [
-    Avatar({ name: 'A B', color: 'blue', variant: 'filled' }),
-    Avatar({ name: 'C D', color: 'red', variant: 'filled' }),
-    Avatar({ name: 'E F', color: 'green', variant: 'filled' }),
-    Avatar({ name: '+3', color: 'gray', variant: 'filled' }),
-  ] }));
-  el.appendChild(avatarSection);
-
-  // ─── Section: Breadcrumb ─────────────────────────
-  const breadcrumbSection = _createElement('div');
-  _setProp(breadcrumbSection, 'style', { marginBottom: '1.5rem' });
-  breadcrumbSection.appendChild(Title({ order: 3, children: t.node('breadcrumb.title') }));
-  breadcrumbSection.appendChild(Breadcrumb({
-    items: [
-      { label: t.node('breadcrumb.home'), href: '#' },
-      { label: t.node('breadcrumb.components'), href: '#' },
-      { label: t.node('breadcrumb.title') },
-    ],
-  }));
-  el.appendChild(breadcrumbSection);
-
-  // ─── Section: Pagination ─────────────────────────
-  const paginationSection = _createElement('div');
-  _setProp(paginationSection, 'style', { marginBottom: '1.5rem' });
-  paginationSection.appendChild(Title({ order: 3, children: t.node('pagination.title') }));
-  paginationSection.appendChild(Pagination({
-    total: 20,
-    defaultValue: 5,
-    onChange: (page) => console.log('Page:', page),
-  }));
-  el.appendChild(paginationSection);
-
-  // ─── Section: SegmentedControl ───────────────────
-  const segmentedSection = _createElement('div');
-  _setProp(segmentedSection, 'style', { marginBottom: '1.5rem' });
-  segmentedSection.appendChild(Title({ order: 3, children: t.node('segmented.title') }));
-  segmentedSection.appendChild(SegmentedControl({
-    data: [
-      { value: 'preview', label: t.node('segmented.preview') },
-      { value: 'code', label: t.node('segmented.code') },
-      { value: 'export', label: t.node('segmented.export') },
-    ],
-    defaultValue: 'preview',
-    onChange: (val) => console.log('Segment:', val),
-  }));
-  el.appendChild(segmentedSection);
-
-  // ─── Section: NavLink ────────────────────────────
-  const navSection = _createElement('div');
-  _setProp(navSection, 'style', { marginBottom: '1.5rem', maxWidth: '280px' });
-  navSection.appendChild(Title({ order: 3, children: t.node('navlink.title') }));
-  navSection.appendChild(NavLink({
-    label: t.node('navlink.dashboard'),
-    active: true,
-    onClick: () => console.log('Dashboard'),
-  }));
-  navSection.appendChild(NavLink({
-    label: t.node('navlink.settings'),
-    description: t.node('navlink.settingsDesc'),
-    children: [
-      NavLink({ label: t.node('navlink.general'), onClick: () => console.log('General') }),
-      NavLink({ label: t.node('navlink.security'), onClick: () => console.log('Security') }),
-      NavLink({ label: t.node('navlink.notifications'), disabled: true }),
-    ],
-  }));
-  navSection.appendChild(NavLink({
-    label: t.node('navlink.users'),
-    onClick: () => console.log('Users'),
-  }));
-  el.appendChild(navSection);
-
-  // ─── Section: Toast ──────────────────────────────
-  const toastSection = _createElement('div');
-  _setProp(toastSection, 'style', { marginBottom: '1.5rem' });
-  toastSection.appendChild(Title({ order: 3, children: t.node('toast.title') }));
-  toastSection.appendChild(Group({ gap: 'sm', wrap: true, children: [
-    Button({
-      variant: 'filled',
-      color: 'green',
-      children: t.node('toast.success'),
-      onClick: () => toast.success(t('toast.savedMessage'), { title: t('toast.savedTitle') }),
-    }),
-    Button({
-      variant: 'filled',
-      color: 'red',
-      children: t.node('toast.error'),
-      onClick: () => toast.error(t('toast.errorMessage'), { title: t('toast.errorTitle') }),
-    }),
-    Button({
-      variant: 'filled',
-      color: 'yellow',
-      children: t.node('toast.warning'),
-      onClick: () => toast.warning(t('toast.warningMessage')),
-    }),
-    Button({
-      variant: 'filled',
-      color: 'blue',
-      children: t.node('toast.info'),
-      onClick: () => toast.info(t('toast.infoMessage'), { title: t('toast.infoTitle') }),
-    }),
-  ] }));
-  el.appendChild(toastSection);
-
-  return el;
 }
 
 // ============================================================
@@ -1061,395 +903,381 @@ function UIContent() {
 function ExtrasDemo() {
   // Shares the App-level ThemeProvider - avoid nesting providers so the
   // dark-mode toggle in the UI demo also affects this section.
-  const wrapper = _createElement('div');
-  _setProp(wrapper, 'style', {
-    background: 'var(--mkt-color-bg)',
-    color: 'var(--mkt-color-text)',
-    padding: '1.5rem',
-    borderRadius: '8px',
-    marginTop: '1.5rem',
-    transition: 'background 150ms, color 150ms',
-  });
-
-  wrapper.appendChild(_createComponent(ExtrasContent, {}));
-  return wrapper;
+  return (
+    <div
+      style={{
+        background: 'var(--mkt-color-bg)',
+        color: 'var(--mkt-color-text)',
+        padding: '1.5rem',
+        borderRadius: '8px',
+        marginTop: '1.5rem',
+        transition: 'background 150ms, color 150ms',
+      }}
+    >
+      <ExtrasContent />
+    </div>
+  );
 }
 
 function ExtrasContent() {
   const { t } = useI18n();
-  const el = _createElement('div');
-
-  el.appendChild(Title({ order: 2, children: t.node('extras.title') }));
-  el.appendChild(Text({ size: 'sm', children: t.node('extras.description') }));
-
-  // ─── Typography ────────────────────────────
-  el.appendChild(Title({ order: 3, children: t.node('extras.typographyTitle') }));
-
-  const typoStack = Stack({ gap: 'sm', children: [
-    Group({ gap: 'xs', align: 'center', children: [
-      Text({ size: 'sm', children: t.node('extras.kbdTitle') }),
-      Kbd({ children: t('extras.kbdCtrl') }),
-      Text({ size: 'sm', children: '+' }),
-      Kbd({ children: t('extras.kbdShift') }),
-      Text({ size: 'sm', children: '+' }),
-      Kbd({ children: t('extras.kbdK') }),
-    ] }),
-    Code({ children: t('extras.codeDemo') }),
-    Text({ children: (() => {
-      const span = document.createElement('span');
-      span.textContent = 'Contains ';
-      span.appendChild(Mark({ color: 'yellow', children: t('extras.markedText') }));
-      span.appendChild(document.createTextNode(' text inline.'));
-      return span;
-    })() }),
-    Blockquote({
-      color: 'primary',
-      cite: t('extras.blockquoteCite'),
-      children: t.node('extras.blockquote'),
-    }),
-    Highlight({
-      highlight: t('extras.highlightTerm'),
-      color: 'yellow',
-      children: t('extras.highlightText'),
-    }),
-    Spoiler({
-      maxHeight: 48,
-      showLabel: t('extras.spoilerShow'),
-      hideLabel: t('extras.spoilerHide'),
-      children: (() => {
-        const p = document.createElement('p');
-        p.textContent = t('extras.spoilerContent') + ' ' + t('extras.spoilerContent');
-        return p;
-      })(),
-    }),
-    List({ children: [
-      ListItem({ children: 'First item' }),
-      ListItem({ children: 'Second item' }),
-      ListItem({ children: 'Third item' }),
-    ] }),
-  ] });
-  el.appendChild(typoStack);
-
-  // ─── ThemeIcons & ColorSwatch ──────────────
-  el.appendChild(Title({ order: 3, children: t.node('extras.themeIconTitle') }));
-  const icon = () => createIcon(Check, { size: 14 });
-  el.appendChild(Group({ gap: 'sm', children: [
-    ThemeIcon({ color: 'primary', children: icon() }),
-    ThemeIcon({ color: 'green', variant: 'light', children: icon() }),
-    ThemeIcon({ color: 'red', variant: 'outline', children: icon() }),
-    ThemeIcon({ color: 'violet', variant: 'gradient', size: 'lg', children: icon() }),
-  ] }));
-
-  el.appendChild(Text({ size: 'sm', children: t.node('extras.colorSwatchTitle') }));
-  el.appendChild(Group({ gap: 'xs', children: [
-    ColorSwatch({ color: '#7c3aed' }),
-    ColorSwatch({ color: '#10b981' }),
-    ColorSwatch({ color: '#ef4444' }),
-    ColorSwatch({ color: '#f59e0b' }),
-    ColorSwatch({ color: 'transparent' }),
-  ] }));
-
-  el.appendChild(Divider({}));
-
-  // ─── Layout ───────────────────────────────
-  el.appendChild(Title({ order: 3, children: t.node('extras.layoutTitle') }));
-
-  const layoutGrid = SimpleGrid({ cols: 3, spacing: 'md', children: [
-    Paper({ padding: 'md', withBorder: true, shadow: 'sm', children: Text({ children: t.node('extras.paperContent') }) }),
-    Center({ children: Badge({ color: 'primary', children: t.node('extras.centerContent') }) }),
-    AspectRatio({ ratio: 16 / 9, children: (() => {
-      const d = document.createElement('div');
-      d.style.background = 'var(--mkt-color-primary-1)';
-      d.style.display = 'flex';
-      d.style.alignItems = 'center';
-      d.style.justifyContent = 'center';
-      d.style.color = 'var(--mkt-color-primary-7)';
-      d.style.borderRadius = 'var(--mkt-radius-sm)';
-      d.textContent = '16:9';
-      return d;
-    })() }),
-  ] });
-  el.appendChild(layoutGrid);
-
-  el.appendChild(Flex({ gap: 'sm', wrap: 'wrap', children: [
-    Indicator({ label: '3', color: 'red', children: Badge({ color: 'gray', children: t.node('extras.indicatorContent') }) }),
-    RingProgress({ size: 80, thickness: 8, sections: [{ value: 70, color: 'primary' }], label: Text({ size: 'sm', children: t.node('extras.ringProgressLabel') }) }),
-  ] }));
-
-  el.appendChild(Divider({}));
-
-  // ─── Inputs & Forms ────────────────────────
-  el.appendChild(Title({ order: 3, children: t.node('extras.chipsTitle') }));
-  el.appendChild(ChipGroup({
-    multiple: true,
-    defaultValue: ['mikata'],
-    onChange: (v) => console.log('Chips:', v),
-    children: [
-      Chip({ value: 'react', children: t.node('extras.chipOption1') }),
-      Chip({ value: 'vue', children: t.node('extras.chipOption2') }),
-      Chip({ value: 'solid', children: t.node('extras.chipOption3') }),
-      Chip({ value: 'mikata', color: 'violet', children: t.node('extras.chipOption4') }),
-    ],
-  }));
-
-  el.appendChild(Title({ order: 3, children: t.node('extras.ratingTitle') }));
-  el.appendChild(Rating({ defaultValue: 4, fractions: 2, color: '#f59e0b' }));
-
-  el.appendChild(Title({ order: 3, children: t.node('extras.pinTitle') }));
-  el.appendChild(PinInput({ length: 6, onChange: (v) => console.log('PIN:', v) }));
-
-  el.appendChild(Title({ order: 3, children: t.node('extras.fileTitle') }));
-  el.appendChild(Stack({ gap: 'sm', children: [
-    FileInput({ label: t.node('extras.fileTitle'), placeholder: t('extras.fileSelectBtn'), clearable: true }),
-    FileButton({
-      onChange: (f) => console.log('Picked file:', f),
-      children: (open: () => void) => Button({ variant: 'outline', children: t.node('extras.fileSelectBtn'), onClick: open }),
-    }),
-  ] }));
-
-  el.appendChild(Fieldset({ legend: t.node('extras.autocompleteTitle'), children: Stack({ gap: 'sm', children: [
-    Autocomplete({
-      label: t.node('extras.autocompleteTitle'),
-      placeholder: t('extras.autocompletePlaceholder'),
-      data: ['Apple', 'Apricot', 'Banana', 'Blueberry', 'Cherry', 'Cranberry', 'Date', 'Grape', 'Lemon', 'Mango', 'Orange', 'Pear'],
-      onOptionSubmit: (v) => console.log('Autocomplete:', v),
-    }),
-    MultiSelect({
-      label: t.node('extras.multiSelectTitle'),
-      placeholder: t('extras.multiSelectPlaceholder'),
-      clearable: true,
-      data: [
-        { value: 'js', label: 'JavaScript' },
-        { value: 'ts', label: 'TypeScript' },
-        { value: 'rs', label: 'Rust' },
-        { value: 'go', label: 'Go' },
-        { value: 'py', label: 'Python' },
-      ],
-      onChange: (v) => console.log('Multi:', v),
-    }),
-    TagsInput({
-      label: t.node('extras.tagsTitle'),
-      placeholder: t('extras.tagsPlaceholder'),
-      defaultValue: ['one', 'two'],
-      onChange: (v) => console.log('Tags:', v),
-    }),
-    Input({ placeholder: 'Primitive Input' }),
-  ] }) }));
-
-  el.appendChild(Divider({}));
-
-  // ─── Navigation ────────────────────────────
-  el.appendChild(Title({ order: 3, children: t.node('extras.timelineTitle') }));
-  el.appendChild(Timeline({
-    active: 1,
-    color: 'primary',
-    items: [
-      { title: t.node('extras.timelineStep1'), children: Text({ size: 'sm', children: t.node('extras.timelineStep1Desc') }) },
-      { title: t.node('extras.timelineStep2'), children: Text({ size: 'sm', children: t.node('extras.timelineStep2Desc') }) },
-      { title: t.node('extras.timelineStep3'), children: Text({ size: 'sm', children: t.node('extras.timelineStep3Desc') }) },
-    ],
-  }));
-
-  el.appendChild(Title({ order: 3, children: t.node('extras.stepperTitle') }));
   const [activeStep, setActiveStep] = signal(1);
-  const stepperContainer = _createElement('div');
-  effect(() => {
-    stepperContainer.textContent = '';
-    stepperContainer.appendChild(Stepper({
-      active: activeStep(),
-      color: 'primary',
-      onStepClick: (i) => setActiveStep(i),
-      steps: [
-        { label: t.node('extras.stepperAccount'), description: t.node('extras.stepperAccountDesc') },
-        { label: t.node('extras.stepperProfile'), description: t.node('extras.stepperProfileDesc') },
-        { label: t.node('extras.stepperConfirm'), description: t.node('extras.stepperConfirmDesc') },
-      ],
-    }));
-    stepperContainer.appendChild(Group({ gap: 'sm', children: [
-      Button({ variant: 'outline', children: 'Prev', onClick: () => setActiveStep(Math.max(0, activeStep() - 1)) }),
-      Button({ children: 'Next', onClick: () => setActiveStep(Math.min(3, activeStep() + 1)) }),
-    ] }));
-  });
-  el.appendChild(stepperContainer);
-
-  el.appendChild(Title({ order: 3, children: t.node('extras.treeTitle') }));
-  el.appendChild(Tree({
-    defaultExpanded: ['src'],
-    data: [
-      {
-        value: 'src',
-        label: t('extras.treeSrc'),
-        children: [
-          { value: 'components', label: t('extras.treeComponents'), children: [
-            { value: 'button', label: 'Button' },
-            { value: 'input', label: 'Input' },
-          ] },
-          { value: 'utils', label: t('extras.treeUtils') },
-        ],
-      },
-      { value: 'tests', label: t('extras.treeTests') },
-    ],
-    onSelect: (v) => console.log('Tree:', v),
-  }));
-
-  el.appendChild(Divider({}));
-
-  // ─── Overlays & Feedback ───────────────────
-  el.appendChild(Title({ order: 3, children: t.node('extras.hoverCardTitle') }));
-  el.appendChild(HoverCard({
-    position: 'bottom',
-    withArrow: true,
-    target: Button({ variant: 'outline', children: t.node('extras.hoverCardTitle') }),
-    children: Text({ size: 'sm', children: t.node('extras.hoverCardBody') }),
-  }));
-
-  el.appendChild(Notification({
-    title: t.node('extras.notificationTitle'),
-    color: 'primary',
-    onClose: () => console.log('Notification closed'),
-    children: t.node('extras.notificationDesc'),
-  }));
-
-  // Loading overlay demo inside a Paper wrapper
-  const loadingWrap = Paper({ padding: 'md', withBorder: true, children: (() => {
-    const inner = _createElement('div');
-    _setProp(inner, 'style', { position: 'relative', minHeight: '100px' });
-    const label = _createElement('div');
-    label.textContent = 'Content behind overlay';
-    inner.appendChild(label);
-    inner.appendChild(LoadingOverlay({ visible: true }));
-    return inner;
-  })() });
-  el.appendChild(loadingWrap);
-
-  // ─── Collapse + ScrollArea ─────────────────
   const [opened, setOpened] = signal(false);
-  const toggleBtn = Button({
-    variant: 'light',
-    children: 'Show details',
-    onClick: () => setOpened(!opened()),
-  });
-  effect(() => {
-    const label = toggleBtn.querySelector('.mkt-button__label');
-    if (label) label.textContent = opened() ? 'Hide details' : 'Show details';
-  });
-  el.appendChild(toggleBtn);
-  el.appendChild(Collapse({
-    in: () => opened(),
-    children: (() => {
-      const d = _createElement('div');
-      _setProp(d, 'style', { padding: 'var(--mkt-space-3)' });
-      d.appendChild(Text({ children: 'This content is animated via Collapse.' }));
-      return d;
-    })(),
-  }));
-
-  const scrollArea = ScrollArea({
-    type: 'hover',
-    height: 120,
-    children: (() => {
-      const frag = _createElement('div');
-      _setProp(frag, 'style', { padding: 'var(--mkt-space-3)' });
-      for (let i = 1; i <= 30; i++) {
-        const p = _createElement('p');
-        p.textContent = `Line ${i} - scroll to see custom scrollbars.`;
-        frag.appendChild(p);
-      }
-      return frag;
-    })(),
-  });
-  _setProp(scrollArea, 'style', { border: '1px solid var(--mkt-color-border)', borderRadius: 'var(--mkt-radius-sm)' });
-  el.appendChild(scrollArea);
-
-  el.appendChild(Divider({}));
-
-  // ─── UnstyledButton + Burger ────────────────────
-  el.appendChild(Title({ order: 3, children: t.node('extras.unstyledTitle') }));
   const [burgerOpen, setBurgerOpen] = signal(false);
-  const burgerEl = Burger({
-    opened: false,
-    ariaLabel: 'Toggle navigation',
-    onClick: () => {
-      const next = !burgerOpen();
-      setBurgerOpen(next);
-      if (next) burgerEl.dataset.opened = '';
-      else delete burgerEl.dataset.opened;
-      burgerEl.setAttribute('aria-expanded', String(next));
-    },
-  });
-  el.appendChild(Group({ gap: 'md', align: 'center', children: [
-    burgerEl,
-    UnstyledButton({
-      children: t.node('extras.unstyledButton'),
-      onClick: () => console.log('Unstyled clicked'),
-    }),
-  ] }));
-
-  // ─── CopyButton ────────────────────────────────
-  el.appendChild(Title({ order: 3, children: t.node('extras.copyTitle') }));
-  el.appendChild(Group({ gap: 'sm', align: 'center', children: [
-    Code({ children: t('extras.copyValue') }),
-    CopyButton({
-      value: t('extras.copyValue'),
-      children: ({ copy, copied }) => Button({
-        variant: copied ? 'filled' : 'outline',
-        color: copied ? 'green' : 'primary',
-        size: 'sm',
-        onClick: copy,
-        children: copied ? t.node('extras.copyDone') : t.node('extras.copyIdle'),
-      }),
-    }),
-  ] }));
-
-  // ─── Overlay ───────────────────────────────────
-  el.appendChild(Title({ order: 3, children: t.node('extras.overlayTitle') }));
   const [overlayShown, setOverlayShown] = signal(false);
-  const overlayHost = _createElement('div');
-  _setProp(overlayHost, 'style', {
-    position: 'relative',
-    padding: 'var(--mkt-space-4)',
-    minHeight: '120px',
-    border: '1px solid var(--mkt-color-border)',
-    borderRadius: 'var(--mkt-radius-sm)',
-    overflow: 'hidden',
-  });
-  overlayHost.appendChild(Text({ children: 'Hidden content under overlay.' }));
-  overlayHost.appendChild(Text({ size: 'sm', children: 'Click the button below to dim.' }));
-  effect(() => {
-    const existing = overlayHost.querySelector('.mkt-overlay');
-    if (existing) existing.remove();
-    if (overlayShown()) {
-      overlayHost.appendChild(Overlay({
-        color: '#000',
-        opacity: 0.55,
-        blur: 3,
-        onClick: () => setOverlayShown(false),
-        children: Text({ children: t.node('extras.overlayContent') }),
-      }));
-    }
-  });
-  el.appendChild(overlayHost);
-  el.appendChild(Button({
-    variant: 'outline',
-    size: 'sm',
-    children: t.node('extras.overlayToggle'),
-    onClick: () => setOverlayShown(!overlayShown()),
-  }));
 
-  // ─── RangeSlider ───────────────────────────────
-  el.appendChild(Title({ order: 3, children: t.node('extras.rangeTitle') }));
-  el.appendChild(RangeSlider({
-    defaultValue: [20, 80],
-    min: 0,
-    max: 100,
-    step: 1,
-    minRange: 5,
-    color: 'primary',
-    label: ([a, b]) => `${t('extras.rangeLabel')}: $${a} – $${b}`,
-    onValueChange: (v) => console.log('Range:', v),
-  }));
+  const burgerRef = createRef<HTMLButtonElement>();
+  function onBurgerClick() {
+    const next = !burgerOpen();
+    setBurgerOpen(next);
+    const el = burgerRef.current;
+    if (!el) return;
+    if (next) el.dataset.opened = '';
+    else delete el.dataset.opened;
+    el.setAttribute('aria-expanded', String(next));
+  }
 
-  return el;
+  const icon = () => createIcon(Check, { size: 14 });
+
+  return (
+    <div>
+      <Title order={2}>{t.node('extras.title')}</Title>
+      <Text size="sm">{t.node('extras.description')}</Text>
+
+      <Title order={3}>{t.node('extras.typographyTitle')}</Title>
+      <Stack gap="sm">
+        <Group gap="xs" align="center">
+          <Text size="sm">{t.node('extras.kbdTitle')}</Text>
+          <Kbd>{t('extras.kbdCtrl')}</Kbd>
+          <Text size="sm">+</Text>
+          <Kbd>{t('extras.kbdShift')}</Kbd>
+          <Text size="sm">+</Text>
+          <Kbd>{t('extras.kbdK')}</Kbd>
+        </Group>
+        <Code>{t('extras.codeDemo')}</Code>
+        <Text>
+          <span>
+            Contains <Mark color="yellow">{t('extras.markedText')}</Mark> text inline.
+          </span>
+        </Text>
+        <Blockquote color="primary" cite={t('extras.blockquoteCite')}>
+          {t.node('extras.blockquote')}
+        </Blockquote>
+        <Highlight highlight={t('extras.highlightTerm')} color="yellow">
+          {t('extras.highlightText')}
+        </Highlight>
+        <Spoiler
+          maxHeight={48}
+          showLabel={t('extras.spoilerShow')}
+          hideLabel={t('extras.spoilerHide')}
+        >
+          <p>{t('extras.spoilerContent') + ' ' + t('extras.spoilerContent')}</p>
+        </Spoiler>
+        <List>
+          <ListItem>First item</ListItem>
+          <ListItem>Second item</ListItem>
+          <ListItem>Third item</ListItem>
+        </List>
+      </Stack>
+
+      <Title order={3}>{t.node('extras.themeIconTitle')}</Title>
+      <Group gap="sm">
+        <ThemeIcon color="primary">{icon()}</ThemeIcon>
+        <ThemeIcon color="green" variant="light">{icon()}</ThemeIcon>
+        <ThemeIcon color="red" variant="outline">{icon()}</ThemeIcon>
+        <ThemeIcon color="violet" variant="gradient" size="lg">{icon()}</ThemeIcon>
+      </Group>
+
+      <Text size="sm">{t.node('extras.colorSwatchTitle')}</Text>
+      <Group gap="xs">
+        <ColorSwatch color="#7c3aed" />
+        <ColorSwatch color="#10b981" />
+        <ColorSwatch color="#ef4444" />
+        <ColorSwatch color="#f59e0b" />
+        <ColorSwatch color="transparent" />
+      </Group>
+
+      <Divider />
+
+      <Title order={3}>{t.node('extras.layoutTitle')}</Title>
+      <SimpleGrid cols={3} spacing="md">
+        <Paper padding="md" withBorder shadow="sm">
+          <Text>{t.node('extras.paperContent')}</Text>
+        </Paper>
+        <Center>
+          <Badge color="primary">{t.node('extras.centerContent')}</Badge>
+        </Center>
+        <AspectRatio ratio={16 / 9}>
+          <div
+            style={{
+              background: 'var(--mkt-color-primary-1)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'var(--mkt-color-primary-7)',
+              borderRadius: 'var(--mkt-radius-sm)',
+            }}
+          >
+            16:9
+          </div>
+        </AspectRatio>
+      </SimpleGrid>
+
+      <Flex gap="sm" wrap="wrap">
+        <Indicator label="3" color="red">
+          <Badge color="gray">{t.node('extras.indicatorContent')}</Badge>
+        </Indicator>
+        <RingProgress
+          size={80}
+          thickness={8}
+          sections={[{ value: 70, color: 'primary' }]}
+          label={<Text size="sm">{t.node('extras.ringProgressLabel')}</Text>}
+        />
+      </Flex>
+
+      <Divider />
+
+      <Title order={3}>{t.node('extras.chipsTitle')}</Title>
+      <ChipGroup
+        multiple
+        defaultValue={['mikata']}
+        onChange={(v) => console.log('Chips:', v)}
+      >
+        <Chip value="react">{t.node('extras.chipOption1')}</Chip>
+        <Chip value="vue">{t.node('extras.chipOption2')}</Chip>
+        <Chip value="solid">{t.node('extras.chipOption3')}</Chip>
+        <Chip value="mikata" color="violet">{t.node('extras.chipOption4')}</Chip>
+      </ChipGroup>
+
+      <Title order={3}>{t.node('extras.ratingTitle')}</Title>
+      <Rating defaultValue={4} fractions={2} color="#f59e0b" />
+
+      <Title order={3}>{t.node('extras.pinTitle')}</Title>
+      <PinInput length={6} onChange={(v) => console.log('PIN:', v)} />
+
+      <Title order={3}>{t.node('extras.fileTitle')}</Title>
+      <Stack gap="sm">
+        <FileInput
+          label={t.node('extras.fileTitle')}
+          placeholder={t('extras.fileSelectBtn')}
+          clearable
+        />
+        <FileButton onChange={(f) => console.log('Picked file:', f)}>
+          {(open: () => void) => (
+            <Button variant="outline" onClick={open}>
+              {t.node('extras.fileSelectBtn')}
+            </Button>
+          )}
+        </FileButton>
+      </Stack>
+
+      <Fieldset legend={t.node('extras.autocompleteTitle')}>
+        <Stack gap="sm">
+          <Autocomplete
+            label={t.node('extras.autocompleteTitle')}
+            placeholder={t('extras.autocompletePlaceholder')}
+            data={['Apple', 'Apricot', 'Banana', 'Blueberry', 'Cherry', 'Cranberry', 'Date', 'Grape', 'Lemon', 'Mango', 'Orange', 'Pear']}
+            onOptionSubmit={(v) => console.log('Autocomplete:', v)}
+          />
+          <MultiSelect
+            label={t.node('extras.multiSelectTitle')}
+            placeholder={t('extras.multiSelectPlaceholder')}
+            clearable
+            data={[
+              { value: 'js', label: 'JavaScript' },
+              { value: 'ts', label: 'TypeScript' },
+              { value: 'rs', label: 'Rust' },
+              { value: 'go', label: 'Go' },
+              { value: 'py', label: 'Python' },
+            ]}
+            onChange={(v) => console.log('Multi:', v)}
+          />
+          <TagsInput
+            label={t.node('extras.tagsTitle')}
+            placeholder={t('extras.tagsPlaceholder')}
+            defaultValue={['one', 'two']}
+            onChange={(v) => console.log('Tags:', v)}
+          />
+          <Input placeholder="Primitive Input" />
+        </Stack>
+      </Fieldset>
+
+      <Divider />
+
+      <Title order={3}>{t.node('extras.timelineTitle')}</Title>
+      <Timeline
+        active={1}
+        color="primary"
+        items={[
+          { title: t.node('extras.timelineStep1'), children: <Text size="sm">{t.node('extras.timelineStep1Desc')}</Text> },
+          { title: t.node('extras.timelineStep2'), children: <Text size="sm">{t.node('extras.timelineStep2Desc')}</Text> },
+          { title: t.node('extras.timelineStep3'), children: <Text size="sm">{t.node('extras.timelineStep3Desc')}</Text> },
+        ]}
+      />
+
+      <Title order={3}>{t.node('extras.stepperTitle')}</Title>
+      <Stepper
+        active={() => activeStep()}
+        color="primary"
+        onStepClick={(i) => setActiveStep(i)}
+        steps={[
+          { label: t.node('extras.stepperAccount'), description: t.node('extras.stepperAccountDesc') },
+          { label: t.node('extras.stepperProfile'), description: t.node('extras.stepperProfileDesc') },
+          { label: t.node('extras.stepperConfirm'), description: t.node('extras.stepperConfirmDesc') },
+        ]}
+      />
+      <Group gap="sm">
+        <Button variant="outline" onClick={() => setActiveStep(Math.max(0, activeStep() - 1))}>Prev</Button>
+        <Button onClick={() => setActiveStep(Math.min(3, activeStep() + 1))}>Next</Button>
+      </Group>
+
+      <Title order={3}>{t.node('extras.treeTitle')}</Title>
+      <Tree
+        defaultExpanded={['src']}
+        data={[
+          {
+            value: 'src',
+            label: t('extras.treeSrc'),
+            children: [
+              {
+                value: 'components',
+                label: t('extras.treeComponents'),
+                children: [
+                  { value: 'button', label: 'Button' },
+                  { value: 'input', label: 'Input' },
+                ],
+              },
+              { value: 'utils', label: t('extras.treeUtils') },
+            ],
+          },
+          { value: 'tests', label: t('extras.treeTests') },
+        ]}
+        onSelect={(v) => console.log('Tree:', v)}
+      />
+
+      <Divider />
+
+      <Title order={3}>{t.node('extras.hoverCardTitle')}</Title>
+      <HoverCard
+        position="bottom"
+        withArrow
+        target={<Button variant="outline">{t.node('extras.hoverCardTitle')}</Button>}
+      >
+        <Text size="sm">{t.node('extras.hoverCardBody')}</Text>
+      </HoverCard>
+
+      <Notification
+        title={t.node('extras.notificationTitle')}
+        color="primary"
+        onClose={() => console.log('Notification closed')}
+      >
+        {t.node('extras.notificationDesc')}
+      </Notification>
+
+      <Paper padding="md" withBorder>
+        <div style={{ position: 'relative', minHeight: '100px' }}>
+          <div>Content behind overlay</div>
+          <LoadingOverlay visible />
+        </div>
+      </Paper>
+
+      <Button variant="light" onClick={() => setOpened(!opened())}>
+        {opened() ? 'Hide details' : 'Show details'}
+      </Button>
+      <Collapse in={() => opened()}>
+        <div style={{ padding: 'var(--mkt-space-3)' }}>
+          <Text>This content is animated via Collapse.</Text>
+        </div>
+      </Collapse>
+
+      <ScrollArea
+        type="hover"
+        height={120}
+        style={{ border: '1px solid var(--mkt-color-border)', borderRadius: 'var(--mkt-radius-sm)' }}
+      >
+        <div style={{ padding: 'var(--mkt-space-3)' }}>
+          {Array.from({ length: 30 }, (_, i) => (
+            <p>{`Line ${i + 1} - scroll to see custom scrollbars.`}</p>
+          ))}
+        </div>
+      </ScrollArea>
+
+      <Divider />
+
+      <Title order={3}>{t.node('extras.unstyledTitle')}</Title>
+      <Group gap="md" align="center">
+        <Burger
+          ref={burgerRef}
+          opened={false}
+          ariaLabel="Toggle navigation"
+          onClick={onBurgerClick}
+        />
+        <UnstyledButton onClick={() => console.log('Unstyled clicked')}>
+          {t.node('extras.unstyledButton')}
+        </UnstyledButton>
+      </Group>
+
+      <Title order={3}>{t.node('extras.copyTitle')}</Title>
+      <Group gap="sm" align="center">
+        <Code>{t('extras.copyValue')}</Code>
+        <CopyButton value={t('extras.copyValue')}>
+          {({ copy, copied }) => (
+            <Button
+              variant={copied ? 'filled' : 'outline'}
+              color={copied ? 'green' : 'primary'}
+              size="sm"
+              onClick={copy}
+            >
+              {copied ? t.node('extras.copyDone') : t.node('extras.copyIdle')}
+            </Button>
+          )}
+        </CopyButton>
+      </Group>
+
+      <Title order={3}>{t.node('extras.overlayTitle')}</Title>
+      <div
+        style={{
+          position: 'relative',
+          padding: 'var(--mkt-space-4)',
+          minHeight: '120px',
+          border: '1px solid var(--mkt-color-border)',
+          borderRadius: 'var(--mkt-radius-sm)',
+          overflow: 'hidden',
+        }}
+      >
+        <Text>Hidden content under overlay.</Text>
+        <Text size="sm">Click the button below to dim.</Text>
+        {show(
+          () => overlayShown(),
+          () => (
+            <Overlay
+              color="#000"
+              opacity={0.55}
+              blur={3}
+              onClick={() => setOverlayShown(false)}
+            >
+              <Text>{t.node('extras.overlayContent')}</Text>
+            </Overlay>
+          )
+        )}
+      </div>
+      <Button variant="outline" size="sm" onClick={() => setOverlayShown(!overlayShown())}>
+        {t.node('extras.overlayToggle')}
+      </Button>
+
+      <Title order={3}>{t.node('extras.rangeTitle')}</Title>
+      <RangeSlider
+        defaultValue={[20, 80]}
+        min={0}
+        max={100}
+        step={1}
+        minRange={5}
+        color="primary"
+        label={([a, b]: [number, number]) => `${t('extras.rangeLabel')}: $${a} – $${b}`}
+        onValueChange={(v) => console.log('Range:', v)}
+      />
+    </div>
+  );
 }
 
 // ============================================================
@@ -1457,17 +1285,20 @@ function ExtrasContent() {
 // ============================================================
 function FormPackageDemo() {
   // Shares the App-level ThemeProvider.
-  const wrapper = _createElement('div');
-  _setProp(wrapper, 'style', {
-    background: 'var(--mkt-color-bg)',
-    color: 'var(--mkt-color-text)',
-    padding: '1.5rem',
-    borderRadius: '8px',
-    marginTop: '1.5rem',
-    transition: 'background 150ms, color 150ms',
-  });
-  wrapper.appendChild(_createComponent(FormPackageContent, {}));
-  return wrapper;
+  return (
+    <div
+      style={{
+        background: 'var(--mkt-color-bg)',
+        color: 'var(--mkt-color-text)',
+        padding: '1.5rem',
+        borderRadius: '8px',
+        marginTop: '1.5rem',
+        transition: 'background 150ms, color 150ms',
+      }}
+    >
+      <FormPackageContent />
+    </div>
+  );
 }
 
 let __itemCounter = 0;
@@ -1507,399 +1338,312 @@ function FormPackageContent() {
     validateInputOnBlur: true,
   });
 
-  const el = _createElement('div');
-  el.appendChild(Title({ order: 2, children: t.node('formPkg.title') }));
-  el.appendChild(Text({ size: 'sm', children: t.node('formPkg.description') }));
-
-  const formEl = _createElement('form') as HTMLFormElement;
-  formEl.addEventListener(
-    'submit',
-    form.onSubmit(
-      (values) => {
-        toast.success(t('formPkg.submitted'));
-        console.log('[form] submitted:', values);
-      },
-      (errors) => {
-        toast.error(t('formPkg.hasErrors'));
-        console.log('[form] invalid:', errors);
-      }
-    )
+  const onSubmit = form.onSubmit(
+    (values) => {
+      toast.success(t('formPkg.submitted'));
+      console.log('[form] submitted:', values);
+    },
+    (errors) => {
+      toast.error(t('formPkg.hasErrors'));
+      console.log('[form] invalid:', errors);
+    }
   );
-  formEl.addEventListener('reset', form.onReset());
+  const onReset = form.onReset();
 
-  const fields = Stack({
-    gap: 'sm',
-    children: [
-      TextInput({
-        label: t.node('formPkg.email'),
-        placeholder: 'you@example.com',
-        ...(form.getInputProps('email') as any),
-      }),
-      PasswordInput({
-        label: t.node('formPkg.password'),
-        ...(form.getInputProps('password') as any),
-      }),
-      TextInput({
-        label: t.node('formPkg.city'),
-        ...(form.getInputProps('address.city') as any),
-      }),
-      Checkbox({
-        label: t.node('formPkg.remember'),
-        ...(form.getInputProps('remember', { type: 'checkbox' }) as any),
-      }),
-    ],
-  });
-  formEl.appendChild(fields);
-
-  // Dynamic list - each item bound via `items.${i}.name`.
-  const listWrap = _createElement('div');
-  _setProp(listWrap, 'style', { marginTop: '1rem' });
-  listWrap.appendChild(
-    Title({ order: 4, children: t.node('formPkg.itemsTitle') })
-  );
-
-  const listContainer = _createElement('div');
-  _insert(
-    listContainer,
-    () =>
-      each(
-        () => form.values.items,
-        (item, idx) => {
-          const row = Group({
-            gap: 'sm',
-            align: 'end',
-            children: [
-              TextInput({
-                label: t.node('formPkg.itemName'),
-                ...(form.getInputProps(`items.${idx()}.name`) as any),
-              }),
-              ActionIcon({
-                variant: 'subtle',
-                color: 'red',
-                'aria-label': 'Remove item',
-                onClick: () => form.removeListItem('items', idx()),
-                children: createIcon(Close, { size: 16 }),
-              }),
-            ],
-          });
-          return row;
-        },
-        () => {
-          const p = _createElement('p');
-          p.textContent = '-';
-          return p;
-        },
-        { key: (item: { id: number }) => item.id }
-      )
-  );
-  listWrap.appendChild(listContainer);
-
-  const addBtn = Button({
-    variant: 'light',
-    onClick: () =>
-      form.insertListItem('items', { id: nextItemId(), name: '' }),
-    children: t.node('formPkg.addItem'),
-  });
-  listWrap.appendChild(addBtn);
-  formEl.appendChild(listWrap);
-
-  // Submit / reset row. Gate submit on isDirty + isValid.
-  const submitRow = _createElement('div');
-  _setProp(submitRow, 'style', {
-    marginTop: '1rem',
-    display: 'flex',
-    gap: '0.5rem',
-  });
-
-  const submitBtn = Button({
-    type: 'submit',
-    children: t.node('formPkg.save'),
-  }) as HTMLElement;
-  const nativeSubmit =
-    submitBtn.tagName === 'BUTTON'
-      ? (submitBtn as HTMLButtonElement)
-      : (submitBtn.querySelector('button') as HTMLButtonElement);
-  effect(() => {
-    const disabled = !form.isDirty() || !form.isValid();
-    if (nativeSubmit) nativeSubmit.disabled = disabled;
-  });
-  submitRow.appendChild(submitBtn);
-
-  submitRow.appendChild(
-    Button({
-      type: 'reset',
-      variant: 'subtle',
-      children: t.node('formPkg.reset'),
-    })
-  );
-  formEl.appendChild(submitRow);
-
-  el.appendChild(formEl);
-
-  // Live status - shows dirty/valid/touched reactively so reviewers can see
-  // the signals doing their job.
-  const status = _createElement('p');
-  _setProp(status, 'style', {
-    fontSize: '0.875rem',
-    opacity: '0.7',
-    marginTop: '0.75rem',
-  });
-  _insert(status, () => {
+  const submitDisabled = () => !form.isDirty() || !form.isValid();
+  const statusText = () => {
     const dirty = form.isDirty() ? t('formPkg.yes') : t('formPkg.no');
     const valid = form.isValid() ? t('formPkg.yes') : t('formPkg.no');
     return `${t('formPkg.dirty')}: ${dirty} • ${t('formPkg.valid')}: ${valid}`;
-  });
-  el.appendChild(status);
+  };
 
-  return el;
+  return (
+    <div>
+      <Title order={2}>{t.node('formPkg.title')}</Title>
+      <Text size="sm">{t.node('formPkg.description')}</Text>
+
+      <form onSubmit={onSubmit} onReset={onReset}>
+        <Stack gap="sm">
+          <TextInput
+            label={t.node('formPkg.email')}
+            placeholder="you@example.com"
+            {...(form.getInputProps('email') as any)}
+          />
+          <PasswordInput
+            label={t.node('formPkg.password')}
+            {...(form.getInputProps('password') as any)}
+          />
+          <TextInput
+            label={t.node('formPkg.city')}
+            {...(form.getInputProps('address.city') as any)}
+          />
+          <Checkbox
+            label={t.node('formPkg.remember')}
+            {...(form.getInputProps('remember', { type: 'checkbox' }) as any)}
+          />
+        </Stack>
+
+        <div style={{ marginTop: '1rem' }}>
+          <Title order={4}>{t.node('formPkg.itemsTitle')}</Title>
+          <div>
+            {each(
+              () => form.values.items,
+              (_item, idx) => (
+                <Group gap="sm" align="end">
+                  <TextInput
+                    label={t.node('formPkg.itemName')}
+                    {...(form.getInputProps(`items.${idx()}.name`) as any)}
+                  />
+                  <ActionIcon
+                    variant="subtle"
+                    color="red"
+                    aria-label="Remove item"
+                    onClick={() => form.removeListItem('items', idx())}
+                  >
+                    {createIcon(Close, { size: 16 })}
+                  </ActionIcon>
+                </Group>
+              ),
+              () => <p>-</p>,
+              { key: (item: { id: number }) => item.id }
+            )}
+          </div>
+          <Button
+            variant="light"
+            onClick={() =>
+              form.insertListItem('items', { id: nextItemId(), name: '' })
+            }
+          >
+            {t.node('formPkg.addItem')}
+          </Button>
+        </div>
+
+        <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem' }}>
+          <Button type="submit" disabled={submitDisabled()}>
+            {t.node('formPkg.save')}
+          </Button>
+          <Button type="reset" variant="subtle">
+            {t.node('formPkg.reset')}
+          </Button>
+        </div>
+      </form>
+
+      <p style={{ fontSize: '0.875rem', opacity: '0.7', marginTop: '0.75rem' }}>
+        {statusText()}
+      </p>
+    </div>
+  );
 }
 
 // ============================================================
 // DatesDemo - Calendar, DatePicker, pickers, TimeInput
 // ============================================================
 function DatesDemo() {
-  const wrapper = _createElement('div');
-  _setProp(wrapper, 'style', {
-    background: 'var(--mkt-color-bg)',
-    color: 'var(--mkt-color-text)',
-    padding: '1.5rem',
-    borderRadius: '8px',
-    marginTop: '1.5rem',
-    transition: 'background 150ms, color 150ms',
-  });
-  wrapper.appendChild(_createComponent(DatesContent, {}));
-  return wrapper;
+  return (
+    <div
+      style={{
+        background: 'var(--mkt-color-bg)',
+        color: 'var(--mkt-color-text)',
+        padding: '1.5rem',
+        borderRadius: '8px',
+        marginTop: '1.5rem',
+        transition: 'background 150ms, color 150ms',
+      }}
+    >
+      <DatesContent />
+    </div>
+  );
 }
 
 function DatesContent() {
-  const el = _createElement('div');
-
-  el.appendChild(Title({ order: 2, children: 'Dates & Time' }));
-  el.appendChild(Text({ size: 'sm', children: 'Calendar, DatePicker, Month/YearPicker, DateInput, TimeInput - all powered by Intl with zero date-library deps.' }));
-
-  // ─── Inline Calendar ──────────────────────────
-  el.appendChild(Title({ order: 3, children: 'Calendar (inline)' }));
-  el.appendChild(SimpleGrid({ cols: 3, spacing: 'md', children: [
-    Stack({ gap: 'xs', children: [
-      Text({ size: 'sm', fw: 500, children: 'Default' }),
-      Calendar({ defaultValue: new Date() }),
-    ] }),
-    Stack({ gap: 'xs', children: [
-      Text({ size: 'sm', fw: 500, children: 'Multiple' }),
-      Calendar({ type: 'multiple' }),
-    ] }),
-    Stack({ gap: 'xs', children: [
-      Text({ size: 'sm', fw: 500, children: 'Range' }),
-      Calendar({ type: 'range' }),
-    ] }),
-  ] }));
-
-  // ─── DatePicker ─────────────────────────────
-  el.appendChild(Title({ order: 3, children: 'DatePicker (drills day → month → year)' }));
-  el.appendChild(Group({ gap: 'md', align: 'flex-start', children: [
-    DatePicker({ defaultValue: new Date() }),
-    DatePicker({ type: 'range' }),
-  ] }));
-
-  // ─── Month / Year pickers ──────────────────
-  el.appendChild(Title({ order: 3, children: 'MonthPicker / YearPicker' }));
-  el.appendChild(Group({ gap: 'md', align: 'flex-start', children: [
-    MonthPicker({ defaultValue: new Date() }),
-    YearPicker({ defaultValue: new Date() }),
-  ] }));
-
-  // ─── Inputs ────────────────────────────────
-  el.appendChild(Title({ order: 3, children: 'DateInput / DatePickerInput' }));
-  el.appendChild(SimpleGrid({ cols: 2, spacing: 'md', children: [
-    DateInput({
-      label: 'DateInput (typeable)',
-      placeholder: 'YYYY-MM-DD',
-      defaultValue: new Date(),
-    }),
-    DatePickerInput({
-      label: 'DatePickerInput',
-      placeholder: 'Pick a date',
-      defaultValue: new Date(),
-    }),
-    DatePickerInput({
-      label: 'Range',
-      type: 'range',
-      placeholder: 'Pick a range',
-    }),
-    MonthPickerInput({
-      label: 'MonthPickerInput',
-      placeholder: 'Pick a month',
-    }),
-    YearPickerInput({
-      label: 'YearPickerInput',
-      placeholder: 'Pick a year',
-    }),
-    TimeInput({
-      label: 'TimeInput',
-      defaultValue: '14:30',
-      withSeconds: false,
-    }),
-  ] }));
-
-  el.appendChild(Divider({}));
-
-  // ─── Virtualization ────────────────────────
-  el.appendChild(Title({ order: 2, children: 'Virtualization' }));
-  el.appendChild(Text({ size: 'sm', children: 'VirtualList renders only the items in view. Scroll the list below - only ~12 nodes exist in the DOM at any time despite 10,000 items.' }));
-
   const bigData = Array.from({ length: 10000 }, (_, i) => ({
     id: i,
     name: `Row ${i + 1}`,
     detail: `Value ${(i * 7919) % 1000}`,
   }));
 
-  el.appendChild(VirtualList({
-    data: bigData,
-    itemSize: 44,
-    size: 320,
-    renderItem: (item) => {
-      const row = _createElement('div');
-      _setProp(row, 'style', {
-        display: 'flex',
-        alignItems: 'center',
-        gap: '0.75rem',
-        padding: '0 1rem',
-        height: '44px',
-        borderBottom: '1px solid var(--mkt-color-border)',
-      });
-      const left = _createElement('div');
-      _setProp(left, 'style', { fontWeight: '500', flex: '1' });
-      left.textContent = item.name;
-      const right = _createElement('div');
-      _setProp(right, 'style', { opacity: '0.7', fontSize: '0.875rem' });
-      right.textContent = item.detail;
-      row.appendChild(left);
-      row.appendChild(right);
-      return row;
-    },
-  }));
+  const rowBaseStyle = {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.75rem',
+    padding: '0 1rem',
+    height: '44px',
+    borderBottom: '1px solid var(--mkt-color-border)',
+  } as const;
 
-  // Variable-size variant
-  el.appendChild(Title({ order: 3, children: 'Variable-size items' }));
-  el.appendChild(VirtualList({
-    data: Array.from({ length: 500 }, (_, i) => i),
-    itemSize: (i) => 30 + (i % 5) * 14,
-    size: 240,
-    renderItem: (n, i) => {
-      const row = _createElement('div');
-      _setProp(row, 'style', {
-        display: 'flex',
-        alignItems: 'center',
-        padding: '0 1rem',
-        height: '100%',
-        borderBottom: '1px solid var(--mkt-color-border)',
-        background: i % 2 ? 'var(--mkt-color-bg-subtle)' : 'transparent',
-      });
-      row.textContent = `Item ${n} (size ${30 + (i % 5) * 14}px)`;
-      return row;
-    },
-  }));
+  return (
+    <div>
+      <Title order={2}>Dates & Time</Title>
+      <Text size="sm">
+        Calendar, DatePicker, Month/YearPicker, DateInput, TimeInput - all powered by Intl with zero date-library deps.
+      </Text>
 
-  return el;
+      <Title order={3}>Calendar (inline)</Title>
+      <SimpleGrid cols={3} spacing="md">
+        <Stack gap="xs">
+          <Text size="sm" fw={500}>Default</Text>
+          <Calendar defaultValue={new Date()} />
+        </Stack>
+        <Stack gap="xs">
+          <Text size="sm" fw={500}>Multiple</Text>
+          <Calendar type="multiple" />
+        </Stack>
+        <Stack gap="xs">
+          <Text size="sm" fw={500}>Range</Text>
+          <Calendar type="range" />
+        </Stack>
+      </SimpleGrid>
+
+      <Title order={3}>DatePicker (drills day → month → year)</Title>
+      <Group gap="md" align="flex-start">
+        <DatePicker defaultValue={new Date()} />
+        <DatePicker type="range" />
+      </Group>
+
+      <Title order={3}>MonthPicker / YearPicker</Title>
+      <Group gap="md" align="flex-start">
+        <MonthPicker defaultValue={new Date()} />
+        <YearPicker defaultValue={new Date()} />
+      </Group>
+
+      <Title order={3}>DateInput / DatePickerInput</Title>
+      <SimpleGrid cols={2} spacing="md">
+        <DateInput label="DateInput (typeable)" placeholder="YYYY-MM-DD" defaultValue={new Date()} />
+        <DatePickerInput label="DatePickerInput" placeholder="Pick a date" defaultValue={new Date()} />
+        <DatePickerInput label="Range" type="range" placeholder="Pick a range" />
+        <MonthPickerInput label="MonthPickerInput" placeholder="Pick a month" />
+        <YearPickerInput label="YearPickerInput" placeholder="Pick a year" />
+        <TimeInput label="TimeInput" defaultValue="14:30" withSeconds={false} />
+      </SimpleGrid>
+
+      <Divider />
+
+      <Title order={2}>Virtualization</Title>
+      <Text size="sm">
+        VirtualList renders only the items in view. Scroll the list below - only ~12 nodes exist in the DOM at any time despite 10,000 items.
+      </Text>
+
+      <VirtualList
+        data={bigData}
+        itemSize={44}
+        size={320}
+        renderItem={(item: { name: string; detail: string }) => (
+          <div style={rowBaseStyle}>
+            <div style={{ fontWeight: '500', flex: '1' }}>{item.name}</div>
+            <div style={{ opacity: '0.7', fontSize: '0.875rem' }}>{item.detail}</div>
+          </div>
+        )}
+      />
+
+      <Title order={3}>Variable-size items</Title>
+      <VirtualList
+        data={Array.from({ length: 500 }, (_, i) => i)}
+        itemSize={(i: number) => 30 + (i % 5) * 14}
+        size={240}
+        renderItem={(n: number, i: number) => (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              padding: '0 1rem',
+              height: '100%',
+              borderBottom: '1px solid var(--mkt-color-border)',
+              background: i % 2 ? 'var(--mkt-color-bg-subtle)' : 'transparent',
+            }}
+          >
+            {`Item ${n} (size ${30 + (i % 5) * 14}px)`}
+          </div>
+        )}
+      />
+    </div>
+  );
 }
 
 // ============================================================
 // IconsDemo - @mikata/icons + Lucide interop
 // ============================================================
 function IconsDemo() {
-  const wrapper = _createElement('div');
-  _setProp(wrapper, 'style', {
-    background: 'var(--mkt-color-bg)',
-    color: 'var(--mkt-color-text)',
-    padding: '1.5rem',
-    borderRadius: '8px',
-    marginTop: '1.5rem',
-    transition: 'background 150ms, color 150ms',
-  });
-  wrapper.appendChild(_createComponent(IconsContent, {}));
-  return wrapper;
+  return (
+    <div
+      style={{
+        background: 'var(--mkt-color-bg)',
+        color: 'var(--mkt-color-text)',
+        padding: '1.5rem',
+        borderRadius: '8px',
+        marginTop: '1.5rem',
+        transition: 'background 150ms, color 150ms',
+      }}
+    >
+      <IconsContent />
+    </div>
+  );
 }
 
 function IconsContent() {
   const { t } = useI18n();
-  const el = _createElement('div');
 
-  el.appendChild(Title({ order: 2, children: t.node('icons.title') }));
-  el.appendChild(Text({ size: 'sm', children: t.node('icons.subtitle') }));
+  return (
+    <div>
+      <Title order={2}>{t.node('icons.title')}</Title>
+      <Text size="sm">{t.node('icons.subtitle')}</Text>
 
-  // Button with Lucide leftIcon
-  el.appendChild(Title({ order: 4, children: t.node('icons.buttons') }));
-  el.appendChild(Group({ gap: 'sm', children: [
-    Button({ leftIcon: createIcon(LucideDownload, { size: 16 }), children: t.node('icons.download') }),
-    Button({ variant: 'outline', leftIcon: createIcon(LucideHeart, { size: 16 }), children: t.node('icons.like') }),
-    Button({ variant: 'subtle', color: 'red', leftIcon: createIcon(LucideTrash, { size: 16 }), children: t.node('icons.delete') }),
-  ] }));
+      <Title order={4}>{t.node('icons.buttons')}</Title>
+      <Group gap="sm">
+        <Button leftIcon={createIcon(LucideDownload, { size: 16 })}>
+          {t.node('icons.download')}
+        </Button>
+        <Button variant="outline" leftIcon={createIcon(LucideHeart, { size: 16 })}>
+          {t.node('icons.like')}
+        </Button>
+        <Button variant="subtle" color="red" leftIcon={createIcon(LucideTrash, { size: 16 })}>
+          {t.node('icons.delete')}
+        </Button>
+      </Group>
 
-  // TextInput leftSection
-  el.appendChild(Title({ order: 4, children: t.node('icons.inputs') }));
-  el.appendChild(TextInput({
-    placeholder: String(t('icons.searchPlaceholder')),
-    leftSection: createIcon(LucideSearch, { size: 16 }),
-  }));
+      <Title order={4}>{t.node('icons.inputs')}</Title>
+      <TextInput
+        placeholder={String(t('icons.searchPlaceholder'))}
+        leftSection={createIcon(LucideSearch, { size: 16 })}
+      />
 
-  // Alert + Notification with icons
-  el.appendChild(Title({ order: 4, children: t.node('icons.feedback') }));
-  el.appendChild(Alert({
-    variant: 'light',
-    color: 'primary',
-    icon: () => createIcon(LucideInfo, { size: 20 }),
-    title: t.node('icons.alertTitle'),
-    children: t.node('icons.alertBody'),
-  }));
-  el.appendChild(Notification({
-    color: 'green',
-    icon: createIcon(Check, { size: 18 }),
-    title: t.node('icons.notifTitle'),
-    children: t.node('icons.notifBody'),
-  }));
+      <Title order={4}>{t.node('icons.feedback')}</Title>
+      <Alert
+        variant="light"
+        color="primary"
+        icon={() => createIcon(LucideInfo, { size: 20 })}
+        title={t.node('icons.alertTitle')}
+      >
+        {t.node('icons.alertBody')}
+      </Alert>
+      <Notification
+        color="green"
+        icon={createIcon(Check, { size: 18 })}
+        title={t.node('icons.notifTitle')}
+      >
+        {t.node('icons.notifBody')}
+      </Notification>
 
-  // NavLink with icon
-  el.appendChild(Title({ order: 4, children: t.node('icons.navigation') }));
-  const nav = _createElement('div');
-  _setProp(nav, 'style', { maxWidth: '240px' });
-  nav.appendChild(NavLink({
-    label: t.node('icons.navHome'),
-    icon: createIcon(LucideHome, { size: 16 }),
-    active: true,
-  }));
-  nav.appendChild(NavLink({
-    label: t.node('icons.navSettings'),
-    icon: createIcon(LucideSettings, { size: 16 }),
-  }));
-  nav.appendChild(NavLink({
-    label: t.node('icons.navNotifications'),
-    icon: createIcon(LucideBell, { size: 16 }),
-  }));
-  el.appendChild(nav);
+      <Title order={4}>{t.node('icons.navigation')}</Title>
+      <div style={{ maxWidth: '240px' }}>
+        <NavLink label={t.node('icons.navHome')} icon={createIcon(LucideHome, { size: 16 })} active />
+        <NavLink label={t.node('icons.navSettings')} icon={createIcon(LucideSettings, { size: 16 })} />
+        <NavLink label={t.node('icons.navNotifications')} icon={createIcon(LucideBell, { size: 16 })} />
+      </div>
 
-  // ActionIcon wrapping a Lucide icon
-  el.appendChild(Title({ order: 4, children: t.node('icons.actions') }));
-  el.appendChild(Group({ gap: 'sm', children: [
-    ActionIcon({
-      variant: 'subtle',
-      'aria-label': String(t('icons.likeAria')),
-      children: createIcon(LucideHeart, { size: 18 }),
-    }),
-    ActionIcon({
-      variant: 'light',
-      color: 'blue',
-      'aria-label': String(t('icons.settingsAria')),
-      children: createIcon(LucideSettings, { size: 18 }),
-    }),
-    ActionIcon({
-      variant: 'filled',
-      color: 'red',
-      'aria-label': String(t('icons.deleteAria')),
-      children: createIcon(LucideTrash, { size: 18 }),
-    }),
-  ] }));
-
-  return el;
+      <Title order={4}>{t.node('icons.actions')}</Title>
+      <Group gap="sm">
+        <ActionIcon variant="subtle" aria-label={String(t('icons.likeAria'))}>
+          {createIcon(LucideHeart, { size: 18 })}
+        </ActionIcon>
+        <ActionIcon variant="light" color="blue" aria-label={String(t('icons.settingsAria'))}>
+          {createIcon(LucideSettings, { size: 18 })}
+        </ActionIcon>
+        <ActionIcon variant="filled" color="red" aria-label={String(t('icons.deleteAria'))}>
+          {createIcon(LucideTrash, { size: 18 })}
+        </ActionIcon>
+      </Group>
+    </div>
+  );
 }
 
 // ============================================================
@@ -1918,87 +1662,84 @@ function ThemingDemo() {
   const [primaryColor, setPrimaryColor] = signal<'brand' | 'teal' | 'primary'>('brand');
   const [primaryShade, setPrimaryShade] = signal<number>(6);
 
-  const wrapper = _createElement('div');
-  _setProp(wrapper, 'style', { marginTop: '1.5rem' });
-
-  // Controls live outside the nested provider so they don't inherit its palette.
-  const controls = _createElement('div');
-  _setProp(controls, 'style', {
-    background: 'var(--mkt-color-bg)',
-    color: 'var(--mkt-color-text)',
-    padding: '1rem 1.5rem',
-    borderRadius: '8px 8px 0 0',
-  });
-  controls.appendChild(Title({ order: 2, children: 'Theming demo' }));
-  controls.appendChild(Text({
-    size: 'sm',
-    children: 'Custom palettes + reactive primaryColor / primaryShade. Changes flow through CSS variables without remounting the provider.',
-  }));
-  controls.appendChild(Group({ gap: 'md', align: 'end', children: [
-    Select({
-      label: 'primaryColor',
-      data: [
-        { value: 'brand', label: 'brand (violet)' },
-        { value: 'teal', label: 'teal (custom)' },
-        { value: 'primary', label: 'primary (built-in)' },
-      ],
-      value: primaryColor(),
-      onChange: (e) => setPrimaryColor((e.target as HTMLSelectElement).value as 'brand' | 'teal' | 'primary'),
-    }),
-    Select({
-      label: 'primaryShade',
-      data: ['4', '5', '6', '7', '8', '9'].map((v) => ({ value: v, label: v })),
-      value: String(primaryShade()),
-      onChange: (e) => setPrimaryShade(Number((e.target as HTMLSelectElement).value)),
-    }),
-  ] }));
-  wrapper.appendChild(controls);
-
-  // Single provider with a reactive theme getter - CSS vars + palette rules
-  // update live when the signals above change.
-  const provider = ThemeProvider({
-    theme: (): MikataTheme => ({
-      colors: { brand: BRAND_PALETTE, teal: TEAL_PALETTE },
-      primaryColor: primaryColor(),
-      primaryShade: primaryShade(),
-    }),
-  }) as HTMLElement;
-
-  const content = _createElement('div');
-  _setProp(content, 'style', {
-    background: 'var(--mkt-color-bg)',
-    color: 'var(--mkt-color-text)',
-    padding: '1.5rem',
-    borderRadius: '0 0 8px 8px',
-    transition: 'background 150ms, color 150ms',
+  const theme = (): MikataTheme => ({
+    colors: { brand: BRAND_PALETTE, teal: TEAL_PALETTE },
+    primaryColor: primaryColor(),
+    primaryShade: primaryShade(),
   });
 
-  content.appendChild(Title({ order: 4, children: 'Buttons' }));
-  content.appendChild(Group({ gap: 'sm', wrap: true, children: [
-    Button({ children: 'Primary' }),
-    Button({ color: 'brand', children: 'Brand' }),
-    Button({ color: 'teal', children: 'Teal' }),
-    Button({ color: 'red', children: 'Red' }),
-    Button({ variant: 'filled', children: 'Filled' }),
-  ] }));
+  return (
+    <div style={{ marginTop: '1.5rem' }}>
+      <div
+        style={{
+          background: 'var(--mkt-color-bg)',
+          color: 'var(--mkt-color-text)',
+          padding: '1rem 1.5rem',
+          borderRadius: '8px 8px 0 0',
+        }}
+      >
+        <Title order={2}>Theming demo</Title>
+        <Text size="sm">
+          Custom palettes + reactive primaryColor / primaryShade. Changes flow through CSS variables without remounting the provider.
+        </Text>
+        <Group gap="md" align="end">
+          <Select
+            label="primaryColor"
+            data={[
+              { value: 'brand', label: 'brand (violet)' },
+              { value: 'teal', label: 'teal (custom)' },
+              { value: 'primary', label: 'primary (built-in)' },
+            ]}
+            value={primaryColor()}
+            onChange={(e) =>
+              setPrimaryColor(
+                (e.target as HTMLSelectElement).value as 'brand' | 'teal' | 'primary'
+              )
+            }
+          />
+          <Select
+            label="primaryShade"
+            data={['4', '5', '6', '7', '8', '9'].map((v) => ({ value: v, label: v }))}
+            value={String(primaryShade())}
+            onChange={(e) =>
+              setPrimaryShade(Number((e.target as HTMLSelectElement).value))
+            }
+          />
+        </Group>
+      </div>
 
-  content.appendChild(Title({ order: 4, children: 'Badges & Alerts with custom palettes' }));
-  content.appendChild(Group({ gap: 'sm', wrap: true, children: [
-    Badge({ children: 'Primary' }),
-    Badge({ color: 'brand', children: 'Brand' }),
-    Badge({ color: 'teal', children: 'Teal' }),
-  ] }));
-  content.appendChild(Alert({
-    variant: 'light',
-    color: 'brand',
-    title: 'Brand palette',
-    children: 'This Alert uses the custom brand palette via the runtime-emitted rules.',
-  }));
+      <ThemeProvider theme={theme}>
+        <div
+          style={{
+            background: 'var(--mkt-color-bg)',
+            color: 'var(--mkt-color-text)',
+            padding: '1.5rem',
+            borderRadius: '0 0 8px 8px',
+            transition: 'background 150ms, color 150ms',
+          }}
+        >
+          <Title order={4}>Buttons</Title>
+          <Group gap="sm" wrap>
+            <Button>Primary</Button>
+            <Button color="brand">Brand</Button>
+            <Button color="teal">Teal</Button>
+            <Button color="red">Red</Button>
+            <Button variant="filled">Filled</Button>
+          </Group>
 
-  provider.appendChild(content);
-  wrapper.appendChild(provider);
-
-  return wrapper;
+          <Title order={4}>Badges & Alerts with custom palettes</Title>
+          <Group gap="sm" wrap>
+            <Badge>Primary</Badge>
+            <Badge color="brand">Brand</Badge>
+            <Badge color="teal">Teal</Badge>
+          </Group>
+          <Alert variant="light" color="brand" title="Brand palette">
+            This Alert uses the custom brand palette via the runtime-emitted rules.
+          </Alert>
+        </div>
+      </ThemeProvider>
+    </div>
+  );
 }
 
 // ============================================================
@@ -2008,43 +1749,39 @@ function App() {
   provideI18n(i18n);
   const { t } = i18n;
 
-  const el = _createElement('div');
+  return (
+    <div>
+      <h1>{t.node('app.title')}</h1>
+      <p style={{ marginBottom: '1rem', opacity: '0.7' }}>
+        {t.node('app.subtitle')}
+      </p>
 
-  const h1 = _createElement('h1');
-  h1.appendChild(t.node('app.title'));
-  el.appendChild(h1);
+      {/* Single ThemeProvider shared across UI demos so the dark-mode
+          toggle affects every section below. */}
+      <ThemeProvider>
+        <UIComponentsDemo />
+        <ExtrasDemo />
+        <FormPackageDemo />
+        <DatesDemo />
+        <IconsDemo />
+        <ThemingDemo />
+      </ThemeProvider>
 
-  const subtitle = _createElement('p');
-  subtitle.appendChild(t.node('app.subtitle'));
-  _setProp(subtitle, 'style', { marginBottom: '1rem', opacity: '0.7' });
-  el.appendChild(subtitle);
-
-  // Single ThemeProvider shared across both UI demos so the dark-mode toggle
-  // affects the Extras section too.
-  const theme = ThemeProvider({}) as HTMLElement;
-  theme.appendChild(_createComponent(UIComponentsDemo, {}));
-  theme.appendChild(_createComponent(ExtrasDemo, {}));
-  theme.appendChild(_createComponent(FormPackageDemo, {}));
-  theme.appendChild(_createComponent(DatesDemo, {}));
-  theme.appendChild(_createComponent(IconsDemo, {}));
-  theme.appendChild(_createComponent(ThemingDemo, {}));
-  el.appendChild(theme);
-
-  el.appendChild(_createComponent(Counter, {}));
-  el.appendChild(_createComponent(FormDemo, {}));
-  el.appendChild(_createComponent(TodoList, {}));
-  el.appendChild(_createComponent(ConditionalDemo, {}));
-  el.appendChild(_createComponent(PortalDemo, {}));
-  el.appendChild(_createComponent(ErrorBoundaryDemo, {}));
-
-  return el;
+      <Counter />
+      <FormDemo />
+      <TodoList />
+      <ConditionalDemo />
+      <PortalDemo />
+      <ErrorBoundaryDemo />
+    </div>
+  );
 }
 
 // ============================================================
 // Mount
 // ============================================================
 const dispose = render(
-  () => _createComponent(App, {}),
+  () => <App />,
   document.getElementById('root')!
 );
 

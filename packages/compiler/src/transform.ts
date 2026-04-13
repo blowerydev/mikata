@@ -233,71 +233,138 @@ export function mikataJSXPlugin({ types: t }: { types: typeof BabelTypes }): Plu
       }
     }
 
-    // Process children
-    const children = node.children.filter(
-      (child) => !t.isJSXText(child) || child.value.trim() !== ''
-    );
-
-    for (const child of children) {
-      if (t.isJSXText(child)) {
-        // Static text
-        const text = child.value.replace(/\s+/g, ' ').trim();
-        if (text) {
-          stmts.push(
-            t.expressionStatement(
-              t.callExpression(
-                t.memberExpression(elemId, t.identifier('appendChild')),
-                [
-                  t.callExpression(
-                    t.memberExpression(
-                      t.identifier('document'),
-                      t.identifier('createTextNode')
-                    ),
-                    [t.stringLiteral(text)]
-                  ),
-                ]
-              )
-            )
-          );
+    // Process children. Clean JSX text per React rules: split on newlines,
+    // strip indent whitespace from inner line edges, drop empty lines, join.
+    function cleanJSXText(text: string): string {
+      const lines = text.split(/\r\n|\n|\r/);
+      let result = '';
+      for (let i = 0; i < lines.length; i++) {
+        let line = lines[i];
+        const isFirst = i === 0;
+        const isLast = i === lines.length - 1;
+        if (!isFirst) line = line.replace(/^[ \t]+/, '');
+        if (!isLast) line = line.replace(/[ \t]+$/, '');
+        if (line) {
+          if (result && !isFirst) result += ' ';
+          result += line;
         }
+      }
+      return result;
+    }
+
+    // Determine whether a dynamic child needs an anchor marker. A marker is
+    // required whenever the dynamic child is followed by another child, so
+    // that updates can `insertBefore(marker)` and preserve sibling order.
+    const processedChildren: Array<
+      | { kind: 'text'; text: string }
+      | { kind: 'dynamic'; expr: BabelTypes.Expression }
+      | { kind: 'static-expr'; expr: BabelTypes.Expression }
+      | { kind: 'node'; expr: BabelTypes.Expression }
+    > = [];
+
+    for (const child of node.children) {
+      if (t.isJSXText(child)) {
+        const cleaned = cleanJSXText(child.value);
+        if (cleaned) processedChildren.push({ kind: 'text', text: cleaned });
       } else if (t.isJSXExpressionContainer(child)) {
         if (t.isJSXEmptyExpression(child.expression)) continue;
-
         const expr = child.expression;
-
         if (isPotentiallyReactive(expr)) {
-          // Dynamic child: create a text node, update via renderEffect
-          addRuntimeImport(state, '_insert');
-          addReactivityImport(state, 'renderEffect');
-
-          stmts.push(
-            t.expressionStatement(
-              t.callExpression(t.identifier('_insert'), [
-                elemId,
-                t.arrowFunctionExpression([], expr),
-              ])
-            )
-          );
+          processedChildren.push({ kind: 'dynamic', expr });
         } else {
-          // Static expression child
-          addRuntimeImport(state, '_insert');
-          stmts.push(
-            t.expressionStatement(
-              t.callExpression(t.identifier('_insert'), [
-                elemId,
-                t.arrowFunctionExpression([], expr),
-              ])
-            )
-          );
+          processedChildren.push({ kind: 'static-expr', expr });
         }
       } else {
-        // Child element (already transformed by exit visitor into an expression)
-        // or any other expression - appendChild it
+        processedChildren.push({ kind: 'node', expr: child as any });
+      }
+    }
+
+    for (let i = 0; i < processedChildren.length; i++) {
+      const c = processedChildren[i];
+      const hasFollowingChild = i < processedChildren.length - 1;
+
+      if (c.kind === 'text') {
         stmts.push(
           t.expressionStatement(
             t.callExpression(
               t.memberExpression(elemId, t.identifier('appendChild')),
-              [child as any]
+              [
+                t.callExpression(
+                  t.memberExpression(
+                    t.identifier('document'),
+                    t.identifier('createTextNode')
+                  ),
+                  [t.stringLiteral(c.text)]
+                ),
+              ]
+            )
+          )
+        );
+      } else if (c.kind === 'dynamic') {
+        addRuntimeImport(state, '_insert');
+        addReactivityImport(state, 'renderEffect');
+
+        if (hasFollowingChild) {
+          // Anchor marker so updates insertBefore(marker) preserve position.
+          const markerId = path.scope.generateUidIdentifier('m');
+          stmts.push(
+            t.variableDeclaration('const', [
+              t.variableDeclarator(
+                markerId,
+                t.callExpression(
+                  t.memberExpression(
+                    t.identifier('document'),
+                    t.identifier('createTextNode')
+                  ),
+                  [t.stringLiteral('')]
+                )
+              ),
+            ])
+          );
+          stmts.push(
+            t.expressionStatement(
+              t.callExpression(
+                t.memberExpression(elemId, t.identifier('appendChild')),
+                [markerId]
+              )
+            )
+          );
+          stmts.push(
+            t.expressionStatement(
+              t.callExpression(t.identifier('_insert'), [
+                elemId,
+                t.arrowFunctionExpression([], c.expr),
+                markerId,
+              ])
+            )
+          );
+        } else {
+          stmts.push(
+            t.expressionStatement(
+              t.callExpression(t.identifier('_insert'), [
+                elemId,
+                t.arrowFunctionExpression([], c.expr),
+              ])
+            )
+          );
+        }
+      } else if (c.kind === 'static-expr') {
+        addRuntimeImport(state, '_insert');
+        stmts.push(
+          t.expressionStatement(
+            t.callExpression(t.identifier('_insert'), [
+              elemId,
+              t.arrowFunctionExpression([], c.expr),
+            ])
+          )
+        );
+      } else {
+        // Element/component child - already transformed; appendChild.
+        stmts.push(
+          t.expressionStatement(
+            t.callExpression(
+              t.memberExpression(elemId, t.identifier('appendChild')),
+              [c.expr]
             )
           )
         );
@@ -344,31 +411,31 @@ export function mikataJSXPlugin({ types: t }: { types: typeof BabelTypes }): Plu
       const propName = name.name;
       const value = getAttrValue((attr as BabelTypes.JSXAttribute).value);
 
+      // Hyphenated prop names (e.g. aria-label) aren't valid identifiers, so
+      // emit a quoted string key instead.
+      const isValidIdentifier = /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(propName);
+      const keyNode: BabelTypes.Identifier | BabelTypes.StringLiteral = isValidIdentifier
+        ? t.identifier(propName)
+        : t.stringLiteral(propName);
+
       if (isPotentiallyReactive(value)) {
-        // Reactive prop -> getter: get propName() { return expr }
-        propsProperties.push(
-          t.objectProperty(
+        if (isValidIdentifier) {
+          // Reactive prop -> getter: get propName() { return expr }
+          const getterMethod = t.objectMethod(
+            'get',
             t.identifier(propName),
-            value
-          )
-        );
-        // Mark as getter using a method
-        const lastProp = propsProperties[propsProperties.length - 1];
-        // Use Object.defineProperty approach via _createComponent
-        // Actually, we'll use get syntax
-        const getterMethod = t.objectMethod(
-          'get',
-          t.identifier(propName),
-          [],
-          t.blockStatement([t.returnStatement(value)])
-        );
-        propsProperties.pop();
-        propsProperties.push(getterMethod as any);
+            [],
+            t.blockStatement([t.returnStatement(value)])
+          );
+          propsProperties.push(getterMethod as any);
+        } else {
+          // Object getters require a valid identifier key; fall back to a
+          // thunk accessor on hyphenated names (rare — typically aria-*).
+          propsProperties.push(t.objectProperty(keyNode, value));
+        }
       } else {
         // Static prop -> regular property
-        propsProperties.push(
-          t.objectProperty(t.identifier(propName), value)
-        );
+        propsProperties.push(t.objectProperty(keyNode, value));
       }
     }
 

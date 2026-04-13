@@ -2,7 +2,7 @@
   "extends": "../tsconfig.base.json",
   "compilerOptions": {
     "jsx": "preserve",
-    "jsxImportSource": "mikata"
+    "jsxImportSource": "@mikata/runtime"
   },
   "include": ["src"]
 }
