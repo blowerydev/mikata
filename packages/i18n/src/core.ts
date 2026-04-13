@@ -69,7 +69,8 @@ export function createI18n<T extends Record<string, unknown>>(
     currentMessages,
     getFallbackMessages,
     locale,
-    options.onMissingKey
+    options.onMissingKey,
+    options.formatter
   );
 
   const t = baseFn as unknown as TranslateFunction<T>;
@@ -78,10 +79,11 @@ export function createI18n<T extends Record<string, unknown>>(
     currentMessages,
     getFallbackMessages,
     locale,
-    options.onMissingKey
+    options.onMissingKey,
+    options.formatter
   );
 
-  t.node = (key: string, params?: Record<string, string | number>): Text => {
+  t.node = (key: string, params?: Record<string, unknown>): Text => {
     const node = document.createTextNode('');
     effect(() => {
       node.textContent = baseFn(key, params);

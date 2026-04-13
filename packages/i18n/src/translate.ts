@@ -1,3 +1,5 @@
+import { formatIcu, looksLikeIcu } from './icu';
+
 declare const __DEV__: boolean;
 
 /**
@@ -23,14 +25,35 @@ export function resolveKey(
 
 /**
  * Replace {{param}} placeholders with values from the params object.
+ * Legacy syntax — coexists with ICU `{param}`. Kept exported for callers
+ * that want interpolation without ICU parsing.
  */
 export function interpolate(
   template: string,
-  params: Record<string, string | number>
+  params: Record<string, unknown>
 ): string {
   return template.replace(/\{\{(\w+)\}\}/g, (_, key: string) =>
     params[key] != null ? String(params[key]) : `{{${key}}}`
   );
+}
+
+/**
+ * Full formatter — runs legacy `{{param}}` interpolation, then ICU if the
+ * result contains any ICU tag (`,plural`/`,select`/`,number`/`,date`/
+ * `,time`). A locale is required for ICU; callers can pass a custom
+ * `icuFormatter` (e.g. a full-grammar formatter from `@mikata/i18n/icu`)
+ * to replace the default subset.
+ */
+export function formatMessage(
+  template: string,
+  params: Record<string, unknown> | undefined,
+  locale: string,
+  icuFormatter: (msg: string, params: Record<string, unknown>, locale: string) => string = formatIcu
+): string {
+  const p = params ?? {};
+  let out = template.indexOf('{{') >= 0 ? interpolate(template, p) : template;
+  if (looksLikeIcu(out)) out = icuFormatter(out, p, locale);
+  return out;
 }
 
 /**
@@ -44,9 +67,10 @@ export function createTranslateFunction<T extends Record<string, unknown>>(
   getCurrentMessages: () => T,
   getFallbackMessages: () => T | undefined,
   getLocale: () => string,
-  onMissingKey?: (key: string, locale: string) => string | void
+  onMissingKey?: (key: string, locale: string) => string | void,
+  icuFormatter?: (msg: string, params: Record<string, unknown>, locale: string) => string
 ) {
-  function t(key: string, params?: Record<string, string | number>): string {
+  function t(key: string, params?: Record<string, unknown>): string {
     // Read current messages (creates reactive dependency on locale)
     const messages = getCurrentMessages();
     let value = resolveKey(messages, key);
@@ -82,7 +106,7 @@ export function createTranslateFunction<T extends Record<string, unknown>>(
       return key;
     }
 
-    return params ? interpolate(value, params) : value;
+    return formatMessage(value, params, getLocale(), icuFormatter);
   }
 
   return t;

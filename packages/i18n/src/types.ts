@@ -50,15 +50,23 @@ export interface I18nOptions<T extends Record<string, unknown>> {
   loader?: (locale: string) => Promise<T>;
   /** Called when a key is missing. Return a string to use as fallback. */
   onMissingKey?: (key: string, locale: string) => string | void;
+  /**
+   * Override the ICU formatter. The default subset covers `{arg}`,
+   * `{n, number}`, `{d, date}`, `{t, time}`, `{n, plural, ...}`,
+   * `{g, select, ...}`, and `#` — use this to plug in a full-grammar
+   * formatter (e.g. `intl-messageformat`) when you need `selectordinal`,
+   * `offset:`, or `'`-quote escaping.
+   */
+  formatter?: (message: string, params: Record<string, unknown>, locale: string) => string;
 }
 
 // --- Translate function ---
 
 export interface TranslateFunction<T extends Record<string, unknown>> {
-  (key: TranslationKeys<T>, params?: Record<string, string | number>): string;
-  plural: (key: TranslationKeys<T>, count: number, params?: Record<string, string | number>) => string;
+  (key: TranslationKeys<T>, params?: Record<string, unknown>): string;
+  plural: (key: TranslationKeys<T>, count: number, params?: Record<string, unknown>) => string;
   /** Returns a reactive Text node that updates when the locale changes. */
-  node: (key: TranslationKeys<T>, params?: Record<string, string | number>) => Text;
+  node: (key: TranslationKeys<T>, params?: Record<string, unknown>) => Text;
 }
 
 // --- Formatters ---

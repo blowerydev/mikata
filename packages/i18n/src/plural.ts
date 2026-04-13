@@ -1,4 +1,4 @@
-import { interpolate, resolveKey } from './translate';
+import { formatMessage, resolveKey } from './translate';
 import type { PluralCategory } from './types';
 
 declare const __DEV__: boolean;
@@ -29,7 +29,8 @@ export function resolvePlural(
   messages: Record<string, unknown>,
   key: string,
   count: number,
-  extraParams?: Record<string, string | number>
+  extraParams?: Record<string, unknown>,
+  icuFormatter?: (msg: string, params: Record<string, unknown>, locale: string) => string
 ): string | undefined {
   const value = resolveKey(messages, key);
 
@@ -37,7 +38,7 @@ export function resolvePlural(
 
   // If it's a string, just interpolate with count
   if (typeof value === 'string') {
-    return interpolate(value, { count, ...extraParams });
+    return formatMessage(value, { count, ...extraParams }, locale, icuFormatter);
   }
 
   // Must be an object with plural categories
@@ -60,7 +61,7 @@ export function resolvePlural(
     return key;
   }
 
-  return interpolate(template, { count, ...extraParams });
+  return formatMessage(template, { count, ...extraParams }, locale, icuFormatter);
 }
 
 /**
@@ -70,22 +71,23 @@ export function createPluralFunction<T extends Record<string, unknown>>(
   getCurrentMessages: () => T,
   getFallbackMessages: () => T | undefined,
   getLocale: () => string,
-  onMissingKey?: (key: string, locale: string) => string | void
+  onMissingKey?: (key: string, locale: string) => string | void,
+  icuFormatter?: (msg: string, params: Record<string, unknown>, locale: string) => string
 ) {
   return function plural(
     key: string,
     count: number,
-    params?: Record<string, string | number>
+    params?: Record<string, unknown>
   ): string {
     const locale = getLocale();
     const messages = getCurrentMessages();
 
-    let result = resolvePlural(locale, messages, key, count, params);
+    let result = resolvePlural(locale, messages, key, count, params, icuFormatter);
 
     if (result === undefined) {
       const fallback = getFallbackMessages();
       if (fallback) {
-        result = resolvePlural(locale, fallback, key, count, params);
+        result = resolvePlural(locale, fallback, key, count, params, icuFormatter);
       }
     }
 

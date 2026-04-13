@@ -268,6 +268,22 @@ function Page() {
 
 Translation keys are typed from the base locale object. Formatters wrap browser `Intl.*` APIs with zero bundle cost. Locale switching is reactive -- only components that call `t()` re-render.
 
+**ICU MessageFormat (subset):** messages can use ICU tags for locale-correct plurals, gender/select, and number/date formatting — translators write native Slavic/Arabic/Japanese plural arms instead of forking in code:
+
+```ts
+const en = {
+  cart: '{count, plural, =0 {Your cart is empty} one {# item} other {# items in cart}}',
+  priced: 'Total: {amt, number, ::currency/USD}',
+  greet: '{g, select, female {Hi Ms. {name}} male {Hi Mr. {name}} other {Hi {name}}}',
+};
+
+t('cart', { count: 42 });                // "42 items in cart" (# number-formatted per locale)
+t('priced', { amt: 99.5 });              // "Total: $99.50"
+t('greet', { g: 'female', name: 'Alex' }); // "Hi Ms. Alex"
+```
+
+Supported forms: `{arg}`, `{n, number[, integer|percent|::currency/USD|...]}`, `{d, date[, short|medium|long|full]}`, `{t, time[, ...]}`, `{n, plural, =N {} one {} few {} many {} other {}}`, `{g, select, arm {} other {}}`, and `#` inside a plural arm (the selector, number-formatted). Legacy `{{param}}` syntax still works and coexists — ICU only kicks in when a `,plural`/`,select`/`,number`/`,date`/`,time` tag is present. For the full grammar (`selectordinal`, `offset:`, quote-escape), pass `formatter: (msg, params, locale) => ...` in `createI18n` — e.g. one built on `intl-messageformat`.
+
 ---
 
 ## Transitions
