@@ -16,7 +16,7 @@ function nextMicrotask(): Promise<void> {
 function registerWithNearestBoundary(isLoading: ReturnType<typeof signal>[0]): void {
   let s = getCurrentScope();
   while (s) {
-    const b = s.contexts.get(SUSPENSE_CONTEXT_KEY);
+    const b = s.getContext(SUSPENSE_CONTEXT_KEY);
     if (b) {
       (b as SuspenseBoundary).register(isLoading);
       return;
@@ -225,7 +225,7 @@ describe('Suspense scope wiring', () => {
       const Child = (): Node => {
         let s = getCurrentScope();
         while (s) {
-          const b = s.contexts.get(SUSPENSE_CONTEXT_KEY);
+          const b = s.getContext(SUSPENSE_CONTEXT_KEY);
           if (b) { seenBoundary = b; break; }
           s = s.parent;
         }

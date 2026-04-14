@@ -72,7 +72,7 @@ export function Suspense(props: SuspenseProps): Node {
   let childScope: Scope | null = null;
   childScope = createScope(() => {
     const s = getCurrentScope();
-    if (s) s.contexts.set(SUSPENSE_CONTEXT_KEY, boundary);
+    if (s) s.setContext(SUSPENSE_CONTEXT_KEY, boundary);
     const raw = props.children();
     const children = Array.isArray(raw) ? raw : [raw];
     for (const c of children) {

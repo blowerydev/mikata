@@ -37,7 +37,7 @@ export function provide<T>(context: Context<T>, value: T): void {
       '[mikata] provide() must be called inside a component setup function.'
     );
   }
-  scope.contexts.set(context.id, value);
+  scope.setContext(context.id, value);
 }
 
 /**
@@ -51,8 +51,8 @@ export function inject<T>(context: Context<T>): T {
   let scope = getCurrentScope();
 
   while (scope) {
-    if (scope.contexts.has(context.id)) {
-      return scope.contexts.get(context.id) as T;
+    if (scope.hasContext(context.id)) {
+      return scope.getContext(context.id) as T;
     }
     scope = scope.parent;
   }

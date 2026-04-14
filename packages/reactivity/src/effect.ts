@@ -86,8 +86,10 @@ function createEffectNode(
         popSubscriber();
       }
 
-      // Snapshot source versions for next dirty check
-      node._sourceVersions = new Map();
+      // Snapshot source versions for next dirty check. Reuse the existing
+      // Map (clearing it) to avoid allocating a fresh one every run — this
+      // is hot for per-row effects in large lists.
+      if (node._sourceVersions.size > 0) node._sourceVersions.clear();
       for (const source of node._sources) {
         node._sourceVersions.set(source, source._version);
       }
@@ -113,16 +115,33 @@ function createEffectNode(
     registerNode(node, isRender ? 'renderEffect' : 'effect', label);
   }
 
-  // Register with current scope for automatic disposal
-  const scope = getCurrentScope();
-  scope?.addChild(node);
-
-  // Run immediately on creation
+  // Run immediately on creation.
   node._run!();
+
+  // Auto-dispose renderEffects whose first run tracked no reactive sources
+  // AND returned no cleanup function. Compiled output wraps every dynamic
+  // JSX bit (`{row.id}`, `{user.name}`) in a renderEffect — many are static
+  // in practice. A ReactiveNode that never re-fires is pure overhead;
+  // reclaim it immediately. The cleanup guard preserves semantics for the
+  // rare case where an effect registers teardown without tracking a source.
+  if (
+    isRender &&
+    node._sources.size === 0 &&
+    !node._hasPropertyDeps &&
+    !node._cleanup
+  ) {
+    if (__DEV__) unregisterNode(node);
+    return NO_OP_DISPOSE;
+  }
+
+  // Register with current scope for automatic disposal.
+  getCurrentScope()?.addChild(node);
 
   // Return dispose function
   return () => node._dispose();
 }
+
+const NO_OP_DISPOSE = (): void => {};
 
 /**
  * Create a reactive effect. Re-runs whenever any signal/reactive

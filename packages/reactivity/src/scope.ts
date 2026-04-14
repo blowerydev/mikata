@@ -26,7 +26,12 @@ export class Scope {
   cleanups: (() => void)[] = [];
   parent: Scope | null;
   disposed = false;
-  contexts: Map<symbol, unknown> = new Map();
+  /**
+   * Per-scope provide/inject map. Lazily allocated — most scopes never
+   * call `provide()`, so defer the Map construction until first write.
+   * Reads go through `getContext`/`hasContext` to avoid allocating.
+   */
+  contexts: Map<symbol, unknown> | null = null;
 
   constructor(parent: Scope | null) {
     this.id = nextScopeId++;
@@ -40,6 +45,18 @@ export class Scope {
 
   addCleanup(fn: () => void): void {
     this.cleanups.push(fn);
+  }
+
+  setContext(key: symbol, value: unknown): void {
+    (this.contexts ??= new Map()).set(key, value);
+  }
+
+  getContext(key: symbol): unknown {
+    return this.contexts?.get(key);
+  }
+
+  hasContext(key: symbol): boolean {
+    return this.contexts?.has(key) ?? false;
   }
 
   dispose(): void {

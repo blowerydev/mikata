@@ -31,7 +31,7 @@ interface SuspenseBoundaryLike {
 function findSuspenseBoundary(): SuspenseBoundaryLike | null {
   let scope = getCurrentScope();
   while (scope) {
-    const entry = scope.contexts.get(SUSPENSE_CONTEXT_KEY);
+    const entry = scope.getContext(SUSPENSE_CONTEXT_KEY);
     if (entry) return entry as SuspenseBoundaryLike;
     scope = scope.parent;
   }
