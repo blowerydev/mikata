@@ -523,8 +523,65 @@ function createOverlay(): HTMLElement {
 
   makeDraggable(overlay);
   makeResizable(overlay);
+  applyLayout(overlay);
 
   return overlay;
+}
+
+// Layout persistence: keep position/size across reloads and clamp back into
+// view when the window shrinks (e.g. Chrome DevTools opens and pushes us off).
+
+const LAYOUT_KEY = '__mikata_devtools_layout';
+const MIN_W = 360;
+const MIN_H = 300;
+
+interface StoredLayout { right: number; bottom: number; width: number; height: number }
+
+function loadLayout(): StoredLayout | null {
+  try {
+    const raw = localStorage.getItem(LAYOUT_KEY);
+    if (!raw) return null;
+    const p = JSON.parse(raw);
+    if (typeof p?.right !== 'number' || typeof p?.bottom !== 'number' ||
+        typeof p?.width !== 'number' || typeof p?.height !== 'number') return null;
+    return p;
+  } catch { return null; }
+}
+
+function saveLayout(el: HTMLElement): void {
+  const rect = el.getBoundingClientRect();
+  const layout: StoredLayout = {
+    right: Math.max(0, window.innerWidth - rect.right),
+    bottom: Math.max(0, window.innerHeight - rect.bottom),
+    width: rect.width,
+    height: rect.height,
+  };
+  try { localStorage.setItem(LAYOUT_KEY, JSON.stringify(layout)); } catch { /* quota / private mode */ }
+}
+
+function clampLayout(el: HTMLElement): void {
+  const maxW = Math.max(MIN_W, window.innerWidth);
+  const maxH = Math.max(MIN_H, window.innerHeight);
+  const rect = el.getBoundingClientRect();
+  const width = Math.min(rect.width, maxW);
+  const height = Math.min(rect.height, maxH);
+  const right = Math.min(Math.max(0, window.innerWidth - rect.right), maxW - width);
+  const bottom = Math.min(Math.max(0, window.innerHeight - rect.bottom), maxH - height);
+  el.style.width = `${width}px`;
+  el.style.height = `${height}px`;
+  el.style.right = `${right}px`;
+  el.style.bottom = `${bottom}px`;
+}
+
+function applyLayout(el: HTMLElement): void {
+  const stored = loadLayout();
+  if (stored) {
+    el.style.width = `${Math.max(MIN_W, stored.width)}px`;
+    el.style.height = `${Math.max(MIN_H, stored.height)}px`;
+    el.style.right = `${Math.max(0, stored.right)}px`;
+    el.style.bottom = `${Math.max(0, stored.bottom)}px`;
+  }
+  clampLayout(el);
 }
 
 function makeDraggable(el: HTMLElement): void {
@@ -550,7 +607,11 @@ function makeDraggable(el: HTMLElement): void {
     el.style.right = `${Math.max(0, startRight - dx)}px`;
     el.style.bottom = `${Math.max(0, startBottom - dy)}px`;
   });
-  document.addEventListener('mouseup', () => { isDragging = false; });
+  document.addEventListener('mouseup', () => {
+    if (!isDragging) return;
+    isDragging = false;
+    saveLayout(el);
+  });
 }
 
 function makeResizable(el: HTMLElement): void {
@@ -571,10 +632,14 @@ function makeResizable(el: HTMLElement): void {
     if (!resizing) return;
     const dw = startX - e.clientX;
     const dh = startY - e.clientY;
-    el.style.width = `${Math.max(360, startW + dw)}px`;
-    el.style.height = `${Math.max(300, startH + dh)}px`;
+    el.style.width = `${Math.max(MIN_W, startW + dw)}px`;
+    el.style.height = `${Math.max(MIN_H, startH + dh)}px`;
   });
-  document.addEventListener('mouseup', () => { resizing = false; });
+  document.addEventListener('mouseup', () => {
+    if (!resizing) return;
+    resizing = false;
+    saveLayout(el);
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -971,10 +1036,18 @@ function escapeHtml(str: string): string {
 // Show / hide / toggle
 // ---------------------------------------------------------------------------
 
+function onWindowResize(): void {
+  if (!overlayVisible || !overlayEl) return;
+  clampLayout(overlayEl);
+  saveLayout(overlayEl);
+}
+
 function showOverlay(): void {
   if (!overlayEl) overlayEl = createOverlay();
   document.body.appendChild(overlayEl);
   overlayVisible = true;
+  clampLayout(overlayEl);
+  window.addEventListener('resize', onWindowResize);
   refreshContent();
   if (refreshTimer) clearInterval(refreshTimer);
   refreshTimer = setInterval(refreshContent, 500);
@@ -983,6 +1056,7 @@ function showOverlay(): void {
 function hideOverlay(): void {
   if (overlayEl && overlayEl.parentNode) overlayEl.parentNode.removeChild(overlayEl);
   overlayVisible = false;
+  window.removeEventListener('resize', onWindowResize);
   if (refreshTimer) { clearInterval(refreshTimer); refreshTimer = null; }
   clearHighlight();
 }
