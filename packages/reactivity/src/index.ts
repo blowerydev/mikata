@@ -4,6 +4,7 @@ export { reactive, isReactive, toRaw } from './reactive';
 export { effect, renderEffect } from './effect';
 export { untrack, batch, on } from './utils';
 export { createScope, onCleanup, getCurrentScope } from './scope';
+export { createSelector } from './selector';
 export { flushSync } from './scheduler';
 export type { Signal, ReadSignal, WriteSignal } from './signal';
 export type { Scope } from './scope';

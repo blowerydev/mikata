@@ -60,6 +60,33 @@ describe('require-effect-cleanup', () => {
             });
           `,
         },
+        // Component body with addEventListener + onCleanup
+        {
+          code: `
+            function MyComponent() {
+              window.addEventListener('resize', handler);
+              onCleanup(() => window.removeEventListener('resize', handler));
+              return null;
+            }
+          `,
+        },
+        // Component body with no subscriptions
+        {
+          code: `
+            function MyComponent() {
+              const [count] = signal(0);
+              return null;
+            }
+          `,
+        },
+        // Lowercase helper is NOT treated as a component (no leak rule)
+        {
+          code: `
+            function helper() {
+              window.addEventListener('resize', handler);
+            }
+          `,
+        },
       ],
       invalid: [
         {
@@ -106,6 +133,27 @@ describe('require-effect-cleanup', () => {
             { messageId: 'missingCleanup' },
             { messageId: 'missingCleanup' },
           ],
+        },
+        // Component body with addEventListener and no onCleanup - leak.
+        // The return (JSX tree) does NOT count as cleanup.
+        {
+          code: `
+            function MyComponent() {
+              window.addEventListener('resize', handler);
+              return null;
+            }
+          `,
+          errors: [{ messageId: 'missingComponentCleanup' }],
+        },
+        // Component body with setInterval and no onCleanup
+        {
+          code: `
+            function Counter() {
+              setInterval(tick, 1000);
+              return null;
+            }
+          `,
+          errors: [{ messageId: 'missingComponentCleanup' }],
         },
       ],
     });

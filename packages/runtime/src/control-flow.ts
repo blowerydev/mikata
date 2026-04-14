@@ -199,15 +199,19 @@ export function each<T>(
       return;
     }
 
-    // Build a map of existing entries by key
-    const oldMap = new Map<unknown, ItemEntry>();
-    for (const entry of entries) {
-      oldMap.set(keyFn(entry.item), entry);
+    // Build old-key -> oldIndex map so we can track which new positions
+    // correspond to which old positions (needed for LIS-based move minimization).
+    const oldKeyToIndex = new Map<unknown, number>();
+    for (let i = 0; i < entries.length; i++) {
+      oldKeyToIndex.set(keyFn(entries[i].item), i);
     }
 
-    // Build new entries
-    const newEntries: ItemEntry[] = [];
+    // Build new entries. `sources[i]` is the oldIndex for newEntries[i],
+    // or -1 if newEntries[i] is freshly created.
+    const newEntries: ItemEntry[] = new Array(items.length);
+    const sources: number[] = new Array(items.length);
     const newKeys = new Set<unknown>();
+    const reused = new Uint8Array(entries.length);
 
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
@@ -220,43 +224,53 @@ export function each<T>(
           `Provide a unique key function via the options argument.`
         );
       }
-
       newKeys.add(key);
 
-      const existing = oldMap.get(key);
-      if (existing) {
-        // Reuse existing entry
-        newEntries.push(existing);
-        oldMap.delete(key);
+      const oldIndex = oldKeyToIndex.get(key);
+      if (oldIndex !== undefined && !reused[oldIndex]) {
+        reused[oldIndex] = 1;
+        newEntries[i] = entries[oldIndex];
+        sources[i] = oldIndex;
       } else {
-        // Create new entry
         let node: Node;
         const idx = i;
         const scope = createScope(() => {
           node = render(item, () => idx);
         });
-        newEntries.push({ node: node!, scope, item });
+        newEntries[i] = { node: node!, scope, item };
+        sources[i] = -1;
       }
     }
 
-    // Dispose removed entries
-    for (const entry of oldMap.values()) {
+    // Dispose removed entries (any old entry not reused).
+    for (let i = 0; i < entries.length; i++) {
+      if (reused[i]) continue;
+      const entry = entries[i];
       if (entry.node.parentNode) {
         entry.node.parentNode.removeChild(entry.node);
       }
       entry.scope.dispose();
     }
 
-    // Reconcile: only move/insert nodes that are out of position.
-    // Walk backwards from the end. `nextRef` is the node that should
-    // come after the current entry. Initially it's the marker.
-    // If the entry's node is already right before nextRef, skip it.
-    // Otherwise insertBefore to put it in the correct position.
+    // Compute LIS of `sources` (ignoring -1 entries). Any reused entry whose
+    // index sits in the LIS is already in the correct relative DOM position
+    // and doesn't need to move — only non-LIS entries and freshly-created
+    // entries are inserted. This turns a two-element swap in a 1000-item list
+    // from ~1000 moves into 1.
+    const lisIndices = longestIncreasingSubsequence(sources);
+    let lisPtr = lisIndices.length - 1;
     let nextRef: Node = marker;
     for (let i = newEntries.length - 1; i >= 0; i--) {
       const node = newEntries[i].node;
-      if (node.nextSibling !== nextRef) {
-        parent.insertBefore(node, nextRef);
+      if (sources[i] !== -1 && lisPtr >= 0 && lisIndices[lisPtr] === i) {
+        // In the LIS: leave in place, but it still anchors nextRef for items
+        // to its left. DOM order of LIS nodes is already correct relative to
+        // each other because LIS is increasing in oldIndex.
+        lisPtr--;
+      } else {
+        if (node.nextSibling !== nextRef) {
+          parent.insertBefore(node, nextRef);
+        }
       }
       nextRef = node;
     }
@@ -265,6 +279,52 @@ export function each<T>(
   });
 
   return container;
+}
+
+/**
+ * Patience-sort LIS over an array of oldIndex values. Entries with value -1
+ * are treated as "not present in old list" and skipped. Returns the indices
+ * (positions in `arr`) whose values form a longest strictly-increasing run.
+ * O(n log n); adapted from the classic Vue 3 implementation.
+ */
+function longestIncreasingSubsequence(arr: readonly number[]): number[] {
+  const n = arr.length;
+  const predecessors: number[] = new Array(n);
+  const tailIndices: number[] = [];
+
+  for (let i = 0; i < n; i++) {
+    const v = arr[i];
+    if (v === -1) continue;
+
+    const lastTail = tailIndices[tailIndices.length - 1];
+    if (tailIndices.length === 0 || arr[lastTail] < v) {
+      predecessors[i] = lastTail ?? -1;
+      tailIndices.push(i);
+      continue;
+    }
+
+    let lo = 0;
+    let hi = tailIndices.length - 1;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (arr[tailIndices[mid]] < v) lo = mid + 1;
+      else hi = mid;
+    }
+    if (v < arr[tailIndices[lo]]) {
+      predecessors[i] = lo > 0 ? tailIndices[lo - 1] : -1;
+      tailIndices[lo] = i;
+    }
+  }
+
+  // Reconstruct by walking predecessors back from the last tail.
+  let u = tailIndices.length;
+  if (u === 0) return tailIndices;
+  let v = tailIndices[u - 1];
+  while (u-- > 0) {
+    tailIndices[u] = v;
+    v = predecessors[v];
+  }
+  return tailIndices;
 }
 
 /**

@@ -13,6 +13,9 @@ export default tseslint.config(
       'mikata/no-async-component': 'error',
       'mikata/rules-of-setup': 'error',
       'mikata/no-destructured-props': 'warn',
+      'mikata/require-effect-cleanup': 'warn',
+      'mikata/no-signal-write-in-computed': 'error',
+      'mikata/require-signal-call': 'error',
     },
   }
 );

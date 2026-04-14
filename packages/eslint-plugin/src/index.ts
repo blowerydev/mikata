@@ -26,12 +26,16 @@ import { rulesOfSetup } from './rules/rules-of-setup';
 import { noDestructuredProps } from './rules/no-destructured-props';
 import { noAsyncComponent } from './rules/no-async-component';
 import { requireEffectCleanup } from './rules/require-effect-cleanup';
+import { noSignalWriteInComputed } from './rules/no-signal-write-in-computed';
+import { requireSignalCall } from './rules/require-signal-call';
 
 const rules: Record<string, Rule.RuleModule> = {
   'rules-of-setup': rulesOfSetup,
   'no-destructured-props': noDestructuredProps,
   'no-async-component': noAsyncComponent,
   'require-effect-cleanup': requireEffectCleanup,
+  'no-signal-write-in-computed': noSignalWriteInComputed,
+  'require-signal-call': requireSignalCall,
 };
 
 const plugin: ESLint.Plugin = {
@@ -53,6 +57,8 @@ const recommendedFlat: Linter.FlatConfig = {
     '@mikata/no-destructured-props': 'error',
     '@mikata/no-async-component': 'error',
     '@mikata/require-effect-cleanup': 'error',
+    '@mikata/no-signal-write-in-computed': 'error',
+    '@mikata/require-signal-call': 'error',
   },
 };
 
