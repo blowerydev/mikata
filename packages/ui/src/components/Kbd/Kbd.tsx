@@ -1,22 +1,26 @@
+import { renderEffect } from '@mikata/reactivity';
 import { mergeClasses } from '../../utils/class-merge';
 import type { KbdProps } from './Kbd.types';
 import './Kbd.css';
 
 export function Kbd(props: KbdProps = {}): HTMLElement {
-  const { size = 'sm', children, class: className, ref } = props;
-
   const el = document.createElement('kbd');
-  el.className = mergeClasses('mkt-kbd', className);
-  el.dataset.size = size;
+  renderEffect(() => {
+    el.className = mergeClasses('mkt-kbd', props.class);
+  });
+  renderEffect(() => { el.dataset.size = props.size ?? 'sm'; });
 
-  if (children != null) {
-    if (typeof children === 'string') el.textContent = children;
-    else el.appendChild(children);
-  }
+  renderEffect(() => {
+    const c = props.children;
+    if (c == null) el.textContent = '';
+    else if (typeof c === 'string') el.textContent = c;
+    else el.replaceChildren(c);
+  });
 
+  const ref = props.ref;
   if (ref) {
     if (typeof ref === 'function') ref(el);
-    else (ref as any).current = el;
+    else (ref as { current: HTMLElement | null }).current = el;
   }
 
   return el;

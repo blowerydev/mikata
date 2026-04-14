@@ -1,7 +1,7 @@
 /**
- * A form error is either a string or a DOM Node. The Node form lets users pass
- * `t.node('errors.key')` from @mikata/i18n for reactive translated errors that
- * update on locale change without re-validating.
+ * A form error is either a string or a DOM Node. Pass `t('errors.key')` from
+ * @mikata/i18n for a translated message, or a function `() => t('errors.key')`
+ * if you want the error to re-render live on locale change without re-validating.
  */
 export type FormError = string | Node;
 

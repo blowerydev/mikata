@@ -1,4 +1,5 @@
-import { onCleanup } from '@mikata/runtime';
+import { onCleanup, _mergeProps } from '@mikata/runtime';
+import { renderEffect } from '@mikata/reactivity';
 import { mergeClasses } from '../../utils/class-merge';
 import { useComponentDefaults } from '../../theme/component-defaults';
 import { uniqueId } from '../../utils/unique-id';
@@ -7,43 +8,48 @@ import type { SelectProps, SelectOption, SelectFetcher } from './Select.types';
 import './Select.css';
 
 export function Select(userProps: SelectProps): HTMLDivElement {
-  const props = { ...useComponentDefaults<SelectProps>('Select'), ...userProps };
-  const {
-    data,
-    value,
-    defaultValue,
-    placeholder,
-    label,
-    description,
-    error,
-    required,
-    disabled,
-    size = 'md',
-    loadingLabel = 'Loading…',
-    onChange,
-    classNames,
-    class: className,
-    ref,
-  } = props;
+  const props = _mergeProps(
+    useComponentDefaults<SelectProps>('Select') as unknown as Record<string, unknown>,
+    userProps as unknown as Record<string, unknown>,
+  ) as unknown as SelectProps;
 
   const id = uniqueId('select');
+  // `data`'s shape (sync vs async) is fixed at setup — async requires a
+  // different option-lifecycle. Read once.
+  const data = props.data;
   const isAsync = typeof data === 'function';
+  const loadingLabel = props.loadingLabel ?? 'Loading…';
 
   const select = document.createElement('select');
   select.id = id;
-  select.className = mergeClasses('mkt-select__input', classNames?.input);
-  select.dataset.size = size;
+  renderEffect(() => {
+    select.className = mergeClasses('mkt-select__input', props.classNames?.input);
+  });
+  renderEffect(() => { select.dataset.size = props.size ?? 'md'; });
 
-  if (disabled) select.disabled = true;
-  if (required) select.setAttribute('aria-required', 'true');
-  if (error) select.setAttribute('aria-invalid', 'true');
+  renderEffect(() => { select.disabled = !!props.disabled; });
+  renderEffect(() => {
+    if (props.required) select.setAttribute('aria-required', 'true');
+    else select.removeAttribute('aria-required');
+  });
+  renderEffect(() => {
+    if (props.error) {
+      select.setAttribute('aria-invalid', 'true');
+      select.setAttribute('aria-errormessage', `${id}-error`);
+    } else {
+      select.removeAttribute('aria-invalid');
+      select.removeAttribute('aria-errormessage');
+    }
+  });
+  renderEffect(() => {
+    const parts: string[] = [];
+    if (props.description) parts.push(`${id}-description`);
+    if (props.error) parts.push(`${id}-error`);
+    if (parts.length) select.setAttribute('aria-describedby', parts.join(' '));
+    else select.removeAttribute('aria-describedby');
+  });
 
-  const describedBy: string[] = [];
-  if (description) describedBy.push(`${id}-description`);
-  if (error) describedBy.push(`${id}-error`);
-  if (describedBy.length) select.setAttribute('aria-describedby', describedBy.join(' '));
-  if (error) select.setAttribute('aria-errormessage', `${id}-error`);
-
+  let placeholderOpt: HTMLOptionElement | null = null;
   function appendPlaceholder(text: string, preselect: boolean) {
     const opt = document.createElement('option');
     opt.value = '';
@@ -51,7 +57,12 @@ export function Select(userProps: SelectProps): HTMLDivElement {
     opt.disabled = true;
     opt.selected = preselect;
     select.appendChild(opt);
+    placeholderOpt = opt;
   }
+  renderEffect(() => {
+    const p = props.placeholder;
+    if (placeholderOpt && p != null) placeholderOpt.textContent = p;
+  });
 
   function appendOptions(items: SelectOption[]) {
     for (const item of items) {
@@ -63,10 +74,11 @@ export function Select(userProps: SelectProps): HTMLDivElement {
     }
   }
 
+  const initialValue = props.value;
+  const initialDefault = props.defaultValue;
+  const initialPlaceholder = props.placeholder;
+
   if (isAsync) {
-    // Show a disabled "Loading…" placeholder while the loader runs. We leave
-    // the user's real placeholder unrendered until data arrives so there's no
-    // flicker between two distinct empty states.
     appendPlaceholder(loadingLabel, true);
     select.dataset.loading = '';
     select.disabled = true;
@@ -77,35 +89,33 @@ export function Select(userProps: SelectProps): HTMLDivElement {
     (data as SelectFetcher)(controller.signal).then(
       (items) => {
         if (controller.signal.aborted) return;
-        // Swap in real options.
         select.textContent = '';
-        if (placeholder) appendPlaceholder(placeholder, !value && !defaultValue);
+        if (initialPlaceholder) appendPlaceholder(initialPlaceholder, !initialValue && !initialDefault);
         appendOptions(items);
-        if (value != null) select.value = value;
-        else if (defaultValue != null) select.value = defaultValue;
+        if (initialValue != null) select.value = initialValue;
+        else if (initialDefault != null) select.value = initialDefault;
         delete select.dataset.loading;
-        if (!disabled) select.disabled = false;
+        if (!props.disabled) select.disabled = false;
       },
       (err) => {
         if (controller.signal.aborted) return;
-        // Leave loading placeholder; surface error to console so the failure
-        // isn't silent during development.
         if (typeof console !== 'undefined') console.error('[mikata/Select] fetcher rejected:', err);
       },
     );
   } else {
-    // Placeholder option
-    if (placeholder) appendPlaceholder(placeholder, !value && !defaultValue);
+    if (initialPlaceholder) appendPlaceholder(initialPlaceholder, !initialValue && !initialDefault);
     appendOptions(data as SelectOption[]);
-    if (value != null) select.value = value;
-    else if (defaultValue != null) select.value = defaultValue;
+    if (initialValue != null) select.value = initialValue;
+    else if (initialDefault != null) select.value = initialDefault;
   }
 
+  const onChange = props.onChange;
   if (onChange) select.addEventListener('change', onChange as EventListener);
 
+  const ref = props.ref;
   if (ref) {
-    if (typeof ref === 'function') ref(select as any);
-    else (ref as any).current = select;
+    if (typeof ref === 'function') ref(select as unknown as HTMLElement);
+    else (ref as { current: HTMLSelectElement | null }).current = select;
   }
 
   const wrapper = document.createElement('div');
@@ -114,13 +124,13 @@ export function Select(userProps: SelectProps): HTMLDivElement {
 
   return InputWrapper({
     id,
-    label,
-    description,
-    error,
-    required,
-    size,
-    class: className,
-    classNames,
+    get label() { return props.label; },
+    get description() { return props.description; },
+    get error() { return props.error; },
+    get required() { return props.required; },
+    get size() { return props.size; },
+    get class() { return props.class; },
+    get classNames() { return props.classNames; },
     children: wrapper,
   });
 }

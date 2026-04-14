@@ -65,8 +65,6 @@ export interface I18nOptions<T extends Record<string, unknown>> {
 export interface TranslateFunction<T extends Record<string, unknown>> {
   (key: TranslationKeys<T>, params?: Record<string, unknown>): string;
   plural: (key: TranslationKeys<T>, count: number, params?: Record<string, unknown>) => string;
-  /** Returns a reactive Text node that updates when the locale changes. */
-  node: (key: TranslationKeys<T>, params?: Record<string, unknown>) => Text;
 }
 
 // --- Formatters ---

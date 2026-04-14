@@ -1,21 +1,21 @@
 import { effect } from '@mikata/reactivity';
+import { _mergeProps } from '@mikata/runtime';
 import { mergeClasses } from '../../utils/class-merge';
 import type { CollapseProps } from './Collapse.types';
 import './Collapse.css';
 
-export function Collapse(props: CollapseProps): HTMLElement {
-  const {
-    in: open,
-    duration = 200,
-    timing,
-    onTransitionEnd,
-    children,
-    class: className,
-    ref,
-  } = props;
+export function Collapse(userProps: CollapseProps): HTMLElement {
+  const props = _mergeProps(userProps as unknown as Record<string, unknown>) as unknown as CollapseProps;
+
+  // `children`, `duration`, `timing`, `onTransitionEnd` are structural —
+  // applied once at setup. `in` is read each tick via the effect below.
+  const children = props.children;
+  const duration = props.duration ?? 200;
+  const timing = props.timing;
+  const onTransitionEnd = props.onTransitionEnd;
 
   const root = document.createElement('div');
-  root.className = mergeClasses('mkt-collapse', className);
+  root.className = mergeClasses('mkt-collapse', props.class);
   root.style.setProperty('--_collapse-duration', `${duration}ms`);
   if (timing) root.style.transitionTimingFunction = timing;
   root.style.overflow = 'hidden';
@@ -26,25 +26,24 @@ export function Collapse(props: CollapseProps): HTMLElement {
   inner.appendChild(children);
   root.appendChild(inner);
 
-  const isReactive = typeof open === 'function';
-  const getOpen = () => (isReactive ? (open as unknown as () => boolean)() : Boolean(open));
+  const readOpen = (): boolean => {
+    const v = props.in;
+    return typeof v === 'function' ? (v as () => boolean)() : Boolean(v);
+  };
 
-  // Initial
-  const initialOpen = getOpen();
+  const initialOpen = readOpen();
   root.style.height = initialOpen ? 'auto' : '0px';
   root.setAttribute('aria-hidden', initialOpen ? 'false' : 'true');
 
-  if (isReactive) {
-    let first = true;
-    effect(() => {
-      const o = getOpen();
-      if (first) {
-        first = false;
-        return;
-      }
-      animate(o);
-    });
-  }
+  let first = true;
+  effect(() => {
+    const o = readOpen();
+    if (first) {
+      first = false;
+      return;
+    }
+    animate(o);
+  });
 
   function animate(o: boolean) {
     root.setAttribute('aria-hidden', o ? 'false' : 'true');
@@ -57,7 +56,6 @@ export function Collapse(props: CollapseProps): HTMLElement {
         onTransitionEnd?.();
       };
       requestAnimationFrame(() => {
-        // Start animation
         root.style.height = '0px';
         requestAnimationFrame(() => {
           root.style.height = `${h}px`;
@@ -65,7 +63,6 @@ export function Collapse(props: CollapseProps): HTMLElement {
         });
       });
     } else {
-      // Collapse: fix to current pixel then animate to 0
       root.style.height = `${h}px`;
       requestAnimationFrame(() => {
         root.style.height = '0px';
@@ -78,9 +75,10 @@ export function Collapse(props: CollapseProps): HTMLElement {
     }
   }
 
+  const ref = props.ref;
   if (ref) {
     if (typeof ref === 'function') ref(root);
-    else (ref as any).current = root;
+    else (ref as { current: HTMLElement | null }).current = root;
   }
 
   return root;

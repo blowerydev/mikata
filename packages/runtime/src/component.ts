@@ -108,26 +108,3 @@ export function createRef<T = HTMLElement>(): Ref<T> {
   return ref;
 }
 
-/**
- * Helper to destructure props while preserving reactivity.
- * The compiler can use this to make props destructuring work.
- *
- * Each destructured prop becomes a getter that delegates to the
- * original props object, preserving any getter-based reactivity.
- */
-export function _destructureProps<T extends Record<string, unknown>>(
-  props: T,
-  keys: (keyof T)[]
-): T {
-  const result = {} as T;
-  for (const key of keys) {
-    Object.defineProperty(result, key, {
-      get() {
-        return props[key];
-      },
-      enumerable: true,
-      configurable: true,
-    });
-  }
-  return result;
-}

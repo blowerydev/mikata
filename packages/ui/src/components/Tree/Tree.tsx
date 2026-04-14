@@ -1,42 +1,49 @@
 import { createIcon, ChevronRight } from '@mikata/icons';
+import { renderEffect } from '@mikata/reactivity';
+import { _mergeProps } from '@mikata/runtime';
 import { mergeClasses } from '../../utils/class-merge';
 import { useDirection } from '../../theme';
 import type { TreeProps, TreeNode } from './Tree.types';
 import './Tree.css';
 
-export function Tree(props: TreeProps): HTMLElement {
+export function Tree(userProps: TreeProps): HTMLElement {
+  const props = _mergeProps(userProps as unknown as Record<string, unknown>) as unknown as TreeProps;
   const direction = useDirection();
-  const {
-    data,
-    defaultExpanded = [],
-    onSelect,
-    selected,
-    classNames,
-    class: className,
-    ref,
-  } = props;
 
-  const expanded = new Set<string>(defaultExpanded);
+  // `data` and `defaultExpanded` are structural — used to seed the DOM once.
+  const data = props.data;
+  const expanded = new Set<string>(props.defaultExpanded ?? []);
 
   const root = document.createElement('ul');
-  root.className = mergeClasses('mkt-tree', className, classNames?.root);
+  renderEffect(() => {
+    root.className = mergeClasses('mkt-tree', props.class, props.classNames?.root);
+  });
   root.setAttribute('role', 'tree');
 
   const renderNode = (node: TreeNode, level: number): HTMLElement => {
     const li = document.createElement('li');
-    li.className = mergeClasses('mkt-tree__node', classNames?.node);
+    renderEffect(() => {
+      li.className = mergeClasses('mkt-tree__node', props.classNames?.node);
+    });
     li.setAttribute('role', 'treeitem');
     const hasChildren = !!(node.children && node.children.length);
     if (hasChildren) li.setAttribute('aria-expanded', expanded.has(node.value) ? 'true' : 'false');
-    if (selected === node.value) li.dataset.selected = '';
+    renderEffect(() => {
+      if (props.selected === node.value) li.dataset.selected = '';
+      else delete li.dataset.selected;
+    });
     li.style.setProperty('--_tree-level', String(level));
 
     const label = document.createElement('div');
-    label.className = mergeClasses('mkt-tree__node-label', classNames?.nodeLabel);
+    renderEffect(() => {
+      label.className = mergeClasses('mkt-tree__node-label', props.classNames?.nodeLabel);
+    });
     label.setAttribute('tabindex', '0');
 
     const expander = document.createElement('span');
-    expander.className = mergeClasses('mkt-tree__expander', classNames?.expander);
+    renderEffect(() => {
+      expander.className = mergeClasses('mkt-tree__expander', props.classNames?.expander);
+    });
     if (hasChildren) {
       expander.appendChild(createIcon(ChevronRight, { size: 12 }));
       if (expanded.has(node.value)) expander.dataset.open = '';
@@ -61,13 +68,13 @@ export function Tree(props: TreeProps): HTMLElement {
 
     label.addEventListener('click', () => {
       if (hasChildren) toggle();
-      onSelect?.(node.value, node);
+      props.onSelect?.(node.value, node);
     });
     label.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
         if (hasChildren) toggle();
-        onSelect?.(node.value, node);
+        props.onSelect?.(node.value, node);
       } else {
         const isRtl = direction() === 'rtl';
         const expandKey = isRtl ? 'ArrowLeft' : 'ArrowRight';
@@ -85,7 +92,9 @@ export function Tree(props: TreeProps): HTMLElement {
     li.appendChild(label);
 
     const childrenEl = document.createElement('ul');
-    childrenEl.className = mergeClasses('mkt-tree__node-children', classNames?.nodeChildren);
+    renderEffect(() => {
+      childrenEl.className = mergeClasses('mkt-tree__node-children', props.classNames?.nodeChildren);
+    });
     childrenEl.setAttribute('role', 'group');
     if (!expanded.has(node.value)) childrenEl.style.display = 'none';
     if (hasChildren) {
@@ -98,9 +107,10 @@ export function Tree(props: TreeProps): HTMLElement {
 
   data.forEach((n) => root.appendChild(renderNode(n, 0)));
 
+  const ref = props.ref;
   if (ref) {
     if (typeof ref === 'function') ref(root);
-    else (ref as any).current = root;
+    else (ref as { current: HTMLElement | null }).current = root;
   }
   return root;
 }

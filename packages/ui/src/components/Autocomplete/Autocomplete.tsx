@@ -1,4 +1,5 @@
-import { onCleanup } from '@mikata/runtime';
+import { onCleanup, _mergeProps } from '@mikata/runtime';
+import { renderEffect } from '@mikata/reactivity';
 import { mergeClasses } from '../../utils/class-merge';
 import { uniqueId } from '../../utils/unique-id';
 import { createAsyncDataController } from '../../utils/async-data';
@@ -6,55 +7,57 @@ import { InputWrapper } from '../_internal/InputWrapper';
 import type { AutocompleteProps, AutocompleteFetcher } from './Autocomplete.types';
 import './Autocomplete.css';
 
-export function Autocomplete(props: AutocompleteProps): HTMLDivElement {
-  const {
-    data,
-    value,
-    defaultValue = '',
-    placeholder,
-    label,
-    description,
-    error,
-    required,
-    disabled,
-    size = 'md',
-    limit = 8,
-    debounceMs,
-    loadingLabel = 'Loading…',
-    onChange,
-    onOptionSubmit,
-    classNames,
-    class: className,
-    ref,
-  } = props;
+export function Autocomplete(userProps: AutocompleteProps): HTMLDivElement {
+  const props = _mergeProps(userProps as unknown as Record<string, unknown>) as unknown as AutocompleteProps;
 
   const id = uniqueId('autocomplete');
   const listId = `${id}-list`;
+  // Data shape (array vs fetcher) determines the fetch lifecycle — read once.
+  const data = props.data;
   const isAsync = typeof data === 'function';
   const fetcher = isAsync ? (data as AutocompleteFetcher) : null;
+  const limit = props.limit ?? 8;
+  const debounceMs = props.debounceMs;
+  const loadingLabel = props.loadingLabel ?? 'Loading…';
 
   const container = document.createElement('div');
-  container.className = mergeClasses('mkt-autocomplete', classNames?.root);
+  renderEffect(() => {
+    container.className = mergeClasses('mkt-autocomplete', props.classNames?.root);
+  });
 
   const input = document.createElement('input');
   input.type = 'text';
   input.id = id;
-  input.className = mergeClasses('mkt-autocomplete__input', classNames?.input);
-  input.dataset.size = size;
   input.autocomplete = 'off';
   input.setAttribute('role', 'combobox');
   input.setAttribute('aria-autocomplete', 'list');
   input.setAttribute('aria-expanded', 'false');
   input.setAttribute('aria-controls', listId);
-  if (placeholder) input.placeholder = placeholder;
-  if (disabled) input.disabled = true;
-  if (required) input.setAttribute('aria-required', 'true');
-  if (error) input.setAttribute('aria-invalid', 'true');
-  input.value = value ?? defaultValue;
+  renderEffect(() => {
+    input.className = mergeClasses('mkt-autocomplete__input', props.classNames?.input);
+  });
+  renderEffect(() => { input.dataset.size = props.size ?? 'md'; });
+  renderEffect(() => {
+    const p = props.placeholder;
+    if (p) input.placeholder = p;
+    else input.removeAttribute('placeholder');
+  });
+  renderEffect(() => { input.disabled = !!props.disabled; });
+  renderEffect(() => {
+    if (props.required) input.setAttribute('aria-required', 'true');
+    else input.removeAttribute('aria-required');
+  });
+  renderEffect(() => {
+    if (props.error) input.setAttribute('aria-invalid', 'true');
+    else input.removeAttribute('aria-invalid');
+  });
+  input.value = props.value ?? props.defaultValue ?? '';
 
   const dropdown = document.createElement('ul');
   dropdown.id = listId;
-  dropdown.className = mergeClasses('mkt-autocomplete__dropdown', classNames?.dropdown);
+  renderEffect(() => {
+    dropdown.className = mergeClasses('mkt-autocomplete__dropdown', props.classNames?.dropdown);
+  });
   dropdown.setAttribute('role', 'listbox');
   dropdown.hidden = true;
 
@@ -62,8 +65,6 @@ export function Autocomplete(props: AutocompleteProps): HTMLDivElement {
   let current: string[] = [];
   let remoteItems: string[] = [];
   let loading = false;
-  // Keyed reconciliation - reuse <li> nodes by option value so fast typing
-  // doesn't blow away and recreate the entire dropdown on every keystroke.
   const liByOption = new Map<string, HTMLLIElement>();
   let loadingLi: HTMLLIElement | null = null;
 
@@ -75,15 +76,15 @@ export function Autocomplete(props: AutocompleteProps): HTMLDivElement {
 
   const commit = (v: string) => {
     input.value = v;
-    onChange?.(v);
-    onOptionSubmit?.(v);
+    props.onChange?.(v);
+    props.onOptionSubmit?.(v);
     close();
   };
 
   const ensureLoadingLi = () => {
     if (!loadingLi) {
       loadingLi = document.createElement('li');
-      loadingLi.className = mergeClasses('mkt-autocomplete__loading', classNames?.loading);
+      loadingLi.className = mergeClasses('mkt-autocomplete__loading', props.classNames?.loading);
       loadingLi.setAttribute('aria-live', 'polite');
       loadingLi.textContent = loadingLabel;
     }
@@ -129,7 +130,7 @@ export function Autocomplete(props: AutocompleteProps): HTMLDivElement {
       let li = liByOption.get(opt);
       if (!li) {
         li = document.createElement('li');
-        li.className = mergeClasses('mkt-autocomplete__option', classNames?.option);
+        li.className = mergeClasses('mkt-autocomplete__option', props.classNames?.option);
         li.setAttribute('role', 'option');
         li.textContent = opt;
         li.addEventListener('mousedown', (e) => {
@@ -175,12 +176,10 @@ export function Autocomplete(props: AutocompleteProps): HTMLDivElement {
   if (asyncController) onCleanup(() => asyncController.dispose());
 
   input.addEventListener('input', () => {
-    onChange?.(input.value);
+    props.onChange?.(input.value);
     activeIdx = -1;
     if (asyncController) {
       asyncController.request(input.value);
-      // Clear any prior results immediately so stale options don't linger
-      // while the debounce + fetch runs.
       remoteItems = [];
     }
     render();
@@ -224,19 +223,20 @@ export function Autocomplete(props: AutocompleteProps): HTMLDivElement {
   container.appendChild(input);
   container.appendChild(dropdown);
 
+  const ref = props.ref;
   if (ref) {
-    if (typeof ref === 'function') ref(input as any);
-    else (ref as any).current = input;
+    if (typeof ref === 'function') ref(input as unknown as HTMLElement);
+    else (ref as { current: HTMLInputElement | null }).current = input;
   }
 
   return InputWrapper({
     id,
-    label,
-    description,
-    error,
-    required,
-    class: className,
-    classNames,
+    get label() { return props.label; },
+    get description() { return props.description; },
+    get error() { return props.error; },
+    get required() { return props.required; },
+    get class() { return props.class; },
+    get classNames() { return props.classNames; },
     children: container,
   });
 }

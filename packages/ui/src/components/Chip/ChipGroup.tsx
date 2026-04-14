@@ -1,3 +1,5 @@
+import { renderEffect } from '@mikata/reactivity';
+import { _mergeProps } from '@mikata/runtime';
 import { uniqueId } from '../../utils/unique-id';
 import { mergeClasses } from '../../utils/class-merge';
 import type { ChipGroupProps } from './ChipGroup.types';
@@ -10,28 +12,30 @@ const sizeMap: Record<string, string> = {
   xl: 'var(--mkt-space-5)',
 };
 
-export function ChipGroup(props: ChipGroupProps = {}): HTMLElement {
-  const {
-    multiple,
-    value,
-    defaultValue,
-    onChange,
-    gap = 'sm',
-    children,
-    class: className,
-    ref,
-  } = props;
+export function ChipGroup(userProps: ChipGroupProps = {}): HTMLElement {
+  const props = _mergeProps(userProps as unknown as Record<string, unknown>) as unknown as ChipGroupProps;
+
+  // `multiple`, `value`/`defaultValue`, `children`, `onChange` are structural —
+  // they decide name/role, initial selection, and chip wiring at setup.
+  const multiple = props.multiple;
+  const children = props.children;
+  const onChange = props.onChange;
 
   const name = uniqueId('chip-group');
 
   const el = document.createElement('div');
-  el.className = mergeClasses('mkt-chip-group', className);
+  renderEffect(() => {
+    el.className = mergeClasses('mkt-chip-group', props.class);
+  });
   el.setAttribute('role', multiple ? 'group' : 'radiogroup');
   el.style.display = 'flex';
   el.style.flexWrap = 'wrap';
-  el.style.gap = sizeMap[gap] ?? gap;
+  renderEffect(() => {
+    const gap = props.gap ?? 'sm';
+    el.style.gap = sizeMap[gap] ?? gap;
+  });
 
-  const resolved = value ?? defaultValue;
+  const resolved = props.value ?? props.defaultValue;
   const selected = new Set<string>(
     resolved == null ? [] : Array.isArray(resolved) ? resolved : [resolved],
   );
@@ -64,9 +68,10 @@ export function ChipGroup(props: ChipGroupProps = {}): HTMLElement {
     else appendOne(children);
   }
 
+  const ref = props.ref;
   if (ref) {
     if (typeof ref === 'function') ref(el);
-    else (ref as any).current = el;
+    else (ref as { current: HTMLElement | null }).current = el;
   }
 
   return el;

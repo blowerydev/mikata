@@ -1,14 +1,16 @@
-import { onCleanup } from '@mikata/runtime';
+import { _mergeProps, onCleanup } from '@mikata/runtime';
 import type { CopyButtonProps } from './CopyButton.types';
 
 /**
  * Render-prop wrapper that provides a `copy` function and a `copied` flag.
  * Returns a fragment-like wrapper that swaps its child when `copied` toggles.
  */
-export function CopyButton(props: CopyButtonProps): HTMLElement {
-  const { value, timeout = 1000, children, onCopy } = props;
+export function CopyButton(userProps: CopyButtonProps): HTMLElement {
+  const props = _mergeProps(userProps as unknown as Record<string, unknown>) as unknown as CopyButtonProps;
 
-  // Use a display-contents wrapper so it doesn't introduce layout
+  // `children` is the render function, captured once.
+  const children = props.children;
+
   const wrapper = document.createElement('span');
   wrapper.className = 'mkt-copy-button';
   wrapper.style.display = 'contents';
@@ -29,13 +31,12 @@ export function CopyButton(props: CopyButtonProps): HTMLElement {
       timer = setTimeout(() => {
         copied = false;
         render();
-      }, timeout);
-      onCopy?.(value);
+      }, props.timeout ?? 1000);
+      props.onCopy?.(props.value);
       render();
     };
     if (navigator.clipboard?.writeText) {
-      navigator.clipboard.writeText(value).then(done).catch(() => {
-        // fall back to legacy
+      navigator.clipboard.writeText(props.value).then(done).catch(() => {
         fallback();
       });
     } else {
@@ -43,7 +44,7 @@ export function CopyButton(props: CopyButtonProps): HTMLElement {
     }
     function fallback() {
       const ta = document.createElement('textarea');
-      ta.value = value;
+      ta.value = props.value;
       ta.setAttribute('readonly', '');
       ta.style.position = 'fixed';
       ta.style.top = '-1000px';

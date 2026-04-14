@@ -1,40 +1,62 @@
+import { renderEffect } from '@mikata/reactivity';
 import { mergeClasses } from '../../utils/class-merge';
 import type { BlockquoteProps } from './Blockquote.types';
 import './Blockquote.css';
 
 export function Blockquote(props: BlockquoteProps = {}): HTMLElement {
-  const { color = 'primary', cite, icon, classNames, children, class: className, ref } = props;
-
   const el = document.createElement('blockquote');
-  el.className = mergeClasses('mkt-blockquote', className, classNames?.root);
-  el.dataset.color = color;
+  renderEffect(() => {
+    el.className = mergeClasses('mkt-blockquote', props.class, props.classNames?.root);
+  });
+  renderEffect(() => { el.dataset.color = props.color ?? 'primary'; });
 
-  if (icon) {
-    const iconWrap = document.createElement('span');
-    iconWrap.className = mergeClasses('mkt-blockquote__icon', classNames?.icon);
-    iconWrap.appendChild(icon);
-    el.appendChild(iconWrap);
-  }
+  // Optional icon slot — toggles with prop presence.
+  const iconWrap = document.createElement('span');
+  renderEffect(() => {
+    iconWrap.className = mergeClasses('mkt-blockquote__icon', props.classNames?.icon);
+  });
+  renderEffect(() => {
+    iconWrap.replaceChildren();
+    const icon = props.icon;
+    if (icon) {
+      iconWrap.appendChild(icon);
+      if (!iconWrap.isConnected) el.insertBefore(iconWrap, el.firstChild);
+    } else if (iconWrap.isConnected) {
+      iconWrap.remove();
+    }
+  });
 
   const body = document.createElement('div');
   body.className = 'mkt-blockquote__body';
-  if (children != null) {
-    if (typeof children === 'string') body.textContent = children;
-    else body.appendChild(children);
-  }
+  renderEffect(() => {
+    const c = props.children;
+    if (c == null) body.textContent = '';
+    else if (typeof c === 'string') body.textContent = c;
+    else body.replaceChildren(c);
+  });
   el.appendChild(body);
 
-  if (cite != null) {
-    const citeEl = document.createElement('cite');
-    citeEl.className = mergeClasses('mkt-blockquote__cite', classNames?.cite);
+  // Optional cite slot.
+  const citeEl = document.createElement('cite');
+  renderEffect(() => {
+    citeEl.className = mergeClasses('mkt-blockquote__cite', props.classNames?.cite);
+  });
+  renderEffect(() => {
+    const cite = props.cite;
+    if (cite == null) {
+      if (citeEl.isConnected) citeEl.remove();
+      return;
+    }
+    citeEl.replaceChildren();
     if (cite instanceof Node) citeEl.appendChild(cite);
     else citeEl.textContent = cite;
-    el.appendChild(citeEl);
-  }
+    if (!citeEl.isConnected) el.appendChild(citeEl);
+  });
 
+  const ref = props.ref;
   if (ref) {
     if (typeof ref === 'function') ref(el);
-    else (ref as any).current = el;
+    else (ref as { current: HTMLElement | null }).current = el;
   }
 
   return el;

@@ -13,8 +13,6 @@ import { getFunctionName, isFunctionNode, isPascalCase } from '../utils';
  * // GOOD
  * function Button(props: Props) { return <button>{props.label}</button>; }
  * ```
- *
- * Escape hatch: `_destructureProps(props, ['label'])` preserves reactivity.
  */
 export const noDestructuredProps: Rule.RuleModule = {
   meta: {
@@ -28,7 +26,7 @@ export const noDestructuredProps: Rule.RuleModule = {
     messages: {
       destructured:
         'Destructuring props in the parameter of component `{{name}}` breaks reactivity - each destructured name is frozen at setup. ' +
-        'Use `props` and access fields as `props.foo`, or use `_destructureProps(props, [...])`.',
+        'Use `props` directly; access fields as `props.foo`.',
     },
   },
 

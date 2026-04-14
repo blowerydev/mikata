@@ -1,4 +1,6 @@
 import { createIcon, Close } from '@mikata/icons';
+import { renderEffect } from '@mikata/reactivity';
+import { _mergeProps } from '@mikata/runtime';
 import { mergeClasses } from '../../utils/class-merge';
 import { useComponentDefaults } from '../../theme/component-defaults';
 import { useUILabels } from '../../utils/use-i18n-optional';
@@ -7,38 +9,45 @@ import type { NotificationProps } from './Notification.types';
 import './Notification.css';
 
 export function Notification(userProps: NotificationProps = {}): HTMLElement {
-  const props = { ...useComponentDefaults<NotificationProps>('Notification'), ...userProps };
-  const {
-    title,
-    color = 'primary',
-    icon,
-    loading,
-    withCloseButton = true,
-    withBorder,
-    onClose,
-    classNames,
-    children,
-    class: className,
-    ref,
-  } = props;
+  const props = _mergeProps(
+    useComponentDefaults<NotificationProps>('Notification') as unknown as Record<string, unknown>,
+    userProps as unknown as Record<string, unknown>,
+  ) as unknown as NotificationProps;
+
+  // `loading`, `icon`, `title`, `children`, `withCloseButton`, `onClose` are
+  // structural — they decide which sub-elements exist.
+  const loading = props.loading;
+  const icon = props.icon;
+  const title = props.title;
+  const children = props.children;
+  const withCloseButton = props.withCloseButton ?? true;
+  const onClose = props.onClose;
 
   const labels = useUILabels();
 
   const root = document.createElement('div');
-  root.className = mergeClasses('mkt-notification', className, classNames?.root);
-  root.dataset.color = color;
+  renderEffect(() => {
+    root.className = mergeClasses('mkt-notification', props.class, props.classNames?.root);
+  });
+  renderEffect(() => { root.dataset.color = props.color ?? 'primary'; });
   root.setAttribute('role', 'status');
-  if (withBorder) root.dataset.bordered = '';
+  renderEffect(() => {
+    if (props.withBorder) root.dataset.bordered = '';
+    else delete root.dataset.bordered;
+  });
 
-  // Icon / loader
   if (loading) {
     const wrap = document.createElement('span');
-    wrap.className = mergeClasses('mkt-notification__loader', classNames?.loader);
-    wrap.appendChild(Loader({ size: 'sm', color }));
+    renderEffect(() => {
+      wrap.className = mergeClasses('mkt-notification__loader', props.classNames?.loader);
+    });
+    wrap.appendChild(Loader({ size: 'sm', color: props.color ?? 'primary' }));
     root.appendChild(wrap);
   } else if (icon) {
     const wrap = document.createElement('span');
-    wrap.className = mergeClasses('mkt-notification__icon', classNames?.icon);
+    renderEffect(() => {
+      wrap.className = mergeClasses('mkt-notification__icon', props.classNames?.icon);
+    });
     wrap.appendChild(icon);
     root.appendChild(wrap);
   }
@@ -48,17 +57,31 @@ export function Notification(userProps: NotificationProps = {}): HTMLElement {
 
   if (title != null) {
     const t = document.createElement('div');
-    t.className = mergeClasses('mkt-notification__title', classNames?.title);
-    if (title instanceof Node) t.appendChild(title);
-    else t.textContent = title;
+    renderEffect(() => {
+      t.className = mergeClasses('mkt-notification__title', props.classNames?.title);
+    });
+    renderEffect(() => {
+      const next = props.title;
+      if (next == null) t.replaceChildren();
+      else if (next instanceof Node) t.replaceChildren(next);
+      else t.textContent = next;
+    });
     body.appendChild(t);
   }
 
   if (children != null) {
     const desc = document.createElement('div');
-    desc.className = mergeClasses('mkt-notification__description', classNames?.description);
-    if (typeof children === 'string') desc.textContent = children;
-    else desc.appendChild(children);
+    renderEffect(() => {
+      desc.className = mergeClasses('mkt-notification__description', props.classNames?.description);
+    });
+    if (typeof children === 'string') {
+      renderEffect(() => {
+        const c = props.children;
+        desc.textContent = typeof c === 'string' ? c : '';
+      });
+    } else {
+      desc.appendChild(children as Node);
+    }
     body.appendChild(desc);
   }
 
@@ -67,16 +90,19 @@ export function Notification(userProps: NotificationProps = {}): HTMLElement {
   if (withCloseButton && onClose) {
     const close = document.createElement('button');
     close.type = 'button';
-    close.className = mergeClasses('mkt-notification__close', classNames?.close);
+    renderEffect(() => {
+      close.className = mergeClasses('mkt-notification__close', props.classNames?.close);
+    });
     close.setAttribute('aria-label', labels.close);
     close.appendChild(createIcon(Close, { strokeWidth: 1.5 }));
     close.addEventListener('click', onClose);
     root.appendChild(close);
   }
 
+  const ref = props.ref;
   if (ref) {
     if (typeof ref === 'function') ref(root);
-    else (ref as any).current = root;
+    else (ref as { current: HTMLElement | null }).current = root;
   }
 
   return root;

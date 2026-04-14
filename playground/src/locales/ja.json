@@ -7,7 +7,10 @@
     "title": "UIコンポーネントライブラリ",
     "description": "@mikata/ui のコンポーネント - テーマ対応、アクセシブル、コンポーザブル。",
     "darkMode": "ダークモード",
-    "language": "言語"
+    "language": "言語",
+    "direction": "方向",
+    "ltr": "LTR",
+    "rtl": "RTL"
   },
   "badges": {
     "title": "バッジ",
@@ -102,7 +105,13 @@
     "disabled": "無効",
     "code": "コード",
     "codeContent": "value、label、contentを定義するitems配列でTabsコンポーネントを使用します。",
-    "pillsVariant": "ピルバリアント："
+    "pillsVariant": "ピルバリアント：",
+    "reactLabel": "React",
+    "vueLabel": "Vue",
+    "solidLabel": "Solid",
+    "reactContent": "React のコンテンツ",
+    "vueContent": "Vue のコンテンツ",
+    "solidContent": "Solid のコンテンツ"
   },
   "accordion": {
     "title": "アコーディオン",
@@ -166,7 +175,10 @@
   },
   "counter": {
     "title": "カウンター",
-    "reset": "リセット"
+    "reset": "リセット",
+    "display": "カウント：{{count}} | 倍：{{doubled}}",
+    "positive": "プラス",
+    "negative": "マイナス"
   },
   "formBindings": {
     "title": "フォームバインディング (model)",
@@ -177,7 +189,11 @@
     "color": "色：",
     "focusName": "名前入力にフォーカス",
     "agreed": "同意済み",
-    "notAgreed": "未同意"
+    "notAgreed": "未同意",
+    "colorBlue": "青",
+    "colorRed": "赤",
+    "colorGreen": "緑",
+    "statusLine": "{{name}}、年齢 {{age}}、{{status}}"
   },
   "todo": {
     "title": "Todoリスト",
@@ -190,7 +206,10 @@
     "title": "条件付きレンダリング",
     "loading": "読み込み中...",
     "success": "成功！データが読み込まれました。",
-    "error": "エラー！問題が発生しました。"
+    "error": "エラー！問題が発生しました。",
+    "btnLoading": "読み込み",
+    "btnSuccess": "成功",
+    "btnError": "エラー"
   },
   "portal": {
     "title": "ポータル（モーダル）",
@@ -281,7 +300,24 @@
     "overlayToggle": "オーバーレイを表示",
     "overlayContent": "任意の場所をクリックして閉じる",
     "rangeTitle": "範囲スライダー",
-    "rangeLabel": "価格帯"
+    "rangeLabel": "価格帯",
+    "listFirst": "1番目の項目",
+    "listSecond": "2番目の項目",
+    "listThird": "3番目の項目",
+    "aspect169": "16:9",
+    "primitiveInputPlaceholder": "プリミティブ入力",
+    "stepperPrev": "前へ",
+    "stepperNext": "次へ",
+    "treeButton": "Button",
+    "treeInput": "Input",
+    "collapseShow": "詳細を表示",
+    "collapseHide": "詳細を隠す",
+    "collapseContent": "このコンテンツはCollapseでアニメーションされます。",
+    "scrollLine": "行 {{n}} - スクロールしてカスタムスクロールバーを確認",
+    "burgerAria": "ナビゲーション切替",
+    "contentBehindOverlay": "オーバーレイの後ろのコンテンツ",
+    "overlayHidden": "オーバーレイの下に隠されたコンテンツ。",
+    "overlayDim": "下のボタンをクリックして暗くしてください。"
   },
   "icons": {
     "title": "アイコン (@mikata/icons)",
@@ -326,6 +362,52 @@
     "dirty": "変更",
     "valid": "有効",
     "yes": "はい",
-    "no": "いいえ"
+    "no": "いいえ",
+    "emailPlaceholder": "you@example.com",
+    "removeItemAria": "項目を削除"
+  },
+  "dates": {
+    "title": "日付と時刻",
+    "description": "Calendar、DatePicker、Month/YearPicker、DateInput、TimeInput - すべてIntl APIベースで日付ライブラリ依存ゼロです。",
+    "calendarInline": "カレンダー（インライン）",
+    "variantDefault": "デフォルト",
+    "variantMultiple": "複数選択",
+    "variantRange": "範囲",
+    "datePickerTitle": "DatePicker（日→月→年へドリル）",
+    "monthYearPicker": "MonthPicker / YearPicker",
+    "dateInputSection": "DateInput / DatePickerInput",
+    "dateInputTypeable": "DateInput（入力可能）",
+    "dateInputPlaceholder": "YYYY-MM-DD",
+    "datePickerInput": "DatePickerInput",
+    "pickDate": "日付を選択",
+    "rangeLabel": "範囲",
+    "pickRange": "範囲を選択",
+    "monthPickerInput": "MonthPickerInput",
+    "pickMonth": "月を選択",
+    "yearPickerInput": "YearPickerInput",
+    "pickYear": "年を選択",
+    "timeInput": "TimeInput",
+    "virtualizationTitle": "仮想化",
+    "virtualizationDesc": "VirtualListは表示領域内の項目のみをレンダリングします。下のリストをスクロールしてください - 10,000項目でもDOM上には常に約12ノードしか存在しません。",
+    "variableSize": "可変サイズの項目",
+    "virtualItem": "項目 {{n}}（サイズ {{size}}px）"
+  },
+  "theming": {
+    "title": "テーマデモ",
+    "description": "カスタムパレット＋リアクティブな primaryColor / primaryShade。変更は Provider を再マウントせずに CSS 変数経由で反映されます。",
+    "primaryColorLabel": "primaryColor",
+    "primaryShadeLabel": "primaryShade",
+    "brandViolet": "brand（バイオレット）",
+    "tealCustom": "teal（カスタム）",
+    "primaryBuiltIn": "primary（組み込み）",
+    "buttonsTitle": "ボタン",
+    "buttonPrimary": "プライマリ",
+    "buttonBrand": "ブランド",
+    "buttonTeal": "ティール",
+    "buttonRed": "レッド",
+    "buttonFilled": "塗りつぶし",
+    "badgesAlertsTitle": "カスタムパレットを使ったバッジとアラート",
+    "brandPaletteTitle": "ブランドパレット",
+    "brandPaletteMessage": "このアラートはランタイム発行のルールでカスタムブランドパレットを使用しています。"
   }
 }

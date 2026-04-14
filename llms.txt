@@ -843,11 +843,10 @@ For inputs with `onValueChange` (NumberInput, Slider, Rating) or array-shaped ch
 
 ### i18n
 
-- `FormError = string | Node`. Pass `t.node('errors.invalidEmail')` from `@mikata/i18n` for reactive translated errors:
+- `FormError = string | Node`. Pass `t('errors.invalidEmail')` from `@mikata/i18n` for a translated error. If you want the error element to update live on locale change without re-validating, pass a function: `() => t('errors.invalidEmail')`.
   ```ts
-  validate: { email: (v) => /@/.test(v) ? null : t.node('errors.invalidEmail') }
+  validate: { email: (v) => /@/.test(v) ? null : t('errors.invalidEmail') }
   ```
-  The `Node` form updates when locale changes, without re-validating.
 - Every resolver accepts a `messages` callback for translation. E.g. `zodResolver(schema, { messages: (issue) => t(`errors.${issue.code}`) })`.
 - `@mikata/form` has no dependency on `@mikata/i18n` - translation is an opt-in consumer pattern.
 
@@ -955,18 +954,17 @@ The Vite/Babel plugin transforms JSX into direct DOM operations. You write stand
 
 What the user writes:
 ```tsx
-function Greet({ name }) {
-  return <h1 class="title">Hello, {name}!</h1>;
+function Greet(props) {
+  return <h1 class="title">Hello, {props.name}!</h1>;
 }
 ```
 
 What the compiler outputs (approximately):
 ```tsx
-function Greet(_props) {
-  const { name } = _destructureProps(_props, ['name']);
+function Greet(props) {
   const _el = _createElement('h1');
   _setProp(_el, 'class', 'title');
-  _insert(_el, () => `Hello, ${name}!`);
+  _insert(_el, () => `Hello, ${props.name}!`);
   return _el;
 }
 ```
@@ -976,7 +974,7 @@ Key transform rules:
 - Dynamic text `{expr()}` → `_insert` with reactive effect
 - Event handlers `onClick={fn}` → `addEventListener`
 - Components `<Foo bar={x} />` → `_createComponent(Foo, { get bar() { return x } })`
-- Props destructuring → `_destructureProps` preserving getter-based reactivity
+- Props are getter-backed: never destructure, always read `props.foo` at use sites to preserve reactivity
 - Fragments `<>...</>` → `_createFragment`
 - Spread `{...props}` → `_spread`
 

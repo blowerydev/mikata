@@ -1,5 +1,6 @@
 import { createIcon, Close } from '@mikata/icons';
-import { onCleanup } from '@mikata/runtime';
+import { onCleanup, _mergeProps } from '@mikata/runtime';
+import { renderEffect } from '@mikata/reactivity';
 import { mergeClasses } from '../../utils/class-merge';
 import { uniqueId } from '../../utils/unique-id';
 import { useUILabels } from '../../utils/use-i18n-optional';
@@ -11,82 +12,84 @@ import './MultiSelect.css';
 const normalize = (data: (string | MultiSelectOption)[]): MultiSelectOption[] =>
   data.map((d) => (typeof d === 'string' ? { value: d, label: d } : d));
 
-export function MultiSelect(props: MultiSelectProps): HTMLDivElement {
-  const {
-    data,
-    value,
-    defaultValue = [],
-    placeholder,
-    label,
-    description,
-    error,
-    required,
-    disabled,
-    size = 'md',
-    maxValues,
-    searchable = true,
-    clearable,
-    debounceMs,
-    loadingLabel,
-    onChange,
-    classNames,
-    class: className,
-    ref,
-  } = props;
+export function MultiSelect(userProps: MultiSelectProps): HTMLDivElement {
+  const props = _mergeProps(userProps as unknown as Record<string, unknown>) as unknown as MultiSelectProps;
 
   const id = uniqueId('multi-select');
   const listId = `${id}-list`;
+  // `data` shape (array vs fetcher) determines the option-lifecycle — read once.
+  const data = props.data;
   const isAsync = typeof data === 'function';
   const fetcher = isAsync ? (data as MultiSelectFetcher) : null;
-  // Pool of known options (covers statically-provided data and every async
-  // result we've seen). Needed so pills keep their label after the query
-  // changes and the option drops out of the visible list.
+  const debounceMs = props.debounceMs;
+  const searchable = props.searchable ?? true;
+  const clearable = props.clearable;
   let options: MultiSelectOption[] = isAsync ? [] : normalize(data as (string | MultiSelectOption)[]);
   const optionByValue = new Map<string, MultiSelectOption>();
   for (const opt of options) optionByValue.set(opt.value, opt);
   const labels = useUILabels();
-  const resolvedLoadingLabel = loadingLabel ?? labels.loading ?? 'Loading…';
+  const resolvedLoadingLabel = props.loadingLabel ?? labels.loading ?? 'Loading…';
 
-  const selected = new Set<string>(value ?? defaultValue);
+  const selected = new Set<string>(props.value ?? props.defaultValue ?? []);
 
   const control = document.createElement('div');
-  control.className = mergeClasses('mkt-multi-select', classNames?.control);
-  control.dataset.size = size;
-  if (disabled) control.dataset.disabled = '';
-  if (error) control.dataset.invalid = '';
+  renderEffect(() => {
+    control.className = mergeClasses('mkt-multi-select', props.classNames?.control);
+  });
+  renderEffect(() => { control.dataset.size = props.size ?? 'md'; });
+  renderEffect(() => {
+    if (props.disabled) control.dataset.disabled = '';
+    else delete control.dataset.disabled;
+  });
+  renderEffect(() => {
+    if (props.error) control.dataset.invalid = '';
+    else delete control.dataset.invalid;
+  });
 
   const input = document.createElement('input');
   input.type = 'text';
   input.id = id;
-  input.className = mergeClasses('mkt-multi-select__input', classNames?.input);
   input.autocomplete = 'off';
   input.setAttribute('role', 'combobox');
   input.setAttribute('aria-autocomplete', 'list');
   input.setAttribute('aria-expanded', 'false');
   input.setAttribute('aria-controls', listId);
   input.setAttribute('aria-multiselectable', 'true');
-  if (placeholder) input.placeholder = placeholder;
-  if (disabled) input.disabled = true;
+  renderEffect(() => {
+    input.className = mergeClasses('mkt-multi-select__input', props.classNames?.input);
+  });
+  renderEffect(() => {
+    const p = props.placeholder;
+    if (p) input.placeholder = p;
+    else input.removeAttribute('placeholder');
+  });
+  renderEffect(() => { input.disabled = !!props.disabled; });
   if (!searchable) input.readOnly = true;
-  if (required) input.setAttribute('aria-required', 'true');
-  if (error) input.setAttribute('aria-invalid', 'true');
+  renderEffect(() => {
+    if (props.required) input.setAttribute('aria-required', 'true');
+    else input.removeAttribute('aria-required');
+  });
+  renderEffect(() => {
+    if (props.error) input.setAttribute('aria-invalid', 'true');
+    else input.removeAttribute('aria-invalid');
+  });
 
   const dropdown = document.createElement('ul');
   dropdown.id = listId;
-  dropdown.className = mergeClasses('mkt-multi-select__dropdown', classNames?.dropdown);
+  renderEffect(() => {
+    dropdown.className = mergeClasses('mkt-multi-select__dropdown', props.classNames?.dropdown);
+  });
   dropdown.setAttribute('role', 'listbox');
   dropdown.hidden = true;
 
   let activeIdx = -1;
   let currentFiltered: MultiSelectOption[] = [];
   let loading = false;
-  // Keyed reconciliation by option value - see Autocomplete for the same
-  // pattern. Avoids full dropdown rebuild on each keystroke.
   const liByValue = new Map<string, HTMLLIElement>();
   let emptyLi: HTMLLIElement | null = null;
   let loadingLi: HTMLLIElement | null = null;
 
-  const emit = () => onChange?.(Array.from(selected));
+  const emit = () => props.onChange?.(Array.from(selected));
 
   const labelFor = (v: string): string => optionByValue.get(v)?.label ?? v;
 
@@ -98,22 +101,21 @@ export function MultiSelect(props: MultiSelectProps): HTMLDivElement {
   };
 
   const renderPills = () => {
-    // remove old pills
     Array.from(control.querySelectorAll('.mkt-multi-select__pill')).forEach((el) => el.remove());
     const frag = document.createDocumentFragment();
     for (const v of selected) {
       const lbl = labelFor(v);
       const pill = document.createElement('span');
-      pill.className = mergeClasses('mkt-multi-select__pill', classNames?.pill);
+      pill.className = mergeClasses('mkt-multi-select__pill', props.classNames?.pill);
       pill.textContent = lbl;
       const rm = document.createElement('button');
       rm.type = 'button';
-      rm.className = mergeClasses('mkt-multi-select__pill-remove', classNames?.pillRemove);
+      rm.className = mergeClasses('mkt-multi-select__pill-remove', props.classNames?.pillRemove);
       rm.setAttribute('aria-label', `${labels.remove}: ${lbl}`);
       rm.appendChild(createIcon(Close, { size: 10, strokeWidth: 1.5 }));
       rm.addEventListener('mousedown', (e) => {
         e.preventDefault();
-        if (disabled) return;
+        if (props.disabled) return;
         removePill(v);
       });
       pill.appendChild(rm);
@@ -130,6 +132,7 @@ export function MultiSelect(props: MultiSelectProps): HTMLDivElement {
 
   const toggleOption = (opt: MultiSelectOption) => {
     if (opt.disabled) return;
+    const maxValues = props.maxValues;
     if (selected.has(opt.value)) selected.delete(opt.value);
     else {
       if (maxValues != null && selected.size >= maxValues) return;
@@ -144,20 +147,18 @@ export function MultiSelect(props: MultiSelectProps): HTMLDivElement {
   const renderDropdown = () => {
     const q = input.value.trim().toLowerCase();
     if (isAsync) {
-      // Remote: the pool already reflects the latest results for this query.
       currentFiltered = options.slice();
     } else {
       currentFiltered = options.filter((o) => !q || o.label.toLowerCase().includes(q));
     }
 
-    // Loading state: show the spinner row; clear any stale option rows.
     if (loading) {
       for (const li of liByValue.values()) li.remove();
       liByValue.clear();
       if (emptyLi && emptyLi.parentNode === dropdown) emptyLi.remove();
       if (!loadingLi) {
         loadingLi = document.createElement('li');
-        loadingLi.className = mergeClasses('mkt-multi-select__loading', classNames?.loading);
+        loadingLi.className = mergeClasses('mkt-multi-select__loading', props.classNames?.loading);
         loadingLi.setAttribute('aria-live', 'polite');
         loadingLi.textContent = resolvedLoadingLabel;
       }
@@ -192,7 +193,7 @@ export function MultiSelect(props: MultiSelectProps): HTMLDivElement {
       let li = liByValue.get(opt.value);
       if (!li) {
         li = document.createElement('li');
-        li.className = mergeClasses('mkt-multi-select__option', classNames?.option);
+        li.className = mergeClasses('mkt-multi-select__option', props.classNames?.option);
         li.setAttribute('role', 'option');
         li.textContent = opt.label;
         if (opt.disabled) li.dataset.disabled = '';
@@ -236,7 +237,6 @@ export function MultiSelect(props: MultiSelectProps): HTMLDivElement {
           for (const opt of options) optionByValue.set(opt.value, opt);
           loading = false;
           renderDropdown();
-          // Pills may reference values whose labels only just arrived.
           renderPills();
         },
       })
@@ -253,8 +253,6 @@ export function MultiSelect(props: MultiSelectProps): HTMLDivElement {
     activeIdx = -1;
     if (asyncController) {
       asyncController.request(input.value);
-      // Clear stale results so the dropdown shows the loading row (or nothing)
-      // until the fresh fetch lands.
       options = [];
     }
     renderDropdown();
@@ -284,7 +282,6 @@ export function MultiSelect(props: MultiSelectProps): HTMLDivElement {
     } else if (e.key === 'Escape') {
       close();
     } else if (e.key === 'Backspace' && !input.value && selected.size > 0) {
-      // remove last selected
       const last = Array.from(selected).pop();
       if (last) removePill(last);
     }
@@ -320,19 +317,20 @@ export function MultiSelect(props: MultiSelectProps): HTMLDivElement {
 
   renderPills();
 
+  const ref = props.ref;
   if (ref) {
-    if (typeof ref === 'function') ref(input as any);
-    else (ref as any).current = input;
+    if (typeof ref === 'function') ref(input as unknown as HTMLElement);
+    else (ref as { current: HTMLInputElement | null }).current = input;
   }
 
   return InputWrapper({
     id,
-    label,
-    description,
-    error,
-    required,
-    class: className,
-    classNames,
+    get label() { return props.label; },
+    get description() { return props.description; },
+    get error() { return props.error; },
+    get required() { return props.required; },
+    get class() { return props.class; },
+    get classNames() { return props.classNames; },
     children: wrapper,
   });
 }

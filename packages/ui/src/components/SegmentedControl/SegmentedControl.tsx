@@ -1,3 +1,5 @@
+import { renderEffect } from '@mikata/reactivity';
+import { _mergeProps } from '@mikata/runtime';
 import { mergeClasses } from '../../utils/class-merge';
 import { uniqueId } from '../../utils/unique-id';
 import type { SegmentedControlProps, SegmentedControlItem } from './SegmentedControl.types';
@@ -7,38 +9,33 @@ function normalizeItem(item: string | SegmentedControlItem): SegmentedControlIte
   return typeof item === 'string' ? { value: item, label: item } : item;
 }
 
-export function SegmentedControl(props: SegmentedControlProps): HTMLElement {
-  const {
-    data,
-    value,
-    defaultValue,
-    size = 'sm',
-    color = 'primary',
-    fullWidth = false,
-    onChange,
-    classNames,
-    class: className,
-    ref,
-  } = props;
+export function SegmentedControl(userProps: SegmentedControlProps): HTMLElement {
+  const props = _mergeProps(userProps as unknown as Record<string, unknown>) as unknown as SegmentedControlProps;
 
   const id = uniqueId('segmented');
-  const items = data.map(normalizeItem);
-  let activeValue = value ?? defaultValue ?? items[0]?.value ?? '';
+  // `data` defines the button set and is read once — adding/removing items at
+  // runtime requires a different DOM strategy (keyed reconcile) not supported
+  // here. Pass a reactive source externally and remount if it changes.
+  const items = props.data.map(normalizeItem);
+  let activeValue = props.value ?? props.defaultValue ?? items[0]?.value ?? '';
 
   const root = document.createElement('div');
-  root.className = mergeClasses(
-    'mkt-segmented-control',
-    fullWidth && 'mkt-segmented-control--full-width',
-    className,
-    classNames?.root,
-  );
-  root.dataset.size = size;
-  root.dataset.color = color;
+  renderEffect(() => {
+    root.className = mergeClasses(
+      'mkt-segmented-control',
+      props.fullWidth && 'mkt-segmented-control--full-width',
+      props.class,
+      props.classNames?.root,
+    );
+  });
+  renderEffect(() => { root.dataset.size = props.size ?? 'sm'; });
+  renderEffect(() => { root.dataset.color = props.color ?? 'primary'; });
   root.setAttribute('role', 'radiogroup');
 
-  // Sliding indicator
   const indicator = document.createElement('div');
-  indicator.className = mergeClasses('mkt-segmented-control__indicator', classNames?.indicator);
+  renderEffect(() => {
+    indicator.className = mergeClasses('mkt-segmented-control__indicator', props.classNames?.indicator);
+  });
   root.appendChild(indicator);
 
   const labels: HTMLLabelElement[] = [];
@@ -51,14 +48,16 @@ export function SegmentedControl(props: SegmentedControlProps): HTMLElement {
     input.name = id;
     input.id = inputId;
     input.value = item.value;
-    input.className = mergeClasses('mkt-segmented-control__input', classNames?.input);
+    renderEffect(() => {
+      input.className = mergeClasses('mkt-segmented-control__input', props.classNames?.input);
+    });
     input.checked = item.value === activeValue;
     if (item.disabled) input.disabled = true;
 
     input.addEventListener('change', () => {
       if (item.disabled) return;
       activeValue = item.value;
-      onChange?.(activeValue);
+      props.onChange?.(activeValue);
       updateIndicator();
       updateActive();
     });
@@ -66,9 +65,17 @@ export function SegmentedControl(props: SegmentedControlProps): HTMLElement {
     root.appendChild(input);
 
     const label = document.createElement('label');
-    label.className = mergeClasses('mkt-segmented-control__label', classNames?.label);
+    renderEffect(() => {
+      label.className = mergeClasses('mkt-segmented-control__label', props.classNames?.label);
+    });
     label.htmlFor = inputId;
-    if (item.label instanceof Node) { label.appendChild(item.label); } else { label.textContent = item.label; }
+    renderEffect(() => {
+      const raw = props.data[index];
+      const norm = typeof raw === 'string' ? raw : raw?.label;
+      if (norm == null) label.replaceChildren();
+      else if (norm instanceof Node) label.replaceChildren(norm);
+      else label.textContent = String(norm);
+    });
     if (item.value === activeValue) label.dataset.active = '';
     if (item.disabled) label.dataset.disabled = '';
 
@@ -78,11 +85,8 @@ export function SegmentedControl(props: SegmentedControlProps): HTMLElement {
 
   function updateActive() {
     labels.forEach((label, i) => {
-      if (items[i].value === activeValue) {
-        label.dataset.active = '';
-      } else {
-        delete label.dataset.active;
-      }
+      if (items[i].value === activeValue) label.dataset.active = '';
+      else delete label.dataset.active;
     });
   }
 
@@ -93,13 +97,6 @@ export function SegmentedControl(props: SegmentedControlProps): HTMLElement {
     if (!activeLabel) return;
 
     requestAnimationFrame(() => {
-      // Indicator is anchored at `inset-inline-start: 0`. The X delta from there
-      // to the active label depends on writing direction: in LTR, offsetLeft is
-      // the physical-left distance from the container's start edge; in RTL, the
-      // start edge is the right side, so we measure the label's *inline-start
-      // offset from the container's inline-start edge* as
-      // containerWidth - offsetLeft - offsetWidth, and translate *leftward*
-      // (negative) since translateX is always physical.
       const parent = activeLabel.offsetParent as HTMLElement | null;
       const isRtl = parent ? getComputedStyle(parent).direction === 'rtl' : false;
       const startOffset = isRtl && parent
@@ -110,12 +107,12 @@ export function SegmentedControl(props: SegmentedControlProps): HTMLElement {
     });
   }
 
-  // Set initial indicator position after mount
   requestAnimationFrame(updateIndicator);
 
+  const ref = props.ref;
   if (ref) {
     if (typeof ref === 'function') ref(root);
-    else (ref as any).current = root;
+    else (ref as { current: HTMLElement | null }).current = root;
   }
 
   return root;

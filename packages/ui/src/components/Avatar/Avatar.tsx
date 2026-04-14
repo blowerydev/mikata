@@ -1,5 +1,7 @@
 import { createIcon } from '@mikata/icons';
 import type { IconNode } from '@mikata/icons';
+import { renderEffect } from '@mikata/reactivity';
+import { _mergeProps } from '@mikata/runtime';
 import { mergeClasses } from '../../utils/class-merge';
 import type { AvatarProps, AvatarGroupProps } from './Avatar.types';
 import './Avatar.css';
@@ -16,34 +18,49 @@ function getInitials(name: string): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-export function Avatar(props: AvatarProps = {}): HTMLElement {
-  const {
-    src,
-    alt = '',
-    name,
-    size = 'md',
-    color = 'primary',
-    variant = 'light',
-    radius = 'full',
-    classNames,
-    class: className,
-    ref,
-  } = props;
+export function Avatar(userProps: AvatarProps = {}): HTMLElement {
+  const props = _mergeProps(userProps as unknown as Record<string, unknown>) as unknown as AvatarProps;
+
+  // `src`, `name` are structural — decide which child (img vs placeholder)
+  // exists.
+  const src = props.src;
+  const name = props.name;
 
   const el = document.createElement('div');
-  el.className = mergeClasses('mkt-avatar', className, classNames?.root);
-  el.dataset.size = size;
-  el.dataset.color = color;
-  el.dataset.variant = variant;
-  el.dataset.radius = radius;
+  renderEffect(() => {
+    el.className = mergeClasses('mkt-avatar', props.class, props.classNames?.root);
+  });
+  renderEffect(() => { el.dataset.size = props.size ?? 'md'; });
+  renderEffect(() => { el.dataset.color = props.color ?? 'primary'; });
+  renderEffect(() => { el.dataset.variant = props.variant ?? 'light'; });
+  renderEffect(() => { el.dataset.radius = props.radius ?? 'full'; });
   el.setAttribute('role', 'img');
-  el.setAttribute('aria-label', alt || name || 'Avatar');
+  renderEffect(() => {
+    el.setAttribute('aria-label', props.alt || props.name || 'Avatar');
+  });
+
+  const showPlaceholder = () => {
+    const placeholder = document.createElement('span');
+    renderEffect(() => {
+      placeholder.className = mergeClasses('mkt-avatar__placeholder', props.classNames?.placeholder);
+    });
+
+    if (name) {
+      placeholder.textContent = getInitials(name);
+    } else {
+      placeholder.appendChild(createIcon(UserSilhouette, { size: '60%' }));
+    }
+
+    el.appendChild(placeholder);
+  };
 
   if (src) {
     const img = document.createElement('img');
-    img.className = mergeClasses('mkt-avatar__image', classNames?.image);
+    renderEffect(() => {
+      img.className = mergeClasses('mkt-avatar__image', props.classNames?.image);
+    });
     img.src = src;
-    img.alt = alt || name || '';
+    img.alt = props.alt || name || '';
     img.addEventListener('error', () => {
       img.remove();
       showPlaceholder();
@@ -53,44 +70,32 @@ export function Avatar(props: AvatarProps = {}): HTMLElement {
     showPlaceholder();
   }
 
-  function showPlaceholder() {
-    const placeholder = document.createElement('span');
-    placeholder.className = mergeClasses('mkt-avatar__placeholder', classNames?.placeholder);
-
-    if (name) {
-      placeholder.textContent = getInitials(name);
-    } else {
-      placeholder.appendChild(createIcon(UserSilhouette, { size: '60%' }));
-    }
-
-    el.appendChild(placeholder);
-  }
-
+  const ref = props.ref;
   if (ref) {
     if (typeof ref === 'function') ref(el);
-    else (ref as any).current = el;
+    else (ref as { current: HTMLElement | null }).current = el;
   }
 
   return el;
 }
 
-export function AvatarGroup(props: AvatarGroupProps): HTMLElement {
-  const {
-    children,
-    spacing = 'sm',
-    class: className,
-    ref,
-  } = props;
+export function AvatarGroup(userProps: AvatarGroupProps): HTMLElement {
+  const props = _mergeProps(userProps as unknown as Record<string, unknown>) as unknown as AvatarGroupProps;
+
+  const children = props.children;
 
   const el = document.createElement('div');
-  el.className = mergeClasses('mkt-avatar-group', className);
-  el.dataset.spacing = spacing;
+  renderEffect(() => {
+    el.className = mergeClasses('mkt-avatar-group', props.class);
+  });
+  renderEffect(() => { el.dataset.spacing = props.spacing ?? 'sm'; });
 
   children.forEach((child) => el.appendChild(child));
 
+  const ref = props.ref;
   if (ref) {
     if (typeof ref === 'function') ref(el);
-    else (ref as any).current = el;
+    else (ref as { current: HTMLElement | null }).current = el;
   }
 
   return el;

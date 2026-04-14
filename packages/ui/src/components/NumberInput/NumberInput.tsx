@@ -1,3 +1,5 @@
+import { renderEffect } from '@mikata/reactivity';
+import { _mergeProps } from '@mikata/runtime';
 import { mergeClasses } from '../../utils/class-merge';
 import { useComponentDefaults } from '../../theme/component-defaults';
 import { uniqueId } from '../../utils/unique-id';
@@ -6,108 +8,128 @@ import type { NumberInputProps } from './NumberInput.types';
 import './NumberInput.css';
 
 export function NumberInput(userProps: NumberInputProps = {}): HTMLDivElement {
-  const props = { ...useComponentDefaults<NumberInputProps>('NumberInput'), ...userProps };
-  const {
-    value,
-    defaultValue,
-    placeholder,
-    label,
-    description,
-    error,
-    required,
-    disabled,
-    size = 'md',
-    min,
-    max,
-    step = 1,
-    onValueChange,
-    onInput,
-    onChange,
-    classNames,
-    class: className,
-    ref,
-  } = props;
+  const props = _mergeProps(
+    useComponentDefaults<NumberInputProps>('NumberInput') as Record<string, unknown>,
+    userProps as Record<string, unknown>,
+  ) as NumberInputProps;
 
   const id = uniqueId('number-input');
 
   const input = document.createElement('input');
   input.type = 'number';
   input.id = id;
-  input.className = mergeClasses('mkt-number-input__input', classNames?.input);
-  input.dataset.size = size;
+  renderEffect(() => {
+    input.className = mergeClasses('mkt-number-input__input', props.classNames?.input);
+  });
+  renderEffect(() => { input.dataset.size = props.size ?? 'md'; });
 
-  if (value != null) input.value = String(value);
-  if (defaultValue != null && value == null) input.value = String(defaultValue);
-  if (placeholder) input.placeholder = placeholder;
-  if (disabled) input.disabled = true;
-  if (min != null) input.min = String(min);
-  if (max != null) input.max = String(max);
-  input.step = String(step);
-  if (required) input.setAttribute('aria-required', 'true');
-  if (error) input.setAttribute('aria-invalid', 'true');
+  if (props.value != null) input.value = String(props.value);
+  else if (props.defaultValue != null) input.value = String(props.defaultValue);
+  renderEffect(() => {
+    const v = props.value;
+    if (v != null && input.value !== String(v)) input.value = String(v);
+  });
 
-  const describedBy: string[] = [];
-  if (description) describedBy.push(`${id}-description`);
-  if (error) describedBy.push(`${id}-error`);
-  if (describedBy.length) input.setAttribute('aria-describedby', describedBy.join(' '));
-  if (error) input.setAttribute('aria-errormessage', `${id}-error`);
+  renderEffect(() => {
+    const p = props.placeholder;
+    if (p) input.placeholder = p;
+    else input.removeAttribute('placeholder');
+  });
+  renderEffect(() => { input.disabled = !!props.disabled; });
+  renderEffect(() => {
+    const m = props.min;
+    if (m != null) input.min = String(m);
+    else input.removeAttribute('min');
+  });
+  renderEffect(() => {
+    const m = props.max;
+    if (m != null) input.max = String(m);
+    else input.removeAttribute('max');
+  });
+  renderEffect(() => { input.step = String(props.step ?? 1); });
+  renderEffect(() => {
+    if (props.required) input.setAttribute('aria-required', 'true');
+    else input.removeAttribute('aria-required');
+  });
+  renderEffect(() => {
+    if (hasError(props.error)) {
+      input.setAttribute('aria-invalid', 'true');
+      input.setAttribute('aria-errormessage', `${id}-error`);
+    } else {
+      input.removeAttribute('aria-invalid');
+      input.removeAttribute('aria-errormessage');
+    }
+  });
+  renderEffect(() => {
+    const parts: string[] = [];
+    if (props.description) parts.push(`${id}-description`);
+    if (hasError(props.error)) parts.push(`${id}-error`);
+    if (parts.length) input.setAttribute('aria-describedby', parts.join(' '));
+    else input.removeAttribute('aria-describedby');
+  });
 
   const clampAndNotify = (val: number) => {
-    if (min != null && val < min) val = min;
-    if (max != null && val > max) val = max;
+    const mn = props.min;
+    const mx = props.max;
+    if (mn != null && val < mn) val = mn;
+    if (mx != null && val > mx) val = mx;
     input.value = String(val);
-    if (onValueChange) onValueChange(val);
+    props.onValueChange?.(val);
   };
 
+  const onInput = props.onInput;
   if (onInput) input.addEventListener('input', onInput as EventListener);
+  const onChange = props.onChange;
   if (onChange) input.addEventListener('change', onChange as EventListener);
 
   input.addEventListener('change', () => {
     const num = parseFloat(input.value);
-    if (!isNaN(num) && onValueChange) {
-      clampAndNotify(num);
-    }
+    if (!isNaN(num)) clampAndNotify(num);
   });
 
+  const ref = props.ref;
   if (ref) {
-    if (typeof ref === 'function') ref(input);
-    else (ref as any).current = input;
+    if (typeof ref === 'function') ref(input as unknown as HTMLElement);
+    else (ref as { current: HTMLInputElement | null }).current = input;
   }
 
-  // Increment/decrement controls
   const controls = document.createElement('div');
-  controls.className = mergeClasses('mkt-number-input__controls', classNames?.controls);
+  renderEffect(() => {
+    controls.className = mergeClasses('mkt-number-input__controls', props.classNames?.controls);
+  });
 
   const upBtn = document.createElement('button');
   upBtn.type = 'button';
-  upBtn.className = mergeClasses('mkt-number-input__control', classNames?.controlUp);
   upBtn.tabIndex = -1;
   upBtn.setAttribute('aria-label', 'Increment');
   upBtn.innerHTML = '&#9650;';
-  if (disabled) upBtn.disabled = true;
+  renderEffect(() => {
+    upBtn.className = mergeClasses('mkt-number-input__control', props.classNames?.controlUp);
+  });
+  renderEffect(() => { upBtn.disabled = !!props.disabled; });
 
   const downBtn = document.createElement('button');
   downBtn.type = 'button';
-  downBtn.className = mergeClasses('mkt-number-input__control', classNames?.controlDown);
   downBtn.tabIndex = -1;
   downBtn.setAttribute('aria-label', 'Decrement');
   downBtn.innerHTML = '&#9660;';
-  if (disabled) downBtn.disabled = true;
+  renderEffect(() => {
+    downBtn.className = mergeClasses('mkt-number-input__control', props.classNames?.controlDown);
+  });
+  renderEffect(() => { downBtn.disabled = !!props.disabled; });
 
   upBtn.addEventListener('click', () => {
     const current = parseFloat(input.value) || 0;
-    clampAndNotify(current + step);
+    clampAndNotify(current + (props.step ?? 1));
   });
-
   downBtn.addEventListener('click', () => {
     const current = parseFloat(input.value) || 0;
-    clampAndNotify(current - step);
+    clampAndNotify(current - (props.step ?? 1));
   });
 
   controls.appendChild(upBtn);
   controls.appendChild(downBtn);
 
-  // Wrapper
   const wrapper = document.createElement('div');
   wrapper.className = 'mkt-number-input';
   wrapper.appendChild(input);
@@ -115,13 +137,22 @@ export function NumberInput(userProps: NumberInputProps = {}): HTMLDivElement {
 
   return InputWrapper({
     id,
-    label,
-    description,
-    error,
-    required,
-    size,
-    class: className,
-    classNames,
+    get label() { return props.label; },
+    get description() { return props.description; },
+    get error() { return props.error; },
+    get required() { return props.required; },
+    get size() { return props.size; },
+    get class() { return props.class; },
+    get classNames() { return props.classNames; },
     children: wrapper,
   });
+}
+
+function hasError(err: unknown): boolean {
+  if (err == null || err === false || err === '') return false;
+  if (typeof err === 'function') {
+    const v = (err as () => unknown)();
+    return v != null && v !== false && v !== '';
+  }
+  return true;
 }

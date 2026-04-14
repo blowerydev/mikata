@@ -1,91 +1,122 @@
+import { renderEffect } from '@mikata/reactivity';
+import { _mergeProps } from '@mikata/runtime';
 import { mergeClasses } from '../../utils/class-merge';
 import { useComponentDefaults } from '../../theme/component-defaults';
 import { Loader } from '../Loader';
 import type { ButtonProps } from './Button.types';
 import './Button.css';
 
+// Pilot component for the lazy-props pattern (see llms.txt "Component authoring"):
+//   - Never destructure `props`; every read goes through `props.foo` so getters
+//     (JSX compilation, i18n, signal-backed values) stay live.
+//   - Merge defaults with `_mergeProps` — it preserves getter descriptors.
+//   - DOM writes that mirror a prop wrap in `renderEffect` so they re-run when
+//     the prop's underlying signal changes.
+//   - One-shot work (event wiring, refs, layout-fixed inserts) stays outside
+//     effects.
 export function Button(userProps: ButtonProps = {}): HTMLButtonElement {
-  const props = { ...useComponentDefaults<ButtonProps>('Button'), ...userProps };
-  const {
-    variant = 'filled',
-    size = 'md',
-    color = 'primary',
-    loading,
-    leftIcon,
-    rightIcon,
-    fullWidth,
-    disabled,
-    type = 'button',
-    onClick,
-    classNames,
-    children,
-    class: className,
-    ref,
-  } = props;
+  const props = _mergeProps(
+    useComponentDefaults<ButtonProps>('Button') as Record<string, unknown>,
+    userProps as Record<string, unknown>,
+  ) as ButtonProps;
 
   const el = document.createElement('button');
 
-  el.className = mergeClasses(
-    'mkt-button',
-    fullWidth && 'mkt-button--full-width',
-    className,
-    classNames?.root,
-  );
+  renderEffect(() => {
+    el.className = mergeClasses(
+      'mkt-button',
+      props.fullWidth && 'mkt-button--full-width',
+      props.class,
+      props.classNames?.root,
+    );
+  });
 
-  el.dataset.variant = variant;
-  el.dataset.size = size;
-  el.dataset.color = color;
-  el.type = type;
+  renderEffect(() => { el.dataset.variant = props.variant ?? 'filled'; });
+  renderEffect(() => { el.dataset.size = props.size ?? 'md'; });
+  renderEffect(() => { el.dataset.color = props.color ?? 'primary'; });
+  renderEffect(() => { el.type = props.type ?? 'button'; });
 
-  if (disabled) el.disabled = true;
-  if (loading) {
-    el.dataset.loading = '';
-    el.setAttribute('aria-busy', 'true');
-    el.disabled = true;
-  }
+  renderEffect(() => {
+    const loading = !!props.loading;
+    el.disabled = !!props.disabled || loading;
+    if (loading) {
+      el.dataset.loading = '';
+      el.setAttribute('aria-busy', 'true');
+    } else {
+      delete el.dataset.loading;
+      el.removeAttribute('aria-busy');
+    }
+  });
 
-  if (onClick) el.addEventListener('click', onClick);
+  if (props.onClick) el.addEventListener('click', props.onClick as EventListener);
 
+  const ref = props.ref;
   if (ref) {
     if (typeof ref === 'function') ref(el);
-    else (ref as any).current = el;
+    else (ref as { current: HTMLButtonElement | null }).current = el;
   }
 
-  // Left icon
-  if (leftIcon) {
-    const iconWrap = document.createElement('span');
-    iconWrap.className = mergeClasses('mkt-button__icon', classNames?.icon);
-    iconWrap.appendChild(leftIcon);
-    el.appendChild(iconWrap);
-  }
+  // Left icon slot: wrapper is created once; the icon node itself may be
+  // swapped reactively if the user supplies a getter-backed prop.
+  const leftWrap = document.createElement('span');
+  renderEffect(() => {
+    leftWrap.className = mergeClasses('mkt-button__icon', props.classNames?.icon);
+  });
+  renderEffect(() => {
+    leftWrap.replaceChildren();
+    const icon = props.leftIcon;
+    if (icon) leftWrap.appendChild(icon);
+  });
+  el.appendChild(leftWrap);
+  renderEffect(() => { leftWrap.hidden = !props.leftIcon; });
 
   // Label
-  const label = document.createElement('span');
-  label.className = mergeClasses('mkt-button__label', classNames?.label);
-  if (children instanceof Node) {
-    label.appendChild(children);
-  } else if (children != null) {
-    label.textContent = String(children);
-  }
-  el.appendChild(label);
+  const labelEl = document.createElement('span');
+  renderEffect(() => {
+    labelEl.className = mergeClasses('mkt-button__label', props.classNames?.label);
+  });
+  renderEffect(() => {
+    const children = props.children;
+    labelEl.replaceChildren();
+    if (children instanceof Node) {
+      labelEl.appendChild(children);
+    } else if (children != null) {
+      labelEl.textContent = String(children);
+    }
+  });
+  el.appendChild(labelEl);
 
-  // Right icon
-  if (rightIcon) {
-    const iconWrap = document.createElement('span');
-    iconWrap.className = mergeClasses('mkt-button__icon', classNames?.icon);
-    iconWrap.appendChild(rightIcon);
-    el.appendChild(iconWrap);
-  }
+  // Right icon slot
+  const rightWrap = document.createElement('span');
+  renderEffect(() => {
+    rightWrap.className = mergeClasses('mkt-button__icon', props.classNames?.icon);
+  });
+  renderEffect(() => {
+    rightWrap.replaceChildren();
+    const icon = props.rightIcon;
+    if (icon) rightWrap.appendChild(icon);
+  });
+  el.appendChild(rightWrap);
+  renderEffect(() => { rightWrap.hidden = !props.rightIcon; });
 
-  // Loader (shown when loading)
-  if (loading) {
-    const loaderWrap = document.createElement('span');
-    loaderWrap.className = mergeClasses('mkt-button__loader', classNames?.loader);
-    loaderWrap.appendChild(
-      Loader({ size, color: variant === 'filled' ? undefined : color }),
-    );
-    el.appendChild(loaderWrap);
-  }
+  // Loader slot: always in the tree, shown when loading.
+  const loaderWrap = document.createElement('span');
+  renderEffect(() => {
+    loaderWrap.className = mergeClasses('mkt-button__loader', props.classNames?.loader);
+  });
+  renderEffect(() => {
+    loaderWrap.replaceChildren();
+    if (props.loading) {
+      loaderWrap.appendChild(
+        Loader({
+          size: props.size ?? 'md',
+          color: (props.variant ?? 'filled') === 'filled' ? undefined : props.color,
+        }),
+      );
+    }
+  });
+  el.appendChild(loaderWrap);
+  renderEffect(() => { loaderWrap.hidden = !props.loading; });
 
   return el;
 }

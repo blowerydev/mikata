@@ -38,7 +38,6 @@ export {
   _createComponent,
   _spread,
   _mergeProps,
-  _destructureProps,
   disposeComponent,
   onMount,
   createRef,

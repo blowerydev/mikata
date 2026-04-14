@@ -1,4 +1,5 @@
-import { effect } from '@mikata/reactivity';
+import { effect, renderEffect } from '@mikata/reactivity';
+import { _mergeProps } from '@mikata/runtime';
 import { mergeClasses } from '../../utils/class-merge';
 import { useComponentDefaults } from '../../theme/component-defaults';
 import { createVirtualizer } from './virtualizer';
@@ -11,31 +12,41 @@ import './VirtualList.css';
  * directly with your own scroll container.
  */
 export function VirtualList<T>(userProps: VirtualListProps<T>): HTMLElement {
-  const props = { ...useComponentDefaults<VirtualListProps<T>>('VirtualList'), ...userProps };
-  const {
-    data,
-    itemSize,
-    renderItem,
-    overscan = 3,
-    size,
-    orientation = 'vertical',
-    classNames,
-    class: className,
-    ref,
-  } = props;
+  const props = _mergeProps(
+    useComponentDefaults<VirtualListProps<T>>('VirtualList') as unknown as Record<string, unknown>,
+    userProps as unknown as Record<string, unknown>,
+  ) as unknown as VirtualListProps<T>;
 
+  // `data`, `itemSize`, `renderItem`, `overscan`, `orientation` are structural —
+  // virtualizer configuration is set once.
+  const data = props.data;
+  const itemSize = props.itemSize;
+  const renderItem = props.renderItem;
+  const overscan = props.overscan ?? 3;
+  const orientation = props.orientation ?? 'vertical';
   const horizontal = orientation === 'horizontal';
 
   const root = document.createElement('div');
-  root.className = mergeClasses('mkt-virtual-list', className, classNames?.root);
+  renderEffect(() => {
+    root.className = mergeClasses('mkt-virtual-list', props.class, props.classNames?.root);
+  });
   root.dataset.orientation = orientation;
-  if (size != null) {
-    if (horizontal) root.style.width = `${size}px`;
-    else root.style.height = `${size}px`;
-  }
+  renderEffect(() => {
+    const size = props.size;
+    if (size == null) {
+      if (horizontal) root.style.width = '';
+      else root.style.height = '';
+    } else if (horizontal) {
+      root.style.width = `${size}px`;
+    } else {
+      root.style.height = `${size}px`;
+    }
+  });
 
   const inner = document.createElement('div');
-  inner.className = mergeClasses('mkt-virtual-list__inner', classNames?.inner);
+  renderEffect(() => {
+    inner.className = mergeClasses('mkt-virtual-list__inner', props.classNames?.inner);
+  });
   root.appendChild(inner);
 
   const virtualizer = createVirtualizer({
@@ -46,7 +57,6 @@ export function VirtualList<T>(userProps: VirtualListProps<T>): HTMLElement {
     orientation,
   });
 
-  // Item node cache keyed by index so we don't re-render unchanged items.
   const nodeCache = new Map<number, HTMLElement>();
 
   effect(() => {
@@ -59,7 +69,6 @@ export function VirtualList<T>(userProps: VirtualListProps<T>): HTMLElement {
     const items = virtualizer.virtualItems();
     const visibleIndexes = new Set(items.map((i) => i.index));
 
-    // Remove items that are no longer visible.
     for (const [idx, el] of nodeCache) {
       if (!visibleIndexes.has(idx)) {
         el.remove();
@@ -67,12 +76,14 @@ export function VirtualList<T>(userProps: VirtualListProps<T>): HTMLElement {
       }
     }
 
-    // Mount/update visible items.
     for (const item of items) {
       let el = nodeCache.get(item.index);
       if (!el) {
         el = document.createElement('div');
-        el.className = mergeClasses('mkt-virtual-list__item', classNames?.item);
+        const created = el;
+        renderEffect(() => {
+          created.className = mergeClasses('mkt-virtual-list__item', props.classNames?.item);
+        });
         el.dataset.index = String(item.index);
         const node = renderItem(data[item.index], item.index);
         el.appendChild(node);
@@ -90,6 +101,7 @@ export function VirtualList<T>(userProps: VirtualListProps<T>): HTMLElement {
     }
   });
 
+  const ref = props.ref;
   if (ref) {
     if (typeof ref === 'function') ref(root);
     else (ref as { current: HTMLElement | null }).current = root;

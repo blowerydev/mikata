@@ -1,47 +1,57 @@
+import { renderEffect } from '@mikata/reactivity';
+import { _mergeProps } from '@mikata/runtime';
 import { mergeClasses } from '../../utils/class-merge';
 import { useComponentDefaults } from '../../theme/component-defaults';
 import type { BadgeProps } from './Badge.types';
 import './Badge.css';
 
 export function Badge(userProps: BadgeProps = {}): HTMLElement {
-  const props = { ...useComponentDefaults<BadgeProps>('Badge'), ...userProps };
-  const {
-    variant = 'filled',
-    size = 'md',
-    color = 'primary',
-    children,
-    class: className,
-    ref,
-  } = props;
+  const props = _mergeProps(
+    useComponentDefaults<BadgeProps>('Badge') as Record<string, unknown>,
+    userProps as Record<string, unknown>,
+  ) as BadgeProps;
 
   const el = document.createElement('span');
-  el.className = mergeClasses('mkt-badge', className);
-  el.dataset.variant = variant;
-  el.dataset.size = size;
-  el.dataset.color = color;
+  renderEffect(() => {
+    el.className = mergeClasses('mkt-badge', props.class);
+  });
+  renderEffect(() => { el.dataset.variant = props.variant ?? 'filled'; });
+  renderEffect(() => { el.dataset.size = props.size ?? 'md'; });
+  renderEffect(() => { el.dataset.color = props.color ?? 'primary'; });
 
-  // Dot indicator for dot variant
-  if (variant === 'dot') {
-    const dot = document.createElement('span');
-    dot.className = 'mkt-badge__dot';
-    el.appendChild(dot);
-  }
+  // Dot indicator — shown only when variant is 'dot'.
+  const dot = document.createElement('span');
+  dot.className = 'mkt-badge__dot';
+  renderEffect(() => {
+    const on = props.variant === 'dot';
+    if (on && !dot.isConnected) el.insertBefore(dot, el.firstChild);
+    else if (!on && dot.isConnected) dot.remove();
+  });
 
-  if (children != null) {
-    if (typeof children === 'string') {
-      const textNode = document.createTextNode(children);
-      el.appendChild(textNode);
-    } else {
-      el.appendChild(children);
+  // Children: text or node. Put after the dot so DOM order stays stable.
+  const slot = document.createTextNode('');
+  el.appendChild(slot);
+  renderEffect(() => {
+    const c = props.children;
+    if (c == null) {
+      slot.nodeValue = '';
+      return;
     }
-  }
+    if (typeof c === 'string') {
+      // Replace whatever follows the dot with a single text node.
+      while (slot.nextSibling) slot.nextSibling.remove();
+      slot.nodeValue = c;
+    } else {
+      slot.nodeValue = '';
+      while (slot.nextSibling) slot.nextSibling.remove();
+      el.appendChild(c);
+    }
+  });
 
+  const ref = props.ref;
   if (ref) {
-    if (typeof ref === 'function') {
-      ref(el);
-    } else {
-      (ref as any).current = el;
-    }
+    if (typeof ref === 'function') ref(el);
+    else (ref as { current: HTMLElement | null }).current = el;
   }
 
   return el;

@@ -1,5 +1,7 @@
 import { createIcon } from '@mikata/icons';
 import type { IconNode } from '@mikata/icons';
+import { renderEffect } from '@mikata/reactivity';
+import { _mergeProps } from '@mikata/runtime';
 import { mergeClasses } from '../../utils/class-merge';
 import { uniqueId } from '../../utils/unique-id';
 import type { RatingProps } from './Rating.types';
@@ -19,32 +21,30 @@ const STAR_NODE: IconNode = [
 ];
 const createStar = () => createIcon(STAR_NODE);
 
-export function Rating(props: RatingProps = {}): HTMLElement {
-  const {
-    value,
-    defaultValue = 0,
-    count = 5,
-    fractions = 1,
-    size = 'md',
-    color,
-    readOnly,
-    onChange,
-    onHover,
-    classNames,
-    class: className,
-    ref,
-  } = props;
+export function Rating(userProps: RatingProps = {}): HTMLElement {
+  const props = _mergeProps(userProps as Record<string, unknown>) as RatingProps;
 
+  // Structural props read once: count/fractions decide the DOM shape (number
+  // of symbols + inputs), and `readOnly` toggles role/input.disabled.
+  const count = props.count ?? 5;
+  const fractions = props.fractions ?? 1;
+  const readOnly = !!props.readOnly;
   const name = uniqueId('rating');
 
   const root = document.createElement('div');
-  root.className = mergeClasses('mkt-rating', className, classNames?.root);
-  root.dataset.size = size;
+  renderEffect(() => {
+    root.className = mergeClasses('mkt-rating', props.class, props.classNames?.root);
+  });
+  renderEffect(() => { root.dataset.size = props.size ?? 'md'; });
   if (readOnly) root.dataset.readonly = '';
-  if (color) root.style.setProperty('--_rating-color', color);
+  renderEffect(() => {
+    const c = props.color;
+    if (c) root.style.setProperty('--_rating-color', c);
+    else root.style.removeProperty('--_rating-color');
+  });
   root.setAttribute('role', readOnly ? 'img' : 'radiogroup');
 
-  let current = value ?? defaultValue;
+  let current = props.value ?? props.defaultValue ?? 0;
   const step = 1 / fractions;
 
   type SymbolCtx = { group: HTMLElement; fill: HTMLElement };
@@ -52,28 +52,31 @@ export function Rating(props: RatingProps = {}): HTMLElement {
 
   for (let i = 0; i < count; i++) {
     const symbolGroup = document.createElement('span');
-    symbolGroup.className = mergeClasses('mkt-rating__symbol-group', classNames?.symbolGroup);
+    renderEffect(() => {
+      symbolGroup.className = mergeClasses('mkt-rating__symbol-group', props.classNames?.symbolGroup);
+    });
 
-    // empty background
     const bg = document.createElement('span');
     bg.className = 'mkt-rating__symbol-body mkt-rating__symbol-body--bg';
     bg.appendChild(createStar());
     symbolGroup.appendChild(bg);
 
-    // filled foreground (clipped by width)
     const fillWrap = document.createElement('span');
-    fillWrap.className = mergeClasses('mkt-rating__symbol-body', 'mkt-rating__symbol-body--fill', classNames?.symbolBody);
+    renderEffect(() => {
+      fillWrap.className = mergeClasses('mkt-rating__symbol-body', 'mkt-rating__symbol-body--fill', props.classNames?.symbolBody);
+    });
     fillWrap.appendChild(createStar());
     symbolGroup.appendChild(fillWrap);
 
-    // Fraction interactive labels/inputs
     for (let f = 1; f <= fractions; f++) {
       const fracVal = i + f * step;
       const inputId = `${name}-${i}-${f}`;
 
       const input = document.createElement('input');
       input.type = 'radio';
-      input.className = mergeClasses('mkt-rating__input', classNames?.input);
+      renderEffect(() => {
+        input.className = mergeClasses('mkt-rating__input', props.classNames?.input);
+      });
       input.name = name;
       input.id = inputId;
       input.value = String(fracVal);
@@ -83,11 +86,13 @@ export function Rating(props: RatingProps = {}): HTMLElement {
       input.addEventListener('change', () => {
         current = fracVal;
         paint(current);
-        onChange?.(fracVal);
+        props.onChange?.(fracVal);
       });
 
       const label = document.createElement('label');
-      label.className = mergeClasses('mkt-rating__label', classNames?.label);
+      renderEffect(() => {
+        label.className = mergeClasses('mkt-rating__label', props.classNames?.label);
+      });
       label.htmlFor = inputId;
       label.style.width = `${(1 / fractions) * 100}%`;
       label.style.left = `${((f - 1) / fractions) * 100}%`;
@@ -96,7 +101,7 @@ export function Rating(props: RatingProps = {}): HTMLElement {
       label.addEventListener('mouseenter', () => {
         if (readOnly) return;
         paint(fracVal);
-        onHover?.(fracVal);
+        props.onHover?.(fracVal);
       });
 
       symbolGroup.appendChild(input);
@@ -110,7 +115,7 @@ export function Rating(props: RatingProps = {}): HTMLElement {
   root.addEventListener('mouseleave', () => {
     if (readOnly) return;
     paint(current);
-    onHover?.(current);
+    props.onHover?.(current);
   });
 
   const paint = (v: number) => {
@@ -121,9 +126,10 @@ export function Rating(props: RatingProps = {}): HTMLElement {
   };
   paint(current);
 
+  const ref = props.ref;
   if (ref) {
     if (typeof ref === 'function') ref(root);
-    else (ref as any).current = root;
+    else (ref as { current: HTMLElement | null }).current = root;
   }
 
   return root;

@@ -1,12 +1,20 @@
+import { renderEffect } from '@mikata/reactivity';
+import { _mergeProps } from '@mikata/runtime';
 import { mergeClasses } from '../../utils/class-merge';
 import type { ListProps, ListItemProps } from './List.types';
 import './List.css';
 
-export function ListItem(props: ListItemProps = {}): HTMLLIElement {
-  const { icon, children, class: className, ref } = props;
+export function ListItem(userProps: ListItemProps = {}): HTMLLIElement {
+  const props = _mergeProps(userProps as unknown as Record<string, unknown>) as unknown as ListItemProps;
+
+  // `icon`, `children` are structural — decide which child nodes exist.
+  const icon = props.icon;
+  const children = props.children;
 
   const li = document.createElement('li');
-  li.className = mergeClasses('mkt-list__item', className);
+  renderEffect(() => {
+    li.className = mergeClasses('mkt-list__item', props.class);
+  });
 
   if (icon) {
     li.dataset.withIcon = '';
@@ -25,43 +33,51 @@ export function ListItem(props: ListItemProps = {}): HTMLLIElement {
   }
   li.appendChild(body);
 
+  const ref = props.ref;
   if (ref) {
-    if (typeof ref === 'function') ref(li as any);
-    else (ref as any).current = li;
+    if (typeof ref === 'function') ref(li);
+    else (ref as { current: HTMLLIElement | null }).current = li;
   }
 
   return li;
 }
 
-export function List(props: ListProps = {}): HTMLElement {
-  const {
-    type = 'unordered',
-    icon,
-    size = 'md',
-    spacing,
-    center,
-    withPadding,
-    classNames,
-    children,
-    class: className,
-    ref,
-  } = props;
+export function List(userProps: ListProps = {}): HTMLElement {
+  const props = _mergeProps(userProps as unknown as Record<string, unknown>) as unknown as ListProps;
+
+  // `type`, `icon`, `children` are structural — decide tag, shared icon,
+  // and items at setup.
+  const type = props.type ?? 'unordered';
+  const icon = props.icon;
+  const children = props.children;
 
   const el = document.createElement(type === 'ordered' ? 'ol' : 'ul');
-  el.className = mergeClasses('mkt-list', className, classNames?.root);
-  el.dataset.size = size;
-  if (spacing) el.dataset.spacing = spacing;
-  if (center) el.dataset.center = '';
+  renderEffect(() => {
+    el.className = mergeClasses('mkt-list', props.class, props.classNames?.root);
+  });
+  renderEffect(() => { el.dataset.size = props.size ?? 'md'; });
+  renderEffect(() => {
+    if (props.spacing) el.dataset.spacing = props.spacing;
+    else delete el.dataset.spacing;
+  });
+  renderEffect(() => {
+    if (props.center) el.dataset.center = '';
+    else delete el.dataset.center;
+  });
   if (icon) el.dataset.customIcon = '';
-  if (withPadding) el.dataset.withPadding = '';
+  renderEffect(() => {
+    if (props.withPadding) el.dataset.withPadding = '';
+    else delete el.dataset.withPadding;
+  });
 
-  // If a list-level icon is provided, prepend it to any list items that don't have their own
   const appendItems = (list: HTMLElement, items: Node[]) => {
     for (const child of items) {
       if (child instanceof HTMLLIElement && icon && !child.dataset.withIcon) {
         child.dataset.withIcon = '';
         const iconWrap = document.createElement('span');
-        iconWrap.className = mergeClasses('mkt-list__item-icon', classNames?.itemIcon);
+        renderEffect(() => {
+          iconWrap.className = mergeClasses('mkt-list__item-icon', props.classNames?.itemIcon);
+        });
         iconWrap.appendChild(typeof icon === 'function' ? icon() : icon.cloneNode(true));
         child.insertBefore(iconWrap, child.firstChild);
       }
@@ -74,9 +90,10 @@ export function List(props: ListProps = {}): HTMLElement {
     appendItems(el, arr);
   }
 
+  const ref = props.ref;
   if (ref) {
     if (typeof ref === 'function') ref(el);
-    else (ref as any).current = el;
+    else (ref as { current: HTMLElement | null }).current = el;
   }
 
   return el;

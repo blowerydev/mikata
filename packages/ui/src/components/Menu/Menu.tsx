@@ -1,48 +1,52 @@
-import { onCleanup } from '@mikata/runtime';
+import { renderEffect } from '@mikata/reactivity';
+import { _mergeProps, onCleanup } from '@mikata/runtime';
 import { mergeClasses } from '../../utils/class-merge';
 import { uniqueId } from '../../utils/unique-id';
 import type { MenuProps, MenuItemDef } from './Menu.types';
 import './Menu.css';
 
-export function Menu(props: MenuProps): HTMLElement {
-  const {
-    target,
-    items,
-    size = 'sm',
-    position = 'bottom-start',
-    closeOnItemClick = true,
-    classNames,
-    class: className,
-    ref,
-  } = props;
+export function Menu(userProps: MenuProps): HTMLElement {
+  const props = _mergeProps(userProps as unknown as Record<string, unknown>) as unknown as MenuProps;
+
+  // `target`, `items`, `closeOnItemClick` are structural — they decide DOM
+  // shape and behavior.
+  const target = props.target;
+  const items = props.items;
+  const closeOnItemClick = props.closeOnItemClick ?? true;
 
   const id = uniqueId('menu');
   let isOpen = false;
 
   const root = document.createElement('div');
-  root.className = mergeClasses('mkt-menu', className, classNames?.root);
+  renderEffect(() => {
+    root.className = mergeClasses('mkt-menu', props.class, props.classNames?.root);
+  });
 
-  // Target wrapper
   const targetWrapper = document.createElement('div');
-  targetWrapper.className = mergeClasses('mkt-menu__target', classNames?.target);
+  renderEffect(() => {
+    targetWrapper.className = mergeClasses('mkt-menu__target', props.classNames?.target);
+  });
   targetWrapper.appendChild(target);
   root.appendChild(targetWrapper);
 
-  // Dropdown
   const dropdown = document.createElement('div');
-  dropdown.className = mergeClasses('mkt-menu__dropdown', classNames?.dropdown);
+  renderEffect(() => {
+    dropdown.className = mergeClasses('mkt-menu__dropdown', props.classNames?.dropdown);
+  });
   dropdown.setAttribute('role', 'menu');
   dropdown.id = id;
-  dropdown.dataset.size = size;
-  dropdown.dataset.position = position;
+  renderEffect(() => { dropdown.dataset.size = props.size ?? 'sm'; });
+  renderEffect(() => { dropdown.dataset.position = props.position ?? 'bottom-start'; });
   dropdown.hidden = true;
 
   const menuItems: HTMLElement[] = [];
 
-  items.forEach((item: MenuItemDef) => {
+  items.forEach((item: MenuItemDef, index: number) => {
     if (item.type === 'divider') {
       const divider = document.createElement('div');
-      divider.className = mergeClasses('mkt-menu__divider', classNames?.divider);
+      renderEffect(() => {
+        divider.className = mergeClasses('mkt-menu__divider', props.classNames?.divider);
+      });
       divider.setAttribute('role', 'separator');
       dropdown.appendChild(divider);
       return;
@@ -50,18 +54,23 @@ export function Menu(props: MenuProps): HTMLElement {
 
     if (item.type === 'label') {
       const label = document.createElement('div');
-      label.className = mergeClasses('mkt-menu__label', classNames?.label);
-      if (item.label instanceof Node) {
-        label.appendChild(item.label);
-      } else {
-        label.textContent = item.label;
-      }
+      renderEffect(() => {
+        label.className = mergeClasses('mkt-menu__label', props.classNames?.label);
+      });
+      renderEffect(() => {
+        const l = (props.items[index] as MenuItemDef & { label: unknown })?.label;
+        if (l == null) label.replaceChildren();
+        else if (l instanceof Node) label.replaceChildren(l);
+        else label.textContent = String(l);
+      });
       dropdown.appendChild(label);
       return;
     }
 
     const menuItem = document.createElement('button');
-    menuItem.className = mergeClasses('mkt-menu__item', classNames?.item);
+    renderEffect(() => {
+      menuItem.className = mergeClasses('mkt-menu__item', props.classNames?.item);
+    });
     menuItem.setAttribute('role', 'menuitem');
     menuItem.type = 'button';
     menuItem.tabIndex = -1;
@@ -80,11 +89,15 @@ export function Menu(props: MenuProps): HTMLElement {
       menuItem.appendChild(iconWrap);
     }
 
-    if (item.label instanceof Node) {
-      menuItem.appendChild(item.label);
-    } else {
-      menuItem.appendChild(document.createTextNode(item.label));
-    }
+    const labelHost = document.createElement('span');
+    labelHost.className = 'mkt-menu__item-label';
+    menuItem.appendChild(labelHost);
+    renderEffect(() => {
+      const l = (props.items[index] as MenuItemDef & { label: unknown })?.label;
+      if (l == null) labelHost.replaceChildren();
+      else if (l instanceof Node) labelHost.replaceChildren(l);
+      else labelHost.textContent = String(l);
+    });
 
     menuItem.addEventListener('click', () => {
       if (item.disabled) return;
@@ -103,7 +116,6 @@ export function Menu(props: MenuProps): HTMLElement {
     isOpen = true;
     dropdown.hidden = false;
     targetWrapper.querySelector('button')?.setAttribute('aria-expanded', 'true');
-    // Focus first enabled item
     const first = menuItems.find((el) => !el.hasAttribute('disabled'));
     first?.focus();
   }
@@ -113,7 +125,6 @@ export function Menu(props: MenuProps): HTMLElement {
     isOpen = false;
     dropdown.hidden = true;
     targetWrapper.querySelector('button')?.setAttribute('aria-expanded', 'false');
-    // Return focus to target
     const targetBtn = targetWrapper.querySelector('button') || targetWrapper.firstElementChild as HTMLElement;
     targetBtn?.focus();
   }
@@ -122,13 +133,11 @@ export function Menu(props: MenuProps): HTMLElement {
     isOpen ? close() : open();
   }
 
-  // Target click
   targetWrapper.addEventListener('click', (e) => {
     e.stopPropagation();
     toggle();
   });
 
-  // Keyboard on target
   targetWrapper.addEventListener('keydown', (e) => {
     if (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
@@ -136,7 +145,6 @@ export function Menu(props: MenuProps): HTMLElement {
     }
   });
 
-  // Keyboard navigation inside menu
   dropdown.addEventListener('keydown', (e) => {
     const enabled = menuItems.filter((el) => !el.hasAttribute('disabled'));
     const currentIndex = enabled.indexOf(document.activeElement as HTMLElement);
@@ -161,14 +169,12 @@ export function Menu(props: MenuProps): HTMLElement {
     }
   });
 
-  // Close on outside click
   const onDocClick = () => {
     if (isOpen) close();
   };
   document.addEventListener('click', onDocClick);
   onCleanup(() => document.removeEventListener('click', onDocClick));
 
-  // Set aria-haspopup on target button
   const targetBtn = targetWrapper.querySelector('button');
   if (targetBtn) {
     targetBtn.setAttribute('aria-haspopup', 'menu');
@@ -176,9 +182,10 @@ export function Menu(props: MenuProps): HTMLElement {
     targetBtn.setAttribute('aria-controls', id);
   }
 
+  const ref = props.ref;
   if (ref) {
     if (typeof ref === 'function') ref(root);
-    else (ref as any).current = root;
+    else (ref as { current: HTMLElement | null }).current = root;
   }
 
   return root;

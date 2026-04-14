@@ -1,4 +1,5 @@
-import { signal, effect } from '@mikata/reactivity';
+import { signal, effect, renderEffect } from '@mikata/reactivity';
+import { _mergeProps } from '@mikata/runtime';
 import { createIcon, ChevronLeft, ChevronRight } from '@mikata/icons';
 import { mergeClasses } from '../../utils/class-merge';
 import { useComponentDefaults } from '../../theme/component-defaults';
@@ -18,30 +19,25 @@ type Level = 'day' | 'month' | 'year';
 type Value = Date | Date[] | [Date | null, Date | null] | null;
 
 export function DatePicker(userProps: DatePickerProps = {}): HTMLElement {
-  const props = { ...useComponentDefaults<DatePickerProps>('DatePicker'), ...userProps };
-  const {
-    type = 'default',
-    value,
-    defaultValue = null,
-    defaultLevel = 'day',
-    maxLevel = 'year',
-    date,
-    defaultDate,
-    minDate,
-    maxDate,
-    excludeDate,
-    locale = typeof navigator !== 'undefined' ? navigator.language : 'en-US',
-    firstDayOfWeek,
-    onChange,
-    onDateChange,
-    onLevelChange,
-    size = 'md',
-    hideWeekdays = false,
-    hideOutsideDates = false,
-    classNames,
-    class: className,
-    ref,
-  } = props;
+  const props = _mergeProps(
+    useComponentDefaults<DatePickerProps>('DatePicker') as unknown as Record<string, unknown>,
+    userProps as unknown as Record<string, unknown>,
+  ) as unknown as DatePickerProps;
+
+  const type = props.type ?? 'default';
+  const value = props.value;
+  const defaultValue = props.defaultValue ?? null;
+  const defaultLevel = props.defaultLevel ?? 'day';
+  const maxLevel = props.maxLevel ?? 'year';
+  const date = props.date;
+  const defaultDate = props.defaultDate;
+  const locale = props.locale ?? (typeof navigator !== 'undefined' ? navigator.language : 'en-US');
+  const firstDayOfWeek = props.firstDayOfWeek;
+  const onChange = props.onChange;
+  const onDateChange = props.onDateChange;
+  const onLevelChange = props.onLevelChange;
+  const hideWeekdays = props.hideWeekdays ?? false;
+  const hideOutsideDates = props.hideOutsideDates ?? false;
 
   const fdow = firstDayOfWeek ?? getFirstDayOfWeek(locale);
   const direction = useDirection();
@@ -78,9 +74,11 @@ export function DatePicker(userProps: DatePickerProps = {}): HTMLElement {
   }
 
   function dateDisabled(d: Date): boolean {
+    const minDate = props.minDate;
+    const maxDate = props.maxDate;
     if (minDate && isBefore(d, minDate)) return true;
     if (maxDate && isAfter(d, maxDate)) return true;
-    if (excludeDate?.(d)) return true;
+    if (props.excludeDate?.(d)) return true;
     return false;
   }
 
@@ -132,24 +130,34 @@ export function DatePicker(userProps: DatePickerProps = {}): HTMLElement {
 
   // --- DOM -------------------------------------------------------------
   const root = document.createElement('div');
-  root.className = mergeClasses('mkt-calendar', className, classNames?.root);
-  root.dataset.size = size;
+  renderEffect(() => {
+    root.className = mergeClasses('mkt-calendar', props.class, props.classNames?.root);
+  });
+  renderEffect(() => { root.dataset.size = props.size ?? 'md'; });
 
   const header = document.createElement('div');
-  header.className = mergeClasses('mkt-calendar__header', classNames?.header);
+  renderEffect(() => {
+    header.className = mergeClasses('mkt-calendar__header', props.classNames?.header);
+  });
 
   const prevBtn = document.createElement('button');
   prevBtn.type = 'button';
-  prevBtn.className = mergeClasses('mkt-calendar__header-control', classNames?.headerControl);
+  renderEffect(() => {
+    prevBtn.className = mergeClasses('mkt-calendar__header-control', props.classNames?.headerControl);
+  });
   prevBtn.appendChild(createIcon(ChevronLeft, { size: 16 }));
 
   const label = document.createElement('button');
   label.type = 'button';
-  label.className = mergeClasses('mkt-calendar__header-label', classNames?.headerLabel);
+  renderEffect(() => {
+    label.className = mergeClasses('mkt-calendar__header-label', props.classNames?.headerLabel);
+  });
 
   const nextBtn = document.createElement('button');
   nextBtn.type = 'button';
-  nextBtn.className = mergeClasses('mkt-calendar__header-control', classNames?.headerControl);
+  renderEffect(() => {
+    nextBtn.className = mergeClasses('mkt-calendar__header-control', props.classNames?.headerControl);
+  });
   nextBtn.appendChild(createIcon(ChevronRight, { size: 16 }));
 
   effect(() => {
@@ -199,16 +207,19 @@ export function DatePicker(userProps: DatePickerProps = {}): HTMLElement {
 
   // Weekday row (day level only)
   const weekdayRow = document.createElement('div');
-  weekdayRow.className = mergeClasses('mkt-calendar__grid', classNames?.weekdayRow);
+  renderEffect(() => {
+    weekdayRow.className = mergeClasses('mkt-calendar__grid', props.classNames?.weekdayRow);
+  });
 
   effect(() => {
     const show = level() === 'day' && !hideWeekdays;
     weekdayRow.style.display = show ? '' : 'none';
     if (!show) return;
     weekdayRow.innerHTML = '';
+    const classNamesNow = props.classNames;
     for (const l of getWeekdayLabels(locale, fdow, 'short')) {
       const el = document.createElement('span');
-      el.className = mergeClasses('mkt-calendar__weekday', classNames?.weekday);
+      el.className = mergeClasses('mkt-calendar__weekday', classNamesNow?.weekday);
       el.textContent = l;
       weekdayRow.appendChild(el);
     }
@@ -224,7 +235,8 @@ export function DatePicker(userProps: DatePickerProps = {}): HTMLElement {
   let dayButtons: { day: Date; btn: HTMLButtonElement }[] = [];
 
   function renderDayGrid() {
-    body.className = mergeClasses('mkt-calendar__grid', classNames?.monthRow);
+    const classNamesNow = props.classNames;
+    body.className = mergeClasses('mkt-calendar__grid', classNamesNow?.monthRow);
     body.innerHTML = '';
     dayButtons = [];
     const matrix = getMonthMatrix(viewDate(), fdow);
@@ -243,7 +255,7 @@ export function DatePicker(userProps: DatePickerProps = {}): HTMLElement {
         }
         const btn = document.createElement('button');
         btn.type = 'button';
-        btn.className = mergeClasses('mkt-calendar__day', classNames?.day);
+        btn.className = mergeClasses('mkt-calendar__day', classNamesNow?.day);
         btn.textContent = String(day.getDate());
         btn.dataset.date = `${day.getFullYear()}-${day.getMonth()}-${day.getDate()}`;
         if (!inMonth) btn.dataset.outside = '';
@@ -284,10 +296,12 @@ export function DatePicker(userProps: DatePickerProps = {}): HTMLElement {
   }
 
   function renderMonthGrid() {
-    body.className = mergeClasses('mkt-month-picker__grid', classNames?.monthRow);
+    body.className = mergeClasses('mkt-month-picker__grid', props.classNames?.monthRow);
     body.innerHTML = '';
     const labels = getMonthLabels(locale, 'short');
     const y = viewDate().getFullYear();
+    const minDate = props.minDate;
+    const maxDate = props.maxDate;
     for (let m = 0; m < 12; m++) {
       const btn = document.createElement('button');
       btn.type = 'button';
@@ -308,9 +322,11 @@ export function DatePicker(userProps: DatePickerProps = {}): HTMLElement {
   }
 
   function renderYearGrid() {
-    body.className = mergeClasses('mkt-year-picker__grid', classNames?.monthRow);
+    body.className = mergeClasses('mkt-year-picker__grid', props.classNames?.monthRow);
     body.innerHTML = '';
     const [start] = getDecadeRange(viewDate().getFullYear());
+    const minDate = props.minDate;
+    const maxDate = props.maxDate;
     for (let offset = -1; offset <= 10; offset++) {
       const y = start + offset;
       const btn = document.createElement('button');
@@ -370,7 +386,7 @@ export function DatePicker(userProps: DatePickerProps = {}): HTMLElement {
     else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pickDay(cur); return; }
     else return;
     e.preventDefault();
-    next = clampDate(next!, minDate, maxDate);
+    next = clampDate(next!, props.minDate, props.maxDate);
     if (!isSameMonth(next, viewDate())) updateView(next);
     requestAnimationFrame(() => {
       const selector = `.mkt-calendar__day[data-date="${next!.getFullYear()}-${next!.getMonth()}-${next!.getDate()}"]`;
@@ -382,6 +398,7 @@ export function DatePicker(userProps: DatePickerProps = {}): HTMLElement {
   root.appendChild(weekdayRow);
   root.appendChild(body);
 
+  const ref = props.ref;
   if (ref) {
     if (typeof ref === 'function') ref(root);
     else (ref as { current: HTMLElement | null }).current = root;

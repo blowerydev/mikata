@@ -14,7 +14,6 @@ export {
   disposeComponent,
   onMount,
   onCleanup,
-  _destructureProps,
   createRef,
 } from './component';
 export type { Ref } from './component';

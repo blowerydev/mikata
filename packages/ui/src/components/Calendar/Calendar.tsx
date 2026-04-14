@@ -1,4 +1,5 @@
-import { signal, computed, effect } from '@mikata/reactivity';
+import { signal, effect, renderEffect } from '@mikata/reactivity';
+import { _mergeProps } from '@mikata/runtime';
 import { createIcon, ChevronLeft, ChevronRight } from '@mikata/icons';
 import { mergeClasses } from '../../utils/class-merge';
 import { useComponentDefaults } from '../../theme/component-defaults';
@@ -12,29 +13,27 @@ import type { CalendarProps } from './Calendar.types';
 import './Calendar.css';
 
 export function Calendar(userProps: CalendarProps = {}): HTMLElement {
-  const props = { ...useComponentDefaults<CalendarProps>('Calendar'), ...userProps };
-  const {
-    value,
-    defaultValue = null,
-    rangeValue,
-    multipleValue,
-    type = 'default',
-    date,
-    defaultDate,
-    minDate,
-    maxDate,
-    excludeDate,
-    locale = typeof navigator !== 'undefined' ? navigator.language : 'en-US',
-    firstDayOfWeek,
-    onChange,
-    onDateChange,
-    size = 'md',
-    hideWeekdays = false,
-    hideOutsideDates = false,
-    classNames,
-    class: className,
-    ref,
-  } = props;
+  const props = _mergeProps(
+    useComponentDefaults<CalendarProps>('Calendar') as unknown as Record<string, unknown>,
+    userProps as unknown as Record<string, unknown>,
+  ) as unknown as CalendarProps;
+
+  // Calendar state + structure is seeded from props at setup. Selection/view
+  // changes run through local signals. External prop mutations for things
+  // like min/max/excludeDate are re-read on each use via `props.x`.
+  const value = props.value;
+  const defaultValue = props.defaultValue ?? null;
+  const rangeValue = props.rangeValue;
+  const multipleValue = props.multipleValue;
+  const type = props.type ?? 'default';
+  const date = props.date;
+  const defaultDate = props.defaultDate;
+  const locale = props.locale ?? (typeof navigator !== 'undefined' ? navigator.language : 'en-US');
+  const firstDayOfWeek = props.firstDayOfWeek;
+  const onChange = props.onChange;
+  const onDateChange = props.onDateChange;
+  const hideWeekdays = props.hideWeekdays ?? false;
+  const hideOutsideDates = props.hideOutsideDates ?? false;
 
   const fdow = firstDayOfWeek ?? getFirstDayOfWeek(locale);
   const direction = useDirection();
@@ -51,9 +50,11 @@ export function Calendar(userProps: CalendarProps = {}): HTMLElement {
   const [hover, setHover] = signal<Date | null>(null);
 
   function dateDisabled(d: Date): boolean {
+    const minDate = props.minDate;
+    const maxDate = props.maxDate;
     if (minDate && isBefore(d, minDate)) return true;
     if (maxDate && isAfter(d, maxDate)) return true;
-    if (excludeDate?.(d)) return true;
+    if (props.excludeDate?.(d)) return true;
     return false;
   }
 
@@ -89,28 +90,38 @@ export function Calendar(userProps: CalendarProps = {}): HTMLElement {
 
   // --- DOM -------------------------------------------------------------
   const root = document.createElement('div');
-  root.className = mergeClasses('mkt-calendar', className, classNames?.root);
-  root.dataset.size = size;
+  renderEffect(() => {
+    root.className = mergeClasses('mkt-calendar', props.class, props.classNames?.root);
+  });
+  renderEffect(() => { root.dataset.size = props.size ?? 'md'; });
 
   // Header
   const header = document.createElement('div');
-  header.className = mergeClasses('mkt-calendar__header', classNames?.header);
+  renderEffect(() => {
+    header.className = mergeClasses('mkt-calendar__header', props.classNames?.header);
+  });
 
   const prevBtn = document.createElement('button');
   prevBtn.type = 'button';
-  prevBtn.className = mergeClasses('mkt-calendar__header-control', classNames?.headerControl);
+  renderEffect(() => {
+    prevBtn.className = mergeClasses('mkt-calendar__header-control', props.classNames?.headerControl);
+  });
   prevBtn.setAttribute('aria-label', 'Previous month');
   prevBtn.appendChild(createIcon(ChevronLeft, { size: 16 }));
   prevBtn.addEventListener('click', () => updateView(addMonths(viewDate(), -1)));
 
   const label = document.createElement('button');
   label.type = 'button';
-  label.className = mergeClasses('mkt-calendar__header-label', classNames?.headerLabel);
+  renderEffect(() => {
+    label.className = mergeClasses('mkt-calendar__header-label', props.classNames?.headerLabel);
+  });
   label.setAttribute('aria-live', 'polite');
 
   const nextBtn = document.createElement('button');
   nextBtn.type = 'button';
-  nextBtn.className = mergeClasses('mkt-calendar__header-control', classNames?.headerControl);
+  renderEffect(() => {
+    nextBtn.className = mergeClasses('mkt-calendar__header-control', props.classNames?.headerControl);
+  });
   nextBtn.setAttribute('aria-label', 'Next month');
   nextBtn.appendChild(createIcon(ChevronRight, { size: 16 }));
   nextBtn.addEventListener('click', () => updateView(addMonths(viewDate(), 1)));
@@ -133,16 +144,18 @@ export function Calendar(userProps: CalendarProps = {}): HTMLElement {
   effect(() => {
     label.textContent = monthFormatter.format(viewDate());
     // Disable controls if min/max would prevent crossing the boundary.
-    const prevMonth = addMonths(viewDate(), -1);
+    const minDate = props.minDate;
+    const maxDate = props.maxDate;
     const nextMonth = addMonths(viewDate(), 1);
     prevBtn.disabled = !!(minDate && isBefore(addDays(startOfMonth(viewDate()), -1), minDate));
     nextBtn.disabled = !!(maxDate && isAfter(startOfMonth(nextMonth), maxDate));
-    void prevMonth;
   });
 
   // Weekday row
   const weekdayRow = document.createElement('div');
-  weekdayRow.className = mergeClasses('mkt-calendar__grid', 'mkt-calendar__weekday-row', classNames?.weekdayRow);
+  renderEffect(() => {
+    weekdayRow.className = mergeClasses('mkt-calendar__grid', 'mkt-calendar__weekday-row', props.classNames?.weekdayRow);
+  });
   if (hideWeekdays) weekdayRow.style.display = 'none';
 
   effect(() => {
@@ -150,7 +163,8 @@ export function Calendar(userProps: CalendarProps = {}): HTMLElement {
     const labels = getWeekdayLabels(locale, fdow, 'short');
     for (const l of labels) {
       const el = document.createElement('span');
-      el.className = mergeClasses('mkt-calendar__weekday', classNames?.weekday);
+      const classNamesNow = props.classNames;
+      el.className = mergeClasses('mkt-calendar__weekday', classNamesNow?.weekday);
       el.textContent = l;
       weekdayRow.appendChild(el);
     }
@@ -158,7 +172,9 @@ export function Calendar(userProps: CalendarProps = {}): HTMLElement {
 
   // Day grid
   const grid = document.createElement('div');
-  grid.className = mergeClasses('mkt-calendar__grid', classNames?.monthRow);
+  renderEffect(() => {
+    grid.className = mergeClasses('mkt-calendar__grid', props.classNames?.monthRow);
+  });
   grid.setAttribute('role', 'grid');
 
   // Selection predicates
@@ -206,7 +222,7 @@ export function Calendar(userProps: CalendarProps = {}): HTMLElement {
 
         const btn = document.createElement('button');
         btn.type = 'button';
-        btn.className = mergeClasses('mkt-calendar__day', classNames?.day);
+        btn.className = mergeClasses('mkt-calendar__day', props.classNames?.day);
         btn.textContent = String(day.getDate());
         btn.dataset.date = `${day.getFullYear()}-${day.getMonth()}-${day.getDate()}`;
 
@@ -278,7 +294,7 @@ export function Calendar(userProps: CalendarProps = {}): HTMLElement {
     } else return;
 
     e.preventDefault();
-    next = clampDate(next!, minDate, maxDate);
+    next = clampDate(next!, props.minDate, props.maxDate);
     if (!isSameMonth(next, viewDate())) updateView(next);
     requestAnimationFrame(() => {
       const selector = `.mkt-calendar__day[data-date="${next!.getFullYear()}-${next!.getMonth()}-${next!.getDate()}"]`;
@@ -290,6 +306,7 @@ export function Calendar(userProps: CalendarProps = {}): HTMLElement {
   root.appendChild(weekdayRow);
   root.appendChild(grid);
 
+  const ref = props.ref;
   if (ref) {
     if (typeof ref === 'function') ref(root);
     else (ref as { current: HTMLElement | null }).current = root;

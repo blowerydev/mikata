@@ -1,4 +1,4 @@
-import { signal, computed, effect } from '@mikata/reactivity';
+import { signal, computed } from '@mikata/reactivity';
 import type { I18nOptions, I18nInstance, TranslateFunction } from './types';
 import { createTranslateFunction } from './translate';
 import { createPluralFunction } from './plural';
@@ -82,14 +82,6 @@ export function createI18n<T extends Record<string, unknown>>(
     options.onMissingKey,
     options.formatter
   );
-
-  t.node = (key: string, params?: Record<string, unknown>): Text => {
-    const node = document.createTextNode('');
-    effect(() => {
-      node.textContent = baseFn(key, params);
-    });
-    return node;
-  };
 
   // Build formatters
   const fmt = createFormatters(locale);

@@ -1,42 +1,34 @@
+import { renderEffect } from '@mikata/reactivity';
 import { mergeClasses } from '../../utils/class-merge';
 import type { ContainerProps } from './Container.types';
 import './Container.css';
 
-function appendChildren(parent: HTMLElement, children: Node | Node[] | undefined) {
-  if (!children) return;
-  if (Array.isArray(children)) {
-    for (const child of children) parent.appendChild(child);
-  } else {
-    parent.appendChild(children);
-  }
-}
-
 export function Container(props: ContainerProps = {}): HTMLElement {
-  const {
-    size = 'lg',
-    fluid,
-    children,
-    class: className,
-    ref,
-  } = props;
-
   const el = document.createElement('div');
-  el.className = mergeClasses('mkt-container', className);
+  renderEffect(() => {
+    el.className = mergeClasses('mkt-container', props.class);
+  });
 
-  if (!fluid) {
-    el.dataset.size = size;
-  } else {
-    el.dataset.fluid = '';
+  renderEffect(() => {
+    if (props.fluid) {
+      delete el.dataset.size;
+      el.dataset.fluid = '';
+    } else {
+      delete el.dataset.fluid;
+      el.dataset.size = props.size ?? 'lg';
+    }
+  });
+
+  const children = props.children;
+  if (children) {
+    if (Array.isArray(children)) for (const c of children) el.appendChild(c);
+    else el.appendChild(children);
   }
 
-  appendChildren(el, children);
-
+  const ref = props.ref;
   if (ref) {
-    if (typeof ref === 'function') {
-      ref(el);
-    } else {
-      (ref as any).current = el;
-    }
+    if (typeof ref === 'function') ref(el);
+    else (ref as { current: HTMLElement | null }).current = el;
   }
 
   return el;

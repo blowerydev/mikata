@@ -1,32 +1,32 @@
 import { createIcon, ChevronDown } from '@mikata/icons';
+import { renderEffect } from '@mikata/reactivity';
+import { _mergeProps } from '@mikata/runtime';
 import { mergeClasses } from '../../utils/class-merge';
 import { uniqueId } from '../../utils/unique-id';
 import type { AccordionProps } from './Accordion.types';
 import './Accordion.css';
 
-export function Accordion(props: AccordionProps): HTMLElement {
-  const {
-    items,
-    defaultValue,
-    multiple = false,
-    variant = 'default',
-    size = 'md',
-    chevronPosition = 'right',
-    classNames,
-    onChange,
-    class: className,
-    ref,
-  } = props;
+export function Accordion(userProps: AccordionProps): HTMLElement {
+  const props = _mergeProps(userProps as unknown as Record<string, unknown>) as unknown as AccordionProps;
+
+  // `items`, `multiple`, `chevronPosition`, `defaultValue` are structural —
+  // read once at setup.
+  const items = props.items;
+  const multiple = props.multiple ?? false;
+  const chevronPosition = props.chevronPosition ?? 'right';
+  const defaultValue = props.defaultValue;
 
   const id = uniqueId('accordion');
-  let openValues: Set<string> = new Set(
+  const openValues: Set<string> = new Set(
     Array.isArray(defaultValue) ? defaultValue : defaultValue ? [defaultValue] : [],
   );
 
   const root = document.createElement('div');
-  root.className = mergeClasses('mkt-accordion', className, classNames?.root);
-  root.dataset.variant = variant;
-  root.dataset.size = size;
+  renderEffect(() => {
+    root.className = mergeClasses('mkt-accordion', props.class, props.classNames?.root);
+  });
+  renderEffect(() => { root.dataset.variant = props.variant ?? 'default'; });
+  renderEffect(() => { root.dataset.size = props.size ?? 'md'; });
 
   const controls: Map<string, HTMLButtonElement> = new Map();
   const panels: Map<string, HTMLElement> = new Map();
@@ -36,14 +36,16 @@ export function Accordion(props: AccordionProps): HTMLElement {
     const panelId = `${id}-panel-${index}`;
     const isOpen = openValues.has(item.value);
 
-    // Item wrapper
     const itemEl = document.createElement('div');
-    itemEl.className = mergeClasses('mkt-accordion__item', classNames?.item);
+    renderEffect(() => {
+      itemEl.className = mergeClasses('mkt-accordion__item', props.classNames?.item);
+    });
     if (isOpen) itemEl.dataset.active = '';
 
-    // Control (header button)
     const control = document.createElement('button');
-    control.className = mergeClasses('mkt-accordion__control', classNames?.control);
+    renderEffect(() => {
+      control.className = mergeClasses('mkt-accordion__control', props.classNames?.control);
+    });
     control.type = 'button';
     control.id = controlId;
     control.setAttribute('aria-expanded', String(isOpen));
@@ -54,20 +56,23 @@ export function Accordion(props: AccordionProps): HTMLElement {
       control.setAttribute('aria-disabled', 'true');
     }
 
-    // Chevron
     const chevron = document.createElement('span');
-    chevron.className = mergeClasses('mkt-accordion__chevron', classNames?.chevron);
+    renderEffect(() => {
+      chevron.className = mergeClasses('mkt-accordion__chevron', props.classNames?.chevron);
+    });
     chevron.appendChild(createIcon(ChevronDown, { size: 16, strokeWidth: 1.5 }));
     if (isOpen) chevron.dataset.rotated = '';
 
-    // Label
     const label = document.createElement('span');
-    label.className = mergeClasses('mkt-accordion__label', classNames?.label);
-    if (item.label instanceof Node) {
-      label.appendChild(item.label);
-    } else {
-      label.textContent = item.label;
-    }
+    renderEffect(() => {
+      label.className = mergeClasses('mkt-accordion__label', props.classNames?.label);
+    });
+    renderEffect(() => {
+      const l = props.items[index]?.label;
+      if (l == null) label.replaceChildren();
+      else if (l instanceof Node) label.replaceChildren(l);
+      else label.textContent = String(l);
+    });
 
     if (chevronPosition === 'left') {
       control.appendChild(chevron);
@@ -77,9 +82,10 @@ export function Accordion(props: AccordionProps): HTMLElement {
       control.appendChild(chevron);
     }
 
-    // Panel
     const panel = document.createElement('div');
-    panel.className = mergeClasses('mkt-accordion__panel', classNames?.panel);
+    renderEffect(() => {
+      panel.className = mergeClasses('mkt-accordion__panel', props.classNames?.panel);
+    });
     panel.setAttribute('role', 'region');
     panel.setAttribute('aria-labelledby', controlId);
     panel.id = panelId;
@@ -105,7 +111,6 @@ export function Accordion(props: AccordionProps): HTMLElement {
         openValues.delete(item.value);
       } else {
         if (!multiple) {
-          // Close all others
           openValues.forEach((v) => {
             const otherPanel = panels.get(v);
             const otherControl = controls.get(v);
@@ -133,7 +138,7 @@ export function Accordion(props: AccordionProps): HTMLElement {
         delete itemEl.dataset.active;
       }
 
-      onChange?.([...openValues]);
+      props.onChange?.([...openValues]);
     });
 
     controls.set(item.value, control);
@@ -144,9 +149,10 @@ export function Accordion(props: AccordionProps): HTMLElement {
     root.appendChild(itemEl);
   });
 
+  const ref = props.ref;
   if (ref) {
     if (typeof ref === 'function') ref(root);
-    else (ref as any).current = root;
+    else (ref as { current: HTMLElement | null }).current = root;
   }
 
   return root;

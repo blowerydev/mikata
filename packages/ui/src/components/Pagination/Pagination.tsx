@@ -1,3 +1,5 @@
+import { renderEffect } from '@mikata/reactivity';
+import { _mergeProps } from '@mikata/runtime';
 import { mergeClasses } from '../../utils/class-merge';
 import type { PaginationProps } from './Pagination.types';
 import './Pagination.css';
@@ -37,28 +39,26 @@ function getPaginationRange(total: number, current: number, siblings: number, bo
   ];
 }
 
-export function Pagination(props: PaginationProps): HTMLElement {
-  const {
-    total,
-    value,
-    defaultValue = 1,
-    siblings = 1,
-    boundaries = 1,
-    size = 'md',
-    color = 'primary',
-    onChange,
-    classNames,
-    class: className,
-    ref,
-  } = props;
+export function Pagination(userProps: PaginationProps): HTMLElement {
+  const props = _mergeProps(userProps as unknown as Record<string, unknown>) as unknown as PaginationProps;
 
-  let currentPage = value ?? defaultValue;
+  // `total`, `siblings`, `boundaries` drive the page-range layout and are
+  // read once — changing them after mount requires a full rebuild, which the
+  // imperative renderItems() below already performs when the active page
+  // changes.
+  const total = props.total;
+  const siblings = props.siblings ?? 1;
+  const boundaries = props.boundaries ?? 1;
+
+  let currentPage = props.value ?? props.defaultValue ?? 1;
 
   const nav = document.createElement('nav');
-  nav.className = mergeClasses('mkt-pagination', className, classNames?.root);
+  renderEffect(() => {
+    nav.className = mergeClasses('mkt-pagination', props.class, props.classNames?.root);
+  });
   nav.setAttribute('aria-label', 'Pagination');
-  nav.dataset.size = size;
-  nav.dataset.color = color;
+  renderEffect(() => { nav.dataset.size = props.size ?? 'md'; });
+  renderEffect(() => { nav.dataset.color = props.color ?? 'primary'; });
 
   const list = document.createElement('div');
   list.className = 'mkt-pagination__list';
@@ -67,14 +67,13 @@ export function Pagination(props: PaginationProps): HTMLElement {
   function setPage(page: number) {
     if (page < 1 || page > total || page === currentPage) return;
     currentPage = page;
-    onChange?.(currentPage);
+    props.onChange?.(currentPage);
     renderItems();
   }
 
   function renderItems() {
     list.innerHTML = '';
 
-    // Prev button
     const prev = createButton('\u2039', 'Previous page', () => setPage(currentPage - 1));
     if (currentPage === 1) {
       prev.disabled = true;
@@ -82,12 +81,11 @@ export function Pagination(props: PaginationProps): HTMLElement {
     }
     list.appendChild(prev);
 
-    // Page items
     const pages = getPaginationRange(total, currentPage, siblings, boundaries);
     pages.forEach((item) => {
       if (item === 'dots') {
         const dots = document.createElement('span');
-        dots.className = mergeClasses('mkt-pagination__dots', classNames?.dots);
+        dots.className = mergeClasses('mkt-pagination__dots', props.classNames?.dots);
         dots.textContent = '\u2026';
         dots.setAttribute('aria-hidden', 'true');
         list.appendChild(dots);
@@ -101,7 +99,6 @@ export function Pagination(props: PaginationProps): HTMLElement {
       }
     });
 
-    // Next button
     const next = createButton('\u203A', 'Next page', () => setPage(currentPage + 1));
     if (currentPage === total) {
       next.disabled = true;
@@ -112,7 +109,7 @@ export function Pagination(props: PaginationProps): HTMLElement {
 
   function createButton(text: string, ariaLabel: string, onClick: () => void): HTMLButtonElement {
     const btn = document.createElement('button');
-    btn.className = mergeClasses('mkt-pagination__item', classNames?.item);
+    btn.className = mergeClasses('mkt-pagination__item', props.classNames?.item);
     btn.type = 'button';
     btn.textContent = text;
     btn.setAttribute('aria-label', ariaLabel);
@@ -123,9 +120,10 @@ export function Pagination(props: PaginationProps): HTMLElement {
   renderItems();
   nav.appendChild(list);
 
+  const ref = props.ref;
   if (ref) {
     if (typeof ref === 'function') ref(nav);
-    else (ref as any).current = nav;
+    else (ref as { current: HTMLElement | null }).current = nav;
   }
 
   return nav;

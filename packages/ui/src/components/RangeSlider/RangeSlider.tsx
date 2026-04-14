@@ -1,36 +1,34 @@
-import { onCleanup } from '@mikata/runtime';
+import { onCleanup, _mergeProps } from '@mikata/runtime';
+import { renderEffect } from '@mikata/reactivity';
 import { mergeClasses } from '../../utils/class-merge';
 import { useDirection } from '../../theme';
 import type { RangeSliderProps } from './RangeSlider.types';
 import './RangeSlider.css';
 
-export function RangeSlider(props: RangeSliderProps = {}): HTMLElement {
+export function RangeSlider(userProps: RangeSliderProps = {}): HTMLElement {
+  const props = _mergeProps(userProps as Record<string, unknown>) as RangeSliderProps;
   const direction = useDirection();
-  const {
-    value,
-    defaultValue,
-    min = 0,
-    max = 100,
-    step = 1,
-    minRange = 0,
-    size = 'md',
-    color = 'primary',
-    label,
-    disabled,
-    onValueChange,
-    onValueChangeEnd,
-    classNames,
-    class: className,
-    ref,
-  } = props;
+
+  // Bounds and step are read once at setup. Re-snapping on bound changes at
+  // runtime is not supported — recompute the value externally and pass it.
+  const min = props.min ?? 0;
+  const max = props.max ?? 100;
+  const step = props.step ?? 1;
+  const minRange = props.minRange ?? 0;
+  const label = props.label;
 
   const root = document.createElement('div');
-  root.className = mergeClasses('mkt-range-slider', className, classNames?.root);
-  root.dataset.size = size;
-  root.dataset.color = color;
-  if (disabled) root.dataset.disabled = '';
+  renderEffect(() => {
+    root.className = mergeClasses('mkt-range-slider', props.class, props.classNames?.root);
+  });
+  renderEffect(() => { root.dataset.size = props.size ?? 'md'; });
+  renderEffect(() => { root.dataset.color = props.color ?? 'primary'; });
+  renderEffect(() => {
+    if (props.disabled) root.dataset.disabled = '';
+    else delete root.dataset.disabled;
+  });
 
-  let [v0, v1] = value ?? defaultValue ?? [min, max];
+  let [v0, v1] = props.value ?? props.defaultValue ?? [min, max];
   v0 = clamp(v0, min, max);
   v1 = clamp(v1, min, max);
   if (v1 < v0) [v0, v1] = [v1, v0];
@@ -45,9 +43,16 @@ export function RangeSlider(props: RangeSliderProps = {}): HTMLElement {
   let labelValue: HTMLElement | undefined;
   if (label) {
     const labelRow = document.createElement('div');
-    labelRow.className = mergeClasses('mkt-range-slider__label', classNames?.label);
+    renderEffect(() => {
+      labelRow.className = mergeClasses('mkt-range-slider__label', props.classNames?.label);
+    });
     labelText = document.createElement('span');
-    labelText.textContent = typeof label === 'function' ? label([v0, v1]) : label;
+    const labelTextEl = labelText;
+    renderEffect(() => {
+      const l = props.label;
+      if (typeof l === 'function') labelTextEl.textContent = l([v0, v1]);
+      else labelTextEl.textContent = l == null ? '' : String(l);
+    });
     labelRow.appendChild(labelText);
     labelValue = document.createElement('span');
     labelValue.className = 'mkt-range-slider__label-value';
@@ -57,26 +62,34 @@ export function RangeSlider(props: RangeSliderProps = {}): HTMLElement {
   }
 
   const track = document.createElement('div');
-  track.className = mergeClasses('mkt-range-slider__track', classNames?.track);
+  renderEffect(() => {
+    track.className = mergeClasses('mkt-range-slider__track', props.classNames?.track);
+  });
   root.appendChild(track);
 
   const bar = document.createElement('div');
-  bar.className = mergeClasses('mkt-range-slider__bar', classNames?.bar);
+  renderEffect(() => {
+    bar.className = mergeClasses('mkt-range-slider__bar', props.classNames?.bar);
+  });
   track.appendChild(bar);
 
   const thumbLow = document.createElement('div');
-  thumbLow.className = mergeClasses('mkt-range-slider__thumb', classNames?.thumb);
+  renderEffect(() => {
+    thumbLow.className = mergeClasses('mkt-range-slider__thumb', props.classNames?.thumb);
+  });
   thumbLow.setAttribute('role', 'slider');
-  thumbLow.setAttribute('tabindex', disabled ? '-1' : '0');
+  renderEffect(() => { thumbLow.setAttribute('tabindex', props.disabled ? '-1' : '0'); });
   thumbLow.setAttribute('aria-valuemin', String(min));
   thumbLow.setAttribute('aria-valuemax', String(max));
   thumbLow.setAttribute('aria-label', 'Minimum');
   track.appendChild(thumbLow);
 
   const thumbHigh = document.createElement('div');
-  thumbHigh.className = mergeClasses('mkt-range-slider__thumb', classNames?.thumb);
+  renderEffect(() => {
+    thumbHigh.className = mergeClasses('mkt-range-slider__thumb', props.classNames?.thumb);
+  });
   thumbHigh.setAttribute('role', 'slider');
-  thumbHigh.setAttribute('tabindex', disabled ? '-1' : '0');
+  renderEffect(() => { thumbHigh.setAttribute('tabindex', props.disabled ? '-1' : '0'); });
   thumbHigh.setAttribute('aria-valuemin', String(min));
   thumbHigh.setAttribute('aria-valuemax', String(max));
   thumbHigh.setAttribute('aria-label', 'Maximum');
@@ -110,9 +123,9 @@ export function RangeSlider(props: RangeSliderProps = {}): HTMLElement {
       v0 = a;
       v1 = b;
       paint();
-      onValueChange?.([v0, v1]);
+      props.onValueChange?.([v0, v1]);
     }
-    if (emitEnd) onValueChangeEnd?.([v0, v1]);
+    if (emitEnd) props.onValueChangeEnd?.([v0, v1]);
   };
 
   const posToValue = (clientX: number): number => {
@@ -135,11 +148,11 @@ export function RangeSlider(props: RangeSliderProps = {}): HTMLElement {
     dragging = null;
     document.removeEventListener('pointermove', onMove);
     document.removeEventListener('pointerup', onUp);
-    onValueChangeEnd?.([v0, v1]);
+    props.onValueChangeEnd?.([v0, v1]);
   };
 
   const startDrag = (which: 'low' | 'high') => (e: PointerEvent) => {
-    if (disabled) return;
+    if (props.disabled) return;
     dragging = which;
     (which === 'low' ? thumbLow : thumbHigh).focus();
     document.addEventListener('pointermove', onMove);
@@ -147,18 +160,16 @@ export function RangeSlider(props: RangeSliderProps = {}): HTMLElement {
     e.preventDefault();
   };
 
-  thumbLow.addEventListener('pointerdown', startDrag('low') as any);
-  thumbHigh.addEventListener('pointerdown', startDrag('high') as any);
+  thumbLow.addEventListener('pointerdown', startDrag('low') as EventListener);
+  thumbHigh.addEventListener('pointerdown', startDrag('high') as EventListener);
 
-  // Clicking the track moves the nearest thumb
   track.addEventListener('pointerdown', (e) => {
-    if (disabled) return;
+    if (props.disabled) return;
     if (e.target === thumbLow || e.target === thumbHigh) return;
     const v = posToValue((e as PointerEvent).clientX);
     const which = Math.abs(v - v0) <= Math.abs(v - v1) ? 'low' : 'high';
     if (which === 'low') setValues(v, v1, 'low', true);
     else setValues(v0, v, 'high', true);
-    // continue dragging
     dragging = which;
     (which === 'low' ? thumbLow : thumbHigh).focus();
     document.addEventListener('pointermove', onMove);
@@ -166,7 +177,7 @@ export function RangeSlider(props: RangeSliderProps = {}): HTMLElement {
   });
 
   const keyStep = (e: KeyboardEvent, which: 'low' | 'high') => {
-    if (disabled) return;
+    if (props.disabled) return;
     const big = step * 10;
     const isRtl = direction() === 'rtl';
     const decKey = isRtl ? 'ArrowRight' : 'ArrowLeft';
@@ -204,9 +215,10 @@ export function RangeSlider(props: RangeSliderProps = {}): HTMLElement {
     document.removeEventListener('pointerup', onUp);
   });
 
+  const ref = props.ref;
   if (ref) {
     if (typeof ref === 'function') ref(root);
-    else (ref as any).current = root;
+    else (ref as { current: HTMLElement | null }).current = root;
   }
   return root;
 }

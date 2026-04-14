@@ -1,55 +1,55 @@
-import { createRef, onCleanup } from '@mikata/runtime';
+import { renderEffect } from '@mikata/reactivity';
+import { _mergeProps, createRef, onCleanup } from '@mikata/runtime';
 import { mergeClasses } from '../../utils/class-merge';
 import { onClickOutside } from '../../utils/on-click-outside';
 import type { PopoverProps } from './Popover.types';
 import './Popover.css';
 
-export function Popover(props: PopoverProps): HTMLSpanElement {
-  const {
-    position = 'bottom',
-    onClose,
-    withArrow,
-    closeOnClickOutside = true,
-    closeOnEscape = true,
-    classNames,
-    target,
-    children,
-    class: className,
-    ref,
-  } = props;
+export function Popover(userProps: PopoverProps): HTMLSpanElement {
+  const props = _mergeProps(userProps as unknown as Record<string, unknown>) as unknown as PopoverProps;
+
+  // `target`, `children`, `withArrow`, `closeOnClickOutside`, `closeOnEscape`,
+  // `onClose` are structural — they decide DOM shape and listener wiring.
+  const target = props.target;
+  const children = props.children;
+  const withArrow = props.withArrow;
+  const closeOnClickOutside = props.closeOnClickOutside ?? true;
+  const closeOnEscape = props.closeOnEscape ?? true;
+  const onClose = props.onClose;
 
   const wrapper = document.createElement('span');
-  wrapper.className = mergeClasses('mkt-popover', className, classNames?.root);
+  renderEffect(() => {
+    wrapper.className = mergeClasses('mkt-popover', props.class, props.classNames?.root);
+  });
   wrapper.style.position = 'relative';
   wrapper.style.display = 'inline-block';
 
-  // Append the trigger target
   wrapper.appendChild(target);
 
-  // Create dropdown
   const dropdown = document.createElement('div');
-  dropdown.className = mergeClasses('mkt-popover__dropdown', classNames?.dropdown);
-  dropdown.setAttribute('data-position', position);
+  renderEffect(() => {
+    dropdown.className = mergeClasses('mkt-popover__dropdown', props.classNames?.dropdown);
+  });
+  renderEffect(() => { dropdown.dataset.position = props.position ?? 'bottom'; });
   dropdown.setAttribute('role', 'dialog');
 
-  // Arrow
   if (withArrow) {
     const arrow = document.createElement('div');
-    arrow.className = mergeClasses('mkt-popover__arrow', classNames?.arrow);
+    renderEffect(() => {
+      arrow.className = mergeClasses('mkt-popover__arrow', props.classNames?.arrow);
+    });
     dropdown.appendChild(arrow);
   }
 
   dropdown.appendChild(children);
   wrapper.appendChild(dropdown);
 
-  // Click outside
   if (closeOnClickOutside && onClose) {
     const wrapperRef = createRef<HTMLElement>();
     wrapperRef(wrapper);
     onClickOutside(wrapperRef, onClose);
   }
 
-  // Escape key
   if (closeOnEscape && onClose) {
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -58,9 +58,10 @@ export function Popover(props: PopoverProps): HTMLSpanElement {
     onCleanup(() => document.removeEventListener('keydown', handler));
   }
 
+  const ref = props.ref;
   if (ref) {
     if (typeof ref === 'function') ref(wrapper);
-    else (ref as any).current = wrapper;
+    else (ref as { current: HTMLSpanElement | null }).current = wrapper;
   }
 
   return wrapper;

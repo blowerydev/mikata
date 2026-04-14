@@ -1,40 +1,31 @@
+import { renderEffect } from '@mikata/reactivity';
 import { mergeClasses } from '../../utils/class-merge';
 import type { GridProps } from './Grid.types';
 import './Grid.css';
 
-function appendChildren(parent: HTMLElement, children: Node | Node[] | undefined) {
-  if (!children) return;
-  if (Array.isArray(children)) {
-    for (const child of children) parent.appendChild(child);
-  } else {
-    parent.appendChild(children);
-  }
-}
-
 export function Grid(props: GridProps = {}): HTMLElement {
-  const {
-    columns = 12,
-    gap,
-    children,
-    class: className,
-    ref,
-  } = props;
-
   const el = document.createElement('div');
-  el.className = mergeClasses('mkt-grid', className);
+  renderEffect(() => {
+    el.className = mergeClasses('mkt-grid', props.class);
+  });
+  renderEffect(() => {
+    el.style.gridTemplateColumns = `repeat(${props.columns ?? 12}, 1fr)`;
+  });
+  renderEffect(() => {
+    if (props.gap) el.dataset.gap = props.gap;
+    else delete el.dataset.gap;
+  });
 
-  el.style.gridTemplateColumns = `repeat(${columns}, 1fr)`;
+  const children = props.children;
+  if (children) {
+    if (Array.isArray(children)) for (const c of children) el.appendChild(c);
+    else el.appendChild(children);
+  }
 
-  if (gap) el.dataset.gap = gap;
-
-  appendChildren(el, children);
-
+  const ref = props.ref;
   if (ref) {
-    if (typeof ref === 'function') {
-      ref(el);
-    } else {
-      (ref as any).current = el;
-    }
+    if (typeof ref === 'function') ref(el);
+    else (ref as { current: HTMLElement | null }).current = el;
   }
 
   return el;

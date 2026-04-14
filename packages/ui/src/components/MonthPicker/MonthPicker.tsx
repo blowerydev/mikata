@@ -1,4 +1,5 @@
-import { signal, effect } from '@mikata/reactivity';
+import { signal, effect, renderEffect } from '@mikata/reactivity';
+import { _mergeProps } from '@mikata/runtime';
 import { createIcon, ChevronLeft, ChevronRight } from '@mikata/icons';
 import { mergeClasses } from '../../utils/class-merge';
 import { useComponentDefaults } from '../../theme/component-defaults';
@@ -9,22 +10,18 @@ import './MonthPicker.css';
 import '../Calendar/Calendar.css';
 
 export function MonthPicker(userProps: MonthPickerProps = {}): HTMLElement {
-  const props = { ...useComponentDefaults<MonthPickerProps>('MonthPicker'), ...userProps };
-  const {
-    value,
-    defaultValue = null,
-    date,
-    defaultDate,
-    minDate,
-    maxDate,
-    locale = typeof navigator !== 'undefined' ? navigator.language : 'en-US',
-    onChange,
-    onDateChange,
-    size = 'md',
-    classNames,
-    class: className,
-    ref,
-  } = props;
+  const props = _mergeProps(
+    useComponentDefaults<MonthPickerProps>('MonthPicker') as unknown as Record<string, unknown>,
+    userProps as unknown as Record<string, unknown>,
+  ) as unknown as MonthPickerProps;
+
+  const value = props.value;
+  const defaultValue = props.defaultValue ?? null;
+  const date = props.date;
+  const defaultDate = props.defaultDate;
+  const locale = props.locale ?? (typeof navigator !== 'undefined' ? navigator.language : 'en-US');
+  const onChange = props.onChange;
+  const onDateChange = props.onDateChange;
 
   const direction = useDirection();
 
@@ -39,6 +36,8 @@ export function MonthPicker(userProps: MonthPickerProps = {}): HTMLElement {
   }
 
   function monthDisabled(y: number, m: number): boolean {
+    const minDate = props.minDate;
+    const maxDate = props.maxDate;
     const start = new Date(y, m, 1);
     const end = new Date(y, m + 1, 0);
     if (minDate && isBefore(end, minDate)) return true;
@@ -54,27 +53,37 @@ export function MonthPicker(userProps: MonthPickerProps = {}): HTMLElement {
   }
 
   const root = document.createElement('div');
-  root.className = mergeClasses('mkt-month-picker', 'mkt-calendar', className, classNames?.root);
-  root.dataset.size = size;
+  renderEffect(() => {
+    root.className = mergeClasses('mkt-month-picker', 'mkt-calendar', props.class, props.classNames?.root);
+  });
+  renderEffect(() => { root.dataset.size = props.size ?? 'md'; });
 
   // Header - year nav
   const header = document.createElement('div');
-  header.className = mergeClasses('mkt-calendar__header', classNames?.header);
+  renderEffect(() => {
+    header.className = mergeClasses('mkt-calendar__header', props.classNames?.header);
+  });
 
   const prevBtn = document.createElement('button');
   prevBtn.type = 'button';
-  prevBtn.className = mergeClasses('mkt-calendar__header-control', classNames?.headerControl);
+  renderEffect(() => {
+    prevBtn.className = mergeClasses('mkt-calendar__header-control', props.classNames?.headerControl);
+  });
   prevBtn.setAttribute('aria-label', 'Previous year');
   prevBtn.appendChild(createIcon(ChevronLeft, { size: 16 }));
   prevBtn.addEventListener('click', () => updateYear(year() - 1));
 
   const label = document.createElement('button');
   label.type = 'button';
-  label.className = mergeClasses('mkt-calendar__header-label', classNames?.headerLabel);
+  renderEffect(() => {
+    label.className = mergeClasses('mkt-calendar__header-label', props.classNames?.headerLabel);
+  });
 
   const nextBtn = document.createElement('button');
   nextBtn.type = 'button';
-  nextBtn.className = mergeClasses('mkt-calendar__header-control', classNames?.headerControl);
+  renderEffect(() => {
+    nextBtn.className = mergeClasses('mkt-calendar__header-control', props.classNames?.headerControl);
+  });
   nextBtn.setAttribute('aria-label', 'Next year');
   nextBtn.appendChild(createIcon(ChevronRight, { size: 16 }));
   nextBtn.addEventListener('click', () => updateYear(year() + 1));
@@ -87,6 +96,8 @@ export function MonthPicker(userProps: MonthPickerProps = {}): HTMLElement {
   });
 
   effect(() => {
+    const minDate = props.minDate;
+    const maxDate = props.maxDate;
     label.textContent = String(year());
     prevBtn.disabled = !!(minDate && isBefore(new Date(year() - 1, 11, 31), minDate));
     nextBtn.disabled = !!(maxDate && isAfter(new Date(year() + 1, 0, 1), maxDate));
@@ -94,7 +105,9 @@ export function MonthPicker(userProps: MonthPickerProps = {}): HTMLElement {
 
   // Month grid
   const grid = document.createElement('div');
-  grid.className = mergeClasses('mkt-month-picker__grid', classNames?.monthRow);
+  renderEffect(() => {
+    grid.className = mergeClasses('mkt-month-picker__grid', props.classNames?.monthRow);
+  });
   grid.setAttribute('role', 'grid');
 
   effect(() => {
@@ -102,10 +115,11 @@ export function MonthPicker(userProps: MonthPickerProps = {}): HTMLElement {
     const labels = getMonthLabels(locale, 'short');
     const y = year();
     const sel = selected();
+    const classNamesNow = props.classNames;
     for (let m = 0; m < 12; m++) {
       const btn = document.createElement('button');
       btn.type = 'button';
-      btn.className = mergeClasses('mkt-month-picker__month', classNames?.month);
+      btn.className = mergeClasses('mkt-month-picker__month', classNamesNow?.month);
       btn.textContent = labels[m];
       btn.dataset.month = `${y}-${m}`;
       if (sel && sel.getFullYear() === y && sel.getMonth() === m) {
@@ -151,6 +165,7 @@ export function MonthPicker(userProps: MonthPickerProps = {}): HTMLElement {
   root.appendChild(header);
   root.appendChild(grid);
 
+  const ref = props.ref;
   if (ref) {
     if (typeof ref === 'function') ref(root);
     else (ref as { current: HTMLElement | null }).current = root;

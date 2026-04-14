@@ -1,39 +1,44 @@
-import { onCleanup } from '@mikata/runtime';
+import { renderEffect } from '@mikata/reactivity';
+import { _mergeProps, onCleanup } from '@mikata/runtime';
 import { mergeClasses } from '../../utils/class-merge';
 import type { HoverCardProps } from './HoverCard.types';
 import './HoverCard.css';
 
-export function HoverCard(props: HoverCardProps): HTMLElement {
-  const {
-    position = 'bottom',
-    openDelay = 150,
-    closeDelay = 150,
-    withArrow,
-    target,
-    children,
-    classNames,
-    class: className,
-    ref,
-  } = props;
+export function HoverCard(userProps: HoverCardProps): HTMLElement {
+  const props = _mergeProps(userProps as unknown as Record<string, unknown>) as unknown as HoverCardProps;
+
+  // `target`, `children`, `withArrow`, `openDelay`, `closeDelay` are
+  // structural — decide DOM shape and timer configuration at setup.
+  const target = props.target;
+  const children = props.children;
+  const withArrow = props.withArrow;
+  const openDelay = props.openDelay ?? 150;
+  const closeDelay = props.closeDelay ?? 150;
 
   const wrapper = document.createElement('span');
-  wrapper.className = mergeClasses('mkt-hover-card', className, classNames?.root);
+  renderEffect(() => {
+    wrapper.className = mergeClasses('mkt-hover-card', props.class, props.classNames?.root);
+  });
 
   wrapper.appendChild(target);
 
   const dropdown = document.createElement('div');
-  dropdown.className = mergeClasses('mkt-hover-card__dropdown', classNames?.dropdown);
-  dropdown.dataset.position = position;
+  renderEffect(() => {
+    dropdown.className = mergeClasses('mkt-hover-card__dropdown', props.classNames?.dropdown);
+  });
+  renderEffect(() => { dropdown.dataset.position = props.position ?? 'bottom'; });
   dropdown.setAttribute('role', 'dialog');
   if (withArrow) {
     const arrow = document.createElement('div');
-    arrow.className = mergeClasses('mkt-hover-card__arrow', classNames?.arrow);
+    renderEffect(() => {
+      arrow.className = mergeClasses('mkt-hover-card__arrow', props.classNames?.arrow);
+    });
     dropdown.appendChild(arrow);
   }
   dropdown.appendChild(children);
 
-  let openT: any;
-  let closeT: any;
+  let openT: ReturnType<typeof setTimeout> | undefined;
+  let closeT: ReturnType<typeof setTimeout> | undefined;
   let visible = false;
 
   const show = () => {
@@ -65,9 +70,10 @@ export function HoverCard(props: HoverCardProps): HTMLElement {
     dropdown.remove();
   });
 
+  const ref = props.ref;
   if (ref) {
     if (typeof ref === 'function') ref(wrapper);
-    else (ref as any).current = wrapper;
+    else (ref as { current: HTMLElement | null }).current = wrapper;
   }
 
   return wrapper;

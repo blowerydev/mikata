@@ -1,5 +1,6 @@
 import { createIcon, Close } from '@mikata/icons';
-import { createRef, onCleanup } from '@mikata/runtime';
+import { renderEffect } from '@mikata/reactivity';
+import { _mergeProps, createRef, onCleanup } from '@mikata/runtime';
 import { mergeClasses } from '../../utils/class-merge';
 import { onFocusTrap } from '../../utils/on-focus-trap';
 import { onScrollLock } from '../../utils/on-scroll-lock';
@@ -9,59 +10,72 @@ import { applyThemeToPortal } from '../../utils/get-color-scheme';
 import type { ModalProps } from './Modal.types';
 import './Modal.css';
 
-export function Modal(props: ModalProps): Comment {
-  const {
-    title,
-    size = 'md',
-    centered,
-    closeOnClickOutside = true,
-    closeOnEscape = true,
-    onClose,
-    withCloseButton = true,
-    classNames,
-    children,
-    class: className,
-    ref,
-  } = props;
+export function Modal(userProps: ModalProps): Comment {
+  const props = _mergeProps(userProps as unknown as Record<string, unknown>) as unknown as ModalProps;
+
+  // `title`, `children`, `withCloseButton`, `closeOnClickOutside`,
+  // `closeOnEscape` are structural — they decide which DOM nodes and
+  // listeners exist.
+  const title = props.title;
+  const children = props.children;
+  const withCloseButton = props.withCloseButton ?? true;
+  const closeOnClickOutside = props.closeOnClickOutside ?? true;
+  const closeOnEscape = props.closeOnEscape ?? true;
+  const onClose = props.onClose;
 
   const contentRef = createRef<HTMLElement>();
   const id = uniqueId('modal');
   const labels = useUILabels();
 
-  // Overlay (backdrop)
   const overlay = document.createElement('div');
-  overlay.className = mergeClasses('mkt-modal__overlay', classNames?.overlay);
+  renderEffect(() => {
+    overlay.className = mergeClasses('mkt-modal__overlay', props.classNames?.overlay);
+  });
   if (closeOnClickOutside) {
     overlay.addEventListener('click', onClose);
   }
 
-  // Content wrapper
   const content = document.createElement('div');
-  content.className = mergeClasses('mkt-modal__content', classNames?.content);
+  renderEffect(() => {
+    content.className = mergeClasses('mkt-modal__content', props.classNames?.content);
+  });
   content.setAttribute('role', 'dialog');
   content.setAttribute('aria-modal', 'true');
-  content.setAttribute('data-size', size);
+  renderEffect(() => { content.dataset.size = props.size ?? 'md'; });
   if (title) content.setAttribute('aria-labelledby', `${id}-title`);
-  if (centered) content.setAttribute('data-centered', '');
+  renderEffect(() => {
+    if (props.centered) content.dataset.centered = '';
+    else delete content.dataset.centered;
+  });
   content.addEventListener('click', (e) => e.stopPropagation());
   contentRef(content);
 
-  // Header
   if (title || withCloseButton) {
     const header = document.createElement('div');
-    header.className = mergeClasses('mkt-modal__header', classNames?.header);
+    renderEffect(() => {
+      header.className = mergeClasses('mkt-modal__header', props.classNames?.header);
+    });
 
     if (title) {
       const titleEl = document.createElement('h2');
-      titleEl.className = mergeClasses('mkt-modal__title', classNames?.title);
+      renderEffect(() => {
+        titleEl.className = mergeClasses('mkt-modal__title', props.classNames?.title);
+      });
       titleEl.id = `${id}-title`;
-      if (title instanceof Node) { titleEl.appendChild(title); } else { titleEl.textContent = title; }
+      renderEffect(() => {
+        const t = props.title;
+        if (t == null) titleEl.replaceChildren();
+        else if (t instanceof Node) titleEl.replaceChildren(t);
+        else titleEl.textContent = t;
+      });
       header.appendChild(titleEl);
     }
 
     if (withCloseButton) {
       const closeBtn = document.createElement('button');
-      closeBtn.className = mergeClasses('mkt-modal__close', classNames?.close);
+      renderEffect(() => {
+        closeBtn.className = mergeClasses('mkt-modal__close', props.classNames?.close);
+      });
       closeBtn.type = 'button';
       closeBtn.setAttribute('aria-label', labels.close);
       closeBtn.appendChild(createIcon(Close, { strokeWidth: 1.5 }));
@@ -72,28 +86,26 @@ export function Modal(props: ModalProps): Comment {
     content.appendChild(header);
   }
 
-  // Body
   const body = document.createElement('div');
-  body.className = mergeClasses('mkt-modal__body', classNames?.body);
+  renderEffect(() => {
+    body.className = mergeClasses('mkt-modal__body', props.classNames?.body);
+  });
   body.appendChild(children);
   content.appendChild(body);
 
-  // Assemble: content inside overlay inside root
   overlay.appendChild(content);
 
   const root = document.createElement('div');
-  root.className = mergeClasses('mkt-modal', className, classNames?.root);
+  renderEffect(() => {
+    root.className = mergeClasses('mkt-modal', props.class, props.classNames?.root);
+  });
   applyThemeToPortal(root);
   root.appendChild(overlay);
   document.body.appendChild(root);
 
-  // Focus trap
   onFocusTrap(contentRef);
-
-  // Scroll lock
   onScrollLock();
 
-  // Escape key
   if (closeOnEscape) {
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -102,17 +114,15 @@ export function Modal(props: ModalProps): Comment {
     onCleanup(() => document.removeEventListener('keydown', handler));
   }
 
-  // Cleanup: remove from body
   onCleanup(() => {
     root.remove();
   });
 
-  // Ref
+  const ref = props.ref;
   if (ref) {
     if (typeof ref === 'function') ref(content);
-    else (ref as any).current = content;
+    else (ref as { current: HTMLElement | null }).current = content;
   }
 
-  // Return a comment placeholder since the actual modal is appended to body
   return document.createComment('mkt-modal');
 }

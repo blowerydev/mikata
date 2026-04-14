@@ -108,6 +108,33 @@ describe('Button', () => {
     Button({ ref: (el: HTMLElement) => { captured = el; } });
     expect(captured).toBeInstanceOf(HTMLButtonElement);
   });
+
+  it('reacts to getter-backed props', async () => {
+    const { signal, flushSync } = await import('@mikata/reactivity');
+    const [variant, setVariant] = signal<'filled' | 'outline'>('filled');
+    const [loading, setLoading] = signal(false);
+    const [label, setLabel] = signal('Save');
+
+    const el = Button({
+      get variant() { return variant(); },
+      get loading() { return loading(); },
+      get children() { return label(); },
+    });
+
+    expect(el.dataset.variant).toBe('filled');
+    expect(el.getAttribute('aria-busy')).toBeNull();
+    expect(el.querySelector('.mkt-button__label')!.textContent).toBe('Save');
+
+    setVariant('outline');
+    setLoading(true);
+    setLabel('Saving…');
+    flushSync();
+
+    expect(el.dataset.variant).toBe('outline');
+    expect(el.getAttribute('aria-busy')).toBe('true');
+    expect(el.disabled).toBe(true);
+    expect(el.querySelector('.mkt-button__label')!.textContent).toBe('Saving…');
+  });
 });
 
 // ─── Badge ─────────────────────────────────────────────────

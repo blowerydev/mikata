@@ -1,38 +1,54 @@
+import { renderEffect } from '@mikata/reactivity';
+import { _mergeProps } from '@mikata/runtime';
 import { mergeClasses } from '../../utils/class-merge';
 import { Loader } from '../Loader';
 import type { LoadingOverlayProps } from './LoadingOverlay.types';
 import './LoadingOverlay.css';
 
-export function LoadingOverlay(props: LoadingOverlayProps = {}): HTMLElement {
-  const {
-    visible = true,
-    zIndex,
-    overlayBlur,
-    loaderProps,
-    classNames,
-    class: className,
-    ref,
-  } = props;
+export function LoadingOverlay(userProps: LoadingOverlayProps = {}): HTMLElement {
+  const props = _mergeProps(userProps as unknown as Record<string, unknown>) as unknown as LoadingOverlayProps;
+
+  // `loaderProps` are structural — the Loader is created once at setup.
+  const loaderProps = props.loaderProps;
 
   const root = document.createElement('div');
-  root.className = mergeClasses('mkt-loading-overlay', className, classNames?.root);
-  root.setAttribute('aria-hidden', visible ? 'false' : 'true');
-  if (!visible) root.dataset.hidden = '';
-  if (zIndex != null) root.style.zIndex = String(zIndex);
+  renderEffect(() => {
+    root.className = mergeClasses('mkt-loading-overlay', props.class, props.classNames?.root);
+  });
+  renderEffect(() => {
+    const visible = props.visible ?? true;
+    root.setAttribute('aria-hidden', visible ? 'false' : 'true');
+    if (!visible) root.dataset.hidden = '';
+    else delete root.dataset.hidden;
+  });
+  renderEffect(() => {
+    const z = props.zIndex;
+    if (z != null) root.style.zIndex = String(z);
+    else root.style.zIndex = '';
+  });
 
   const overlay = document.createElement('div');
-  overlay.className = mergeClasses('mkt-loading-overlay__overlay', classNames?.overlay);
-  if (overlayBlur != null) overlay.style.backdropFilter = `blur(${overlayBlur}px)`;
+  renderEffect(() => {
+    overlay.className = mergeClasses('mkt-loading-overlay__overlay', props.classNames?.overlay);
+  });
+  renderEffect(() => {
+    const b = props.overlayBlur;
+    if (b != null) overlay.style.backdropFilter = `blur(${b}px)`;
+    else overlay.style.backdropFilter = '';
+  });
   root.appendChild(overlay);
 
   const loaderWrap = document.createElement('div');
-  loaderWrap.className = mergeClasses('mkt-loading-overlay__loader', classNames?.loader);
+  renderEffect(() => {
+    loaderWrap.className = mergeClasses('mkt-loading-overlay__loader', props.classNames?.loader);
+  });
   loaderWrap.appendChild(Loader(loaderProps || { size: 'md' }));
   root.appendChild(loaderWrap);
 
+  const ref = props.ref;
   if (ref) {
     if (typeof ref === 'function') ref(root);
-    else (ref as any).current = root;
+    else (ref as { current: HTMLElement | null }).current = root;
   }
 
   return root;

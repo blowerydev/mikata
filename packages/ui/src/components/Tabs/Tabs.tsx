@@ -1,3 +1,5 @@
+import { renderEffect } from '@mikata/reactivity';
+import { _mergeProps } from '@mikata/runtime';
 import { mergeClasses } from '../../utils/class-merge';
 import { useComponentDefaults } from '../../theme/component-defaults';
 import { uniqueId } from '../../utils/unique-id';
@@ -7,39 +9,35 @@ import type { TabsProps } from './Tabs.types';
 import './Tabs.css';
 
 export function Tabs(userProps: TabsProps): HTMLElement {
-  const props = { ...useComponentDefaults<TabsProps>('Tabs'), ...userProps };
-  const {
-    items,
-    defaultValue,
-    value,
-    variant = 'default',
-    size = 'md',
-    color = 'primary',
-    orientation = 'horizontal',
-    onChange,
-    classNames,
-    class: className,
-    ref,
-  } = props;
+  const props = _mergeProps(
+    useComponentDefaults<TabsProps>('Tabs') as unknown as Record<string, unknown>,
+    userProps as unknown as Record<string, unknown>,
+  ) as unknown as TabsProps;
+
+  // `items` and `orientation` are structural — rebuild via remount to change.
+  const items = props.items;
+  const orientation = props.orientation ?? 'horizontal';
 
   const id = uniqueId('tabs');
   const direction = useDirection();
-  let activeValue = value ?? defaultValue ?? items[0]?.value ?? '';
+  let activeValue = props.value ?? props.defaultValue ?? items[0]?.value ?? '';
 
   const root = document.createElement('div');
-  root.className = mergeClasses('mkt-tabs', className, classNames?.root);
-  root.dataset.variant = variant;
+  renderEffect(() => {
+    root.className = mergeClasses('mkt-tabs', props.class, props.classNames?.root);
+  });
+  renderEffect(() => { root.dataset.variant = props.variant ?? 'default'; });
+  renderEffect(() => { root.dataset.color = props.color ?? 'primary'; });
   root.dataset.orientation = orientation;
-  root.dataset.color = color;
 
-  // Tab list
   const tabList = document.createElement('div');
-  tabList.className = mergeClasses('mkt-tabs__list', classNames?.list);
+  renderEffect(() => {
+    tabList.className = mergeClasses('mkt-tabs__list', props.classNames?.list);
+  });
   tabList.setAttribute('role', 'tablist');
   tabList.setAttribute('aria-orientation', orientation);
-  tabList.dataset.size = size;
+  renderEffect(() => { tabList.dataset.size = props.size ?? 'md'; });
 
-  // Panels container
   const panelsContainer = document.createElement('div');
 
   const tabButtons: HTMLButtonElement[] = [];
@@ -50,9 +48,10 @@ export function Tabs(userProps: TabsProps): HTMLElement {
     const panelId = `${id}-panel-${index}`;
     const isActive = item.value === activeValue;
 
-    // Tab button
     const tab = document.createElement('button');
-    tab.className = mergeClasses('mkt-tabs__tab', classNames?.tab);
+    renderEffect(() => {
+      tab.className = mergeClasses('mkt-tabs__tab', props.classNames?.tab);
+    });
     tab.setAttribute('role', 'tab');
     tab.setAttribute('aria-selected', String(isActive));
     tab.setAttribute('aria-controls', panelId);
@@ -74,12 +73,18 @@ export function Tabs(userProps: TabsProps): HTMLElement {
       tab.appendChild(iconWrap);
     }
 
-    if (typeof item.label === 'string') {
-      const labelSpan = document.createTextNode(item.label);
-      tab.appendChild(labelSpan);
-    } else {
-      tab.appendChild(item.label);
-    }
+    const labelHost = document.createElement('span');
+    labelHost.className = 'mkt-tabs__tab-label';
+    tab.appendChild(labelHost);
+    // Label text is re-read from `props.items[i].label` on each locale (or
+    // other reactive) change. Node labels are mounted as-is — their own
+    // internal reactivity still applies.
+    renderEffect(() => {
+      const current = props.items[index]?.label;
+      if (current == null) { labelHost.replaceChildren(); return; }
+      if (current instanceof Node) labelHost.replaceChildren(current);
+      else labelHost.textContent = String(current);
+    });
 
     tab.addEventListener('click', () => {
       if (item.disabled) return;
@@ -89,9 +94,10 @@ export function Tabs(userProps: TabsProps): HTMLElement {
     tabButtons.push(tab);
     tabList.appendChild(tab);
 
-    // Panel
     const panel = document.createElement('div');
-    panel.className = mergeClasses('mkt-tabs__panel', classNames?.panel);
+    renderEffect(() => {
+      panel.className = mergeClasses('mkt-tabs__panel', props.classNames?.panel);
+    });
     panel.setAttribute('role', 'tabpanel');
     panel.setAttribute('aria-labelledby', tabId);
     panel.id = panelId;
@@ -111,7 +117,6 @@ export function Tabs(userProps: TabsProps): HTMLElement {
     panelsContainer.appendChild(panel);
   });
 
-  // Keyboard navigation
   tabList.addEventListener('keydown', (e) => {
     const enabledIndices = items
       .map((item, i) => (item.disabled ? -1 : i))
@@ -157,15 +162,16 @@ export function Tabs(userProps: TabsProps): HTMLElement {
       panel.hidden = i !== index;
     });
     activeValue = items[index].value;
-    onChange?.(activeValue);
+    props.onChange?.(activeValue);
   }
 
   root.appendChild(tabList);
   root.appendChild(panelsContainer);
 
+  const ref = props.ref;
   if (ref) {
     if (typeof ref === 'function') ref(root);
-    else (ref as any).current = root;
+    else (ref as { current: HTMLElement | null }).current = root;
   }
 
   return root;

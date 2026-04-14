@@ -27,7 +27,6 @@ import {
   _createComponent,
   _createFragment,
   _mergeProps,
-  _destructureProps,
   render,
   show,
   each,
@@ -491,11 +490,10 @@ describe('Components - setup functions with props', () => {
     dispose();
   });
 
-  it('props destructuring preserves reactivity', () => {
+  it('lazy props reads preserve reactivity', () => {
     const [count, setCount] = signal(0);
 
-    function Counter(rawProps: { count: number; label: string }) {
-      const props = _destructureProps(rawProps, ['count', 'label']);
+    function Counter(props: { count: number; label: string }) {
       const el = _createElement('span');
       _insert(el, () => `${props.label}: ${props.count}`);
       return el;

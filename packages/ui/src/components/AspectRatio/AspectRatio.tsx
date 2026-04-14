@@ -1,19 +1,23 @@
+import { renderEffect } from '@mikata/reactivity';
 import { mergeClasses } from '../../utils/class-merge';
 import type { AspectRatioProps } from './AspectRatio.types';
 import './AspectRatio.css';
 
 export function AspectRatio(props: AspectRatioProps = {}): HTMLElement {
-  const { ratio = 1, classNames, children, class: className, ref } = props;
-
   const el = document.createElement('div');
-  el.className = mergeClasses('mkt-aspect-ratio', className, classNames?.root);
-  el.style.setProperty('--_ratio', String(ratio));
+  renderEffect(() => {
+    el.className = mergeClasses('mkt-aspect-ratio', props.class, props.classNames?.root);
+  });
+  renderEffect(() => {
+    el.style.setProperty('--_ratio', String(props.ratio ?? 1));
+  });
 
-  if (children) el.appendChild(children);
+  if (props.children) el.appendChild(props.children);
 
+  const ref = props.ref;
   if (ref) {
     if (typeof ref === 'function') ref(el);
-    else (ref as any).current = el;
+    else (ref as { current: HTMLElement | null }).current = el;
   }
 
   return el;

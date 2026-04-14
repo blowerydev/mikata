@@ -1,3 +1,5 @@
+import { renderEffect } from '@mikata/reactivity';
+import { _mergeProps } from '@mikata/runtime';
 import { mergeClasses } from '../../utils/class-merge';
 import { useComponentDefaults } from '../../theme/component-defaults';
 import { uniqueId } from '../../utils/unique-id';
@@ -12,29 +14,42 @@ import '../TextInput/TextInput.css';
  * seconds field via the `step` attribute.
  */
 export function TimeInput(userProps: TimeInputProps = {}): HTMLDivElement {
-  const props = { ...useComponentDefaults<TimeInputProps>('TimeInput'), ...userProps };
-  const {
-    value, defaultValue, label, description, error, required, disabled,
-    withSeconds = false, step, min, max, size = 'md',
-    onChange, classNames, class: className, ref,
-  } = props;
+  const props = _mergeProps(
+    useComponentDefaults<TimeInputProps>('TimeInput') as unknown as Record<string, unknown>,
+    userProps as unknown as Record<string, unknown>,
+  ) as unknown as TimeInputProps;
+
+  const defaultValue = props.defaultValue;
+  const onChange = props.onChange;
 
   const id = uniqueId('time-input');
 
   const input = document.createElement('input');
   input.type = 'time';
   input.id = id;
-  input.className = mergeClasses('mkt-text-input__input', classNames?.input);
-  input.dataset.size = size;
+  renderEffect(() => {
+    input.className = mergeClasses('mkt-text-input__input', props.classNames?.input);
+  });
+  renderEffect(() => { input.dataset.size = props.size ?? 'md'; });
 
-  if (value != null) input.value = value;
-  if (defaultValue != null && value == null) input.value = defaultValue;
-  if (disabled) input.disabled = true;
-  if (required) input.setAttribute('aria-required', 'true');
-  if (min) input.min = min;
-  if (max) input.max = max;
-  if (step != null) input.step = String(step);
-  else if (withSeconds) input.step = '1';
+  if (props.value == null && defaultValue != null) input.value = defaultValue;
+  renderEffect(() => {
+    const v = props.value;
+    if (v != null && v !== input.value) input.value = v;
+  });
+  renderEffect(() => { input.disabled = !!props.disabled; });
+  renderEffect(() => {
+    if (props.required) input.setAttribute('aria-required', 'true');
+    else input.removeAttribute('aria-required');
+  });
+  renderEffect(() => { input.min = props.min ?? ''; });
+  renderEffect(() => { input.max = props.max ?? ''; });
+  renderEffect(() => {
+    const step = props.step;
+    if (step != null) input.step = String(step);
+    else if (props.withSeconds) input.step = '1';
+    else input.step = '';
+  });
 
   if (onChange) {
     input.addEventListener('change', () => onChange(input.value));
@@ -45,13 +60,21 @@ export function TimeInput(userProps: TimeInputProps = {}): HTMLDivElement {
   wrapper.className = 'mkt-text-input';
   wrapper.appendChild(input);
 
+  const ref = props.ref;
   if (ref) {
     if (typeof ref === 'function') ref(input as unknown as HTMLDivElement);
     else (ref as { current: HTMLInputElement | null }).current = input;
   }
 
   return InputWrapper({
-    id, label, description, error, required, size,
-    class: className, classNames, children: wrapper,
+    id,
+    get label() { return props.label; },
+    get description() { return props.description; },
+    get error() { return props.error; },
+    get required() { return props.required; },
+    get size() { return props.size ?? 'md'; },
+    get class() { return props.class; },
+    get classNames() { return props.classNames; },
+    children: wrapper,
   });
 }

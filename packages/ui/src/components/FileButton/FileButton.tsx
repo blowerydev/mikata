@@ -1,17 +1,43 @@
+import { renderEffect } from '@mikata/reactivity';
+import { _mergeProps } from '@mikata/runtime';
 import type { FileButtonProps } from './FileButton.types';
 
-export function FileButton(props: FileButtonProps): DocumentFragment {
-  const { children, onChange, accept, multiple, capture, disabled, name, form, resetRef } = props;
+export function FileButton(userProps: FileButtonProps): DocumentFragment {
+  const props = _mergeProps(userProps as unknown as Record<string, unknown>) as unknown as FileButtonProps;
+
+  // `children`, `multiple`, `onChange`, `resetRef` are structural — decide
+  // DOM shape, dispatch semantics, and imperative hooks.
+  const children = props.children;
+  const multiple = props.multiple;
+  const onChange = props.onChange;
+  const resetRef = props.resetRef;
 
   const input = document.createElement('input');
   input.type = 'file';
   input.style.display = 'none';
-  if (accept) input.accept = accept;
   if (multiple) input.multiple = true;
-  if (capture) input.setAttribute('capture', typeof capture === 'string' ? capture : '');
-  if (name) input.name = name;
-  if (form) input.setAttribute('form', form);
-  if (disabled) input.disabled = true;
+
+  renderEffect(() => {
+    const accept = props.accept;
+    if (accept) input.accept = accept;
+    else input.removeAttribute('accept');
+  });
+  renderEffect(() => {
+    const capture = props.capture;
+    if (capture) input.setAttribute('capture', typeof capture === 'string' ? capture : '');
+    else input.removeAttribute('capture');
+  });
+  renderEffect(() => {
+    const name = props.name;
+    if (name) input.name = name;
+    else input.removeAttribute('name');
+  });
+  renderEffect(() => {
+    const form = props.form;
+    if (form) input.setAttribute('form', form);
+    else input.removeAttribute('form');
+  });
+  renderEffect(() => { input.disabled = !!props.disabled; });
 
   input.addEventListener('change', () => {
     const files = input.files ? Array.from(input.files) : [];
@@ -25,7 +51,7 @@ export function FileButton(props: FileButtonProps): DocumentFragment {
   });
 
   const open = () => {
-    if (!disabled) input.click();
+    if (!props.disabled) input.click();
   };
 
   if (resetRef) {

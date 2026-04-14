@@ -1,26 +1,28 @@
+import { renderEffect } from '@mikata/reactivity';
+import { _mergeProps } from '@mikata/runtime';
 import { mergeClasses } from '../../utils/class-merge';
 import type { FieldsetProps } from './Fieldset.types';
 import './Fieldset.css';
 
-export function Fieldset(props: FieldsetProps = {}): HTMLFieldSetElement {
-  const {
-    legend,
-    variant = 'default',
-    disabled,
-    classNames,
-    children,
-    class: className,
-    ref,
-  } = props;
+export function Fieldset(userProps: FieldsetProps = {}): HTMLFieldSetElement {
+  const props = _mergeProps(userProps as unknown as Record<string, unknown>) as unknown as FieldsetProps;
+
+  // `legend`, `children` are structural — decide sub-elements.
+  const legend = props.legend;
+  const children = props.children;
 
   const el = document.createElement('fieldset');
-  el.className = mergeClasses('mkt-fieldset', className, classNames?.root);
-  el.dataset.variant = variant;
-  if (disabled) el.disabled = true;
+  renderEffect(() => {
+    el.className = mergeClasses('mkt-fieldset', props.class, props.classNames?.root);
+  });
+  renderEffect(() => { el.dataset.variant = props.variant ?? 'default'; });
+  renderEffect(() => { el.disabled = !!props.disabled; });
 
   if (legend != null) {
     const legendEl = document.createElement('legend');
-    legendEl.className = mergeClasses('mkt-fieldset__legend', classNames?.legend);
+    renderEffect(() => {
+      legendEl.className = mergeClasses('mkt-fieldset__legend', props.classNames?.legend);
+    });
     if (legend instanceof Node) legendEl.appendChild(legend);
     else legendEl.textContent = legend;
     el.appendChild(legendEl);
@@ -31,9 +33,10 @@ export function Fieldset(props: FieldsetProps = {}): HTMLFieldSetElement {
     else el.appendChild(children);
   }
 
+  const ref = props.ref;
   if (ref) {
-    if (typeof ref === 'function') ref(el as any);
-    else (ref as any).current = el;
+    if (typeof ref === 'function') ref(el);
+    else (ref as { current: HTMLFieldSetElement | null }).current = el;
   }
 
   return el;

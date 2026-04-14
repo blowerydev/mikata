@@ -1,4 +1,6 @@
 import { createIcon, Close } from '@mikata/icons';
+import { renderEffect } from '@mikata/reactivity';
+import { _mergeProps } from '@mikata/runtime';
 import { mergeClasses } from '../../utils/class-merge';
 import { uniqueId } from '../../utils/unique-id';
 import { useUILabels } from '../../utils/use-i18n-optional';
@@ -6,48 +8,54 @@ import { InputWrapper } from '../_internal/InputWrapper';
 import type { TagsInputProps } from './TagsInput.types';
 import './TagsInput.css';
 
-export function TagsInput(props: TagsInputProps): HTMLDivElement {
-  const {
-    value,
-    defaultValue = [],
-    placeholder,
-    label,
-    description,
-    error,
-    required,
-    disabled,
-    size = 'md',
-    splitChars = ['Enter', ','],
-    maxTags,
-    allowDuplicates,
-    data,
-    onChange,
-    classNames,
-    class: className,
-    ref,
-  } = props;
+export function TagsInput(userProps: TagsInputProps): HTMLDivElement {
+  const props = _mergeProps(userProps as unknown as Record<string, unknown>) as unknown as TagsInputProps;
 
   const id = uniqueId('tags-input');
+  // `data` presence determines whether a suggestion dropdown exists at all —
+  // read once at setup. `splitChars` captured once for the keydown listener.
+  const data = props.data;
   const listId = data ? `${id}-list` : undefined;
+  const splitChars = props.splitChars ?? ['Enter', ','];
   const labels = useUILabels();
 
-  const tags: string[] = [...(value ?? defaultValue)];
+  const tags: string[] = [...(props.value ?? props.defaultValue ?? [])];
 
   const control = document.createElement('div');
-  control.className = mergeClasses('mkt-tags-input', classNames?.control);
-  control.dataset.size = size;
-  if (disabled) control.dataset.disabled = '';
-  if (error) control.dataset.invalid = '';
+  renderEffect(() => {
+    control.className = mergeClasses('mkt-tags-input', props.classNames?.control);
+  });
+  renderEffect(() => { control.dataset.size = props.size ?? 'md'; });
+  renderEffect(() => {
+    if (props.disabled) control.dataset.disabled = '';
+    else delete control.dataset.disabled;
+  });
+  renderEffect(() => {
+    if (props.error) control.dataset.invalid = '';
+    else delete control.dataset.invalid;
+  });
 
   const input = document.createElement('input');
   input.type = 'text';
   input.id = id;
-  input.className = mergeClasses('mkt-tags-input__input', classNames?.input);
   input.autocomplete = 'off';
-  if (placeholder) input.placeholder = placeholder;
-  if (disabled) input.disabled = true;
-  if (required) input.setAttribute('aria-required', 'true');
-  if (error) input.setAttribute('aria-invalid', 'true');
+  renderEffect(() => {
+    input.className = mergeClasses('mkt-tags-input__input', props.classNames?.input);
+  });
+  renderEffect(() => {
+    const p = props.placeholder;
+    if (p) input.placeholder = p;
+    else input.removeAttribute('placeholder');
+  });
+  renderEffect(() => { input.disabled = !!props.disabled; });
+  renderEffect(() => {
+    if (props.required) input.setAttribute('aria-required', 'true');
+    else input.removeAttribute('aria-required');
+  });
+  renderEffect(() => {
+    if (props.error) input.setAttribute('aria-invalid', 'true');
+    else input.removeAttribute('aria-invalid');
+  });
   if (listId) {
     input.setAttribute('role', 'combobox');
     input.setAttribute('aria-autocomplete', 'list');
@@ -55,7 +63,7 @@ export function TagsInput(props: TagsInputProps): HTMLDivElement {
     input.setAttribute('aria-controls', listId);
   }
 
-  const emit = () => onChange?.(tags.slice());
+  const emit = () => props.onChange?.(tags.slice());
 
   const removeTag = (i: number) => {
     tags.splice(i, 1);
@@ -66,7 +74,8 @@ export function TagsInput(props: TagsInputProps): HTMLDivElement {
   const addTag = (raw: string) => {
     const v = raw.trim();
     if (!v) return;
-    if (!allowDuplicates && tags.includes(v)) return;
+    if (!props.allowDuplicates && tags.includes(v)) return;
+    const maxTags = props.maxTags;
     if (maxTags != null && tags.length >= maxTags) return;
     tags.push(v);
     input.value = '';
@@ -80,16 +89,16 @@ export function TagsInput(props: TagsInputProps): HTMLDivElement {
     const frag = document.createDocumentFragment();
     tags.forEach((t, i) => {
       const pill = document.createElement('span');
-      pill.className = mergeClasses('mkt-tags-input__pill', classNames?.pill);
+      pill.className = mergeClasses('mkt-tags-input__pill', props.classNames?.pill);
       pill.textContent = t;
       const rm = document.createElement('button');
       rm.type = 'button';
-      rm.className = mergeClasses('mkt-tags-input__pill-remove', classNames?.pillRemove);
+      rm.className = mergeClasses('mkt-tags-input__pill-remove', props.classNames?.pillRemove);
       rm.setAttribute('aria-label', `${labels.remove}: ${t}`);
       rm.appendChild(createIcon(Close, { size: 10, strokeWidth: 1.5 }));
       rm.addEventListener('mousedown', (e) => {
         e.preventDefault();
-        if (disabled) return;
+        if (props.disabled) return;
         removeTag(i);
       });
       pill.appendChild(rm);
@@ -98,7 +107,6 @@ export function TagsInput(props: TagsInputProps): HTMLDivElement {
     control.insertBefore(frag, input);
   };
 
-  // Optional dropdown for suggestions
   let dropdown: HTMLUListElement | undefined;
   let activeIdx = -1;
   let filtered: string[] = [];
@@ -122,7 +130,7 @@ export function TagsInput(props: TagsInputProps): HTMLDivElement {
     if (!dropdown || !data) return;
     const q = input.value.trim().toLowerCase();
     filtered = data.filter((d) => {
-      if (!allowDuplicates && tags.includes(d)) return false;
+      if (!props.allowDuplicates && tags.includes(d)) return false;
       return q ? d.toLowerCase().includes(q) : true;
     });
     dropdown.textContent = '';
@@ -197,19 +205,20 @@ export function TagsInput(props: TagsInputProps): HTMLDivElement {
 
   renderPills();
 
+  const ref = props.ref;
   if (ref) {
-    if (typeof ref === 'function') ref(input as any);
-    else (ref as any).current = input;
+    if (typeof ref === 'function') ref(input as unknown as HTMLElement);
+    else (ref as { current: HTMLInputElement | null }).current = input;
   }
 
   return InputWrapper({
     id,
-    label,
-    description,
-    error,
-    required,
-    class: className,
-    classNames,
+    get label() { return props.label; },
+    get description() { return props.description; },
+    get error() { return props.error; },
+    get required() { return props.required; },
+    get class() { return props.class; },
+    get classNames() { return props.classNames; },
     children: wrapper,
   });
 }

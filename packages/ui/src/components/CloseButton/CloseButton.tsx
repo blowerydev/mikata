@@ -1,4 +1,5 @@
 import { createIcon, Close } from '@mikata/icons';
+import { _mergeProps } from '@mikata/runtime';
 import { mergeClasses } from '../../utils/class-merge';
 import { useComponentDefaults } from '../../theme/component-defaults';
 import { useUILabels } from '../../utils/use-i18n-optional';
@@ -7,31 +8,23 @@ import type { CloseButtonProps } from './CloseButton.types';
 import './CloseButton.css';
 
 export function CloseButton(userProps: CloseButtonProps = {}): HTMLButtonElement {
-  const props = { ...useComponentDefaults<CloseButtonProps>('CloseButton'), ...userProps };
-  const {
-    size = 'md',
-    disabled,
-    onClick,
-    class: className,
-    ref,
-  } = props;
+  const props = _mergeProps(
+    useComponentDefaults<CloseButtonProps>('CloseButton') as unknown as Record<string, unknown>,
+    userProps as unknown as Record<string, unknown>,
+  ) as unknown as CloseButtonProps;
 
   const labels = useUILabels();
-  const ariaLabel = props['aria-label'] ?? labels.close;
-
   const svg = createIcon(Close, { strokeWidth: 1.5 });
 
-  const el = ActionIcon({
+  return ActionIcon({
     variant: 'subtle',
     color: 'gray',
-    size,
-    disabled,
-    onClick,
-    'aria-label': ariaLabel,
-    class: mergeClasses('mkt-close-button', className),
-    ref,
+    get size() { return props.size ?? 'md'; },
+    get disabled() { return props.disabled; },
+    get onClick() { return props.onClick; },
+    get ['aria-label']() { return props['aria-label'] ?? labels.close; },
+    get class() { return mergeClasses('mkt-close-button', props.class); },
+    ref: props.ref,
     children: svg,
   });
-
-  return el;
 }

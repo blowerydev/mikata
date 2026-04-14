@@ -1,43 +1,42 @@
-import { onCleanup } from '@mikata/reactivity';
+import { onCleanup, renderEffect } from '@mikata/reactivity';
+import { _mergeProps } from '@mikata/runtime';
 import { mergeClasses } from '../../utils/class-merge';
 import { uniqueId } from '../../utils/unique-id';
 import type { TooltipProps } from './Tooltip.types';
 import './Tooltip.css';
 
-export function Tooltip(props: TooltipProps): HTMLSpanElement {
-  const {
-    label,
-    position = 'top',
-    delay = 300,
-    disabled,
-    children,
-    class: className,
-    ref,
-  } = props;
+export function Tooltip(userProps: TooltipProps): HTMLSpanElement {
+  const props = _mergeProps(userProps as unknown as Record<string, unknown>) as unknown as TooltipProps;
+
+  // `children` is structural. `label`, `position`, `delay`, `disabled` are
+  // read each time the tooltip is shown so they stay current.
+  const children = props.children;
 
   const tooltipId = uniqueId('tooltip');
   let timer: ReturnType<typeof setTimeout> | null = null;
   let tooltipEl: HTMLDivElement | null = null;
 
   const wrapper = document.createElement('span');
-  wrapper.className = mergeClasses('mkt-tooltip-wrapper', className);
+  renderEffect(() => {
+    wrapper.className = mergeClasses('mkt-tooltip-wrapper', props.class);
+  });
   wrapper.appendChild(children);
 
   function show(): void {
-    if (disabled || tooltipEl) return;
+    if (props.disabled || tooltipEl) return;
 
     timer = setTimeout(() => {
       tooltipEl = document.createElement('div');
       tooltipEl.className = 'mkt-tooltip';
       tooltipEl.id = tooltipId;
       tooltipEl.setAttribute('role', 'tooltip');
-      tooltipEl.setAttribute('data-position', position);
-      tooltipEl.textContent = label;
+      tooltipEl.dataset.position = props.position ?? 'top';
+      tooltipEl.textContent = props.label;
 
       wrapper.appendChild(tooltipEl);
       children instanceof HTMLElement &&
         children.setAttribute('aria-describedby', tooltipId);
-    }, delay);
+    }, props.delay ?? 300);
   }
 
   function hide(): void {
@@ -66,9 +65,10 @@ export function Tooltip(props: TooltipProps): HTMLSpanElement {
     wrapper.removeEventListener('focusout', hide);
   });
 
+  const ref = props.ref;
   if (ref) {
     if (typeof ref === 'function') ref(wrapper);
-    else (ref as any).current = wrapper;
+    else (ref as { current: HTMLSpanElement | null }).current = wrapper;
   }
 
   return wrapper;

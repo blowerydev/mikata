@@ -7,7 +7,10 @@
     "title": "UI Component Library",
     "description": "These components are from @mikata/ui - fully themed, accessible, and composable.",
     "darkMode": "Dark mode",
-    "language": "Language"
+    "language": "Language",
+    "direction": "Direction",
+    "ltr": "LTR",
+    "rtl": "RTL"
   },
   "badges": {
     "title": "Badges",
@@ -102,7 +105,13 @@
     "disabled": "Disabled",
     "code": "Code",
     "codeContent": "Use the Tabs component with an items array defining value, label, and content.",
-    "pillsVariant": "Pills variant:"
+    "pillsVariant": "Pills variant:",
+    "reactLabel": "React",
+    "vueLabel": "Vue",
+    "solidLabel": "Solid",
+    "reactContent": "React content",
+    "vueContent": "Vue content",
+    "solidContent": "Solid content"
   },
   "accordion": {
     "title": "Accordion",
@@ -166,7 +175,10 @@
   },
   "counter": {
     "title": "Counter",
-    "reset": "Reset"
+    "reset": "Reset",
+    "display": "Count: {{count}} | Doubled: {{doubled}}",
+    "positive": "positive",
+    "negative": "negative"
   },
   "formBindings": {
     "title": "Form Bindings (model)",
@@ -177,7 +189,11 @@
     "color": "Color: ",
     "focusName": "Focus name input",
     "agreed": "agreed",
-    "notAgreed": "not agreed"
+    "notAgreed": "not agreed",
+    "colorBlue": "blue",
+    "colorRed": "red",
+    "colorGreen": "green",
+    "statusLine": "{{name}}, age {{age}}, {{status}}"
   },
   "todo": {
     "title": "Todo List",
@@ -190,7 +206,10 @@
     "title": "Conditional Rendering",
     "loading": "Loading...",
     "success": "Success! Data loaded.",
-    "error": "Error! Something went wrong."
+    "error": "Error! Something went wrong.",
+    "btnLoading": "loading",
+    "btnSuccess": "success",
+    "btnError": "error"
   },
   "portal": {
     "title": "Portal (Modal)",
@@ -281,7 +300,24 @@
     "overlayToggle": "Show overlay",
     "overlayContent": "Click anywhere to dismiss",
     "rangeTitle": "Range slider",
-    "rangeLabel": "Price range"
+    "rangeLabel": "Price range",
+    "listFirst": "First item",
+    "listSecond": "Second item",
+    "listThird": "Third item",
+    "aspect169": "16:9",
+    "primitiveInputPlaceholder": "Primitive Input",
+    "stepperPrev": "Prev",
+    "stepperNext": "Next",
+    "treeButton": "Button",
+    "treeInput": "Input",
+    "collapseShow": "Show details",
+    "collapseHide": "Hide details",
+    "collapseContent": "This content is animated via Collapse.",
+    "scrollLine": "Line {{n}} - scroll to see custom scrollbars.",
+    "burgerAria": "Toggle navigation",
+    "contentBehindOverlay": "Content behind overlay",
+    "overlayHidden": "Hidden content under overlay.",
+    "overlayDim": "Click the button below to dim."
   },
   "icons": {
     "title": "Icons (@mikata/icons)",
@@ -326,6 +362,52 @@
     "dirty": "dirty",
     "valid": "valid",
     "yes": "yes",
-    "no": "no"
+    "no": "no",
+    "emailPlaceholder": "you@example.com",
+    "removeItemAria": "Remove item"
+  },
+  "dates": {
+    "title": "Dates & Time",
+    "description": "Calendar, DatePicker, Month/YearPicker, DateInput, TimeInput - all powered by Intl with zero date-library deps.",
+    "calendarInline": "Calendar (inline)",
+    "variantDefault": "Default",
+    "variantMultiple": "Multiple",
+    "variantRange": "Range",
+    "datePickerTitle": "DatePicker (drills day → month → year)",
+    "monthYearPicker": "MonthPicker / YearPicker",
+    "dateInputSection": "DateInput / DatePickerInput",
+    "dateInputTypeable": "DateInput (typeable)",
+    "dateInputPlaceholder": "YYYY-MM-DD",
+    "datePickerInput": "DatePickerInput",
+    "pickDate": "Pick a date",
+    "rangeLabel": "Range",
+    "pickRange": "Pick a range",
+    "monthPickerInput": "MonthPickerInput",
+    "pickMonth": "Pick a month",
+    "yearPickerInput": "YearPickerInput",
+    "pickYear": "Pick a year",
+    "timeInput": "TimeInput",
+    "virtualizationTitle": "Virtualization",
+    "virtualizationDesc": "VirtualList renders only the items in view. Scroll the list below - only ~12 nodes exist in the DOM at any time despite 10,000 items.",
+    "variableSize": "Variable-size items",
+    "virtualItem": "Item {{n}} (size {{size}}px)"
+  },
+  "theming": {
+    "title": "Theming demo",
+    "description": "Custom palettes + reactive primaryColor / primaryShade. Changes flow through CSS variables without remounting the provider.",
+    "primaryColorLabel": "primaryColor",
+    "primaryShadeLabel": "primaryShade",
+    "brandViolet": "brand (violet)",
+    "tealCustom": "teal (custom)",
+    "primaryBuiltIn": "primary (built-in)",
+    "buttonsTitle": "Buttons",
+    "buttonPrimary": "Primary",
+    "buttonBrand": "Brand",
+    "buttonTeal": "Teal",
+    "buttonRed": "Red",
+    "buttonFilled": "Filled",
+    "badgesAlertsTitle": "Badges & Alerts with custom palettes",
+    "brandPaletteTitle": "Brand palette",
+    "brandPaletteMessage": "This Alert uses the custom brand palette via the runtime-emitted rules."
   }
 }

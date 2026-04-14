@@ -1,5 +1,5 @@
-import { signal, effect } from '@mikata/reactivity';
-import { createRef } from '@mikata/runtime';
+import { signal, effect, renderEffect } from '@mikata/reactivity';
+import { _mergeProps, createRef } from '@mikata/runtime';
 import { mergeClasses } from '../../utils/class-merge';
 import { onClickOutside } from '../../utils/on-click-outside';
 import { useComponentDefaults } from '../../theme/component-defaults';
@@ -11,30 +11,18 @@ import type { DateInputProps } from './DateInput.types';
 import './DateInput.css';
 
 export function DateInput(userProps: DateInputProps = {}): HTMLDivElement {
-  const props = { ...useComponentDefaults<DateInputProps>('DateInput'), ...userProps };
-  const {
-    value,
-    defaultValue = null,
-    label,
-    description,
-    error,
-    required,
-    placeholder,
-    disabled,
-    minDate,
-    maxDate,
-    excludeDate,
-    locale = typeof navigator !== 'undefined' ? navigator.language : 'en-US',
-    firstDayOfWeek,
-    closeOnChange = true,
-    valueFormat,
-    clearable = true,
-    size = 'md',
-    onChange,
-    classNames,
-    class: className,
-    ref,
-  } = props;
+  const props = _mergeProps(
+    useComponentDefaults<DateInputProps>('DateInput') as unknown as Record<string, unknown>,
+    userProps as unknown as Record<string, unknown>,
+  ) as unknown as DateInputProps;
+
+  const value = props.value;
+  const defaultValue = props.defaultValue ?? null;
+  const locale = props.locale ?? (typeof navigator !== 'undefined' ? navigator.language : 'en-US');
+  const firstDayOfWeek = props.firstDayOfWeek;
+  const closeOnChange = props.closeOnChange ?? true;
+  const clearable = props.clearable ?? true;
+  const onChange = props.onChange;
 
   const id = uniqueId('date-input');
   const [selected, setSelected] = signal<Date | null>(value !== undefined ? value : defaultValue);
@@ -42,19 +30,24 @@ export function DateInput(userProps: DateInputProps = {}): HTMLDivElement {
 
   function displayValue(d: Date | null): string {
     if (!d) return '';
-    return formatDisplayDate(d, locale, valueFormat);
+    return formatDisplayDate(d, locale, props.valueFormat);
   }
 
   // Input
   const input = document.createElement('input');
   input.type = 'text';
   input.id = id;
-  input.className = mergeClasses('mkt-text-input__input', classNames?.input);
-  input.dataset.size = size;
+  renderEffect(() => {
+    input.className = mergeClasses('mkt-text-input__input', props.classNames?.input);
+  });
+  renderEffect(() => { input.dataset.size = props.size ?? 'md'; });
   input.autocomplete = 'off';
-  if (placeholder) input.placeholder = placeholder;
-  if (disabled) input.disabled = true;
-  if (required) input.setAttribute('aria-required', 'true');
+  renderEffect(() => { input.placeholder = props.placeholder ?? ''; });
+  renderEffect(() => { input.disabled = !!props.disabled; });
+  renderEffect(() => {
+    if (props.required) input.setAttribute('aria-required', 'true');
+    else input.removeAttribute('aria-required');
+  });
 
   effect(() => { input.value = displayValue(selected()); });
 
@@ -79,16 +72,18 @@ export function DateInput(userProps: DateInputProps = {}): HTMLDivElement {
       input.value = displayValue(selected());
       return;
     }
+    const minDate = props.minDate;
+    const maxDate = props.maxDate;
     if (minDate && isBefore(parsed, minDate)) parsed = minDate;
     if (maxDate && isAfter(parsed, maxDate)) parsed = maxDate;
-    if (excludeDate?.(parsed)) { input.value = displayValue(selected()); return; }
+    if (props.excludeDate?.(parsed)) { input.value = displayValue(selected()); return; }
     setSelected(parsed);
     onChange?.(parsed);
     // Normalize display to the canonical format.
     input.value = displayValue(parsed);
   }
 
-  input.addEventListener('focus', () => { if (!disabled) setOpen(true); });
+  input.addEventListener('focus', () => { if (!props.disabled) setOpen(true); });
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') { setOpen(false); input.blur(); }
     else if (e.key === 'Enter') { commitTyped(); setOpen(false); }
@@ -101,19 +96,24 @@ export function DateInput(userProps: DateInputProps = {}): HTMLDivElement {
 
   // Dropdown containing the calendar
   const dropdown = document.createElement('div');
-  dropdown.className = mergeClasses('mkt-date-input__dropdown', classNames?.dropdown);
+  renderEffect(() => {
+    dropdown.className = mergeClasses('mkt-date-input__dropdown', props.classNames?.dropdown);
+  });
   dropdown.hidden = true;
 
   const picker = DatePicker({
-    value: selected(),
-    date: selected() ?? undefined,
-    minDate,
-    maxDate,
-    excludeDate,
+    get value() { return selected(); },
+    get date() { return selected() ?? undefined; },
+    get minDate() { return props.minDate; },
+    get maxDate() { return props.maxDate; },
+    get excludeDate() { return props.excludeDate; },
     locale,
     firstDayOfWeek,
-    size,
-    classNames: classNames?.calendar ? { root: classNames.calendar as string } : undefined,
+    get size() { return props.size ?? 'md'; },
+    get classNames() {
+      const cal = props.classNames?.calendar;
+      return cal ? { root: cal as string } : undefined;
+    },
     onChange: (v) => {
       const d = v as Date;
       setSelected(d);
@@ -125,7 +125,9 @@ export function DateInput(userProps: DateInputProps = {}): HTMLDivElement {
 
   // Container wrapping input + dropdown for positioning.
   const container = document.createElement('div');
-  container.className = mergeClasses('mkt-text-input', 'mkt-date-input', classNames?.root);
+  renderEffect(() => {
+    container.className = mergeClasses('mkt-text-input', 'mkt-date-input', props.classNames?.root);
+  });
   container.appendChild(input);
   container.appendChild(dropdown);
 
@@ -135,6 +137,7 @@ export function DateInput(userProps: DateInputProps = {}): HTMLDivElement {
   containerRef(container);
   onClickOutside(containerRef, () => setOpen(false));
 
+  const ref = props.ref;
   if (ref) {
     if (typeof ref === 'function') ref(container as unknown as HTMLInputElement);
     else (ref as { current: HTMLElement | null }).current = container;
@@ -142,13 +145,13 @@ export function DateInput(userProps: DateInputProps = {}): HTMLDivElement {
 
   return InputWrapper({
     id,
-    label,
-    description,
-    error,
-    required,
-    size,
-    class: className,
-    classNames,
+    get label() { return props.label; },
+    get description() { return props.description; },
+    get error() { return props.error; },
+    get required() { return props.required; },
+    get size() { return props.size ?? 'md'; },
+    get class() { return props.class; },
+    get classNames() { return props.classNames; },
     children: container,
   });
 }

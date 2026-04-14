@@ -1,51 +1,55 @@
+import { renderEffect } from '@mikata/reactivity';
+import { _mergeProps } from '@mikata/runtime';
 import { mergeClasses } from '../../utils/class-merge';
 import type { SkeletonProps } from './Skeleton.types';
 import './Skeleton.css';
 
-export function Skeleton(props: SkeletonProps = {}): HTMLElement {
-  const {
-    height,
-    width,
-    radius = 'md',
-    circle,
-    visible = true,
-    children,
-    class: className,
-    ref,
-  } = props;
+export function Skeleton(userProps: SkeletonProps = {}): HTMLElement {
+  const props = _mergeProps(userProps as unknown as Record<string, unknown>) as unknown as SkeletonProps;
 
-  // If not visible, return children directly (or empty span)
+  // `visible`, `children`, `circle` are structural — they decide whether the
+  // skeleton or the children are shown, and whether the shape is circular.
+  const visible = props.visible ?? true;
+  const children = props.children;
+  const circle = props.circle;
+
   if (!visible && children) {
+    const ref = props.ref;
     if (ref) {
-      if (typeof ref === 'function') {
-        ref(children as HTMLElement);
-      } else {
-        (ref as any).current = children;
-      }
+      if (typeof ref === 'function') ref(children as HTMLElement);
+      else (ref as { current: unknown }).current = children;
     }
     return children as HTMLElement;
   }
 
   const el = document.createElement('div');
-  el.className = mergeClasses('mkt-skeleton', className);
+  renderEffect(() => {
+    el.className = mergeClasses('mkt-skeleton', props.class);
+  });
 
   if (circle) {
-    const size = width || height || '40px';
-    el.style.width = size;
-    el.style.height = size;
+    renderEffect(() => {
+      const size = props.width || props.height || '40px';
+      el.style.width = size;
+      el.style.height = size;
+    });
     el.dataset.radius = 'full';
   } else {
-    if (height) el.style.height = height;
-    if (width) el.style.width = width;
-    el.dataset.radius = radius;
+    renderEffect(() => {
+      if (props.height) el.style.height = props.height;
+      else el.style.height = '';
+    });
+    renderEffect(() => {
+      if (props.width) el.style.width = props.width;
+      else el.style.width = '';
+    });
+    renderEffect(() => { el.dataset.radius = props.radius ?? 'md'; });
   }
 
+  const ref = props.ref;
   if (ref) {
-    if (typeof ref === 'function') {
-      ref(el);
-    } else {
-      (ref as any).current = el;
-    }
+    if (typeof ref === 'function') ref(el);
+    else (ref as { current: HTMLElement | null }).current = el;
   }
 
   return el;
