@@ -204,8 +204,20 @@ export function each<T>(
     if (entries.length === 0) {
       const fresh: ItemEntry[] = new Array(items.length);
       const frag = document.createDocumentFragment();
+      const seenKeys = __DEV__ ? new Set<unknown>() : null;
       for (let i = 0; i < items.length; i++) {
         const item = items[i];
+        if (__DEV__) {
+          const key = keyFn(item);
+          if (seenKeys!.has(key)) {
+            console.warn(
+              `[mikata] Duplicate key "${String(key)}" in each(). ` +
+              `Duplicate keys will cause rendering issues. ` +
+              `Provide a unique key function via the options argument.`
+            );
+          }
+          seenKeys!.add(key);
+        }
         const idx = i;
         let node: Node;
         const scope = createScope(() => {
