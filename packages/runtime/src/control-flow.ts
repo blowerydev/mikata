@@ -199,6 +199,26 @@ export function each<T>(
       return;
     }
 
+    // Fast path: fresh list. Skip LIS bookkeeping, batch DOM writes into one
+    // DocumentFragment insert. Cuts 10k insertBefore calls → 1.
+    if (entries.length === 0) {
+      const fresh: ItemEntry[] = new Array(items.length);
+      const frag = document.createDocumentFragment();
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        const idx = i;
+        let node: Node;
+        const scope = createScope(() => {
+          node = render(item, () => idx);
+        });
+        fresh[i] = { node: node!, scope, item };
+        frag.appendChild(node!);
+      }
+      parent.insertBefore(frag, marker);
+      entries = fresh;
+      return;
+    }
+
     // Build old-key -> oldIndex map so we can track which new positions
     // correspond to which old positions (needed for LIS-based move minimization).
     const oldKeyToIndex = new Map<unknown, number>();
