@@ -30,8 +30,13 @@ declare const __DEV__: boolean;
 export function show<T>(
   when: () => T | null | undefined | false | 0 | '',
   render: (value: NonNullable<T>) => Node,
-  fallback?: () => Node
+  fallback?: () => Node,
+  options?: { keepAlive?: boolean },
 ): Node {
+  if (options?.keepAlive) {
+    return showKeepAlive(when, render, fallback);
+  }
+
   let currentNode: Node = document.createComment('show');
   let currentScope: Scope | null = null;
   let currentBranch: 'render' | 'fallback' | 'none' = 'none';
@@ -74,6 +79,58 @@ export function show<T>(
   });
 
   return currentNode;
+}
+
+/**
+ * keepAlive mode: render both branches on first visit, toggle `display: none`
+ * on swap instead of unmounting. Effects inside each branch stay alive, so
+ * input focus, scroll position, and in-flight queries persist across flips.
+ *
+ * Each branch is wrapped in a `display: contents` div so toggling visibility
+ * doesn't introduce a layout box. Both wrappers stay in the DOM once created.
+ * `render(value)` is called the first time `when` goes truthy; subsequent
+ * truthy values do NOT re-run it - callers should read signals inside if
+ * they want per-value updates.
+ */
+function showKeepAlive<T>(
+  when: () => T | null | undefined | false | 0 | '',
+  render: (value: NonNullable<T>) => Node,
+  fallback?: () => Node,
+): Node {
+  const container = document.createDocumentFragment();
+  const marker = document.createComment('show:keepAlive');
+  container.appendChild(marker);
+
+  let renderedWrapper: HTMLDivElement | null = null;
+  let fallbackWrapper: HTMLDivElement | null = null;
+
+  renderEffect(() => {
+    const value = when();
+    const parent = marker.parentNode;
+    if (!parent) return;
+
+    if (value) {
+      if (!renderedWrapper) {
+        renderedWrapper = document.createElement('div');
+        renderedWrapper.style.display = 'contents';
+        renderedWrapper.appendChild(render(value as NonNullable<T>));
+        parent.insertBefore(renderedWrapper, marker);
+      }
+      renderedWrapper.style.display = 'contents';
+      if (fallbackWrapper) fallbackWrapper.style.display = 'none';
+    } else {
+      if (fallback && !fallbackWrapper) {
+        fallbackWrapper = document.createElement('div');
+        fallbackWrapper.style.display = 'contents';
+        fallbackWrapper.appendChild(fallback());
+        parent.insertBefore(fallbackWrapper, marker);
+      }
+      if (renderedWrapper) renderedWrapper.style.display = 'none';
+      if (fallbackWrapper) fallbackWrapper.style.display = 'contents';
+    }
+  });
+
+  return container;
 }
 
 /**

@@ -236,7 +236,7 @@ function Counter() {
 }
 ```
 
-### show(when, render, fallback?) → Node
+### show(when, render, fallback?, options?) → Node
 
 Conditional rendering. `when` is a reactive getter. `render` receives the truthy value (enables type narrowing). `fallback` is optional.
 
@@ -249,6 +249,12 @@ show(
 ```
 
 This is NOT a component like React's ternary or SolidJS's `<Show>`. It's a function that returns a Node.
+
+Pass `{ keepAlive: true }` to hide inactive branches with `display: none` instead of unmounting them. Effects, input focus, scroll position, and in-flight queries all survive flips - useful for tab panels, view modes, and modal bodies. The render callback only runs the first time each branch becomes active, so read signals inside it if you need per-value updates.
+
+```tsx
+show(() => activeTab() === 'preview', Preview, Code, { keepAlive: true })
+```
 
 ### each(list, render, fallback?, options?) → Node
 
@@ -285,6 +291,20 @@ switchMatch(
   }
 )
 ```
+
+### createDerivedSignal(getter, fallback) → ReadSignal
+
+Mirror a reactive prop read into a `ReadSignal` so downstream code that destructures (or otherwise reads once at setup) stays current. Solves the "setup-once trap" without rewriting every consumer.
+
+```tsx
+function TextInput(props: { label?: string }) {
+  const label = createDerivedSignal(() => props.label, '');
+  // label() always reflects the current prop - even after destructure/pass-through
+  return InputWrapper({ ...props, label: label() });
+}
+```
+
+The fallback is used whenever the getter returns `null` or `undefined`. Functionally equivalent to `computed(() => getter() ?? fallback)` - the named helper just makes the intent obvious at call sites.
 
 ### createContext(defaultValue?) → Context
 
@@ -437,6 +457,28 @@ Behavior:
 - `preload()` starts the import without rendering - useful for prefetching on hover/route transitions
 - If the component is removed from the DOM before loading completes, the loaded component is not inserted
 - Works with `show()`, `each()`, and all other control flow
+
+### Suspense - coordinate async loading
+
+Wait for every async query created inside `children` to resolve once before showing them. While anything is loading, renders `fallback`. Opt in per-query with `createQuery({ suspend: true })` (from `@mikata/store`); non-suspending queries are ignored by the boundary.
+
+```tsx
+<Suspense fallback={<Spinner />}>
+  {() => (
+    <>
+      <UserProfile />
+      <UserPosts />
+    </>
+  )}
+</Suspense>
+```
+
+Key points:
+- `children` is a **factory** (`() => Node | Node[]`) - not inline JSX. Components must run inside the boundary's scope so their queries can register; a bare `<UserProfile />` would evaluate outside.
+- `fallback` accepts a `Node` or a factory - use a factory if the fallback itself creates effects.
+- **Sticky**: once the boundary has shown its children, it never reverts to the fallback. Later refetches or new queries don't re-trigger it - use each query's `isFetching` for per-query spinners.
+- Nesting works: inner boundaries catch their own queries; outer boundaries only see what their direct children create.
+- `Suspense` + `ErrorBoundary` compose: wrap Suspense in an ErrorBoundary to catch query rejections.
 
 ### CSS class and style syntax
 

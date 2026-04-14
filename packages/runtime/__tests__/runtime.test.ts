@@ -16,6 +16,7 @@ import {
   provide,
   inject,
   onMount,
+  createDerivedSignal,
 } from '../src/index';
 
 describe('DOM helpers', () => {
@@ -522,5 +523,101 @@ describe('onMount', () => {
     // onMount uses queueMicrotask
     await new Promise((r) => queueMicrotask(r));
     expect(events).toEqual(['setup', 'mounted']);
+  });
+});
+
+describe('createDerivedSignal', () => {
+  it('mirrors a getter so destructured reads stay current', () => {
+    const [name, setName] = signal<string | undefined>('Alice');
+    const mirrored = createDerivedSignal(() => name(), 'default');
+
+    expect(mirrored()).toBe('Alice');
+    setName('Bob');
+    flushSync();
+    expect(mirrored()).toBe('Bob');
+  });
+
+  it('falls back when the getter returns null or undefined', () => {
+    const [value, setValue] = signal<string | null | undefined>(undefined);
+    const mirrored = createDerivedSignal(() => value(), 'fallback');
+
+    expect(mirrored()).toBe('fallback');
+    setValue('real');
+    flushSync();
+    expect(mirrored()).toBe('real');
+    setValue(null);
+    flushSync();
+    expect(mirrored()).toBe('fallback');
+  });
+});
+
+describe('show() keepAlive', () => {
+  it('keeps both branches in the DOM and toggles visibility', () => {
+    const [on, setOn] = signal(false);
+    const container = _createElement('div');
+
+    const node = show(
+      () => on(),
+      () => {
+        const el = _createElement('span');
+        el.textContent = 'visible';
+        return el;
+      },
+      () => {
+        const el = _createElement('span');
+        el.textContent = 'fallback';
+        return el;
+      },
+      { keepAlive: true },
+    );
+    container.appendChild(node);
+    flushSync();
+
+    // Falsy start: fallback rendered, no rendered branch yet.
+    expect(container.textContent).toContain('fallback');
+    expect(container.querySelectorAll('div').length).toBe(1);
+
+    setOn(true);
+    flushSync();
+    // Both wrappers now exist; rendered is visible, fallback is hidden.
+    const wrappers = container.querySelectorAll('div');
+    expect(wrappers.length).toBe(2);
+    const visibleTexts = Array.from(wrappers)
+      .filter((w) => (w as HTMLElement).style.display !== 'none')
+      .map((w) => w.textContent);
+    expect(visibleTexts).toEqual(['visible']);
+
+    setOn(false);
+    flushSync();
+    const nowVisible = Array.from(container.querySelectorAll('div'))
+      .filter((w) => (w as HTMLElement).style.display !== 'none')
+      .map((w) => w.textContent);
+    expect(nowVisible).toEqual(['fallback']);
+  });
+
+  it('does not re-run render() when the truthy value changes', () => {
+    const [count, setCount] = signal(1);
+    const calls: number[] = [];
+    const container = _createElement('div');
+
+    const node = show(
+      () => count(),
+      (v) => {
+        calls.push(v);
+        const el = _createElement('span');
+        el.textContent = `v=${v}`;
+        return el;
+      },
+      undefined,
+      { keepAlive: true },
+    );
+    container.appendChild(node);
+    flushSync();
+    expect(calls).toEqual([1]);
+
+    setCount(2);
+    flushSync();
+    // keepAlive renders once; users should use signals inside for updates.
+    expect(calls).toEqual([1]);
   });
 });

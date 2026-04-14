@@ -22,6 +22,9 @@ export type { Ref } from './component';
 // Control flow
 export { show, each, switchMatch, Dynamic } from './control-flow';
 
+// Prop helpers
+export { createDerivedSignal } from './derived';
+
 // Transitions
 export { transition, transitionGroup } from './transition';
 export type { TransitionOptions } from './transition';

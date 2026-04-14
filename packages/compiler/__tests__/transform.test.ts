@@ -101,4 +101,26 @@ describe('JSX transform', () => {
     expect(output).toContain('"Count: "');
     expect(output).toContain('" done"');
   });
+
+  it('auto-labels signal() with its destructured name', () => {
+    const output = transform(`const [count, setCount] = signal(0);`);
+    expect(output).toContain('signal(0, "count")');
+  });
+
+  it('auto-labels computed() with its binding name', () => {
+    const output = transform(`const doubled = computed(() => count() * 2);`);
+    expect(output).toContain('"doubled"');
+  });
+
+  it('does not re-label signal() when a label is already provided', () => {
+    const output = transform(`const [count, setCount] = signal(0, "explicit");`);
+    expect(output).toContain('"explicit"');
+    expect(output).not.toContain('"count"');
+  });
+
+  it('does not re-label computed() when a label is already provided', () => {
+    const output = transform(`const doubled = computed(() => count() * 2, "dbl");`);
+    expect(output).toContain('"dbl"');
+    expect(output).not.toContain('"doubled"');
+  });
 });

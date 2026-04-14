@@ -25,11 +25,13 @@ import type { ESLint, Linter, Rule } from 'eslint';
 import { rulesOfSetup } from './rules/rules-of-setup';
 import { noDestructuredProps } from './rules/no-destructured-props';
 import { noAsyncComponent } from './rules/no-async-component';
+import { requireEffectCleanup } from './rules/require-effect-cleanup';
 
 const rules: Record<string, Rule.RuleModule> = {
   'rules-of-setup': rulesOfSetup,
   'no-destructured-props': noDestructuredProps,
   'no-async-component': noAsyncComponent,
+  'require-effect-cleanup': requireEffectCleanup,
 };
 
 const plugin: ESLint.Plugin = {
@@ -50,6 +52,7 @@ const recommendedFlat: Linter.FlatConfig = {
     '@mikata/rules-of-setup': 'error',
     '@mikata/no-destructured-props': 'error',
     '@mikata/no-async-component': 'error',
+    '@mikata/require-effect-cleanup': 'error',
   },
 };
 

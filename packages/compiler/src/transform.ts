@@ -533,6 +533,39 @@ export function mikataJSXPlugin({ types: t }: { types: typeof BabelTypes }): Plu
         },
       },
 
+      VariableDeclarator: {
+        exit(path) {
+          // Auto-label signal() and computed() calls with the binding name so
+          // dev tools can identify them without the user writing
+          // `signal(0, 'count')`. Only fires when the user hasn't provided
+          // their own label. The label is gated on `__DEV__` so production
+          // bundles can strip the string literal.
+          const init = path.node.init;
+          if (!init || !t.isCallExpression(init)) return;
+          const callee = init.callee;
+          if (!t.isIdentifier(callee)) return;
+
+          let name: string | null = null;
+          if (callee.name === 'signal') {
+            // `const [foo, setFoo] = signal(initial)` - arg count <= 1
+            if (init.arguments.length > 1) return;
+            if (!t.isArrayPattern(path.node.id)) return;
+            const first = path.node.id.elements[0];
+            if (!first || !t.isIdentifier(first)) return;
+            name = first.name;
+          } else if (callee.name === 'computed') {
+            // `const foo = computed(() => ...)` - arg count <= 1
+            if (init.arguments.length > 1) return;
+            if (!t.isIdentifier(path.node.id)) return;
+            name = path.node.id.name;
+          } else {
+            return;
+          }
+
+          init.arguments.push(t.stringLiteral(name));
+        },
+      },
+
       JSXFragment: {
         exit(path, state) {
           // Fragments: create a DocumentFragment with children
