@@ -14,12 +14,15 @@ function transform(code: string): string {
 }
 
 describe('JSX transform', () => {
-  it('transforms a static element', () => {
+  it('emits a module-scope _template for a static element', () => {
     const output = transform(`const el = <div class="container">Hello</div>;`);
-    expect(output).toContain('_createElement');
-    expect(output).toContain('"div"');
-    expect(output).toContain('"container"');
-    expect(output).toContain('"Hello"');
+    expect(output).toContain('_template(');
+    // Static string attr and text bake directly into the template HTML
+    // (string-escaped inside the emitted JS source).
+    expect(output).toContain('class=\\"container\\"');
+    expect(output).toContain('Hello');
+    // Per-instantiation: cloneNode(true) off the template.
+    expect(output).toContain('.cloneNode(true)');
   });
 
   it('transforms event handlers to addEventListener', () => {
@@ -52,16 +55,17 @@ describe('JSX transform', () => {
   it('adds runtime imports', () => {
     const output = transform(`const el = <div>Hello</div>;`);
     expect(output).toContain(`from "@mikata/runtime"`);
-    expect(output).toContain('_createElement');
+    expect(output).toContain('_template');
   });
 
-  it('handles children', () => {
+  it('inlines static element children into the template HTML', () => {
     const output = transform(`const el = <ul><li>One</li><li>Two</li></ul>;`);
-    expect(output).toContain('appendChild');
-    expect(output).toContain('"li"');
+    // Whole subtree bakes into one template — no per-child createElement.
+    expect(output).toContain('<ul><li>One</li><li>Two</li></ul>');
+    expect(output).not.toContain('appendChild');
   });
 
-  it('handles dynamic text children', () => {
+  it('handles dynamic text children via _insert', () => {
     const output = transform(`const el = <span>{count()}</span>;`);
     expect(output).toContain('_insert');
     expect(output).toContain('count()');
@@ -72,23 +76,22 @@ describe('JSX transform', () => {
     expect(output).toContain('_createFragment');
   });
 
-  it('handles static props without renderEffect', () => {
+  it('bakes static props into the template without renderEffect', () => {
     const output = transform(`const el = <div id="main">test</div>;`);
-    expect(output).toContain('_setProp');
+    expect(output).toContain('id=\\"main\\"');
     expect(output).not.toContain('renderEffect');
+    expect(output).not.toContain('_setProp');
   });
 
-  it('emits anchor markers for dynamic children followed by siblings', () => {
+  it('emits anchor markers only for non-tail dynamic children', () => {
     const output = transform(
       `const el = <p>Count: {count()} | Doubled: {doubled()}</p>;`
     );
-    // A followed-by-sibling dynamic child must get a marker passed to _insert
-    // so updates preserve position instead of re-appending to the end.
-    expect(output).toContain('createTextNode("")');
-    // The first dynamic child ({count()}) has a following sibling → must have
-    // three args to _insert (element, accessor, marker).
-    expect(output).toMatch(/_insert\([^,]+,\s*\(\)\s*=>\s*count\(\),\s*_m/);
-    // The last dynamic child ({doubled()}) has no sibling → two args.
+    // First dynamic slot has a following sibling → comment marker in template
+    // and _insert takes a marker argument.
+    expect(output).toContain('<!>');
+    expect(output).toMatch(/_insert\([^,]+,\s*\(\)\s*=>\s*count\(\),\s*_el/);
+    // Last dynamic slot needs no marker — _insert takes only two args.
     expect(output).toMatch(/_insert\([^,]+,\s*\(\)\s*=>\s*doubled\(\)\)/);
   });
 
@@ -97,9 +100,19 @@ describe('JSX transform', () => {
       `const el = <p>Count: {count()} done</p>;`
     );
     // Trailing space after "Count:" and surrounding spaces around "done" must
-    // survive so rendered text doesn't squash together.
-    expect(output).toContain('"Count: "');
-    expect(output).toContain('" done"');
+    // survive inside the template HTML so rendered text doesn't squash.
+    expect(output).toContain('Count: ');
+    expect(output).toContain(' done');
+  });
+
+  it('walks via firstChild / nextSibling for wired descendants', () => {
+    const output = transform(
+      `const el = <div><span>static</span><a onClick={h}>click</a></div>;`
+    );
+    // Only the <a> needs wiring; walker reaches it via firstChild.nextSibling.
+    expect(output).toContain('firstChild');
+    expect(output).toContain('nextSibling');
+    expect(output).toContain('addEventListener');
   });
 
   it('auto-labels signal() with its destructured name', () => {

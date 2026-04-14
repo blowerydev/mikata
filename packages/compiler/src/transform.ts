@@ -1,31 +1,58 @@
 /**
  * Babel plugin that transforms JSX into direct DOM operations.
  *
- * Instead of creating virtual DOM nodes, JSX compiles to:
- * - document.createElement / template.cloneNode for elements
- * - _renderEffect() for dynamic text/attributes
- * - addEventListener for events
- * - _createComponent() for component calls
+ * Strategy: each native-element JSX tree compiles to a module-scope
+ * `_template()` that cloneNode(true)s per instantiation. Walk code reaches
+ * the elements that need wiring (events, reactive attrs, dynamic inserts);
+ * fully-static subtrees stay baked into the template HTML and cost nothing
+ * beyond the clone. Components and fragments fall back to `_createComponent`
+ * / `_createFragment` and are inserted via `_insert` against comment markers.
  */
 
 import type { PluginObj, types as BabelTypes } from '@babel/core';
 
-// Runtime import identifiers - these are added as imports to each file
 const RUNTIME_MODULE = '@mikata/runtime';
 const REACTIVITY_MODULE = '@mikata/reactivity';
+
+const VOID_ELEMENTS = new Set([
+  'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input',
+  'link', 'meta', 'source', 'track', 'wbr',
+]);
+
+interface TemplateDecl {
+  name: string;
+  html: string;
+}
 
 interface PluginState {
   runtimeImports: Set<string>;
   reactivityImports: Set<string>;
   templateCount: number;
+  templateDeclarations: TemplateDecl[];
 }
 
+type Plan =
+  | ElementPlan
+  | { kind: 'text'; text: string }
+  | { kind: 'dynamic'; expr: BabelTypes.Expression; reactive: boolean }
+  | { kind: 'node'; expr: BabelTypes.Expression };
+
+interface ElementPlan {
+  kind: 'element';
+  tag: string;
+  bakedAttrs: Array<[string, string]>;
+  deferredOps: DeferredOp[];
+  children: Plan[];
+}
+
+type DeferredOp =
+  | { kind: 'event'; eventName: string; expr: BabelTypes.Expression }
+  | { kind: 'reactive-attr'; name: string; expr: BabelTypes.Expression }
+  | { kind: 'runtime-attr'; name: string; expr: BabelTypes.Expression }
+  | { kind: 'ref'; expr: BabelTypes.Expression }
+  | { kind: 'spread'; expr: BabelTypes.Expression };
+
 export function mikataJSXPlugin({ types: t }: { types: typeof BabelTypes }): PluginObj<PluginState> {
-  /**
-   * Check if an expression is potentially reactive (needs an effect wrapper).
-   * Heuristic: function calls, member expressions, or identifiers that
-   * could be signal getters.
-   */
   function isPotentiallyReactive(node: BabelTypes.Expression): boolean {
     if (t.isCallExpression(node)) return true;
     if (t.isMemberExpression(node)) return true;
@@ -51,36 +78,23 @@ export function mikataJSXPlugin({ types: t }: { types: typeof BabelTypes }): Plu
     if (t.isUnaryExpression(node)) {
       return isPotentiallyReactive(node.argument as BabelTypes.Expression);
     }
-    // Arrow functions / function expressions are not reactive
     if (t.isArrowFunctionExpression(node) || t.isFunctionExpression(node)) return false;
-    // Literals are never reactive
     if (t.isLiteral(node)) return false;
     return false;
   }
 
-  /**
-   * Check if a JSX element name starts with uppercase (component) or
-   * lowercase (native HTML element).
-   */
   function isComponent(
     name: BabelTypes.JSXIdentifier | BabelTypes.JSXMemberExpression | BabelTypes.JSXNamespacedName
   ): boolean {
-    if (t.isJSXIdentifier(name)) {
-      return /^[A-Z]/.test(name.name);
-    }
+    if (t.isJSXIdentifier(name)) return /^[A-Z]/.test(name.name);
     if (t.isJSXMemberExpression(name)) return true;
     return false;
   }
 
-  /**
-   * Convert a JSX element name to a regular expression/identifier.
-   */
   function jsxNameToExpression(
     name: BabelTypes.JSXIdentifier | BabelTypes.JSXMemberExpression | BabelTypes.JSXNamespacedName
   ): BabelTypes.Expression {
-    if (t.isJSXIdentifier(name)) {
-      return t.identifier(name.name);
-    }
+    if (t.isJSXIdentifier(name)) return t.identifier(name.name);
     if (t.isJSXMemberExpression(name)) {
       return t.memberExpression(
         jsxNameToExpression(name.object) as BabelTypes.Expression,
@@ -90,9 +104,6 @@ export function mikataJSXPlugin({ types: t }: { types: typeof BabelTypes }): Plu
     throw new Error('Namespaced JSX names are not supported');
   }
 
-  /**
-   * Extract the value from a JSX attribute value.
-   */
   function getAttrValue(
     value: BabelTypes.JSXAttribute['value']
   ): BabelTypes.Expression {
@@ -105,22 +116,16 @@ export function mikataJSXPlugin({ types: t }: { types: typeof BabelTypes }): Plu
       return value.expression;
     }
     if (t.isJSXElement(value) || t.isJSXFragment(value)) {
-      // Nested JSX - will be transformed by the visitor
+      // Nested JSX in attr position — babel continuation will visit it.
       return value as any;
     }
     return t.identifier('undefined');
   }
 
-  /**
-   * Check if a string is an event handler prop (onClick, onInput, etc.)
-   */
   function isEventProp(name: string): boolean {
     return /^on[A-Z]/.test(name);
   }
 
-  /**
-   * Convert event prop name to DOM event name: onClick -> click
-   */
   function eventName(propName: string): string {
     return propName.slice(2).toLowerCase();
   }
@@ -133,268 +138,330 @@ export function mikataJSXPlugin({ types: t }: { types: typeof BabelTypes }): Plu
     state.reactivityImports.add(name);
   }
 
-  /**
-   * Transform a native HTML element's JSX.
-   */
-  function transformElement(
-    path: any,
+  function escapeHtml(s: string): string {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  function escapeAttr(s: string): string {
+    return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+  }
+
+  // JSX text cleaning per React rules: split on newlines, strip indent from
+  // inner line edges, drop empty lines, join with a space.
+  function cleanJSXText(text: string): string {
+    const lines = text.split(/\r\n|\n|\r/);
+    let result = '';
+    for (let i = 0; i < lines.length; i++) {
+      let line = lines[i];
+      const isFirst = i === 0;
+      const isLast = i === lines.length - 1;
+      if (!isFirst) line = line.replace(/^[ \t]+/, '');
+      if (!isLast) line = line.replace(/[ \t]+$/, '');
+      if (line) {
+        if (result && !isFirst) result += ' ';
+        result += line;
+      }
+    }
+    return result;
+  }
+
+  function buildElementPlan(
+    node: BabelTypes.JSXElement,
     state: PluginState
-  ): BabelTypes.Expression {
-    const node = path.node as BabelTypes.JSXElement;
-    const opening = node.openingElement;
-    const tagName = (opening.name as BabelTypes.JSXIdentifier).name;
+  ): ElementPlan {
+    const tag = (node.openingElement.name as BabelTypes.JSXIdentifier).name;
+    const plan: ElementPlan = {
+      kind: 'element',
+      tag,
+      bakedAttrs: [],
+      deferredOps: [],
+      children: [],
+    };
 
-    addRuntimeImport(state, '_createElement');
-
-    const stmts: BabelTypes.Statement[] = [];
-    const elemId = path.scope.generateUidIdentifier('el');
-
-    // const _el = _createElement("div")
-    stmts.push(
-      t.variableDeclaration('const', [
-        t.variableDeclarator(
-          elemId,
-          t.callExpression(t.identifier('_createElement'), [
-            t.stringLiteral(tagName),
-          ])
-        ),
-      ])
-    );
-
-    // Process attributes
-    for (const attr of opening.attributes) {
+    for (const attr of node.openingElement.attributes) {
       if (t.isJSXSpreadAttribute(attr)) {
-        // Spread: _spread(_el, () => props)
-        addRuntimeImport(state, '_spread');
-        const arg = attr.argument;
-        stmts.push(
-          t.expressionStatement(
-            t.callExpression(t.identifier('_spread'), [
-              elemId,
-              t.arrowFunctionExpression([], arg),
-            ])
-          )
-        );
+        plan.deferredOps.push({ kind: 'spread', expr: attr.argument });
         continue;
       }
-
       const name = (attr as BabelTypes.JSXAttribute).name;
       if (!t.isJSXIdentifier(name)) continue;
       const propName = name.name;
       const value = getAttrValue((attr as BabelTypes.JSXAttribute).value);
 
       if (propName === 'ref') {
-        // ref={myRef} -> myRef(_el)
-        stmts.push(
-          t.expressionStatement(
-            t.callExpression(value, [elemId])
-          )
-        );
-      } else if (isEventProp(propName)) {
-        // onClick={handler} -> _el.addEventListener("click", handler)
-        stmts.push(
-          t.expressionStatement(
-            t.callExpression(
-              t.memberExpression(elemId, t.identifier('addEventListener')),
-              [t.stringLiteral(eventName(propName)), value]
-            )
-          )
-        );
-      } else if (isPotentiallyReactive(value)) {
-        // Dynamic attribute: _renderEffect(() => { _setProp(_el, "class", expr) })
-        addRuntimeImport(state, '_setProp');
-        addReactivityImport(state, 'renderEffect');
-        stmts.push(
-          t.expressionStatement(
-            t.callExpression(t.identifier('renderEffect'), [
-              t.arrowFunctionExpression(
-                [],
-                t.callExpression(t.identifier('_setProp'), [
-                  elemId,
-                  t.stringLiteral(propName),
-                  value,
-                ])
-              ),
-            ])
-          )
-        );
-      } else {
-        // Static attribute: _setProp(_el, "class", "container")
-        addRuntimeImport(state, '_setProp');
-        stmts.push(
-          t.expressionStatement(
-            t.callExpression(t.identifier('_setProp'), [
-              elemId,
-              t.stringLiteral(propName),
-              value,
-            ])
-          )
-        );
+        plan.deferredOps.push({ kind: 'ref', expr: value });
+        continue;
       }
-    }
-
-    // Process children. Clean JSX text per React rules: split on newlines,
-    // strip indent whitespace from inner line edges, drop empty lines, join.
-    function cleanJSXText(text: string): string {
-      const lines = text.split(/\r\n|\n|\r/);
-      let result = '';
-      for (let i = 0; i < lines.length; i++) {
-        let line = lines[i];
-        const isFirst = i === 0;
-        const isLast = i === lines.length - 1;
-        if (!isFirst) line = line.replace(/^[ \t]+/, '');
-        if (!isLast) line = line.replace(/[ \t]+$/, '');
-        if (line) {
-          if (result && !isFirst) result += ' ';
-          result += line;
-        }
+      if (isEventProp(propName)) {
+        plan.deferredOps.push({ kind: 'event', eventName: eventName(propName), expr: value });
+        continue;
       }
-      return result;
+      if (isPotentiallyReactive(value)) {
+        plan.deferredOps.push({ kind: 'reactive-attr', name: propName, expr: value });
+        continue;
+      }
+      // Non-reactive — try to bake into template HTML.
+      if (t.isBooleanLiteral(value)) {
+        if (value.value) plan.bakedAttrs.push([propName, '']);
+        continue;
+      }
+      if (t.isStringLiteral(value)) {
+        plan.bakedAttrs.push([propName, value.value]);
+        continue;
+      }
+      if (t.isNumericLiteral(value)) {
+        plan.bakedAttrs.push([propName, String(value.value)]);
+        continue;
+      }
+      plan.deferredOps.push({ kind: 'runtime-attr', name: propName, expr: value });
     }
-
-    // Determine whether a dynamic child needs an anchor marker. A marker is
-    // required whenever the dynamic child is followed by another child, so
-    // that updates can `insertBefore(marker)` and preserve sibling order.
-    const processedChildren: Array<
-      | { kind: 'text'; text: string }
-      | { kind: 'dynamic'; expr: BabelTypes.Expression }
-      | { kind: 'static-expr'; expr: BabelTypes.Expression }
-      | { kind: 'node'; expr: BabelTypes.Expression }
-    > = [];
 
     for (const child of node.children) {
       if (t.isJSXText(child)) {
         const cleaned = cleanJSXText(child.value);
-        if (cleaned) processedChildren.push({ kind: 'text', text: cleaned });
+        if (cleaned) plan.children.push({ kind: 'text', text: cleaned });
       } else if (t.isJSXExpressionContainer(child)) {
         if (t.isJSXEmptyExpression(child.expression)) continue;
         const expr = child.expression;
-        if (isPotentiallyReactive(expr)) {
-          processedChildren.push({ kind: 'dynamic', expr });
+        if (t.isStringLiteral(expr)) {
+          plan.children.push({ kind: 'text', text: expr.value });
+        } else if (t.isNumericLiteral(expr)) {
+          plan.children.push({ kind: 'text', text: String(expr.value) });
         } else {
-          processedChildren.push({ kind: 'static-expr', expr });
+          plan.children.push({
+            kind: 'dynamic',
+            expr,
+            reactive: isPotentiallyReactive(expr),
+          });
         }
-      } else {
-        processedChildren.push({ kind: 'node', expr: child as any });
+      } else if (t.isJSXElement(child)) {
+        if (isComponent(child.openingElement.name)) {
+          // Component child — treat as opaque Node to insert via marker.
+          const compExpr = transformComponent(child, state);
+          plan.children.push({ kind: 'node', expr: compExpr });
+        } else {
+          plan.children.push(buildElementPlan(child, state));
+        }
+      } else if (t.isJSXFragment(child)) {
+        plan.children.push({ kind: 'node', expr: transformFragment(child, state) });
       }
     }
 
-    for (let i = 0; i < processedChildren.length; i++) {
-      const c = processedChildren[i];
-      const hasFollowingChild = i < processedChildren.length - 1;
-
-      if (c.kind === 'text') {
-        stmts.push(
-          t.expressionStatement(
-            t.callExpression(
-              t.memberExpression(elemId, t.identifier('appendChild')),
-              [
-                t.callExpression(
-                  t.memberExpression(
-                    t.identifier('document'),
-                    t.identifier('createTextNode')
-                  ),
-                  [t.stringLiteral(c.text)]
-                ),
-              ]
-            )
-          )
-        );
-      } else if (c.kind === 'dynamic') {
-        addRuntimeImport(state, '_insert');
-        addReactivityImport(state, 'renderEffect');
-
-        if (hasFollowingChild) {
-          // Anchor marker so updates insertBefore(marker) preserve position.
-          const markerId = path.scope.generateUidIdentifier('m');
-          stmts.push(
-            t.variableDeclaration('const', [
-              t.variableDeclarator(
-                markerId,
-                t.callExpression(
-                  t.memberExpression(
-                    t.identifier('document'),
-                    t.identifier('createTextNode')
-                  ),
-                  [t.stringLiteral('')]
-                )
-              ),
-            ])
-          );
-          stmts.push(
-            t.expressionStatement(
-              t.callExpression(
-                t.memberExpression(elemId, t.identifier('appendChild')),
-                [markerId]
-              )
-            )
-          );
-          stmts.push(
-            t.expressionStatement(
-              t.callExpression(t.identifier('_insert'), [
-                elemId,
-                t.arrowFunctionExpression([], c.expr),
-                markerId,
-              ])
-            )
-          );
-        } else {
-          stmts.push(
-            t.expressionStatement(
-              t.callExpression(t.identifier('_insert'), [
-                elemId,
-                t.arrowFunctionExpression([], c.expr),
-              ])
-            )
-          );
-        }
-      } else if (c.kind === 'static-expr') {
-        addRuntimeImport(state, '_insert');
-        stmts.push(
-          t.expressionStatement(
-            t.callExpression(t.identifier('_insert'), [
-              elemId,
-              t.arrowFunctionExpression([], c.expr),
-            ])
-          )
-        );
-      } else {
-        // Element/component child - already transformed; appendChild.
-        stmts.push(
-          t.expressionStatement(
-            t.callExpression(
-              t.memberExpression(elemId, t.identifier('appendChild')),
-              [c.expr]
-            )
-          )
-        );
-      }
-    }
-
-    // return _el
-    stmts.push(t.returnStatement(elemId));
-
-    // Wrap in IIFE: (() => { ... })()
-    return t.callExpression(
-      t.arrowFunctionExpression([], t.blockStatement(stmts)),
-      []
-    );
+    return plan;
   }
 
-  /**
-   * Transform a component JSX call.
-   */
-  function transformComponent(
-    path: any,
+  function emitTemplateHTML(plan: Plan, parent?: ElementPlan, indexInParent?: number): string {
+    if (plan.kind === 'text') return escapeHtml(plan.text);
+    if (plan.kind === 'dynamic' || plan.kind === 'node') {
+      // Tail-dynamic optimisation: if this is the last child of its parent,
+      // skip the comment marker and let the walker emit `_insert` with no
+      // marker (appendChild semantics). Saves one comment node per slot.
+      if (parent && indexInParent === parent.children.length - 1) {
+        return '';
+      }
+      return '<!>';
+    }
+    const tag = plan.tag.toLowerCase();
+    let html = `<${tag}`;
+    for (const [name, value] of plan.bakedAttrs) {
+      html += value === '' ? ` ${name}` : ` ${name}="${escapeAttr(value)}"`;
+    }
+    html += '>';
+    if (!VOID_ELEMENTS.has(tag)) {
+      for (let i = 0; i < plan.children.length; i++) {
+        html += emitTemplateHTML(plan.children[i], plan, i);
+      }
+      html += `</${tag}>`;
+    }
+    return html;
+  }
+
+  function needsWalking(plan: Plan): boolean {
+    if (plan.kind === 'text') return false;
+    if (plan.kind !== 'element') return true;
+    if (plan.deferredOps.length > 0) return true;
+    return plan.children.some(needsWalking);
+  }
+
+  function isTailDynamic(plan: ElementPlan, i: number): boolean {
+    if (i !== plan.children.length - 1) return false;
+    const c = plan.children[i];
+    return c.kind === 'dynamic' || c.kind === 'node';
+  }
+
+  function emitOp(
+    op: DeferredOp,
+    targetId: BabelTypes.Identifier,
+    state: PluginState,
+    stmts: BabelTypes.Statement[]
+  ): void {
+    if (op.kind === 'event') {
+      stmts.push(t.expressionStatement(
+        t.callExpression(
+          t.memberExpression(targetId, t.identifier('addEventListener')),
+          [t.stringLiteral(op.eventName), op.expr]
+        )
+      ));
+    } else if (op.kind === 'reactive-attr') {
+      addRuntimeImport(state, '_setProp');
+      addReactivityImport(state, 'renderEffect');
+      stmts.push(t.expressionStatement(
+        t.callExpression(t.identifier('renderEffect'), [
+          t.arrowFunctionExpression([], t.callExpression(t.identifier('_setProp'), [
+            targetId, t.stringLiteral(op.name), op.expr,
+          ])),
+        ])
+      ));
+    } else if (op.kind === 'runtime-attr') {
+      addRuntimeImport(state, '_setProp');
+      stmts.push(t.expressionStatement(
+        t.callExpression(t.identifier('_setProp'), [
+          targetId, t.stringLiteral(op.name), op.expr,
+        ])
+      ));
+    } else if (op.kind === 'ref') {
+      stmts.push(t.expressionStatement(t.callExpression(op.expr, [targetId])));
+    } else if (op.kind === 'spread') {
+      addRuntimeImport(state, '_spread');
+      stmts.push(t.expressionStatement(
+        t.callExpression(t.identifier('_spread'), [
+          targetId, t.arrowFunctionExpression([], op.expr),
+        ])
+      ));
+    }
+  }
+
+  function emitChildInsert(
+    parentId: BabelTypes.Identifier,
+    markerId: BabelTypes.Identifier | null,
+    child: Plan,
+    state: PluginState,
+    stmts: BabelTypes.Statement[]
+  ): void {
+    addRuntimeImport(state, '_insert');
+    let valueArg: BabelTypes.Expression;
+    if (child.kind === 'dynamic') {
+      if (child.reactive) addReactivityImport(state, 'renderEffect');
+      valueArg = child.reactive
+        ? t.arrowFunctionExpression([], child.expr)
+        : child.expr;
+    } else if (child.kind === 'node') {
+      valueArg = child.expr;
+    } else {
+      return;
+    }
+    const args: BabelTypes.Expression[] = [parentId, valueArg];
+    if (markerId) args.push(markerId);
+    stmts.push(t.expressionStatement(t.callExpression(t.identifier('_insert'), args)));
+  }
+
+  function walkAndEmit(
+    plan: ElementPlan,
+    elementId: BabelTypes.Identifier,
+    state: PluginState,
+    stmts: BabelTypes.Statement[],
+    mkUid: () => BabelTypes.Identifier
+  ): void {
+    for (const op of plan.deferredOps) {
+      emitOp(op, elementId, state, stmts);
+    }
+
+    // Walk children in order, emitting refs only for nodes that need wiring.
+    // Gap-skipping: track the template index of the last emitted ref so
+    // sibling chains can be computed with the right number of nextSibling
+    // hops when static children sit between two wired ones. Tail-dynamic
+    // children produce no template node, so we keep a separate "template
+    // index" counter that advances only for children that emit HTML.
+    let lastId: BabelTypes.Identifier | null = null;
+    let lastTplIdx = -1;
+    let tplIdx = 0;
+
+    for (let i = 0; i < plan.children.length; i++) {
+      const child = plan.children[i];
+      const tail = isTailDynamic(plan, i);
+
+      if (tail) {
+        // Emitted with no marker — no walk ref, no tplIdx bump (not in HTML).
+        emitChildInsert(elementId, null, child, state, stmts);
+        continue;
+      }
+
+      const myTplIdx = tplIdx++;
+
+      if (!needsWalking(child)) continue;
+
+      const childId = mkUid();
+      let navExpr: BabelTypes.Expression;
+      if (lastId === null) {
+        navExpr = t.memberExpression(elementId, t.identifier('firstChild'));
+        for (let j = 0; j < myTplIdx; j++) {
+          navExpr = t.memberExpression(navExpr, t.identifier('nextSibling'));
+        }
+      } else {
+        navExpr = t.memberExpression(lastId, t.identifier('nextSibling'));
+        for (let j = 0; j < (myTplIdx - lastTplIdx - 1); j++) {
+          navExpr = t.memberExpression(navExpr, t.identifier('nextSibling'));
+        }
+      }
+      stmts.push(t.variableDeclaration('const', [
+        t.variableDeclarator(childId, navExpr),
+      ]));
+      lastId = childId;
+      lastTplIdx = myTplIdx;
+
+      if (child.kind === 'element') {
+        walkAndEmit(child, childId, state, stmts, mkUid);
+      } else {
+        emitChildInsert(elementId, childId, child, state, stmts);
+      }
+    }
+  }
+
+  function transformNativeElement(
+    node: BabelTypes.JSXElement,
     state: PluginState
   ): BabelTypes.Expression {
-    const node = path.node as BabelTypes.JSXElement;
+    const plan = buildElementPlan(node, state);
+    addRuntimeImport(state, '_template');
+
+    const tmplName = `_tmpl$${state.templateCount++}`;
+    const html = emitTemplateHTML(plan);
+    state.templateDeclarations.push({ name: tmplName, html });
+
+    const stmts: BabelTypes.Statement[] = [];
+    let elCounter = 0;
+    const mkUid = (): BabelTypes.Identifier => {
+      const name = elCounter === 0 ? '_el' : `_el$${elCounter}`;
+      elCounter++;
+      return t.identifier(name);
+    };
+
+    const rootId = mkUid();
+    stmts.push(t.variableDeclaration('const', [
+      t.variableDeclarator(
+        rootId,
+        t.callExpression(
+          t.memberExpression(t.identifier(tmplName), t.identifier('cloneNode')),
+          [t.booleanLiteral(true)]
+        )
+      ),
+    ]));
+
+    walkAndEmit(plan, rootId, state, stmts, mkUid);
+
+    stmts.push(t.returnStatement(rootId));
+    return t.callExpression(t.arrowFunctionExpression([], t.blockStatement(stmts)), []);
+  }
+
+  function transformComponent(
+    node: BabelTypes.JSXElement,
+    state: PluginState
+  ): BabelTypes.Expression {
     const opening = node.openingElement;
     const componentExpr = jsxNameToExpression(opening.name);
 
     addRuntimeImport(state, '_createComponent');
 
-    // Build props object
     const propsProperties: BabelTypes.ObjectProperty[] = [];
     let hasSpread = false;
     const spreadArgs: BabelTypes.Expression[] = [];
@@ -411,8 +478,6 @@ export function mikataJSXPlugin({ types: t }: { types: typeof BabelTypes }): Plu
       const propName = name.name;
       const value = getAttrValue((attr as BabelTypes.JSXAttribute).value);
 
-      // Hyphenated prop names (e.g. aria-label) aren't valid identifiers, so
-      // emit a quoted string key instead.
       const isValidIdentifier = /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(propName);
       const keyNode: BabelTypes.Identifier | BabelTypes.StringLiteral = isValidIdentifier
         ? t.identifier(propName)
@@ -420,35 +485,31 @@ export function mikataJSXPlugin({ types: t }: { types: typeof BabelTypes }): Plu
 
       if (isPotentiallyReactive(value)) {
         if (isValidIdentifier) {
-          // Reactive prop -> getter: get propName() { return expr }
-          const getterMethod = t.objectMethod(
-            'get',
-            t.identifier(propName),
-            [],
-            t.blockStatement([t.returnStatement(value)])
+          propsProperties.push(
+            t.objectMethod(
+              'get',
+              t.identifier(propName),
+              [],
+              t.blockStatement([t.returnStatement(value)])
+            ) as any
           );
-          propsProperties.push(getterMethod as any);
         } else {
-          // Object getters require a valid identifier key; fall back to a
-          // thunk accessor on hyphenated names (rare — typically aria-*).
           propsProperties.push(t.objectProperty(keyNode, value));
         }
       } else {
-        // Static prop -> regular property
         propsProperties.push(t.objectProperty(keyNode, value));
       }
     }
 
-    // Process children
-    const children = node.children.filter(
+    // Children — transform JSX children inline so component output is
+    // self-contained (enter visitor skips nested JSX).
+    const rawChildren = node.children.filter(
       (child) => !t.isJSXText(child) || child.value.trim() !== ''
     );
 
-    if (children.length > 0) {
-      // Add children prop
+    if (rawChildren.length > 0) {
       const childExprs: BabelTypes.Expression[] = [];
-
-      for (const child of children) {
+      for (const child of rawChildren) {
         if (t.isJSXText(child)) {
           const text = child.value.replace(/\s+/g, ' ').trim();
           if (text) childExprs.push(t.stringLiteral(text));
@@ -456,17 +517,19 @@ export function mikataJSXPlugin({ types: t }: { types: typeof BabelTypes }): Plu
           if (!t.isJSXEmptyExpression(child.expression)) {
             childExprs.push(child.expression);
           }
-        } else {
-          childExprs.push(child as any);
+        } else if (t.isJSXElement(child)) {
+          if (isComponent(child.openingElement.name)) {
+            childExprs.push(transformComponent(child, state));
+          } else {
+            childExprs.push(transformNativeElement(child, state));
+          }
+        } else if (t.isJSXFragment(child)) {
+          childExprs.push(transformFragment(child, state));
         }
       }
 
-      // Children are emitted as a getter so they evaluate inside the parent
-      // component's setup scope. Without this, `<Provider><Child /></Provider>`
-      // would eagerly create Child before Provider's `provide()` ran, and
-      // Child's `inject()` would walk a scope chain that doesn't include
-      // Provider. Convention: components must read `props.children` at most
-      // once during setup (destructuring counts as one read).
+      // Children getter — evaluated inside the component's setup scope so
+      // context `inject()` can walk past the provider's scope boundary.
       if (childExprs.length === 1) {
         propsProperties.push(
           t.objectMethod(
@@ -491,20 +554,56 @@ export function mikataJSXPlugin({ types: t }: { types: typeof BabelTypes }): Plu
     const propsObj = t.objectExpression(propsProperties as any[]);
 
     if (hasSpread) {
-      // Merge spread props with explicit props
       addRuntimeImport(state, '_mergeProps');
       return t.callExpression(t.identifier('_createComponent'), [
         componentExpr,
-        t.callExpression(t.identifier('_mergeProps'), [
-          ...spreadArgs,
-          propsObj,
-        ]),
+        t.callExpression(t.identifier('_mergeProps'), [...spreadArgs, propsObj]),
       ]);
     }
 
     return t.callExpression(t.identifier('_createComponent'), [
       componentExpr,
       propsObj,
+    ]);
+  }
+
+  function transformFragment(
+    node: BabelTypes.JSXFragment,
+    state: PluginState
+  ): BabelTypes.Expression {
+    addRuntimeImport(state, '_createFragment');
+
+    const children = node.children.filter(
+      (child) => !t.isJSXText(child) || child.value.trim() !== ''
+    );
+
+    const childExprs: BabelTypes.Expression[] = [];
+    for (const child of children) {
+      if (t.isJSXText(child)) {
+        const text = child.value.replace(/\s+/g, ' ').trim();
+        if (text) {
+          childExprs.push(t.callExpression(
+            t.memberExpression(t.identifier('document'), t.identifier('createTextNode')),
+            [t.stringLiteral(text)]
+          ));
+        }
+      } else if (t.isJSXExpressionContainer(child)) {
+        if (!t.isJSXEmptyExpression(child.expression)) {
+          childExprs.push(child.expression);
+        }
+      } else if (t.isJSXElement(child)) {
+        if (isComponent(child.openingElement.name)) {
+          childExprs.push(transformComponent(child, state));
+        } else {
+          childExprs.push(transformNativeElement(child, state));
+        }
+      } else if (t.isJSXFragment(child)) {
+        childExprs.push(transformFragment(child, state));
+      }
+    }
+
+    return t.callExpression(t.identifier('_createFragment'), [
+      t.arrayExpression(childExprs),
     ]);
   }
 
@@ -515,21 +614,35 @@ export function mikataJSXPlugin({ types: t }: { types: typeof BabelTypes }): Plu
       this.runtimeImports = new Set();
       this.reactivityImports = new Set();
       this.templateCount = 0;
+      this.templateDeclarations = [];
     },
 
     visitor: {
       JSXElement: {
-        exit(path, state) {
-          const name = path.node.openingElement.name;
-          let result: BabelTypes.Expression;
-
-          if (isComponent(name)) {
-            result = transformComponent(path, state);
-          } else {
-            result = transformElement(path, state);
+        enter(path, state) {
+          // Only transform the outermost JSX element in each tree; the
+          // transform recurses into nested JSX manually, so nested elements
+          // must not be hit by this visitor while their parent is still JSX.
+          // After replaceWith() the parent becomes a CallExpression and babel
+          // continues traversal — any JSX left in attr-value expressions is
+          // picked up then.
+          if (path.findParent((p) => t.isJSXElement(p.node) || t.isJSXFragment(p.node))) {
+            return;
           }
-
+          const node = path.node;
+          const result = isComponent(node.openingElement.name)
+            ? transformComponent(node, state)
+            : transformNativeElement(node, state);
           path.replaceWith(result);
+        },
+      },
+
+      JSXFragment: {
+        enter(path, state) {
+          if (path.findParent((p) => t.isJSXElement(p.node) || t.isJSXFragment(p.node))) {
+            return;
+          }
+          path.replaceWith(transformFragment(path.node, state));
         },
       },
 
@@ -547,14 +660,12 @@ export function mikataJSXPlugin({ types: t }: { types: typeof BabelTypes }): Plu
 
           let name: string | null = null;
           if (callee.name === 'signal') {
-            // `const [foo, setFoo] = signal(initial)` - arg count <= 1
             if (init.arguments.length > 1) return;
             if (!t.isArrayPattern(path.node.id)) return;
             const first = path.node.id.elements[0];
             if (!first || !t.isIdentifier(first)) return;
             name = first.name;
           } else if (callee.name === 'computed') {
-            // `const foo = computed(() => ...)` - arg count <= 1
             if (init.arguments.length > 1) return;
             if (!t.isIdentifier(path.node.id)) return;
             name = path.node.id.name;
@@ -565,53 +676,24 @@ export function mikataJSXPlugin({ types: t }: { types: typeof BabelTypes }): Plu
           init.arguments.push(t.stringLiteral(name));
         },
       },
-
-      JSXFragment: {
-        exit(path, state) {
-          // Fragments: create a DocumentFragment with children
-          addRuntimeImport(state, '_createFragment');
-
-          const children = path.node.children.filter(
-            (child) => !t.isJSXText(child) || child.value.trim() !== ''
-          );
-
-          const childExprs: BabelTypes.Expression[] = [];
-          for (const child of children) {
-            if (t.isJSXText(child)) {
-              const text = child.value.replace(/\s+/g, ' ').trim();
-              if (text) {
-                childExprs.push(
-                  t.callExpression(
-                    t.memberExpression(
-                      t.identifier('document'),
-                      t.identifier('createTextNode')
-                    ),
-                    [t.stringLiteral(text)]
-                  )
-                );
-              }
-            } else if (t.isJSXExpressionContainer(child)) {
-              if (!t.isJSXEmptyExpression(child.expression)) {
-                childExprs.push(child.expression);
-              }
-            } else {
-              childExprs.push(child as any);
-            }
-          }
-
-          path.replaceWith(
-            t.callExpression(t.identifier('_createFragment'), [
-              t.arrayExpression(childExprs),
-            ])
-          );
-        },
-      },
     },
 
     post(state) {
       const program = state.ast.program;
 
-      // Add runtime imports
+      // Template declarations — emit after imports so `_template` is bound.
+      if (this.templateDeclarations.length > 0) {
+        const decls = this.templateDeclarations.map(({ name, html }) =>
+          t.variableDeclaration('const', [
+            t.variableDeclarator(
+              t.identifier(name),
+              t.callExpression(t.identifier('_template'), [t.stringLiteral(html)])
+            ),
+          ])
+        );
+        program.body.unshift(...decls);
+      }
+
       if (this.runtimeImports.size > 0) {
         const specifiers = [...this.runtimeImports].map((name) =>
           t.importSpecifier(t.identifier(name), t.identifier(name))
@@ -621,7 +703,6 @@ export function mikataJSXPlugin({ types: t }: { types: typeof BabelTypes }): Plu
         );
       }
 
-      // Add reactivity imports
       if (this.reactivityImports.size > 0) {
         const specifiers = [...this.reactivityImports].map((name) =>
           t.importSpecifier(t.identifier(name), t.identifier(name))

@@ -6,6 +6,7 @@ export {
   _createFragment,
   _spread,
   _mergeProps,
+  _template,
 } from './dom';
 
 // Component model

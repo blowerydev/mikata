@@ -52,6 +52,27 @@ export function _createElement(tag: string): HTMLElement {
 }
 
 /**
+ * Parse a static HTML fragment once and return its root node so the compiler
+ * can `cloneNode(true)` it per instantiation instead of issuing a chain of
+ * `createElement` + `appendChild` calls.
+ *
+ * The HTML is parsed inside a `<template>` element, which has looser parser
+ * rules than a generic host — notably, `<tr>` and `<td>` don't need to live
+ * under an actual `<table>`, so we can template rows directly.
+ *
+ * The compiler calls this once per unique JSX skeleton at module load:
+ *   const _tmpl$0 = _template('<tr><td class="col-md-1"></td></tr>');
+ *
+ * Per-instantiation:
+ *   const el = _tmpl$0.cloneNode(true);  // ~3x cheaper than rebuilding
+ */
+export function _template(html: string): Node {
+  const t = document.createElement('template');
+  t.innerHTML = html;
+  return t.content.firstChild!;
+}
+
+/**
  * Set a property/attribute on an element.
  * Handles the common cases: className, style, boolean attrs, etc.
  */
