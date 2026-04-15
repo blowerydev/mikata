@@ -139,4 +139,31 @@ describe('JSX transform', () => {
     expect(output).toContain('"dbl"');
     expect(output).not.toContain('"doubled"');
   });
+
+  it('treats property reads on each() callback params as non-reactive', () => {
+    const output = transform(
+      `const list = each(data, row => <td>{row.id}</td>);`
+    );
+    // `row.id` on a loop-param → plain data, no renderEffect wrap around
+    // the text-bake assignment.
+    expect(output).toContain('.data = row.id ?? ""');
+    expect(output).not.toContain('renderEffect(() => {\n  _el$1.data = row.id');
+  });
+
+  it('keeps call expressions reactive even on loop params', () => {
+    const output = transform(
+      `const list = each(data, row => <td>{row.label()}</td>);`
+    );
+    expect(output).toContain('renderEffect');
+    expect(output).toContain('row.label()');
+  });
+
+  it('leaves component props.x reactive', () => {
+    // Component-body props are lazy-prop proxies — reads stay reactive.
+    const output = transform(
+      `function Comp(props) { return <td>{props.x}</td>; }`
+    );
+    expect(output).toContain('renderEffect');
+    expect(output).toContain('props.x');
+  });
 });

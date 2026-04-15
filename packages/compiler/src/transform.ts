@@ -9,10 +9,27 @@
  * / `_createFragment` and are inserted via `_insert` against comment markers.
  */
 
-import type { PluginObj, types as BabelTypes } from '@babel/core';
+import type { PluginObj, types as BabelTypes, NodePath } from '@babel/core';
+
+// Scope/Binding come from @babel/traverse (re-exported by NodePath).
+// Typed via NodePath to avoid a direct @babel/traverse dependency.
+type Scope = NonNullable<NodePath['scope']>;
+type Binding = NonNullable<ReturnType<Scope['getBinding']>>;
 
 const RUNTIME_MODULE = '@mikata/runtime';
 const REACTIVITY_MODULE = '@mikata/reactivity';
+
+/**
+ * Callbacks whose parameter is guaranteed to be plain data — not a
+ * lazy-prop proxy or signal. Property reads on these params are static
+ * and can skip renderEffect wrapping.
+ */
+const STATIC_CALLBACK_CALLEES = new Set([
+  'each',
+  'show',
+  'switchMatch',
+  'For',
+]);
 
 const VOID_ELEMENTS = new Set([
   'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input',
@@ -53,30 +70,81 @@ type DeferredOp =
   | { kind: 'spread'; expr: BabelTypes.Expression };
 
 export function mikataJSXPlugin({ types: t }: { types: typeof BabelTypes }): PluginObj<PluginState> {
-  function isPotentiallyReactive(node: BabelTypes.Expression): boolean {
+  /**
+   * True when `binding` is a parameter of a callback passed to one of the
+   * static-callback helpers (`each`, `show`, etc.). Parameters there are
+   * plain data — never lazy-prop proxies — so member reads on them are
+   * compile-time static.
+   *
+   * Covers both plain params (`row => ...`) and destructured params
+   * (`({id, label}) => ...`); Babel uses `kind: 'param'` for both.
+   */
+  function isStaticCallbackParam(binding: Binding | undefined): boolean {
+    if (!binding || binding.kind !== 'param') return false;
+    // Walk up from the binding's declaration to the enclosing function.
+    let p: NodePath | null = binding.path as NodePath;
+    while (p && !t.isArrowFunctionExpression(p.node) && !t.isFunctionExpression(p.node)) {
+      p = p.parentPath;
+    }
+    if (!p) return false;
+    const fn = p;
+    const call = fn.parentPath;
+    if (!call || !t.isCallExpression(call.node)) return false;
+    // The function must be an argument, not the callee.
+    if (call.node.callee === fn.node) return false;
+    const callee = call.node.callee;
+    if (!t.isIdentifier(callee)) return false;
+    return STATIC_CALLBACK_CALLEES.has(callee.name);
+  }
+
+  function rootIdentifier(node: BabelTypes.Expression): BabelTypes.Identifier | null {
+    let current: BabelTypes.Expression = node;
+    while (t.isMemberExpression(current)) {
+      // Skip computed member expressions — `row[x]` may index into anything.
+      if (current.computed) return null;
+      current = current.object as BabelTypes.Expression;
+    }
+    return t.isIdentifier(current) ? current : null;
+  }
+
+  function isPotentiallyReactive(
+    node: BabelTypes.Expression,
+    scope?: Scope,
+  ): boolean {
     if (t.isCallExpression(node)) return true;
-    if (t.isMemberExpression(node)) return true;
+    if (t.isMemberExpression(node)) {
+      // Static-callback-param fast path: `row.id` where `row` is a param of
+      // an `each(...)` callback is plain-data, not reactive.
+      if (scope) {
+        const root = rootIdentifier(node);
+        if (root) {
+          const binding = scope.getBinding(root.name);
+          if (isStaticCallbackParam(binding)) return false;
+        }
+      }
+      return true;
+    }
     if (t.isConditionalExpression(node)) {
       return (
-        isPotentiallyReactive(node.test) ||
-        isPotentiallyReactive(node.consequent) ||
-        isPotentiallyReactive(node.alternate)
+        isPotentiallyReactive(node.test, scope) ||
+        isPotentiallyReactive(node.consequent, scope) ||
+        isPotentiallyReactive(node.alternate, scope)
       );
     }
     if (t.isBinaryExpression(node)) {
       return (
-        isPotentiallyReactive(node.left as BabelTypes.Expression) ||
-        isPotentiallyReactive(node.right as BabelTypes.Expression)
+        isPotentiallyReactive(node.left as BabelTypes.Expression, scope) ||
+        isPotentiallyReactive(node.right as BabelTypes.Expression, scope)
       );
     }
     if (t.isTemplateLiteral(node)) {
-      return node.expressions.some((e) => isPotentiallyReactive(e as BabelTypes.Expression));
+      return node.expressions.some((e) => isPotentiallyReactive(e as BabelTypes.Expression, scope));
     }
     if (t.isLogicalExpression(node)) {
-      return isPotentiallyReactive(node.left) || isPotentiallyReactive(node.right);
+      return isPotentiallyReactive(node.left, scope) || isPotentiallyReactive(node.right, scope);
     }
     if (t.isUnaryExpression(node)) {
-      return isPotentiallyReactive(node.argument as BabelTypes.Expression);
+      return isPotentiallyReactive(node.argument as BabelTypes.Expression, scope);
     }
     if (t.isArrowFunctionExpression(node) || t.isFunctionExpression(node)) return false;
     if (t.isLiteral(node)) return false;
@@ -167,7 +235,8 @@ export function mikataJSXPlugin({ types: t }: { types: typeof BabelTypes }): Plu
 
   function buildElementPlan(
     node: BabelTypes.JSXElement,
-    state: PluginState
+    state: PluginState,
+    scope?: Scope,
   ): ElementPlan {
     const tag = (node.openingElement.name as BabelTypes.JSXIdentifier).name;
     const plan: ElementPlan = {
@@ -196,7 +265,7 @@ export function mikataJSXPlugin({ types: t }: { types: typeof BabelTypes }): Plu
         plan.deferredOps.push({ kind: 'event', eventName: eventName(propName), expr: value });
         continue;
       }
-      if (isPotentiallyReactive(value)) {
+      if (isPotentiallyReactive(value, scope)) {
         plan.deferredOps.push({ kind: 'reactive-attr', name: propName, expr: value });
         continue;
       }
@@ -231,19 +300,19 @@ export function mikataJSXPlugin({ types: t }: { types: typeof BabelTypes }): Plu
           plan.children.push({
             kind: 'dynamic',
             expr,
-            reactive: isPotentiallyReactive(expr),
+            reactive: isPotentiallyReactive(expr, scope),
           });
         }
       } else if (t.isJSXElement(child)) {
         if (isComponent(child.openingElement.name)) {
           // Component child — treat as opaque Node to insert via marker.
-          const compExpr = transformComponent(child, state);
+          const compExpr = transformComponent(child, state, scope);
           plan.children.push({ kind: 'node', expr: compExpr });
         } else {
-          plan.children.push(buildElementPlan(child, state));
+          plan.children.push(buildElementPlan(child, state, scope));
         }
       } else if (t.isJSXFragment(child)) {
-        plan.children.push({ kind: 'node', expr: transformFragment(child, state) });
+        plan.children.push({ kind: 'node', expr: transformFragment(child, state, scope) });
       }
     }
 
@@ -501,9 +570,10 @@ export function mikataJSXPlugin({ types: t }: { types: typeof BabelTypes }): Plu
 
   function transformNativeElement(
     node: BabelTypes.JSXElement,
-    state: PluginState
+    state: PluginState,
+    scope?: Scope,
   ): BabelTypes.Expression {
-    const plan = buildElementPlan(node, state);
+    const plan = buildElementPlan(node, state, scope);
     addRuntimeImport(state, '_template');
 
     const tmplName = `_tmpl$${state.templateCount++}`;
@@ -537,7 +607,8 @@ export function mikataJSXPlugin({ types: t }: { types: typeof BabelTypes }): Plu
 
   function transformComponent(
     node: BabelTypes.JSXElement,
-    state: PluginState
+    state: PluginState,
+    scope?: Scope,
   ): BabelTypes.Expression {
     const opening = node.openingElement;
     const componentExpr = jsxNameToExpression(opening.name);
@@ -565,7 +636,7 @@ export function mikataJSXPlugin({ types: t }: { types: typeof BabelTypes }): Plu
         ? t.identifier(propName)
         : t.stringLiteral(propName);
 
-      if (isPotentiallyReactive(value)) {
+      if (isPotentiallyReactive(value, scope)) {
         if (isValidIdentifier) {
           propsProperties.push(
             t.objectMethod(
@@ -601,12 +672,12 @@ export function mikataJSXPlugin({ types: t }: { types: typeof BabelTypes }): Plu
           }
         } else if (t.isJSXElement(child)) {
           if (isComponent(child.openingElement.name)) {
-            childExprs.push(transformComponent(child, state));
+            childExprs.push(transformComponent(child, state, scope));
           } else {
-            childExprs.push(transformNativeElement(child, state));
+            childExprs.push(transformNativeElement(child, state, scope));
           }
         } else if (t.isJSXFragment(child)) {
-          childExprs.push(transformFragment(child, state));
+          childExprs.push(transformFragment(child, state, scope));
         }
       }
 
@@ -651,7 +722,8 @@ export function mikataJSXPlugin({ types: t }: { types: typeof BabelTypes }): Plu
 
   function transformFragment(
     node: BabelTypes.JSXFragment,
-    state: PluginState
+    state: PluginState,
+    scope?: Scope,
   ): BabelTypes.Expression {
     addRuntimeImport(state, '_createFragment');
 
@@ -675,12 +747,12 @@ export function mikataJSXPlugin({ types: t }: { types: typeof BabelTypes }): Plu
         }
       } else if (t.isJSXElement(child)) {
         if (isComponent(child.openingElement.name)) {
-          childExprs.push(transformComponent(child, state));
+          childExprs.push(transformComponent(child, state, scope));
         } else {
-          childExprs.push(transformNativeElement(child, state));
+          childExprs.push(transformNativeElement(child, state, scope));
         }
       } else if (t.isJSXFragment(child)) {
-        childExprs.push(transformFragment(child, state));
+        childExprs.push(transformFragment(child, state, scope));
       }
     }
 
@@ -713,8 +785,8 @@ export function mikataJSXPlugin({ types: t }: { types: typeof BabelTypes }): Plu
           }
           const node = path.node;
           const result = isComponent(node.openingElement.name)
-            ? transformComponent(node, state)
-            : transformNativeElement(node, state);
+            ? transformComponent(node, state, path.scope)
+            : transformNativeElement(node, state, path.scope);
           path.replaceWith(result);
         },
       },
@@ -724,7 +796,7 @@ export function mikataJSXPlugin({ types: t }: { types: typeof BabelTypes }): Plu
           if (path.findParent((p) => t.isJSXElement(p.node) || t.isJSXFragment(p.node))) {
             return;
           }
-          path.replaceWith(transformFragment(path.node, state));
+          path.replaceWith(transformFragment(path.node, state, path.scope));
         },
       },
 
