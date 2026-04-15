@@ -34,7 +34,7 @@ interface PluginState {
 type Plan =
   | ElementPlan
   | { kind: 'text'; text: string }
-  | { kind: 'dynamic'; expr: BabelTypes.Expression; reactive: boolean }
+  | { kind: 'dynamic'; expr: BabelTypes.Expression; reactive: boolean; bakeText?: boolean }
   | { kind: 'node'; expr: BabelTypes.Expression };
 
 interface ElementPlan {
@@ -247,15 +247,55 @@ export function mikataJSXPlugin({ types: t }: { types: typeof BabelTypes }): Plu
       }
     }
 
+    // Text-bake optimisation: `<el>{expr}</el>` where the dynamic is the ONLY
+    // child. Instead of emitting `_insert(el, expr)` — which creates a Text
+    // node and appendChilds — we bake a whitespace Text node into the template
+    // HTML and have the walker assign `.data` on it. Eliminates
+    // createTextNode + appendChild per slot, the single biggest remaining
+    // creation-benchmark cost vs Solid.
+    //
+    // Skip when the expression is a call to a known Node-returning helper
+    // (`each`, `show`, etc.) — stringifying a DocumentFragment into `.data`
+    // produces garbage like "[object DocumentFragment]". All other
+    // expressions fall through; if a user hands us a DOM Node there, they'll
+    // see the same stringification — same contract as React/Solid text.
+    if (plan.children.length === 1 && plan.children[0].kind === 'dynamic') {
+      const c = plan.children[0];
+      if (!isNodeReturningCall(c.expr)) {
+        c.bakeText = true;
+      }
+    }
+
     return plan;
+  }
+
+  // Calls whose return is a DOM Node / Fragment — must NOT be text-baked.
+  const NODE_RETURNING_CALLS = new Set([
+    'each', 'show', 'switchMatch', 'Dynamic', 'For', 'Portal',
+    '_createComponent', '_createFragment',
+  ]);
+
+  function isNodeReturningCall(expr: BabelTypes.Expression): boolean {
+    if (!t.isCallExpression(expr)) return false;
+    const callee = expr.callee;
+    if (t.isIdentifier(callee)) return NODE_RETURNING_CALLS.has(callee.name);
+    return false;
   }
 
   function emitTemplateHTML(plan: Plan, parent?: ElementPlan, indexInParent?: number): string {
     if (plan.kind === 'text') return escapeHtml(plan.text);
-    if (plan.kind === 'dynamic' || plan.kind === 'node') {
+    if (plan.kind === 'dynamic') {
+      // Text-bake: bake a space placeholder the walker will mutate via `.data`.
+      if (plan.bakeText) return ' ';
       // Tail-dynamic optimisation: if this is the last child of its parent,
       // skip the comment marker and let the walker emit `_insert` with no
       // marker (appendChild semantics). Saves one comment node per slot.
+      if (parent && indexInParent === parent.children.length - 1) {
+        return '';
+      }
+      return '<!>';
+    }
+    if (plan.kind === 'node') {
       if (parent && indexInParent === parent.children.length - 1) {
         return '';
       }
@@ -364,6 +404,48 @@ export function mikataJSXPlugin({ types: t }: { types: typeof BabelTypes }): Plu
   ): void {
     for (const op of plan.deferredOps) {
       emitOp(op, elementId, state, stmts);
+    }
+
+    // Text-bake fast path: element with exactly one dynamic child whose
+    // template node is the baked whitespace Text. Walk to firstChild and
+    // assign `.data` directly — one DOM op, no allocations. For reactive
+    // exprs wrap in renderEffect so `.data` updates on signal change.
+    if (
+      plan.children.length === 1 &&
+      plan.children[0].kind === 'dynamic' &&
+      plan.children[0].bakeText
+    ) {
+      const child = plan.children[0];
+      const textId = mkUid();
+      stmts.push(t.variableDeclaration('const', [
+        t.variableDeclarator(
+          textId,
+          t.memberExpression(elementId, t.identifier('firstChild')),
+        ),
+      ]));
+      // `value ?? ''` coerces null/undefined to empty string; anything else
+      // stringifies via the DOM's implicit toString on `.data`.
+      const assign = t.assignmentExpression(
+        '=',
+        t.memberExpression(textId, t.identifier('data')),
+        t.logicalExpression('??', child.expr, t.stringLiteral('')),
+      );
+      if (child.reactive) {
+        addReactivityImport(state, 'renderEffect');
+        // Arrow MUST have a block body: expression-bodied arrows return the
+        // assignment's value, which `renderEffect` then stores as `_cleanup`
+        // and invokes on re-run / dispose — crashing on "string is not a
+        // function". Block body makes the return `void`.
+        stmts.push(t.expressionStatement(t.callExpression(t.identifier('renderEffect'), [
+          t.arrowFunctionExpression(
+            [],
+            t.blockStatement([t.expressionStatement(assign)]),
+          ),
+        ])));
+      } else {
+        stmts.push(t.expressionStatement(assign));
+      }
+      return;
     }
 
     // Walk children in order, emitting refs only for nodes that need wiring.

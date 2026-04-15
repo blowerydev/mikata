@@ -65,10 +65,13 @@ describe('JSX transform', () => {
     expect(output).not.toContain('appendChild');
   });
 
-  it('handles dynamic text children via _insert', () => {
+  it('bakes a text-node placeholder for only-child dynamic text', () => {
+    // `<el>{expr}</el>` skips _insert / createTextNode / appendChild by
+    // emitting a whitespace Text into the template and writing its `.data`.
     const output = transform(`const el = <span>{count()}</span>;`);
-    expect(output).toContain('_insert');
-    expect(output).toContain('count()');
+    expect(output).toContain('<span> </span>');
+    expect(output).toContain('.data = count() ?? ""');
+    expect(output).not.toContain('_insert');
   });
 
   it('handles fragments', () => {
