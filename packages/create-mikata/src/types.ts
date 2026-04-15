@@ -5,6 +5,7 @@ export const FEATURES = [
   'form',
   'i18n',
   'store',
+  'persist',
   'testing',
   'eslint',
   'tailwind',

@@ -1,0 +1,5 @@
+{
+  "deps": {
+    "@mikata/persist": "^0.1.0"
+  }
+}

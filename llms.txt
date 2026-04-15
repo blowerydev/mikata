@@ -14,7 +14,8 @@
 
 - `@mikata/reactivity` - signals, computed, reactive proxies, effects, scopes, batching
 - `@mikata/runtime` - DOM rendering, components, control flow, context, lifecycle, portals, form bindings, error boundaries
-- `@mikata/store` - createStore, derived, createSelector, createQuery, createMutation
+- `@mikata/store` - createStore, derived, createSelector, createQuery, createMutation, tag-based invalidation
+- `@mikata/persist` - persistedSignal: storage-backed signals (localStorage/sessionStorage/IndexedDB) with cross-tab sync
 - `@mikata/compiler` - Vite/Babel plugin that transforms JSX to runtime calls
 - `@mikata/testing` - testing utilities: renderComponent, fireEvent, waitForUpdate, query helpers
 - `@mikata/ui` - component library: buttons, inputs, layout, feedback, overlays with CSS variables theming
@@ -843,6 +844,7 @@ const user = createQuery({
   retry: 3,            // retry count on failure (default: 3)
   enabled: () => !!userId(),  // reactive condition
   initialData: undefined,
+  tags: ['user', `user:${userId()}`],  // optional - see "Tag invalidation" below
 });
 
 user.data()       // T | undefined
@@ -868,6 +870,7 @@ const saveUser = createMutation({
   onSuccess: (data, variables) => { /* ... */ },
   onError: (error, variables) => { /* ... */ },
   onSettled: (data, error, variables) => { /* ... */ },
+  invalidates: (data, variables) => ['user', `user:${data.id}`],  // refetch matching tagged queries
 });
 
 saveUser.mutate({ name: 'Alice' });
@@ -877,6 +880,88 @@ saveUser.status()    // 'idle' | 'loading' | 'error' | 'success'
 saveUser.isLoading() // boolean
 saveUser.reset()     // reset to idle state
 ```
+
+### Tag-based invalidation
+
+Queries declare what data they depend on via `tags`. Mutations declare what they affect via `invalidates`. Matching queries refetch automatically — mutations never need to know which queries exist.
+
+```tsx
+import { createQuery, createMutation, invalidateTag, invalidateTags } from '@mikata/store';
+
+// Static tags
+const users = createQuery({ key: () => 'users', fn: fetchUsers, tags: ['user'] });
+
+// Reactive tags (re-register when the result changes)
+const user = createQuery({
+  key: () => userId(),
+  fn: () => fetchUser(userId()),
+  tags: () => ['user', `user:${userId()}`],
+});
+
+// Static invalidates
+const logout = createMutation({ fn: api.logout, invalidates: ['auth'] });
+
+// Derived from result + variables
+const editUser = createMutation({
+  fn: (patch) => api.patch(`/users/${patch.id}`, patch),
+  invalidates: (result) => ['user', `user:${result.id}`],
+});
+
+// Imperative — e.g. on a global event like logout
+await invalidateTag('auth');
+await invalidateTags(['user', 'order']);
+```
+
+Notes:
+- Tags are literal strings — compose hierarchy yourself (`user:42`, `customer:7:orders`).
+- A query tagged twice (`['user', 'user:42']`) refetches **once** when both tags are invalidated together — dedup is per-query.
+- Refetches fire-and-forget from mutations; refetch failures don't fail the mutation.
+- Queries unregister automatically when their owning scope disposes.
+
+---
+
+## Persistence API (`@mikata/persist`)
+
+### persistedSignal(key, initialValue, options?) → PersistedSignal
+
+Signal-compatible `[read, write]` tuple mirrored to a Storage backend with optional cross-tab sync.
+
+```tsx
+import { persistedSignal, indexedDBStorage } from '@mikata/persist';
+
+// localStorage by default — cross-tab sync on
+const [theme, setTheme] = persistedSignal('theme', 'light');
+
+// sessionStorage — tab-scoped, sync defaults off
+const [draft, setDraft] = persistedSignal('form-draft', '', { storage: 'session' });
+
+// IndexedDB for larger payloads — async hydration
+const userPrefs = persistedSignal('prefs', { density: 'comfortable' }, {
+  storage: indexedDBStorage(),
+});
+await userPrefs.ready;     // resolves once hydration finishes
+const [getPrefs, setPrefs] = userPrefs;
+
+// Versioned schema with migration
+const [config] = persistedSignal('config', { layout: 'grid' }, {
+  version: 2,
+  migrate: (old, oldVersion) => oldVersion === 1 ? { layout: old.viewMode } : { layout: 'grid' },
+});
+
+// Clean up
+userPrefs.clear();         // remove from storage, reset to initial, broadcast to other tabs
+userPrefs.dispose();       // stop receiving cross-tab updates
+```
+
+Options:
+- `storage`: `'local'` (default) | `'session'` | a custom `StorageAdapter`
+- `sync`: cross-tab sync via BroadcastChannel; defaults `true` for local, `false` for session
+- `serialize` / `deserialize`: custom codecs (defaults to `JSON.stringify` / `JSON.parse`)
+- `version` + `migrate`: schema-versioned values for safe evolution
+
+Pluggable adapters: `localStorageAdapter`, `sessionStorageAdapter`, `indexedDBStorage({ dbName?, storeName? })`. Implement the `StorageAdapter` interface for custom backends (cookies, secure storage, etc.).
+
+Cross-tab sync uses a `BroadcastChannel` per key (`mikata:persist:<key>`); falls back to the `storage` event when BroadcastChannel is unavailable. Adapters are SSR-safe — they no-op if their global is missing.
 
 ---
 

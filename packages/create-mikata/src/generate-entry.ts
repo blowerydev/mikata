@@ -151,8 +151,12 @@ function generateDemoModule(
   const hasStore = features.has('store');
   const hasForm = features.has('form');
   const hasI18n = features.has('i18n');
+  const hasPersist = features.has('persist');
 
-  const imports: string[] = [`import { signal } from 'mikata';`];
+  const imports: string[] = hasPersist
+    ? []
+    : [`import { signal } from 'mikata';`];
+  if (hasPersist) imports.push(`import { persistedSignal } from '@mikata/persist';`);
   if (hasUi) imports.push(`import { Button, Card, Group, Stack, Text, Title } from '@mikata/ui';`);
   if (hasIcons) imports.push(`import { IconSparkles } from '@mikata/icons';`);
   if (hasStore) imports.push(`import { createQuery } from 'mikata';`);
@@ -160,7 +164,11 @@ function generateDemoModule(
   if (hasI18n) imports.push(`import { useI18n } from 'mikata';`);
 
   const body: string[] = [];
-  body.push(`  const [count, setCount] = signal(0);`);
+  body.push(
+    hasPersist
+      ? `  const [count, setCount] = persistedSignal('count', 0);`
+      : `  const [count, setCount] = signal(0);`
+  );
   if (hasI18n) body.push(`  const { t } = useI18n();`);
   if (hasStore) {
     body.push(`

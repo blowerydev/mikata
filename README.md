@@ -149,7 +149,8 @@ Available features: `router`, `ui`, `icons`, `form`, `i18n`, `store`, `testing`,
 | `@mikata/compiler` | Vite plugin that lowers JSX to DOM operations |
 | `@mikata/ui` | 80+ headless-optional components (Button, Modal, DataTable, DatePicker, …) |
 | `@mikata/router` | Client-side routing with typed search params and nested layouts |
-| `@mikata/store` | Reactive stores, queries, mutations |
+| `@mikata/store` | Reactive stores, queries, mutations, tag-based cache invalidation |
+| `@mikata/persist` | Storage-backed signals (localStorage/sessionStorage/IndexedDB) with cross-tab sync |
 | `@mikata/i18n` | Locale switching, ICU messages, reactive translations |
 | `@mikata/form` | Form state, validation, schema resolvers (zod, yup, valibot) |
 | `@mikata/icons` | Icon factory + Lucide/Tabler interop + built-in SVG set |

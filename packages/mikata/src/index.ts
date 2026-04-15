@@ -65,6 +65,8 @@ export {
   createSelector,
   createQuery,
   createMutation,
+  invalidateTag,
+  invalidateTags,
 } from '@mikata/store';
 
 export type {

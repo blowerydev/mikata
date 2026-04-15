@@ -18,6 +18,7 @@ const FEATURE_CHOICES: { value: Feature; title: string; description: string }[] 
   { value: 'form',     title: 'Form',          description: '@mikata/form - createForm with validation'              },
   { value: 'i18n',     title: 'i18n',          description: '@mikata/i18n - ICU, runtime loading, reactive locale'   },
   { value: 'store',    title: 'Store',         description: 'createQuery + createMutation example'                   },
+  { value: 'persist',  title: 'Persist',       description: '@mikata/persist - storage-backed signals + cross-tab sync' },
   { value: 'testing',  title: 'Testing',       description: 'Vitest + jsdom + @mikata/testing'                        },
   { value: 'eslint',   title: 'ESLint',        description: 'ESLint with @mikata/eslint-plugin rules'                 },
   { value: 'tailwind', title: 'Tailwind CSS',  description: 'Tailwind + PostCSS preconfigured'                        },
