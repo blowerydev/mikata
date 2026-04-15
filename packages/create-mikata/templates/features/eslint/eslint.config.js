@@ -16,6 +16,8 @@ export default tseslint.config(
       'mikata/require-effect-cleanup': 'warn',
       'mikata/no-signal-write-in-computed': 'error',
       'mikata/require-signal-call': 'error',
+      'mikata/no-signal-assignment': 'error',
+      'mikata/no-stale-signal-read-in-effect': 'error',
     },
   }
 );

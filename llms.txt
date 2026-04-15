@@ -545,6 +545,19 @@ function Editor(props: { initial: string }) {
 - An effect that calls `editor.on(...)` without returning cleanup keeps the handler registered forever; if the component remounts repeatedly (route changes, conditional `show()`), each remount adds another handler.
 - A signal held only via a leaked handler keeps its subscriber count positive, which pins its `sources[]`/`subscribers[]` edges in the debug registry. Use `__MIKATA_DEVTOOLS__.stats()` to watch node counts grow over time as a leak check in dev.
 
+**Dev-mode leak detector**
+
+Under `__DEV__`, the reactivity package patches `addEventListener`, `setInterval`, and `setTimeout` to count subscriptions made inside an `effect()` / `renderEffect()` body. If the effect returns no cleanup AND never calls `onCleanup()`, you get a one-time `console.warn` per effect with the kind, label, and counts:
+
+```
+[mikata] Possible subscription leak in effect `my-leaky-effect`:
+  1× addEventListener, 1× setTimeout without teardown.
+  Return a cleanup function, call onCleanup(), or use
+  useEventListener/useInterval/useTimeout helpers.
+```
+
+Pass a label as the second argument to `effect(fn, label)` so the warning points at the right place. Warnings are deduplicated per effect node, so a re-firing effect only warns once. The detector strips entirely in production builds (gated on `__DEV__`).
+
 ### createRef() → Ref
 
 Create a mutable ref for capturing a DOM element. The ref is both an object with `.current` and a callable function (usable as a ref callback).
