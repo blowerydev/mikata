@@ -6,6 +6,9 @@
  */
 
 import type { ReactiveNode } from './tracking';
+import { notifyOnCleanupCalled } from './leak-detector';
+
+declare const __DEV__: boolean;
 
 export interface Disposable {
   _dispose(): void;
@@ -116,5 +119,8 @@ export function createScope(fn: () => void): Scope {
 export function onCleanup(fn: () => void): void {
   if (currentScope) {
     currentScope.addCleanup(fn);
+  }
+  if (typeof __DEV__ !== 'undefined' && __DEV__) {
+    notifyOnCleanupCalled();
   }
 }

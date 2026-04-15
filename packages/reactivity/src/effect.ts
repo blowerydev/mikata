@@ -17,6 +17,7 @@ import {
 import { scheduleDirty, flushSync } from './scheduler';
 import { getCurrentScope } from './scope';
 import { registerNode, recordEffectRun, unregisterNode } from './debug';
+import { beginLeakFrame, endLeakFrame } from './leak-detector';
 
 declare const __DEV__: boolean;
 
@@ -87,10 +88,16 @@ function createEffectNode(
 
       // Execute and track new dependencies
       pushSubscriber(node);
+      const leakFrame = __DEV__
+        ? beginLeakFrame(isRender ? 'renderEffect' : 'effect', label)
+        : null;
       try {
         node._cleanup = node._fn();
       } finally {
         popSubscriber();
+        if (__DEV__) {
+          endLeakFrame(leakFrame, node, typeof node._cleanup === 'function');
+        }
       }
 
       // Snapshot source versions for next dirty check. Reuse the existing
