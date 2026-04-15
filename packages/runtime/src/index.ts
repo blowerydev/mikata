@@ -7,6 +7,7 @@ export {
   _spread,
   _mergeProps,
   _template,
+  _delegate,
 } from './dom';
 
 // Component model

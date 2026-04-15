@@ -25,11 +25,20 @@ describe('JSX transform', () => {
     expect(output).toContain('.cloneNode(true)');
   });
 
-  it('transforms event handlers to addEventListener', () => {
+  it('delegates bubbling event handlers via _delegate', () => {
     const output = transform(`const el = <button onClick={handler}>Click</button>;`);
-    expect(output).toContain('addEventListener');
+    // Bubbling events compile to _delegate so the runtime can share a single
+    // document-level listener per event type across the whole tree.
+    expect(output).toContain('_delegate');
     expect(output).toContain('"click"');
     expect(output).toContain('handler');
+    expect(output).not.toContain('addEventListener');
+  });
+
+  it('uses addEventListener for non-bubbling events', () => {
+    const output = transform(`const el = <input onFocus={handler} />;`);
+    expect(output).toContain('addEventListener');
+    expect(output).toContain('"focus"');
   });
 
   it('wraps dynamic attributes in renderEffect', () => {
@@ -115,7 +124,7 @@ describe('JSX transform', () => {
     // Only the <a> needs wiring; walker reaches it via firstChild.nextSibling.
     expect(output).toContain('firstChild');
     expect(output).toContain('nextSibling');
-    expect(output).toContain('addEventListener');
+    expect(output).toContain('_delegate');
   });
 
   it('auto-labels signal() with its destructured name', () => {

@@ -36,6 +36,20 @@ const VOID_ELEMENTS = new Set([
   'link', 'meta', 'source', 'track', 'wbr',
 ]);
 
+/**
+ * Events that bubble through the DOM and can be handled via a single
+ * document-level listener. For these the compiler emits `_delegate(el, ...)`
+ * instead of `el.addEventListener(...)` — collapses N registrations into one
+ * per event type, module-wide. Non-bubbling events (focus/blur/scroll/etc.)
+ * fall back to direct addEventListener.
+ */
+const DELEGATED_EVENTS = new Set([
+  'beforeinput', 'click', 'dblclick', 'contextmenu', 'focusin', 'focusout',
+  'input', 'keydown', 'keyup', 'mousedown', 'mousemove', 'mouseout',
+  'mouseover', 'mouseup', 'pointerdown', 'pointermove', 'pointerout',
+  'pointerover', 'pointerup', 'touchend', 'touchmove', 'touchstart',
+]);
+
 interface TemplateDecl {
   name: string;
   html: string;
@@ -405,12 +419,21 @@ export function mikataJSXPlugin({ types: t }: { types: typeof BabelTypes }): Plu
     stmts: BabelTypes.Statement[]
   ): void {
     if (op.kind === 'event') {
-      stmts.push(t.expressionStatement(
-        t.callExpression(
-          t.memberExpression(targetId, t.identifier('addEventListener')),
-          [t.stringLiteral(op.eventName), op.expr]
-        )
-      ));
+      if (DELEGATED_EVENTS.has(op.eventName)) {
+        addRuntimeImport(state, '_delegate');
+        stmts.push(t.expressionStatement(
+          t.callExpression(t.identifier('_delegate'), [
+            targetId, t.stringLiteral(op.eventName), op.expr,
+          ])
+        ));
+      } else {
+        stmts.push(t.expressionStatement(
+          t.callExpression(
+            t.memberExpression(targetId, t.identifier('addEventListener')),
+            [t.stringLiteral(op.eventName), op.expr]
+          )
+        ));
+      }
     } else if (op.kind === 'reactive-attr') {
       addRuntimeImport(state, '_setProp');
       addReactivityImport(state, 'renderEffect');

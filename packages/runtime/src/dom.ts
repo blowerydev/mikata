@@ -73,6 +73,51 @@ export function _template(html: string): Node {
 }
 
 /**
+ * Event delegation. Compiler emits `_delegate(el, "click", h)` instead of
+ * `el.addEventListener("click", h)` for bubbling events — for a 10k-row list
+ * that's 10k listener registrations collapsed to one document-level listener
+ * per event type. Handlers are stashed as `el.$$click = h` and found by
+ * walking from `e.target` up through parents.
+ */
+const DELEGATED_EVENTS = new Set<string>();
+
+function delegatedEventHandler(e: Event): void {
+  const prop = `$$${e.type}`;
+  let node: Node | null =
+    ((e.composedPath && e.composedPath()[0]) as Node) || (e.target as Node);
+  // Override currentTarget so handlers read the element they were attached to,
+  // not document. Retained across the walk — handlers typically read it once.
+  if (node) {
+    Object.defineProperty(e, 'currentTarget', {
+      configurable: true,
+      get() {
+        return node || document;
+      },
+    });
+  }
+  while (node) {
+    const handler = (node as any)[prop];
+    if (handler && !(node as any).disabled) {
+      handler.call(node, e);
+      if (e.cancelBubble) return;
+    }
+    node = node.parentNode || ((node as any).host as Node | null);
+  }
+}
+
+export function _delegate(
+  el: Element,
+  eventName: string,
+  handler: EventListener
+): void {
+  (el as any)[`$$${eventName}`] = handler;
+  if (!DELEGATED_EVENTS.has(eventName)) {
+    DELEGATED_EVENTS.add(eventName);
+    document.addEventListener(eventName, delegatedEventHandler);
+  }
+}
+
+/**
  * Set a property/attribute on an element.
  * Handles the common cases: className, style, boolean attrs, etc.
  */
