@@ -28,6 +28,8 @@ import { noAsyncComponent } from './rules/no-async-component';
 import { requireEffectCleanup } from './rules/require-effect-cleanup';
 import { noSignalWriteInComputed } from './rules/no-signal-write-in-computed';
 import { requireSignalCall } from './rules/require-signal-call';
+import { noSignalAssignment } from './rules/no-signal-assignment';
+import { noStaleSignalReadInEffect } from './rules/no-stale-signal-read-in-effect';
 
 const rules: Record<string, Rule.RuleModule> = {
   'rules-of-setup': rulesOfSetup,
@@ -36,6 +38,8 @@ const rules: Record<string, Rule.RuleModule> = {
   'require-effect-cleanup': requireEffectCleanup,
   'no-signal-write-in-computed': noSignalWriteInComputed,
   'require-signal-call': requireSignalCall,
+  'no-signal-assignment': noSignalAssignment,
+  'no-stale-signal-read-in-effect': noStaleSignalReadInEffect,
 };
 
 const plugin: ESLint.Plugin = {
@@ -59,6 +63,8 @@ const recommendedFlat: Linter.FlatConfig = {
     '@mikata/require-effect-cleanup': 'error',
     '@mikata/no-signal-write-in-computed': 'error',
     '@mikata/require-signal-call': 'error',
+    '@mikata/no-signal-assignment': 'error',
+    '@mikata/no-stale-signal-read-in-effect': 'error',
   },
 };
 
