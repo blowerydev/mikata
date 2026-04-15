@@ -401,6 +401,106 @@ function MyComponent() {
 }
 ```
 
+### Memory / disposal patterns
+
+Signals and effects do not unsubscribe automatically — if something outside the reactive scope holds a reference to a callback that closes over a signal, the subscription graph keeps it alive. Use one of these patterns for every external subscription.
+
+**Event listeners, `.on()` handlers, timers — inside an effect**
+
+Return a cleanup function. It runs before the next effect execution AND when the owning scope disposes.
+
+```tsx
+effect(() => {
+  const onScroll = () => setScrollY(window.scrollY);
+  window.addEventListener('scroll', onScroll);
+  return () => window.removeEventListener('scroll', onScroll);
+});
+
+effect(() => {
+  editor.on('transaction', handleTransaction);
+  return () => editor.off('transaction', handleTransaction);
+});
+
+effect(() => {
+  const id = setInterval(tick, 1000);
+  return () => clearInterval(id);
+});
+```
+
+**Event listeners registered in a component body**
+
+Returning from a component body returns JSX, not a cleanup — use `onCleanup` instead.
+
+```tsx
+function LiveClock() {
+  const [now, setNow] = signal(Date.now());
+  const id = setInterval(() => setNow(Date.now()), 1000);
+  onCleanup(() => clearInterval(id));
+
+  return <div>{now()}</div>;
+}
+```
+
+The `@mikata/eslint-plugin` rule `require-effect-cleanup` enforces both patterns.
+
+**Effect that re-subscribes on signal changes**
+
+The returned cleanup runs before each new run, which is exactly what you want for "resubscribe when the target changes":
+
+```tsx
+effect(() => {
+  const target = observedEl();   // reactive read
+  if (!target) return;
+  const ro = new ResizeObserver(handleResize);
+  ro.observe(target);
+  return () => ro.disconnect();  // disposes old observer before re-running
+});
+```
+
+**Sharing disposal across multiple subscriptions — `createScope`**
+
+For a group of effects that should all dispose together (e.g., a drag session or a temporary modal), create an explicit scope and dispose it manually.
+
+```tsx
+import { createScope } from '@mikata/reactivity';
+
+function startDrag() {
+  const scope = createScope(() => {
+    effect(() => { /* track pointer */ });
+    effect(() => { /* update ghost */ });
+  });
+
+  document.addEventListener('pointerup', () => scope.dispose(), { once: true });
+}
+```
+
+**Imperative integrations (TipTap, CodeMirror, Chart.js, …)**
+
+The integration instance is typically created in the component body, so tie its lifetime to the component scope:
+
+```tsx
+function Editor(props: { initial: string }) {
+  const host = createRef<HTMLDivElement>();
+  let view: EditorView | null = null;
+
+  onMount(() => {
+    view = new EditorView({ parent: host.current!, doc: props.initial });
+  });
+
+  onCleanup(() => {
+    view?.destroy();
+    view = null;
+  });
+
+  return <div ref={host} />;
+}
+```
+
+**What leaks if you forget**
+
+- An effect that calls `editor.on(...)` without returning cleanup keeps the handler registered forever; if the component remounts repeatedly (route changes, conditional `show()`), each remount adds another handler.
+- A signal held only via a leaked handler keeps its subscriber count positive, which pins its `sources[]`/`subscribers[]` edges in the debug registry. Use `__MIKATA_DEVTOOLS__.stats()` to watch node counts grow over time as a leak check in dev.
+
 ### createRef() → Ref
 
 Create a mutable ref for capturing a DOM element. The ref is both an object with `.current` and a callable function (usable as a ref callback).
@@ -449,7 +549,7 @@ portal(
 
 ### ErrorBoundary
 
-Catches errors thrown during child rendering and displays a fallback UI with a reset function.
+Catches errors thrown during the initial synchronous render of its children and displays a fallback UI with a reset function.
 
 ```tsx
 <ErrorBoundary
@@ -463,6 +563,46 @@ Catches errors thrown during child rendering and displays a fallback UI with a r
   <RiskyComponent />
 </ErrorBoundary>
 ```
+
+**What ErrorBoundary catches:**
+
+| Error source | Caught? |
+|---|---|
+| Throw in a component setup body (`function Foo() { throw … }`) | ✅ |
+| Throw in a `renderEffect` during its first run at mount | ✅ |
+| Throw in a synchronous child expression during initial render | ✅ |
+| Throw in a `renderEffect` on a later signal update | ❌ |
+| Throw in `effect(() => { throw })` (user effect) | ❌ |
+| Throw in `computed(() => { throw })` when read later | ❌ (propagates to the reader) |
+| Throw in `onMount` / `onCleanup` callbacks | ❌ |
+| Throw inside an event handler (`onClick`, etc.) | ❌ |
+| Promise rejection from `createQuery`/`createMutation` | ✅ when query opts in (`suspend: true` pairs with `<Suspense>`; otherwise read `query.error()` yourself) |
+
+Fine-grained reactivity decouples updates from renders, so "later" reactive errors do not unwind back to the boundary — `effect()` and non-initial `renderEffect()` runs are their own independent stacks.
+
+**How to handle the uncaught cases:**
+
+```tsx
+// User effects — wrap with try/catch and report explicitly.
+effect(() => {
+  try {
+    doRiskyThing();
+  } catch (err) {
+    reportOverlayError(err);   // or your own error signal
+  }
+});
+
+// Event handlers — standard try/catch, they don't propagate to ErrorBoundary.
+<button onClick={(e) => {
+  try { save(); } catch (err) { setErrorSignal(err); }
+}} />
+
+// Reactive errors that should unmount the subtree — thread them through a
+// signal the ErrorBoundary's children read synchronously on next render, and
+// call the `reset` callback when ready to retry.
+```
+
+Reset behavior: calling `reset()` disposes the previous child scope and re-renders children from scratch. State inside those children is NOT preserved.
 
 ### lazy(loader, options?) - Code-split components
 
