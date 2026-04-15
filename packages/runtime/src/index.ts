@@ -35,6 +35,17 @@ export { portal } from './portal';
 // Form bindings
 export { model } from './model';
 
+// Subscription hooks
+export {
+  useEventListener,
+  useInterval,
+  useTimeout,
+  useSubscription,
+  useResizeObserver,
+  useMutationObserver,
+  useIntersectionObserver,
+} from './hooks';
+
 // Context
 export { createContext, provide, inject } from './context';
 export type { Context } from './context';

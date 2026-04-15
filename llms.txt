@@ -401,6 +401,50 @@ function MyComponent() {
 }
 ```
 
+### Subscription hooks (auto-cleanup)
+
+These helpers register the subscription AND its teardown against the current reactive scope, so you never need to write a matching `onCleanup` by hand. They are safe to call in a component body, an `effect()`, or any nested hook.
+
+```tsx
+import {
+  useEventListener,
+  useInterval,
+  useTimeout,
+  useSubscription,
+  useResizeObserver,
+  useMutationObserver,
+  useIntersectionObserver,
+} from '@mikata/runtime';
+
+function ScrollTracker() {
+  const [y, setY] = signal(0);
+  useEventListener(window, 'scroll', () => setY(window.scrollY));
+  return <div>y = {y()}</div>;
+}
+
+function LiveClock() {
+  const [now, setNow] = signal(Date.now());
+  useInterval(() => setNow(Date.now()), 1000);
+  return <div>{now()}</div>;
+}
+
+function Editor({ editor }) {
+  // Generic emitter bridge — takes a subscribe function that returns unsubscribe.
+  useSubscription(() => {
+    editor.on('transaction', handleTx);
+    return () => editor.off('transaction', handleTx);
+  });
+}
+
+function Sizer() {
+  const ref = createRef<HTMLDivElement>();
+  useResizeObserver(() => ref.current, (entries) => { /* ... */ });
+  return <div ref={ref} />;
+}
+```
+
+Prefer these over bare `addEventListener` + manual `onCleanup` — the manual form is still correct but easier to get wrong. The `@mikata/eslint-plugin` rule `require-effect-cleanup` flags the manual form when it sees a missing teardown.
+
 ### Memory / disposal patterns
 
 Signals and effects do not unsubscribe automatically — if something outside the reactive scope holds a reference to a callback that closes over a signal, the subscription graph keeps it alive. Use one of these patterns for every external subscription.
