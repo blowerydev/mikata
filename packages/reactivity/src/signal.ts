@@ -33,7 +33,9 @@ interface SignalNode<T> extends ReactiveNode {
 export function signal<T>(initialValue: T, label?: string): Signal<T> {
   const node: SignalNode<T> = {
     _value: initialValue,
-    _sources: new Set(),
+    // `_sources` omitted — signals are sources only, never subscribers, so
+    // the Set would never be populated. Saves one allocation per signal,
+    // ~10k on a 10k-row list.
     _subscribers: new Set(),
     _version: 0,
     _dirty: false,

@@ -131,7 +131,7 @@ export function createSelector<T, U = T>(
         buckets.set(key, bucket);
       }
       bucket._subscribers.add(sub);
-      sub._sources.add(bucket);
+      sub._sources!.add(bucket);
     }
     return equals(key, currentValue);
   };

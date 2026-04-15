@@ -7,8 +7,12 @@
  */
 
 export interface ReactiveNode {
-  /** Nodes this depends on */
-  _sources: Set<ReactiveNode>;
+  /**
+   * Nodes this depends on. Optional: signal/selector-bucket nodes are
+   * sources only, never subscribers, so allocating an empty Set per
+   * instance is pure overhead. Effect/computed nodes always allocate it.
+   */
+  _sources?: Set<ReactiveNode>;
   /** Nodes that depend on this */
   _subscribers: Set<ReactiveNode>;
   /** Incremented on each value change */
@@ -66,7 +70,10 @@ export function popSubscriber(): void {
 export function track(source: ReactiveNode): void {
   if (currentSubscriber) {
     source._subscribers.add(currentSubscriber);
-    currentSubscriber._sources.add(source);
+    // _sources is guaranteed on any node that can be a subscriber
+    // (effect/computed/selector-watcher). Plain signal nodes never become
+    // subscribers, so this branch never runs against one.
+    currentSubscriber._sources!.add(source);
   }
 }
 
@@ -75,6 +82,7 @@ export function track(source: ReactiveNode): void {
  * Called before re-running a computation so stale dependencies are dropped.
  */
 export function cleanupSources(node: ReactiveNode): void {
+  if (!node._sources) return;
   for (const source of node._sources) {
     source._subscribers.delete(node);
   }

@@ -91,7 +91,7 @@ export function computed<T>(fn: () => T, label?: string): ReadSignal<T> {
     _revalidate(): boolean {
       if (node._dirty || !initialized) {
         // First, revalidate our own computed sources
-        for (const source of node._sources) {
+        for (const source of node._sources!) {
           if (source._revalidate) {
             source._revalidate();
           }
