@@ -5,7 +5,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render } from '../src/render';
 import { _createComponent } from '../src/component';
-import { installDevTools } from '../src/devtools';
+import { installDevTools, parseStackFrames } from '../src/devtools';
 import { signal, flushSync, _resetDebugRegistry } from '@mikata/reactivity';
 
 // @ts-expect-error - define __DEV__ for tests
@@ -158,6 +158,67 @@ describe('DevTools', () => {
     const results = devtools.search('user');
     expect(results.length).toBe(2);
 
+    consoleSpy.mockRestore();
+  });
+
+  it('parseStackFrames extracts file/line/col from common formats', () => {
+    const chromeStack = [
+      '    at createSignal (http://localhost:5173/src/signal.ts:12:7)',
+      '    at App (http://localhost:5173/src/App.tsx:42:19)',
+      '    at <anonymous>',
+    ].join('\n');
+    const chromeFrames = parseStackFrames(chromeStack);
+    expect(chromeFrames).toHaveLength(3);
+    expect(chromeFrames[0]).toMatchObject({
+      file: 'http://localhost:5173/src/signal.ts',
+      line: 12,
+      column: 7,
+    });
+    expect(chromeFrames[1]).toMatchObject({
+      file: 'http://localhost:5173/src/App.tsx',
+      line: 42,
+      column: 19,
+    });
+    expect(chromeFrames[2].file).toBeNull();
+
+    const firefoxStack = 'makeSignal@http://localhost:5173/src/signal.ts:12:7';
+    const ffFrames = parseStackFrames(firefoxStack);
+    expect(ffFrames[0]).toMatchObject({
+      file: 'http://localhost:5173/src/signal.ts',
+      line: 12,
+      column: 7,
+    });
+  });
+
+  it('renders clickable frames for the created stack in the overlay', () => {
+    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    installDevTools();
+
+    signal(42, 'frame-test-signal');
+
+    const devtools = (window as any).__MIKATA_DEVTOOLS__;
+    devtools.show();
+
+    const overlay = document.getElementById('__mikata-devtools__')!;
+    // Switch to signals tab
+    const signalsTab = overlay.querySelector<HTMLElement>('.__mdt-tab[data-tab="signals"]');
+    signalsTab!.click();
+
+    // Expand our signal
+    const rows = overlay.querySelectorAll<HTMLElement>('.__mdt-node');
+    const target = Array.from(rows).find((r) =>
+      r.textContent?.includes('frame-test-signal')
+    );
+    expect(target).toBeDefined();
+    target!.click();
+
+    // After expansion, the detail should contain at least one clickable frame.
+    const frames = overlay.querySelectorAll<HTMLElement>('.__mdt-frame[data-frame]');
+    expect(frames.length).toBeGreaterThan(0);
+    const first = frames[0];
+    expect(first.getAttribute('title')).toMatch(/:\d+:\d+$/);
+
+    devtools.hide();
     consoleSpy.mockRestore();
   });
 

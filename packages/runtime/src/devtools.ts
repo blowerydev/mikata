@@ -398,6 +398,28 @@ const STYLES = `
     font-size: 10px;
   }
   .__mdt-chip:hover { border-color: #7ec8e3; color: #fff; }
+  .__mdt-frames {
+    margin: 0;
+    padding: 0;
+    max-height: 110px;
+    overflow: auto;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 10px;
+  }
+  .__mdt-frame {
+    display: block;
+    padding: 1px 0;
+    color: #888;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .__mdt-frame[data-frame] {
+    cursor: pointer;
+    color: #9fbcd0;
+    text-decoration: none;
+  }
+  .__mdt-frame[data-frame]:hover { color: #fff; text-decoration: underline; }
   .__mdt-badge {
     display: inline-block;
     padding: 1px 5px;
@@ -463,6 +485,80 @@ const STYLES = `
     white-space: nowrap;
   }
 `;
+
+// ---------------------------------------------------------------------------
+// Stack frame parsing and source navigation
+// ---------------------------------------------------------------------------
+
+/** @internal - exported for tests. */
+export interface ParsedFrame {
+  /** Original frame line, unchanged. */
+  raw: string;
+  /** URL or file path of the source, or null if the line is not parsable. */
+  file: string | null;
+  line: number;
+  column: number;
+}
+
+const FRAME_URL_RE = /((?:https?:\/\/|file:\/\/|\/)[^\s()]+?):(\d+):(\d+)/;
+
+/** @internal - exported for tests. */
+export function parseStackFrames(stack: string): ParsedFrame[] {
+  if (!stack) return [];
+  return stack.split('\n').map((raw) => {
+    const line = raw.trim();
+    const m = FRAME_URL_RE.exec(line);
+    if (!m) return { raw: line, file: null, line: 0, column: 0 };
+    return { raw: line, file: m[1], line: Number(m[2]), column: Number(m[3]) };
+  });
+}
+
+function shortenFrame(frame: ParsedFrame): string {
+  if (!frame.file) return frame.raw;
+  // Strip origin and query string for compactness.
+  let path = frame.file;
+  try {
+    const u = new URL(frame.file);
+    path = u.pathname;
+  } catch {
+    // Not an absolute URL — keep as-is.
+  }
+  path = path.replace(/\?.*$/, '');
+  // Keep the last 3 segments so the devtools panel isn't dominated by
+  // deep paths from node_modules.
+  const parts = path.split('/').filter(Boolean);
+  const tail = parts.slice(-3).join('/');
+  return `${tail}:${frame.line}:${frame.column}`;
+}
+
+/**
+ * Try to open a source location in the user's editor via Vite's
+ * `/__open-in-editor` endpoint. Falls back to opening the file URL in a
+ * new browser tab, which is enough to inspect source maps in DevTools.
+ */
+async function openSource(frame: ParsedFrame): Promise<void> {
+  if (!frame.file) return;
+  const q = new URLSearchParams({
+    file: frame.file,
+    line: String(frame.line),
+    column: String(frame.column),
+  }).toString();
+  try {
+    const res = await fetch(`/__open-in-editor?${q}`, { method: 'GET' });
+    if (res.ok) return;
+  } catch {
+    // Endpoint unavailable — fall through.
+  }
+  // Log the resolved location so the user can click through the DevTools
+  // console (which understands source maps for the in-page URL).
+  // eslint-disable-next-line no-console
+  console.log(`[mikata:devtools] source at ${frame.file}:${frame.line}:${frame.column}`);
+  try {
+    window.open(frame.file, '_blank', 'noopener');
+  } catch {
+    /* noop */
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Overlay construction
@@ -747,15 +843,26 @@ function renderNodes(body: HTMLElement, which: 'signals' | 'effects'): void {
     return;
   }
 
+  frameIndex.clear();
   body.innerHTML = visible.map((n) => renderNodeRow(n, which)).join('');
 
   body.querySelectorAll<HTMLElement>('.__mdt-node').forEach((el) => {
     const id = Number(el.dataset.id);
     el.addEventListener('click', (e) => {
       if ((e.target as HTMLElement).closest('.__mdt-chip')) return;
+      if ((e.target as HTMLElement).closest('.__mdt-frame')) return;
       if (expandedNodes.has(id)) expandedNodes.delete(id);
       else expandedNodes.add(id);
       refreshContent();
+    });
+  });
+  body.querySelectorAll<HTMLElement>('.__mdt-frame[data-frame]').forEach((el) => {
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      const key = Number((el as HTMLElement).dataset.frame);
+      const frame = frameIndex.get(key);
+      if (frame) void openSource(frame);
     });
   });
   body.querySelectorAll<HTMLElement>('.__mdt-chip[data-nav]').forEach((chip) => {
@@ -834,8 +941,33 @@ function renderNodeDetail(n: DebugNodeSnapshot): string {
       ${n.value !== undefined ? `<div class="__mdt-detail-row"><span class="__mdt-detail-label">value</span>${escapeHtml(formatValueFull(n.value))}</div>` : ''}
       <div class="__mdt-detail-row"><span class="__mdt-detail-label">sources</span>${sources || '<em style="color:#555">none</em>'}</div>
       <div class="__mdt-detail-row"><span class="__mdt-detail-label">subscribers</span>${subs || '<em style="color:#555">none</em>'}</div>
-      <div class="__mdt-detail-row"><span class="__mdt-detail-label">created</span><pre style="margin:0;font-size:10px;color:#888;max-height:80px;overflow:auto">${escapeHtml(n.createdAt)}</pre></div>
+      <div class="__mdt-detail-row"><span class="__mdt-detail-label">created</span>${renderFrames(n.createdAt)}</div>
     </div>`;
+}
+
+/**
+ * Frames parsed during the current render pass, indexed by the `data-frame`
+ * attribute written into the DOM. Rebuilt each render; click handlers read
+ * from this map so we can pass structured data to `openSource`.
+ */
+const frameIndex = new Map<number, ParsedFrame>();
+
+function renderFrames(stack: string): string {
+  const frames = parseStackFrames(stack);
+  if (frames.length === 0) {
+    return '<em style="color:#555">no stack</em>';
+  }
+  const rows = frames.map((frame) => {
+    const text = escapeHtml(frame.file ? shortenFrame(frame) : frame.raw);
+    if (!frame.file) {
+      return `<span class="__mdt-frame">${text}</span>`;
+    }
+    const key = frameIndex.size;
+    frameIndex.set(key, frame);
+    const title = escapeHtml(`${frame.file}:${frame.line}:${frame.column}`);
+    return `<a class="__mdt-frame" data-frame="${key}" title="${title}">${text}</a>`;
+  }).join('');
+  return `<div class="__mdt-frames">${rows}</div>`;
 }
 
 function matchesFilter(n: DebugNodeSnapshot): boolean {
