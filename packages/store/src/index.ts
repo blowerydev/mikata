@@ -5,7 +5,12 @@ export { derived } from './derived';
 
 export { createSelector } from './selector';
 
-export { createQuery, createMutation } from './query';
+export {
+  createQuery,
+  createMutation,
+  invalidateTag,
+  invalidateTags,
+} from './query';
 export type {
   QueryOptions,
   QueryResult,

@@ -1,6 +1,15 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { effect, flushSync, computed, signal, createScope } from '@mikata/reactivity';
-import { createStore, derived, createQuery, createMutation, createSelector } from '../src/index';
+import {
+  createStore,
+  derived,
+  createQuery,
+  createMutation,
+  createSelector,
+  invalidateTag,
+  invalidateTags,
+} from '../src/index';
+import { _resetTagRegistry } from '../src/query';
 
 describe('createStore', () => {
   it('creates a reactive store', () => {
@@ -110,6 +119,23 @@ describe('createQuery', () => {
     expect(query.data()).toBeUndefined();
   });
 
+  it('runs fn exactly once per key change — does not refetch from its own setData', async () => {
+    // Regression: execute() reads data() before its first await, so without
+    // wrapping the call in untrack(), the key-watching effect would subscribe
+    // to data and re-run every time setData fired — doubling every fetch and
+    // making invalidation counts unpredictable.
+    const fn = vi.fn().mockResolvedValue('hello');
+    const query = createQuery({
+      key: () => 'k',
+      fn,
+      retry: false,
+    });
+    await vi.waitFor(() => expect(query.status()).toBe('success'));
+    // Give the scheduler one more tick to surface any stray re-runs.
+    await new Promise((r) => setTimeout(r, 20));
+    expect(fn).toHaveBeenCalledTimes(1);
+  });
+
   it('does not fetch when enabled is false', async () => {
     const mockFn = vi.fn().mockResolvedValue('data');
 
@@ -170,6 +196,119 @@ describe('createMutation', () => {
     mutation.reset();
     expect(mutation.status()).toBe('idle');
     expect(mutation.data()).toBeUndefined();
+  });
+});
+
+describe('invalidateTags', () => {
+  beforeEach(() => {
+    _resetTagRegistry();
+  });
+
+  it('a mutation invalidates a tagged query, triggering a refetch', async () => {
+    const fetchUsers = vi.fn().mockResolvedValue(['alice']);
+    const query = createQuery({
+      key: () => 'users',
+      fn: fetchUsers,
+      tags: ['user'],
+      retry: false,
+    });
+    await vi.waitFor(() => expect(query.status()).toBe('success'));
+    expect(fetchUsers).toHaveBeenCalledTimes(1);
+
+    const addUser = createMutation({
+      fn: async (name: string) => ({ id: 1, name }),
+      invalidates: ['user'],
+    });
+    await addUser.mutate('bob');
+
+    await vi.waitFor(() => expect(fetchUsers).toHaveBeenCalledTimes(2));
+  });
+
+  it('deduplicates refetches when multiple overlapping tags match the same query', async () => {
+    const fetchUser = vi.fn().mockResolvedValue({ id: 42 });
+    const query = createQuery({
+      key: () => 42,
+      fn: fetchUser,
+      tags: ['user', 'user:42'],
+      retry: false,
+    });
+    await vi.waitFor(() => expect(query.status()).toBe('success'));
+    expect(fetchUser).toHaveBeenCalledTimes(1);
+
+    await invalidateTags(['user', 'user:42']);
+
+    // Tagged twice, invalidated twice — but should only refetch ONCE.
+    expect(fetchUser).toHaveBeenCalledTimes(2);
+  });
+
+  it('mutation invalidates derive tags from the result', async () => {
+    const fetchUser = vi.fn().mockResolvedValue({ id: 7, name: 'Cara' });
+    createQuery({
+      key: () => 7,
+      fn: fetchUser,
+      tags: ['user:7'],
+      retry: false,
+    });
+    await vi.waitFor(() => expect(fetchUser).toHaveBeenCalledTimes(1));
+
+    const edit = createMutation({
+      fn: async (patch: { id: number; name: string }) => patch,
+      invalidates: (result) => [`user:${result.id}`],
+    });
+    await edit.mutate({ id: 7, name: 'Carol' });
+
+    await vi.waitFor(() => expect(fetchUser).toHaveBeenCalledTimes(2));
+  });
+
+  it('standalone invalidateTag() refetches matching queries', async () => {
+    const fetchAuth = vi.fn().mockResolvedValue({ role: 'admin' });
+    createQuery({
+      key: () => 'me',
+      fn: fetchAuth,
+      tags: ['auth'],
+      retry: false,
+    });
+    await vi.waitFor(() => expect(fetchAuth).toHaveBeenCalledTimes(1));
+
+    await invalidateTag('auth');
+    expect(fetchAuth).toHaveBeenCalledTimes(2);
+  });
+
+  it('unrelated tags do not trigger refetches', async () => {
+    const fetchUsers = vi.fn().mockResolvedValue([]);
+    const fetchOrders = vi.fn().mockResolvedValue([]);
+    createQuery({ key: () => 'u', fn: fetchUsers, tags: ['user'], retry: false });
+    createQuery({ key: () => 'o', fn: fetchOrders, tags: ['order'], retry: false });
+    await vi.waitFor(() => {
+      expect(fetchUsers).toHaveBeenCalledTimes(1);
+      expect(fetchOrders).toHaveBeenCalledTimes(1);
+    });
+
+    await invalidateTag('order');
+    expect(fetchUsers).toHaveBeenCalledTimes(1);
+    expect(fetchOrders).toHaveBeenCalledTimes(2);
+  });
+
+  it('queries unregister when their owning scope disposes', async () => {
+    const fetchUsers = vi.fn().mockResolvedValue([]);
+    const scope = createScope(() => {
+      createQuery({
+        key: () => 'u',
+        fn: fetchUsers,
+        tags: ['user'],
+        retry: false,
+      });
+    });
+    await vi.waitFor(() => expect(fetchUsers).toHaveBeenCalledTimes(1));
+
+    scope.dispose();
+    await invalidateTag('user');
+    // Scope was disposed — the query should not have been refetched.
+    expect(fetchUsers).toHaveBeenCalledTimes(1);
+  });
+
+  it('invalidating an unknown tag is a no-op and resolves', async () => {
+    await expect(invalidateTag('nobody-tagged-this')).resolves.toBeUndefined();
   });
 });
 
