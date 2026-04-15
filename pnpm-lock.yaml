@@ -157,6 +157,12 @@ importers:
         specifier: workspace:*
         version: link:../store
 
+  packages/persist:
+    dependencies:
+      '@mikata/reactivity':
+        specifier: workspace:*
+        version: link:../reactivity
+
   packages/reactivity: {}
 
   packages/router:
