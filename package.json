@@ -11,12 +11,15 @@
     "test": "vitest",
     "test:run": "vitest run",
     "dev": "pnpm --filter playground dev",
+    "dev:ssr": "tsx integration/src/ssr-smoke.ts",
+    "dev:kit": "pnpm --filter @mikata/example-kit-ssr dev",
     "lint": "eslint packages/*/src/**/*.ts"
   },
   "devDependencies": {
     "@types/babel__core": "^7.20.5",
     "jsdom": "^29.0.2",
     "tsup": "^8.4.0",
+    "tsx": "^4.19.0",
     "typescript": "^5.7.0",
     "vitest": "^3.1.0"
   }

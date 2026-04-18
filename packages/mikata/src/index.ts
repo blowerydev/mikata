@@ -31,6 +31,7 @@ export type {
 // Runtime
 export {
   render,
+  hydrate,
   _createElement,
   _setProp,
   _insert,

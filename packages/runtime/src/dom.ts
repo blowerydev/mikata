@@ -4,6 +4,8 @@
  */
 
 import { renderEffect } from '@mikata/reactivity';
+import { isSSR } from './env';
+import { isHydrating, adoptNext, pushFrame, popFrame } from './adopt';
 
 declare const __DEV__: boolean;
 
@@ -69,7 +71,20 @@ export function _createElement(tag: string): HTMLElement {
 export function _template(html: string): Node {
   const t = document.createElement('template');
   t.innerHTML = html;
-  return t.content.firstChild!;
+  const root = t.content.firstChild!;
+  // Swap the per-instance `cloneNode` so that during hydration it pops the
+  // next unclaimed node from the adoption cursor instead of creating a
+  // fresh deep clone. Non-hydrating callers go through the native path and
+  // pay nothing for the check.
+  const nativeClone = root.cloneNode.bind(root);
+  (root as unknown as { cloneNode: (deep?: boolean) => Node }).cloneNode = (deep?: boolean) => {
+    if (isHydrating()) {
+      const adopted = adoptNext();
+      if (adopted) return adopted;
+    }
+    return nativeClone(deep);
+  };
+  return root;
 }
 
 /**
@@ -110,6 +125,11 @@ export function _delegate(
   eventName: string,
   handler: EventListener
 ): void {
+  // On the server the handler is unreachable (no runtime events) — skip the
+  // `$$` stash and don't populate DELEGATED_EVENTS, otherwise the shim's
+  // document would claim the event and the real `document.addEventListener`
+  // wouldn't get attached the next time we run on the client.
+  if (isSSR()) return;
   (el as any)[`$$${eventName}`] = handler;
   if (!DELEGATED_EVENTS.has(eventName)) {
     DELEGATED_EVENTS.add(eventName);
@@ -182,30 +202,60 @@ export function _insert(
   if (typeof accessor === 'function') {
     // Reactive child - set up an effect
     let currentNodes: Node[] = [];
+    let firstRun = true;
 
     renderEffect(() => {
-      const value = (accessor as () => unknown)();
-      const newNodes = resolveNodes(value);
+      const hydrate = firstRun && isHydrating();
+      // During hydration, scope the cursor to this parent so that any
+      // `cloneNode()` calls inside the accessor adopt `parent`'s existing
+      // children rather than siblings. After the first run we're in
+      // steady-state and behave like a normal reactive insert.
+      if (hydrate) pushFrame(parent);
+      try {
+        const value = (accessor as () => unknown)();
+        const newNodes = resolveNodes(value);
 
-      // Remove old nodes
-      for (const node of currentNodes) {
-        if (node.parentNode) {
-          node.parentNode.removeChild(node);
+        if (hydrate) {
+          // Nodes were adopted in place — don't touch the DOM, just record
+          // them so future updates can replace them.
+          currentNodes = newNodes;
+          return;
         }
-      }
 
-      // Insert new nodes
-      for (const node of newNodes) {
-        if (marker) {
-          parent.insertBefore(node, marker);
-        } else {
-          parent.appendChild(node);
+        // Remove old nodes
+        for (const node of currentNodes) {
+          if (node.parentNode) {
+            node.parentNode.removeChild(node);
+          }
         }
-      }
 
-      currentNodes = newNodes;
+        // Insert new nodes
+        for (const node of newNodes) {
+          if (marker) {
+            parent.insertBefore(node, marker);
+          } else {
+            parent.appendChild(node);
+          }
+        }
+
+        currentNodes = newNodes;
+      } finally {
+        if (hydrate) popFrame();
+        firstRun = false;
+      }
     });
   } else {
+    // Static insert. During hydration, the server already emitted these
+    // nodes — skip the DOM op and just advance the cursor.
+    if (isHydrating()) {
+      pushFrame(parent);
+      try {
+        resolveNodes(accessor);
+      } finally {
+        popFrame();
+      }
+      return;
+    }
     const nodes = resolveNodes(accessor);
     for (const node of nodes) {
       if (marker) {
@@ -219,13 +269,26 @@ export function _insert(
 
 /**
  * Resolve a value into DOM nodes.
+ *
+ * Uses a duck-type check (`nodeType` is present) instead of `instanceof Node`
+ * so the `@mikata/server` DOM shim — which installs its own node classes on
+ * `globalThis.document` — flows through unchanged. In the browser every real
+ * Node has `nodeType`, so the check is equivalent.
  */
 function resolveNodes(value: unknown): Node[] {
   if (value == null || typeof value === 'boolean') return [];
-  if (value instanceof Node) return [value];
+  if (isNodeLike(value)) return [value as Node];
   if (Array.isArray(value)) return value.flatMap(resolveNodes);
   // String/number → text node
   return [document.createTextNode(String(value))];
+}
+
+export function isNodeLike(v: unknown): boolean {
+  return (
+    typeof v === 'object' &&
+    v !== null &&
+    typeof (v as { nodeType?: unknown }).nodeType === 'number'
+  );
 }
 
 /**

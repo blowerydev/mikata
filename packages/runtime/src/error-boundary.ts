@@ -4,6 +4,7 @@
  */
 
 import { createScope, type Scope } from '@mikata/reactivity';
+import { isNodeLike } from './dom';
 
 interface ErrorBoundaryProps {
   fallback: (error: Error, reset: () => void) => Node;
@@ -38,8 +39,8 @@ export function ErrorBoundary(props: ErrorBoundaryProps): Node {
           ? props.children
           : [props.children];
         for (const child of children) {
-          if (child instanceof Node) {
-            frag.appendChild(child);
+          if (isNodeLike(child)) {
+            frag.appendChild(child as Node);
           } else if (child != null) {
             frag.appendChild(document.createTextNode(String(child)));
           }

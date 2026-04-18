@@ -1,0 +1,66 @@
+{
+  "name": "@mikata/kit",
+  "version": "0.1.0",
+  "description": "Meta-framework for Mikata: file-based routing, Vite plugin, and dev-mode SSR",
+  "keywords": [
+    "mikata",
+    "vite",
+    "ssr",
+    "file-based-routing",
+    "meta-framework"
+  ],
+  "author": "Brandon Lowery",
+  "homepage": "https://github.com/blowerydev/mikata#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/blowerydev/mikata.git",
+    "directory": "packages/kit"
+  },
+  "bugs": {
+    "url": "https://github.com/blowerydev/mikata/issues"
+  },
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./plugin": {
+      "types": "./dist/plugin.d.ts",
+      "import": "./dist/plugin.js",
+      "require": "./dist/plugin.cjs"
+    },
+    "./client": {
+      "types": "./dist/client.d.ts",
+      "import": "./dist/client.js",
+      "require": "./dist/client.cjs"
+    },
+    "./server": {
+      "types": "./dist/server.d.ts",
+      "import": "./dist/server.js",
+      "require": "./dist/server.cjs"
+    }
+  },
+  "sideEffects": false,
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch"
+  },
+  "dependencies": {
+    "@mikata/reactivity": "workspace:*",
+    "@mikata/runtime": "workspace:*",
+    "@mikata/router": "workspace:*",
+    "@mikata/server": "workspace:*"
+  },
+  "peerDependencies": {
+    "vite": "^6.0.0"
+  }
+}

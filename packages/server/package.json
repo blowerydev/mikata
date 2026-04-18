@@ -1,0 +1,46 @@
+{
+  "name": "@mikata/server",
+  "version": "0.1.0",
+  "description": "Server-side rendering for Mikata - renderToString with a minimal DOM shim",
+  "keywords": [
+    "mikata",
+    "ssr",
+    "server-side-rendering",
+    "hydration"
+  ],
+  "author": "Brandon Lowery",
+  "homepage": "https://github.com/blowerydev/mikata#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/blowerydev/mikata.git",
+    "directory": "packages/server"
+  },
+  "bugs": {
+    "url": "https://github.com/blowerydev/mikata/issues"
+  },
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "sideEffects": false,
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch"
+  },
+  "dependencies": {
+    "@mikata/reactivity": "workspace:*",
+    "@mikata/runtime": "workspace:*",
+    "@mikata/store": "workspace:*"
+  }
+}

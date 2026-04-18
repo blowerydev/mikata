@@ -63,7 +63,7 @@ export { lazy } from './lazy';
 export type { LazyOptions } from './lazy';
 
 // Render
-export { render } from './render';
+export { render, hydrate } from './render';
 export type { RenderOptions } from './render';
 
 // Dev-mode error overlay
@@ -78,6 +78,13 @@ export { _registerComponent, _hotReplace } from './hmr';
 
 // DevTools
 export { installDevTools } from './devtools';
+
+// SSR env flag (read + toggle — toggle is internal, used by @mikata/server)
+export { isSSR, _setSSR } from './env';
+
+// Hydration cursor introspection (used by @mikata/server tests, advanced
+// integrations, and custom compiler output).
+export { isHydrating } from './adopt';
 
 // JSX types
 export type {

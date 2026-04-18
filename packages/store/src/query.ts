@@ -14,6 +14,7 @@ import {
   getCurrentScope,
   type ReadSignal,
 } from '@mikata/reactivity';
+import { registerSSRQuery, readHydratedData } from './ssr-registry';
 
 declare const __DEV__: boolean;
 
@@ -173,10 +174,18 @@ export function createQuery<T, K = unknown>(
     }
   }
 
-  const [data, setData] = signal<T | undefined>(options.initialData);
+  // If no initialData is passed, fall back to whatever the server hydration
+  // payload provided for this key — so SSR data flows through without the
+  // caller having to thread it manually.
+  const hydrated = options.initialData === undefined
+    ? readHydratedData<T>(untrack(options.key))
+    : undefined;
+  const seed = options.initialData ?? hydrated;
+
+  const [data, setData] = signal<T | undefined>(seed);
   const [error, setError] = signal<Error | null>(null);
   const [status, setStatus] = signal<'idle' | 'loading' | 'error' | 'success'>(
-    options.initialData ? 'success' : 'idle'
+    seed !== undefined ? 'success' : 'idle'
   );
   const [isFetching, setIsFetching] = signal(false);
 
@@ -230,17 +239,37 @@ export function createQuery<T, K = unknown>(
     }
   }
 
+  // Server-side: register with the SSR query registry so the renderer can
+  // await our first fetch before flushing HTML. No-op on the client or when
+  // there's no active SSR collection. `collectAll()` will call our refetch
+  // exactly once, so suppress the effect's initial fetch below.
+  let skipInitialFetch = seed !== undefined;
+  const ssrKey = registerSSRQuery(
+    untrack(options.key),
+    () => execute(untrack(options.key)),
+  );
+  if (ssrKey !== null) skipInitialFetch = true;
+
   // Watch the key reactively - re-fetch when key changes. `execute()` reads
   // signals like `data()` before its first await, which would otherwise make
   // this effect subscribe to its own outputs and refetch on every setData.
   // Wrap the call in untrack so only `enabled()` and `key()` participate.
+  //
+  // If we already have seed data (caller-provided initialData OR hydrated
+  // from SSR), skip the first fetch — the whole point of hydration is
+  // "use this data, don't re-fetch on mount". A later key change still
+  // triggers execute() normally.
   effect(() => {
     const enabled = options.enabled?.() ?? true;
     if (!enabled) return;
 
     const key = options.key();
     retryCount = 0;
-    untrack(() => execute(key));
+    if (skipInitialFetch) {
+      skipInitialFetch = false;
+    } else {
+      untrack(() => execute(key));
+    }
 
     return () => {
       abortController?.abort();

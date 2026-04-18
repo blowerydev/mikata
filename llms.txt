@@ -13,10 +13,12 @@
 ## Packages
 
 - `@mikata/reactivity` - signals, computed, reactive proxies, effects, scopes, batching
-- `@mikata/runtime` - DOM rendering, components, control flow, context, lifecycle, portals, form bindings, error boundaries
-- `@mikata/store` - createStore, derived, createSelector, createQuery, createMutation, tag-based invalidation
+- `@mikata/runtime` - DOM rendering, components, control flow, context, lifecycle, portals, form bindings, error boundaries, `hydrate()` for SSR
+- `@mikata/store` - createStore, derived, createSelector, createQuery, createMutation, tag-based invalidation, SSR query registry
 - `@mikata/persist` - persistedSignal: storage-backed signals (localStorage/sessionStorage/IndexedDB) with cross-tab sync
 - `@mikata/compiler` - Vite/Babel plugin that transforms JSX to runtime calls
+- `@mikata/server` - renderToString: SSR via DOM shim, awaits createQuery fetches, emits hydration state script
+- `@mikata/kit` - meta-framework: file-based routing, Vite plugin, dev-mode SSR middleware on top of router + server
 - `@mikata/testing` - testing utilities: renderComponent, fireEvent, waitForUpdate, query helpers
 - `@mikata/ui` - component library: buttons, inputs, layout, feedback, overlays with CSS variables theming
 - `@mikata/form` - form state, validation, schema resolvers (zod, yup, valibot, superstruct, joi)
@@ -962,6 +964,135 @@ Options:
 Pluggable adapters: `localStorageAdapter`, `sessionStorageAdapter`, `indexedDBStorage({ dbName?, storeName? })`. Implement the `StorageAdapter` interface for custom backends (cookies, secure storage, etc.).
 
 Cross-tab sync uses a `BroadcastChannel` per key (`mikata:persist:<key>`); falls back to the `storage` event when BroadcastChannel is unavailable. Adapters are SSR-safe — they no-op if their global is missing.
+
+---
+
+## Server Rendering API (`@mikata/server`)
+
+Mikata SSR installs a minimal `document` shim on `globalThis`, runs the component tree once in a reactive scope, awaits any in-flight `createQuery` fetches, serialises to HTML, then tears the shim down. The same compiled `@mikata/runtime` module runs on both server and client — there is no separate server backend, so the two trees cannot diverge.
+
+### renderToString(component, options?) → Promise<{ html, stateScript, state }>
+
+Render a component tree to an HTML string plus a hydration state payload.
+
+```tsx
+import { renderToString } from '@mikata/server';
+
+const { html, stateScript } = await renderToString(() => <App />);
+
+res.end(`<!doctype html>
+  <html>
+    <body>
+      <div id="root">${html}</div>
+      ${stateScript}
+      <script type="module" src="/entry-client.js"></script>
+    </body>
+  </html>`);
+```
+
+Options:
+- `stateGlobal`: name of the window global for the state payload (default `'__MIKATA_STATE__'`)
+- `skipQueryCollection`: skip the `createQuery` await phase; faster but HTML contains loading states
+
+Returns:
+- `html`: fully-serialised HTML for the component subtree
+- `stateScript`: `<script>window.__MIKATA_STATE__ = {...}</script>`, safe to inline in the page shell. Empty when no queries were collected.
+- `state`: the raw collected query payload for custom embedding
+
+### hydrate(component, container) → dispose
+
+Client-side counterpart to `renderToString`. Unlike `render()`, `hydrate()` adopts the pre-rendered DOM in place rather than clearing and rebuilding the container.
+
+```tsx
+import { hydrate } from '@mikata/runtime';
+
+hydrate(() => <App />, document.getElementById('root')!);
+```
+
+Hydration uses an adoption cursor: the compiled runtime walks the existing DOM in the same order it would create nodes, attaches event listeners via the shared `_delegate` path, and binds reactive text/attr updates to the adopted nodes. Comment markers emitted by `show`, `each`, `switchMatch`, and `Dynamic` round-trip through SSR so the client can resume at the right boundary without layout shift.
+
+Queries seeded via `window.__MIKATA_STATE__[key]` start in `'success'` state — `fn` is not re-invoked on first mount.
+
+### escapeStateScript(json) / renderStateScript(state, globalName)
+
+Low-level helpers exported for custom embedding. `escapeStateScript` escapes `<`, `>`, `&`, U+2028, U+2029 so the payload is safe to inline in a `<script>` tag.
+
+### Query collection
+
+`@mikata/store` exposes `beginCollect()` / `endCollect()` / `collectAll()` so `renderToString` brackets a render with a query registry. Each `createQuery` in the tree registers its `refetch()` promise; `collectAll()` awaits all in-flight promises (loops until the pending set is empty to handle queries spawned in `.then()` callbacks). The settled data lands on the state payload under each query's stable key. On the client, `createQuery` auto-reads `window.__MIKATA_STATE__[key]` as `initialData` — no developer wiring.
+
+---
+
+## Meta-framework (`@mikata/kit`)
+
+File-based routing + Vite plugin + dev-mode SSR middleware on top of `@mikata/router` and `@mikata/server`. Import paths are split into sub-entries so the Vite config loader never pulls in DOM or server code:
+
+- `@mikata/kit` — Node-safe: the plugin, scanner, manifest generator
+- `@mikata/kit/client` — `mount(routes, container)` for the client entry
+- `@mikata/kit/server` — `renderRoute(routes, { url })` for the server entry
+
+### Routing conventions
+
+Files under `src/routes/` become routes:
+
+- `index.tsx` → parent path (`/`)
+- `about.tsx` → `/about`
+- `users/[id].tsx` → `/users/:id`
+- `users/[...rest].tsx` → `/users/*` (catch-all)
+- `_layout.tsx` → nested layout whose `routeOutlet()` renders the sibling tree
+
+Route modules are lazy by default — the plugin emits `{ path, lazy: () => import(...) }` in `virtual:mikata-routes`, so every non-matching route code-splits on the client and only loads on navigation. On the server, `renderRoute` pre-resolves the lazy imports on the match chain before rendering so the HTML is final markup rather than suspense fallbacks.
+
+### mikataKit(options?) — Vite plugin
+
+```ts
+// vite.config.ts
+import { mikata } from '@mikata/compiler';
+import { mikataKit } from '@mikata/kit';
+
+export default { plugins: [mikata(), mikataKit()] };
+```
+
+Options:
+- `routesDir`: directory scanned for routes (default `src/routes`)
+- `ssr`: `false` disables the dev SSR middleware (default enabled). Object form: `{ entry?: string, outletMarker?: string }` — `entry` defaults to `src/entry-server.tsx`, `outletMarker` defaults to `<!--ssr-outlet-->`.
+
+The plugin:
+- resolves `virtual:mikata-routes` to a manifest of lazy imports
+- HMRs the manifest when files are added / renamed / deleted
+- sets `appType: 'custom'` and installs a Connect middleware that reads `index.html`, transforms it via `server.transformIndexHtml`, loads the server entry via `server.ssrLoadModule`, calls `mod.render({ url, req })`, and splices the result at `<!--ssr-outlet-->`
+
+Asset URLs (anything with an extension) and non-GET / non-HTML requests bypass the SSR middleware.
+
+### renderRoute(routes, { url }) → Promise<{ html, stateScript, state, status }>
+
+```ts
+// src/entry-server.tsx
+import { renderRoute } from '@mikata/kit/server';
+import routes from 'virtual:mikata-routes';
+
+export async function render(ctx: { url: string; req?: unknown }) {
+  return renderRoute(routes, { url: ctx.url });
+}
+```
+
+Returns everything `renderToString` does plus `status: 200 | 404`. `404` when no route matched — the middleware writes that status automatically.
+
+### mount(routes, container) — client entry
+
+```tsx
+// src/entry-client.tsx
+import { mount } from '@mikata/kit/client';
+import routes from 'virtual:mikata-routes';
+
+mount(routes, document.getElementById('root')!);
+```
+
+Internally calls `hydrate()` so the server-rendered DOM is adopted rather than re-created.
+
+### Example app
+
+`examples/kit-ssr` is a runnable example with `index.tsx`, `about.tsx`, and `users/[id].tsx` routes plus a shared `<Nav />` component. Run it with `pnpm dev:kit` from the repo root.
 
 ---
 
@@ -1913,15 +2044,21 @@ function CommandPalette() {
 mikata/
   packages/
     reactivity/    # @mikata/reactivity - signals, computed, reactive, effects, scopes
-    runtime/       # @mikata/runtime - DOM rendering, components, control flow, context
+    runtime/       # @mikata/runtime - DOM rendering, components, control flow, context, hydrate()
     compiler/      # @mikata/compiler - Vite plugin + Babel JSX transform
-    store/         # @mikata/store - createStore, createQuery, createMutation
+    store/         # @mikata/store - createStore, createQuery, createMutation, SSR query registry
+    persist/       # @mikata/persist - persistedSignal with cross-tab sync
+    server/        # @mikata/server - renderToString, DOM shim, state script helpers
+    kit/           # @mikata/kit - file-based routing + Vite plugin + dev SSR middleware
     router/        # @mikata/router - client-side routing, guards, nested layouts
     i18n/          # @mikata/i18n - internationalization, runtime loading, typed keys
     ui/            # @mikata/ui - component library, CSS variables theming, 80+ components
     testing/       # @mikata/testing - renderComponent, fireEvent, flush, waitForUpdate
     mikata/        # mikata - umbrella re-exports
+  examples/
+    kit-ssr/       # File-based routing + SSR example app (pnpm dev:kit)
   playground/      # Vite dev app for testing
+  integration/     # Cross-package integration tests (includes SSR round-trip)
 ```
 
 Tooling: pnpm workspaces, tsup (build), vitest (test), TypeScript strict mode.

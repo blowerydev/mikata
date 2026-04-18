@@ -18,6 +18,7 @@ import {
   type ReadSignal,
   type Scope,
 } from '@mikata/reactivity';
+import { isNodeLike } from './dom';
 
 /**
  * Wire protocol between `Suspense` (runtime) and `createQuery` (store):
@@ -76,7 +77,7 @@ export function Suspense(props: SuspenseProps): Node {
     const raw = props.children();
     const children = Array.isArray(raw) ? raw : [raw];
     for (const c of children) {
-      if (c instanceof Node) childFragment.appendChild(c);
+      if (isNodeLike(c)) childFragment.appendChild(c as Node);
       else if (c != null) childFragment.appendChild(document.createTextNode(String(c)));
     }
   });

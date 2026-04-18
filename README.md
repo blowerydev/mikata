@@ -122,6 +122,41 @@ render(
 );
 ```
 
+## Server rendering
+
+`@mikata/server` renders a component tree to HTML on the server; `hydrate()` adopts that HTML on the client without rebuilding the DOM. The same compiled runtime drives both sides — there is no separate server backend.
+
+```tsx
+// entry-server.tsx
+import { renderToString } from '@mikata/server';
+import { App } from './App';
+
+const { html, stateScript } = await renderToString(() => <App />);
+// inline `html` into your shell and emit `stateScript` before your client entry
+```
+
+```tsx
+// entry-client.tsx
+import { hydrate } from '@mikata/runtime';
+import { App } from './App';
+
+hydrate(() => <App />, document.getElementById('root')!);
+```
+
+`createQuery` calls are collected during SSR, awaited, and their results serialised into `window.__MIKATA_STATE__`. On the client, matching queries seed from that payload automatically — no developer wiring.
+
+For file-based routing, `@mikata/kit` ships a Vite plugin with a dev-mode SSR middleware. Put files under `src/routes/`, add the plugin, and every request is SSR'd and upgraded to client routing after hydrate:
+
+```ts
+// vite.config.ts
+import { mikata } from '@mikata/compiler';
+import { mikataKit } from '@mikata/kit';
+
+export default { plugins: [mikata(), mikataKit()] };
+```
+
+Routing conventions: `index.tsx` → parent path, `[id].tsx` → `:id`, `[...rest].tsx` → catch-all, `_layout.tsx` → nested layout. See `examples/kit-ssr/` for a runnable app.
+
 ## Why
 
 - **No virtual DOM.** JSX compiles to direct `createElement` / `textContent` operations. A signal change updates exactly the text node or attribute that reads it - no diffing, no reconciliation pass.
@@ -145,8 +180,10 @@ Available features: `router`, `ui`, `icons`, `form`, `i18n`, `store`, `testing`,
 |---|---|
 | `mikata` | Umbrella - re-exports the runtime, reactivity, store, router, i18n, form, and icons |
 | `@mikata/reactivity` | Signals, computed, reactive proxies, effects, scopes |
-| `@mikata/runtime` | DOM rendering, setup pattern, control flow, context, transitions |
+| `@mikata/runtime` | DOM rendering, setup pattern, control flow, context, transitions, `hydrate()` |
 | `@mikata/compiler` | Vite plugin that lowers JSX to DOM operations |
+| `@mikata/server` | `renderToString()` + DOM shim for SSR; awaits pending queries and emits a hydration state script |
+| `@mikata/kit` | File-based routing, Vite plugin, and dev-mode SSR middleware built on `@mikata/router` + `@mikata/server` |
 | `@mikata/ui` | 80+ headless-optional components (Button, Modal, DataTable, DatePicker, …) |
 | `@mikata/router` | Client-side routing with typed search params and nested layouts |
 | `@mikata/store` | Reactive stores, queries, mutations, tag-based cache invalidation |
@@ -167,12 +204,15 @@ pnpm install
 pnpm -r build                  # build every package
 pnpm test:run                  # run the full test suite
 pnpm dev                       # launch the playground (live demo of every package)
+pnpm dev:ssr                   # SSR smoke harness (raw @mikata/server)
+pnpm dev:kit                   # launch the kit-ssr example (file-based routing + dev SSR)
 pnpm --filter @mikata/ui dev   # watch-build a single package
 ```
 
 Repo layout:
 
 - `packages/*` - publishable packages
+- `examples/*` - runnable example apps (`kit-ssr`, …)
 - `playground/` - dev-only SPA wired to every package via `workspace:*`
 - `integration/` - cross-package integration tests (`@mikata/integration-tests`, private)
 - `docs/` - long-form docs (will grow into the docs site)

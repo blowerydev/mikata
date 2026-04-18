@@ -7,6 +7,7 @@
 
 import { createScope, onCleanup, type Scope } from '@mikata/reactivity';
 import { trackComponent, untrackComponent } from './devtools';
+import { isSSR } from './env';
 
 declare const __DEV__: boolean;
 
@@ -76,6 +77,10 @@ export function disposeComponent(node: Node): void {
  * Register a callback to run after the component is mounted to the DOM.
  */
 export function onMount(fn: () => void): void {
+  // `onMount` is a browser lifecycle hook — there is no "mount" server-side.
+  // Skip entirely during SSR so user code that touches `window`, refs, or
+  // DOM APIs doesn't throw inside a string-building render.
+  if (isSSR()) return;
   // Schedule after the current synchronous setup completes
   queueMicrotask(fn);
 }

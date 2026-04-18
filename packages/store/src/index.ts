@@ -17,3 +17,11 @@ export type {
   MutationOptions,
   MutationResult,
 } from './query';
+
+export {
+  beginCollect,
+  endCollect,
+  collectAll,
+  readHydratedData,
+  stableStringify,
+} from './ssr-registry';

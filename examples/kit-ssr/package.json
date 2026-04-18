@@ -1,0 +1,21 @@
+{
+  "name": "@mikata/example-kit-ssr",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "End-to-end example of @mikata/kit with file-based routing + SSR.",
+  "scripts": {
+    "dev": "vite"
+  },
+  "dependencies": {
+    "@mikata/kit": "workspace:*",
+    "@mikata/reactivity": "workspace:*",
+    "@mikata/router": "workspace:*",
+    "@mikata/runtime": "workspace:*",
+    "@mikata/server": "workspace:*"
+  },
+  "devDependencies": {
+    "@mikata/compiler": "workspace:*",
+    "vite": "^6.0.0"
+  }
+}
