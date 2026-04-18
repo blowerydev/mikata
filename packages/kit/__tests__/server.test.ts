@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { _template, _insert, _createComponent } from '@mikata/runtime';
 import { routeOutlet } from '@mikata/router';
 import { renderRoute } from '../src/server';
+import { useLoaderData, LOADER_DATA_GLOBAL } from '../src/loader';
 
 // Construct components the way the compiler would emit them — no JSX
 // here, so these tests exercise the full @mikata/kit/server → renderToString
@@ -115,6 +116,89 @@ describe('renderRoute', () => {
     const routes = [{ path: '/', component: () => _createComponent(Home, {}) }];
     const { status } = await renderRoute(routes, { url: '/does-not-exist' });
     expect(status).toBe(404);
+  });
+
+  describe('loaders', () => {
+    it('invokes load() and provides data to the matched component', async () => {
+      let loadCount = 0;
+      const Page = () => {
+        const data = useLoaderData<() => Promise<{ name: string }>>();
+        const root = _template('<p>hello <!>!</p>').cloneNode(true) as any;
+        _insert(root, () => data()?.name ?? '', root.childNodes[1]);
+        return root;
+      };
+      const routes = [
+        {
+          path: '/users/:id',
+          lazy: async () => ({
+            default: () => _createComponent(Page, {}),
+            load: async (ctx: { params: Record<string, string> }) => {
+              loadCount++;
+              return { name: `user-${ctx.params.id}` };
+            },
+          }),
+        },
+      ];
+      const { html, stateScript } = await renderRoute(routes, {
+        url: '/users/42',
+      });
+      expect(loadCount).toBe(1);
+      expect(html).toContain('hello user-42');
+      expect(stateScript).toContain(LOADER_DATA_GLOBAL);
+      expect(stateScript).toContain('"name":"user-42"');
+    });
+
+    it('skips loader serialization when no route defines one', async () => {
+      const Home = () => _template('<h1>plain</h1>').cloneNode(true) as any;
+      const routes = [
+        { path: '/', lazy: async () => ({ default: Home }) },
+      ];
+      const { stateScript } = await renderRoute(routes, { url: '/' });
+      expect(stateScript).not.toContain(LOADER_DATA_GLOBAL);
+    });
+
+    it('does not invoke load() on non-matching routes', async () => {
+      let bMatchedLoad = 0;
+      const A = () => _template('<p>a</p>').cloneNode(true) as any;
+      const B = () => _template('<p>b</p>').cloneNode(true) as any;
+      const routes = [
+        { path: '/a', lazy: async () => ({ default: A, load: async () => 'a-data' }) },
+        {
+          path: '/b',
+          lazy: async () => ({
+            default: B,
+            load: async () => {
+              bMatchedLoad++;
+              return 'b-data';
+            },
+          }),
+        },
+      ];
+      await renderRoute(routes, { url: '/a' });
+      expect(bMatchedLoad).toBe(0);
+    });
+
+    it('passes params and url into the load context', async () => {
+      let captured: unknown = null;
+      const Page = () => _template('<div>x</div>').cloneNode(true) as any;
+      const routes = [
+        {
+          path: '/posts/:id',
+          lazy: async () => ({
+            default: Page,
+            load: async (ctx: unknown) => {
+              captured = ctx;
+              return { ok: true };
+            },
+          }),
+        },
+      ];
+      await renderRoute(routes, { url: '/posts/abc?q=1' });
+      expect(captured).toEqual({
+        params: { id: 'abc' },
+        url: '/posts/abc?q=1',
+      });
+    });
   });
 
   it('renders a layout with sibling markup around the outlet', async () => {

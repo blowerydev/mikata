@@ -8,7 +8,8 @@ import { render } from '@mikata/runtime';
 import { createRouter } from '../src/router';
 import { provideRouter, routeOutlet } from '../src/outlet';
 import { Link } from '../src/link';
-import type { Router } from '../src/types';
+import { useRoute } from '../src/hooks';
+import type { Router, RouteMatch } from '../src/types';
 
 // @ts-expect-error - define __DEV__ for tests
 globalThis.__DEV__ = true;
@@ -294,5 +295,70 @@ describe('Link children', () => {
     const a = container.querySelector('a')!;
     expect(a.querySelector('span')?.textContent).toBe('Go');
     expect(a.hasAttribute('children')).toBe(false);
+  });
+});
+
+describe('useRoute()', () => {
+  let container: HTMLElement;
+  let router: Router;
+  let dispose: () => void;
+
+  beforeEach(() => {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+  });
+
+  afterEach(() => {
+    dispose?.();
+    router?.dispose();
+    container.remove();
+  });
+
+  it('returns the match for the route owning the calling component', () => {
+    let captured: RouteMatch | null = null;
+    router = createRouter({
+      routes: [
+        {
+          path: '/users/:id',
+          component: () => {
+            captured = useRoute()();
+            const el = document.createElement('div');
+            el.textContent = 'user';
+            return el;
+          },
+        },
+      ],
+      history: 'memory',
+    });
+
+    // Seed the memory history with a path that has a param.
+    router.navigate('/users/42');
+
+    dispose = render(() => {
+      provideRouter(router);
+      return routeOutlet();
+    }, container);
+    flushSync();
+
+    expect(captured).not.toBeNull();
+    expect(captured!.route.fullPath).toBe('/users/:id');
+    expect(captured!.params.id).toBe('42');
+  });
+
+  it('returns null when no outlet wraps the component', () => {
+    router = createRouter({
+      routes: [{ path: '/', component: () => document.createElement('div') }],
+      history: 'memory',
+    });
+
+    let captured: RouteMatch | null | undefined = undefined;
+    dispose = render(() => {
+      provideRouter(router);
+      captured = useRoute()();
+      return document.createElement('div');
+    }, container);
+    flushSync();
+
+    expect(captured).toBeNull();
   });
 });

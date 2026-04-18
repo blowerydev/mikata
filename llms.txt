@@ -1088,11 +1088,42 @@ import routes from 'virtual:mikata-routes';
 mount(routes, document.getElementById('root')!);
 ```
 
-Internally calls `hydrate()` so the server-rendered DOM is adopted rather than re-created.
+Internally calls `hydrate()` so the server-rendered DOM is adopted rather than re-created. On mount, any `window.__MIKATA_LOADER_DATA__` set by the server is handed to `provideLoaderData()` so `useLoaderData()` returns the seeded values during hydration.
+
+### Route loaders (`@mikata/kit/loader`)
+
+A route module can export `load()` alongside its default component:
+
+```tsx
+// src/routes/users/[id].tsx
+import { useLoaderData, type LoadContext } from '@mikata/kit/loader';
+import { useParams } from '@mikata/router';
+
+export async function load({ params }: LoadContext) {
+  return { user: await db.users.find(params.id) };
+}
+
+export default function UserPage() {
+  const params = useParams();
+  const data = useLoaderData<typeof load>();
+  return <h1>Hello, {data()?.user.name}!</h1>;
+}
+```
+
+- `renderRoute` invokes `load()` for every matched route **in parallel** before rendering, passing `{ params, url }`. The results are keyed by `route.fullPath` and made available through `useLoaderData()` during the same render.
+- Loader results are JSON-embedded into `stateScript` under `window.__MIKATA_LOADER_DATA__`. The client's `mount()` reads it back so the first hydration pass returns the same data the server rendered — no refetch on load.
+- v1 scope: loaders do **not** re-run on client-side navigation. Use `createQuery` for data that refreshes after the initial paint.
+- Loaders are only invoked for *lazy-loaded* routes (the default for `@mikata/kit` manifests). A route wired up by hand with `{ component: ... }` will not pick up its module's `load` export.
+
+Exports from `@mikata/kit/loader`:
+- `useLoaderData<typeof load>()` — `ReadSignal<Awaited<ReturnType<load>> | undefined>` keyed by the current outlet's route.
+- `provideLoaderData(data)` — seeds the loader-data context; called automatically by `renderRoute` and `mount`.
+- `LOADER_DATA_GLOBAL = '__MIKATA_LOADER_DATA__'` — the global name `renderRoute` serialises into.
+- `LoadContext`, `Loader<T>`, `LoaderData` — types.
 
 ### Example app
 
-`examples/kit-ssr` is a runnable example with `index.tsx`, `about.tsx`, and `users/[id].tsx` routes plus a shared `<Nav />` component. Run it with `pnpm dev:kit` from the repo root.
+`examples/kit-ssr` is a runnable example with `index.tsx`, `about.tsx`, `_layout.tsx`, and `users/[id].tsx` (with a `load()` demo) routes plus a shared `<Nav />` component. Run it with `pnpm dev:kit` from the repo root.
 
 ---
 
@@ -1839,6 +1870,7 @@ function UserPage() {
 - **Guards** - return `true` to allow, `false` to block, `'/path'` to redirect. Two types: per-route + `useGuard()` (component-scoped)
 - **Nested routes** - layouts persist, only inner outlet swaps
 - **Lazy routes** - `lazy: () => import('./Page')` integrates with `lazy()` from runtime
+- **`useRoute()`** - returns `ReadSignal<RouteMatch | null>` for the route owning the calling component (i.e. matches[depth-1] at the current outlet depth)
 - **Scroll restoration** - built-in, including nested scrollable containers
 - **History modes** - `'browser'` (pushState), `'hash'` (#), `'memory'` (testing/SSR)
 

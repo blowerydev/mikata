@@ -23,6 +23,7 @@ import {
   type Router,
   type RouterOptions,
 } from '@mikata/router';
+import { provideLoaderData, LOADER_DATA_GLOBAL, type LoaderData } from './loader';
 
 export interface MountOptions extends Omit<RouterOptions, 'routes'> {
   /**
@@ -46,8 +47,20 @@ export function mount(
   const { hydrate: shouldHydrate, ...routerOptions } = options;
   const router = createRouter({ routes: [...routes], ...routerOptions });
 
+  // Pick up any loader data the server embedded into the page shell.
+  // Absent on pure-SPA mounts — we fall back to an empty object so
+  // `useLoaderData()` cleanly reports undefined for every route.
+  const embedded =
+    typeof window !== 'undefined'
+      ? ((window as unknown as Record<string, unknown>)[LOADER_DATA_GLOBAL] as
+          | LoaderData
+          | undefined)
+      : undefined;
+  const loaderData: LoaderData = embedded ?? {};
+
   function App() {
     provideRouter(router);
+    provideLoaderData(loaderData);
     return routeOutlet();
   }
 

@@ -30,6 +30,7 @@ export {
   useSearchParams,
   useGuard,
   useMatch,
+  useRoute,
 } from './hooks';
 
 // Types

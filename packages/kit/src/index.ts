@@ -23,3 +23,9 @@ export type { RouteManifest, RouteManifestEntry } from './scan-routes';
 
 export { scanRoutes } from './scan-routes';
 export { generateManifestModule } from './generate-manifest';
+
+// NOTE: the loader API (`useLoaderData`, `provideLoaderData`,
+// `LoadContext`) lives at `@mikata/kit/loader`. Keeping it off the
+// root entry avoids pulling `@mikata/runtime` (which references
+// `__DEV__`) into Vite's config loader when apps do
+// `import { mikataKit } from '@mikata/kit'` from `vite.config.ts`.

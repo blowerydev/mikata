@@ -4,11 +4,11 @@
 
 import { computed, onCleanup } from '@mikata/reactivity';
 import { inject } from '@mikata/runtime';
-import { RouterContext } from './outlet';
+import { RouterContext, OutletContext } from './outlet';
 import type {
   Router,
   RouteGuard,
-  MatchedRoute,
+  RouteMatch,
   ReadSignal,
   PathParams,
 } from './types';
@@ -66,6 +66,28 @@ export function useGuard(guard: RouteGuard): void {
   const guards = (router as any)._componentGuards as Set<RouteGuard>;
   guards.add(guard);
   onCleanup(() => guards.delete(guard));
+}
+
+/**
+ * Get the `RouteMatch` for the route owning the calling component.
+ *
+ * Inside a route component, this resolves to the match responsible for
+ * rendering that component — not the leaf match — so nested layouts see
+ * their own route, not their child's. At the top-level `App` (no outlet
+ * parent), returns `null`.
+ *
+ * Implementation note: `provideChildContexts()` increments the outlet
+ * depth before rendering the matched component, so a component at
+ * injected depth `N` is the route at `matches[N - 1]`.
+ */
+export function useRoute(): ReadSignal<RouteMatch | null> {
+  const router = useRouter();
+  const { depth } = inject(OutletContext);
+  return computed(() => {
+    const idx = depth - 1;
+    if (idx < 0) return null;
+    return router.route().matches[idx] ?? null;
+  });
 }
 
 /**
