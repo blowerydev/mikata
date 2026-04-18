@@ -116,4 +116,31 @@ describe('renderRoute', () => {
     const { status } = await renderRoute(routes, { url: '/does-not-exist' });
     expect(status).toBe(404);
   });
+
+  it('renders a layout with sibling markup around the outlet', async () => {
+    // Two comment markers in the template: one before the outlet, one after.
+    // Mirrors the JSX `<div><h1>Layout</h1>{routeOutlet()}<footer>end</footer></div>`
+    // that a real _layout.tsx would compile to.
+    const Layout = () => {
+      const root = _template('<div><h1>Layout</h1><!><footer>end</footer></div>').cloneNode(
+        true,
+      ) as any;
+      const marker = root.childNodes[1]; // the <!> placeholder
+      _insert(root, () => routeOutlet(), marker);
+      return root;
+    };
+    const Child = staticNode('<span>child <!>!</span>', 'hi');
+    const routes = [
+      {
+        path: '/',
+        component: () => _createComponent(Layout, {}),
+        children: [
+          { path: '/page', component: () => _createComponent(Child, {}) },
+        ],
+      },
+    ];
+    const { html } = await renderRoute(routes, { url: '/page' });
+    expect(html).toContain('child hi');
+    expect(html).not.toContain('[object Object]');
+  });
 });

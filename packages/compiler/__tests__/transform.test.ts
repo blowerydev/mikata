@@ -83,6 +83,19 @@ describe('JSX transform', () => {
     expect(output).not.toContain('_insert');
   });
 
+  it('unwraps bare signal getters in text-baked children', () => {
+    // `<span>{count}</span>` — `count` is a bare identifier; the compiler
+    // can't know whether it's a signal getter or a plain value. The emitted
+    // bake must call it if it's a function (to match `_insert`'s runtime
+    // behaviour) and wrap in renderEffect so signal subscriptions work.
+    const output = transform(`const el = <span>{count}</span>;`);
+    expect(output).toContain('<span> </span>');
+    expect(output).toContain('renderEffect');
+    // typeof-guarded call so plain values still work as text.
+    expect(output).toMatch(/typeof count === "function"/);
+    expect(output).toMatch(/count\(\)/);
+  });
+
   it('handles fragments', () => {
     const output = transform(`const el = <><span>A</span><span>B</span></>;`);
     expect(output).toContain('_createFragment');

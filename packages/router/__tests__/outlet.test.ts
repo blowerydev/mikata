@@ -253,3 +253,46 @@ describe('Link unsafe-scheme warning', () => {
     warn.mockRestore();
   });
 });
+
+describe('Link children', () => {
+  let container: HTMLElement;
+  let router: Router;
+  let dispose: () => void;
+
+  beforeEach(() => {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    router = createRouter({ routes: [{ path: '/', component: () => document.createElement('div') }], history: 'memory' });
+  });
+
+  afterEach(() => {
+    dispose?.();
+    router?.dispose();
+    container.remove();
+  });
+
+  it('renders string children as text content, not as an attribute', () => {
+    dispose = render(() => {
+      provideRouter(router);
+      return Link({ to: '/about', children: 'About' } as never);
+    }, container);
+    flushSync();
+    const a = container.querySelector('a')!;
+    expect(a.textContent).toBe('About');
+    expect(a.hasAttribute('children')).toBe(false);
+    expect(a.getAttribute('href')).toBe('/about');
+  });
+
+  it('renders a node child inside the anchor', () => {
+    dispose = render(() => {
+      provideRouter(router);
+      const span = document.createElement('span');
+      span.textContent = 'Go';
+      return Link({ to: '/x', children: span } as never);
+    }, container);
+    flushSync();
+    const a = container.querySelector('a')!;
+    expect(a.querySelector('span')?.textContent).toBe('Go');
+    expect(a.hasAttribute('children')).toBe(false);
+  });
+});

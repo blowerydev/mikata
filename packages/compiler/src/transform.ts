@@ -517,12 +517,34 @@ export function mikataJSXPlugin({ types: t }: { types: typeof BabelTypes }): Plu
       ]));
       // `value ?? ''` coerces null/undefined to empty string; anything else
       // stringifies via the DOM's implicit toString on `.data`.
+      //
+      // For bare Identifiers we can't tell at compile time whether the binding
+      // holds a signal getter (function) or a plain value, so we wrap with a
+      // runtime typeof-function call — mirroring `_insert`'s auto-unwrap.
+      // Without this, `<p>{count}</p>` would assign the getter itself to
+      // `.data`, which stringifies to the function's source text.
+      const dataValue = t.isIdentifier(child.expr)
+        ? t.conditionalExpression(
+            t.binaryExpression(
+              '===',
+              t.unaryExpression('typeof', t.cloneNode(child.expr)),
+              t.stringLiteral('function'),
+            ),
+            t.callExpression(t.cloneNode(child.expr), []),
+            t.cloneNode(child.expr),
+          )
+        : child.expr;
       const assign = t.assignmentExpression(
         '=',
         t.memberExpression(textId, t.identifier('data')),
-        t.logicalExpression('??', child.expr, t.stringLiteral('')),
+        t.logicalExpression('??', dataValue, t.stringLiteral('')),
       );
-      if (child.reactive) {
+      // Identifier exprs force the reactive wrap: if the binding *is* a
+      // signal getter, the typeof-guarded call inside renderEffect subscribes
+      // to it so `.data` tracks changes. For non-signal values renderEffect
+      // just runs once — cheap and correct.
+      const wrapInEffect = child.reactive || t.isIdentifier(child.expr);
+      if (wrapInEffect) {
         addReactivityImport(state, 'renderEffect');
         // Arrow MUST have a block body: expression-bodied arrows return the
         // assignment's value, which `renderEffect` then stores as `_cleanup`

@@ -114,6 +114,21 @@ describe('renderToString', () => {
     expect(html).toBe('<div>&lt;script&gt;alert(1)&lt;/script&gt;</div>');
   });
 
+  it('unwraps a signal getter passed as a non-reactive child', async () => {
+    // `{count}` in JSX (bare identifier — not a call) compiles to
+    // `_insert(el, count)`. `count` is a function, so `_insert` should call it
+    // inside a renderEffect. The final HTML should contain the unwrapped value,
+    // not the function's source text.
+    const { html } = await renderToString(() => {
+      const [count] = signal(42);
+      const root = _template('<p><!></p>').cloneNode(true) as any;
+      _insert(root, count, root.childNodes[0]);
+      return root;
+    });
+    expect(html).not.toContain('function');
+    expect(html).toContain('42');
+  });
+
   it('escapes attribute values set via _setProp', async () => {
     const { html } = await renderToString(() => {
       const root = _template('<a></a>').cloneNode(true) as any;

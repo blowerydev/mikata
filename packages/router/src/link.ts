@@ -3,7 +3,7 @@
  */
 
 import { computed, renderEffect } from '@mikata/reactivity';
-import { inject } from '@mikata/runtime';
+import { inject, _insert } from '@mikata/runtime';
 import { RouterContext } from './outlet';
 import type { NavigateTarget } from './types';
 
@@ -41,6 +41,7 @@ export function Link(props: LinkProps): Node {
     activeClass = 'active',
     exactActiveClass,
     preload,
+    children,
     ...rest
   } = props;
 
@@ -126,6 +127,10 @@ export function Link(props: LinkProps): Node {
     if (typeof value === 'string') {
       el.setAttribute(key, value);
     }
+  }
+
+  if (children !== undefined) {
+    _insert(el as HTMLElement, children as never);
   }
 
   return el;
