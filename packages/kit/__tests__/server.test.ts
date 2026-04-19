@@ -3,6 +3,12 @@ import { _template, _insert, _createComponent, ErrorBoundary } from '@mikata/run
 import { routeOutlet } from '@mikata/router';
 import { renderRoute } from '../src/server';
 import { useLoaderData, LOADER_DATA_GLOBAL } from '../src/loader';
+import {
+  ACTION_DATA_GLOBAL,
+  redirect,
+  useActionData,
+  type ActionContext,
+} from '../src/action';
 
 // Construct components the way the compiler would emit them — no JSX
 // here, so these tests exercise the full @mikata/kit/server → renderToString
@@ -282,6 +288,278 @@ describe('renderRoute', () => {
       ];
       const { status } = await renderRoute(routes, { url: '/ok' });
       expect(status).toBe(200);
+    });
+  });
+
+  describe('actions', () => {
+    // Build a mutation Request the same way a real adapter would — fetch's
+    // Request is fine in jsdom and matches the shape server.ts expects.
+    function postRequest(url: string, body = 'name=ada'): Request {
+      return new Request(`http://x${url}`, {
+        method: 'POST',
+        body,
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      });
+    }
+
+    it('invokes action() for non-GET requests and serialises the result', async () => {
+      let actionCalls = 0;
+      const Page = staticNode('<p>p</p>', '');
+      const routes = [
+        {
+          path: '/contact',
+          lazy: async () => ({
+            default: () => _createComponent(Page, {}),
+            action: async ({ request }: ActionContext) => {
+              actionCalls++;
+              const form = await request.formData();
+              return { ok: true, name: form.get('name') };
+            },
+          }),
+        },
+      ];
+      const { actionData, stateScript, status } = await renderRoute(routes, {
+        url: '/contact',
+        request: postRequest('/contact'),
+      });
+      expect(actionCalls).toBe(1);
+      expect(actionData['/contact']).toEqual({
+        data: { ok: true, name: 'ada' },
+      });
+      expect(status).toBe(200);
+      expect(stateScript).toContain(ACTION_DATA_GLOBAL);
+      expect(stateScript).toContain('"ok":true');
+    });
+
+    it('does not invoke action() on GET requests', async () => {
+      let actionCalls = 0;
+      const Page = staticNode('<p>p</p>', '');
+      const routes = [
+        {
+          path: '/c',
+          lazy: async () => ({
+            default: () => _createComponent(Page, {}),
+            action: async () => {
+              actionCalls++;
+              return { ok: true };
+            },
+          }),
+        },
+      ];
+      // GET-with-request should still take the read path — the action
+      // must stay dormant.
+      const getReq = new Request('http://x/c', { method: 'GET' });
+      const { actionData, stateScript } = await renderRoute(routes, {
+        url: '/c',
+        request: getReq,
+      });
+      expect(actionCalls).toBe(0);
+      expect(actionData).toEqual({});
+      expect(stateScript).not.toContain(ACTION_DATA_GLOBAL);
+    });
+
+    it('does not invoke action() when request is omitted entirely', async () => {
+      let actionCalls = 0;
+      const Page = staticNode('<p>p</p>', '');
+      const routes = [
+        {
+          path: '/c',
+          lazy: async () => ({
+            default: () => _createComponent(Page, {}),
+            action: async () => {
+              actionCalls++;
+              return { ok: true };
+            },
+          }),
+        },
+      ];
+      await renderRoute(routes, { url: '/c' });
+      expect(actionCalls).toBe(0);
+    });
+
+    it('short-circuits rendering when action returns a redirect Response', async () => {
+      let loaderCalls = 0;
+      const Page = staticNode('<p>p</p>', '');
+      const routes = [
+        {
+          path: '/c',
+          lazy: async () => ({
+            default: () => _createComponent(Page, {}),
+            load: async () => {
+              loaderCalls++;
+              return { x: 1 };
+            },
+            action: async () => redirect('/thanks', 303),
+          }),
+        },
+      ];
+      const result = await renderRoute(routes, {
+        url: '/c',
+        request: postRequest('/c'),
+      });
+      expect(result.redirect).toEqual({ url: '/thanks', status: 303 });
+      expect(result.status).toBe(303);
+      // HTML + loader work is skipped — the client follows the Location
+      // header and reloads against the new URL. No wasted render.
+      expect(result.html).toBe('');
+      expect(result.stateScript).toBe('');
+      expect(result.loaderData).toEqual({});
+      expect(loaderCalls).toBe(0);
+    });
+
+    it('records a thrown action as an error and bumps status to 500', async () => {
+      const Page = staticNode('<p>p</p>', '');
+      const routes = [
+        {
+          path: '/c',
+          lazy: async () => ({
+            default: () => _createComponent(Page, {}),
+            action: async () => {
+              throw new Error('bad form');
+            },
+          }),
+        },
+      ];
+      const { actionData, status, stateScript } = await renderRoute(routes, {
+        url: '/c',
+        request: postRequest('/c'),
+      });
+      expect(status).toBe(500);
+      expect(actionData['/c']).toEqual({
+        error: { message: 'bad form', name: 'Error' },
+      });
+      expect(stateScript).toContain('"message":"bad form"');
+    });
+
+    it('surfaces action data to useActionData() in the rendered tree', async () => {
+      const Page = () => {
+        const result = useActionData<() => Promise<{ ok: boolean }>>();
+        const root = _template('<p>status <!></p>').cloneNode(true) as any;
+        _insert(
+          root,
+          () => (result() ? (result()!.ok ? 'saved' : 'failed') : 'idle'),
+          root.childNodes[1],
+        );
+        return root;
+      };
+      const routes = [
+        {
+          path: '/c',
+          lazy: async () => ({
+            default: () => _createComponent(Page, {}),
+            action: async () => ({ ok: true }),
+          }),
+        },
+      ];
+      const { html } = await renderRoute(routes, {
+        url: '/c',
+        request: postRequest('/c'),
+      });
+      expect(html).toContain('status saved');
+    });
+
+    it('rethrows action errors through ErrorBoundary in the rendered tree', async () => {
+      const Boom = () => {
+        const result = useActionData();
+        const root = _template('<p>x <!></p>').cloneNode(true) as any;
+        _insert(root, () => String((result as any)()), root.childNodes[1]);
+        return root;
+      };
+      const Fallback = (err: Error) => {
+        const root = _template('<div class="err"><!></div>').cloneNode(true) as any;
+        _insert(root, () => err.message, root.childNodes[0]);
+        return root;
+      };
+      const routes = [
+        {
+          path: '/c',
+          lazy: async () => ({
+            default: () =>
+              _createComponent(ErrorBoundary, {
+                fallback: Fallback,
+                get children() {
+                  return _createComponent(Boom, {});
+                },
+              }),
+            action: async () => {
+              throw new Error('rip');
+            },
+          }),
+        },
+      ];
+      const { html, status } = await renderRoute(routes, {
+        url: '/c',
+        request: postRequest('/c'),
+      });
+      expect(status).toBe(500);
+      expect(html).toContain('rip');
+      expect(html).not.toContain('x undefined');
+    });
+
+    it('runs loaders after the action so they see post-mutation state', async () => {
+      const order: string[] = [];
+      const Page = staticNode('<p>p</p>', '');
+      const routes = [
+        {
+          path: '/c',
+          lazy: async () => ({
+            default: () => _createComponent(Page, {}),
+            action: async () => {
+              order.push('action');
+              return { ok: true };
+            },
+            load: async () => {
+              order.push('load');
+              return { count: 1 };
+            },
+          }),
+        },
+      ];
+      await renderRoute(routes, {
+        url: '/c',
+        request: postRequest('/c'),
+      });
+      expect(order).toEqual(['action', 'load']);
+    });
+
+    it('only runs the leaf action, not parent actions', async () => {
+      let parentActions = 0;
+      let childActions = 0;
+      const Parent = staticNode('<section>p <!></section>', () => routeOutlet());
+      const Child = staticNode('<span>c</span>', '');
+      const routes = [
+        {
+          path: '/app',
+          component: () => _createComponent(Parent, {}),
+          lazy: async () => ({
+            default: () => _createComponent(Parent, {}),
+            action: async () => {
+              parentActions++;
+              return { parent: true };
+            },
+          }),
+          children: [
+            {
+              path: '/edit',
+              lazy: async () => ({
+                default: () => _createComponent(Child, {}),
+                action: async () => {
+                  childActions++;
+                  return { child: true };
+                },
+              }),
+            },
+          ],
+        },
+      ];
+      const { actionData } = await renderRoute(routes, {
+        url: '/app/edit',
+        request: postRequest('/app/edit'),
+      });
+      expect(childActions).toBe(1);
+      expect(parentActions).toBe(0);
+      expect(actionData['/app/edit']).toEqual({ data: { child: true } });
+      expect(actionData['/app']).toBeUndefined();
     });
   });
 

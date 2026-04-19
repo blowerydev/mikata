@@ -108,6 +108,18 @@ export function provideFormContext(value: FormContextValue): void {
 export const FORM_SUBMIT_HEADER = 'X-Mikata-Form';
 
 export function Form(props: FormProps): HTMLFormElement {
+  // Pull the kit context at render time — the submit listener fires
+  // asynchronously, after the reactive scope has unwound, so inject()
+  // inside the handler would either return undefined or throw. Capturing
+  // here also lets us skip installing the listener entirely when no
+  // provider is present, so the form falls back to native submission.
+  let ctx: FormContextValue | undefined;
+  try {
+    ctx = inject(FormContext);
+  } catch {
+    ctx = undefined;
+  }
+
   const form = document.createElement('form');
   const method = props.method ?? 'post';
   const encType = props.encType ?? 'application/x-www-form-urlencoded';
@@ -142,10 +154,12 @@ export function Form(props: FormProps): HTMLFormElement {
   appendChildren(form, props.children);
 
   // Only install the enhancement hook when a live `window.fetch` is
-  // available — on the server we're building markup, not handling
-  // events, so the listener would never fire anyway (and the shim's
-  // addEventListener is a no-op either way).
-  if (typeof window !== 'undefined' && !props.reloadDocument) {
+  // available and we have a kit context to feed the submit path. On
+  // the server we're building markup, not handling events; outside
+  // mount() there's nothing to update, so in both cases we let the
+  // browser submit the form natively.
+  if (typeof window !== 'undefined' && !props.reloadDocument && ctx) {
+    const capturedCtx = ctx;
     form.addEventListener('submit', (event) => {
       if (props.onSubmit) {
         props.onSubmit(event as SubmitEvent);
@@ -153,7 +167,7 @@ export function Form(props: FormProps): HTMLFormElement {
       }
       // Delegate to the enhanced submit path. It calls preventDefault()
       // itself so the browser doesn't also do a native submit.
-      void enhancedSubmit(form, event as SubmitEvent);
+      void enhancedSubmit(form, event as SubmitEvent, capturedCtx);
     });
   }
 
@@ -163,15 +177,8 @@ export function Form(props: FormProps): HTMLFormElement {
 async function enhancedSubmit(
   form: HTMLFormElement,
   event: SubmitEvent,
+  ctx: FormContextValue,
 ): Promise<void> {
-  const ctx = inject(FormContext);
-  if (!ctx) {
-    // No kit context means we're being used outside `mount()` — fall
-    // back to native submission so the form still works. We already
-    // attached the listener synchronously, so this is the earliest we
-    // can notice the missing context.
-    return;
-  }
   event.preventDefault();
 
   const { router, actionStore, loaderStore } = ctx;
@@ -218,14 +225,39 @@ async function enhancedSubmit(
     }
   }
 
+  // The server hands back already-tagged entries ({ data } or { error });
+  // the store's `set()` helpers would wrap them a second time, so pick
+  // the right branch and pass the unwrapped payload through. A restored
+  // Error instance round-trips through setError()'s serializer so the
+  // stored shape matches every other error path.
   if (payload.actionData) {
-    for (const [fullPath, value] of Object.entries(payload.actionData)) {
-      actionStore.set(fullPath, value);
+    for (const [fullPath, entry] of Object.entries(payload.actionData)) {
+      if (entry && typeof entry === 'object' && 'error' in entry) {
+        const e = (entry as { error: { message: string; name: string } }).error;
+        const err = new Error(e.message);
+        err.name = e.name;
+        actionStore.setError(fullPath, err);
+      } else {
+        actionStore.set(
+          fullPath,
+          (entry as { data: unknown } | undefined)?.data,
+        );
+      }
     }
   }
   if (payload.loaderData) {
-    for (const [fullPath, value] of Object.entries(payload.loaderData)) {
-      loaderStore.set(fullPath, value);
+    for (const [fullPath, entry] of Object.entries(payload.loaderData)) {
+      if (entry && typeof entry === 'object' && 'error' in entry) {
+        const e = (entry as { error: { message: string; name: string } }).error;
+        const err = new Error(e.message);
+        err.name = e.name;
+        loaderStore.setError(fullPath, err);
+      } else {
+        loaderStore.set(
+          fullPath,
+          (entry as { data: unknown } | undefined)?.data,
+        );
+      }
     }
   }
 
