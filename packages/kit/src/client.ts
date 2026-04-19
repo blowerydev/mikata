@@ -37,6 +37,15 @@ import {
   type Loader,
   type LoaderStore,
 } from './loader';
+import {
+  provideActionData,
+  createActionStore,
+  ACTION_DATA_GLOBAL,
+  type ActionData,
+  type Action,
+  type ActionStore,
+} from './action';
+import { provideFormContext } from './form';
 import { createDomMetaRegistry, provideMetaRegistry } from './head';
 
 /**
@@ -78,11 +87,12 @@ export function mount(
   const { hydrate: shouldHydrate, notFound: notFoundLoader, ...routerOptions } = options;
 
   // Wrap each lazy route so we can intercept the resolved module and
-  // capture any `load` export into a side map. The router still sees
-  // a plain `{ default: Component }` result — load-on-nav is our
-  // concern, not the router's.
+  // capture any `load` / `action` export into side maps. The router
+  // still sees a plain `{ default: Component }` result — load-on-nav
+  // and form submission are our concern, not the router's.
   const loaders = new Map<string, Loader>();
-  const wrappedRoutes = wrapLazyRoutes([...routes], '', loaders);
+  const actions = new Map<string, Action>();
+  const wrappedRoutes = wrapLazyRoutes([...routes], '', loaders, actions);
 
   // Wrap the 404 module loader in lazy() so it only fetches on first
   // unmatched URL and shows the router's configured fallback while the
@@ -101,16 +111,24 @@ export function mount(
     ...(routerNotFound ? { notFound: routerNotFound } : {}),
   });
 
-  // Pick up any loader data the server embedded into the page shell.
-  // Absent on pure-SPA mounts — we fall back to an empty object so
-  // `useLoaderData()` cleanly reports undefined for every route.
-  const embedded =
+  // Pick up any loader + action data the server embedded into the page
+  // shell. Absent on pure-SPA mounts — we fall back to empty objects so
+  // `useLoaderData()` / `useActionData()` cleanly report undefined.
+  const embeddedLoader =
     typeof window !== 'undefined'
       ? ((window as unknown as Record<string, unknown>)[LOADER_DATA_GLOBAL] as
           | LoaderData
           | undefined)
       : undefined;
-  const loaderStore = createLoaderStore(embedded ?? {});
+  const loaderStore = createLoaderStore(embeddedLoader ?? {});
+
+  const embeddedAction =
+    typeof window !== 'undefined'
+      ? ((window as unknown as Record<string, unknown>)[ACTION_DATA_GLOBAL] as
+          | ActionData
+          | undefined)
+      : undefined;
+  const actionStore = createActionStore(embeddedAction ?? {});
 
   const headRegistry =
     typeof document !== 'undefined'
@@ -120,6 +138,8 @@ export function mount(
   function App() {
     provideRouter(router);
     provideLoaderData(loaderStore);
+    provideActionData(actionStore);
+    provideFormContext({ router, actionStore, loaderStore });
     if (headRegistry) provideMetaRegistry(headRegistry);
     return routeOutlet();
   }
@@ -136,10 +156,16 @@ export function mount(
   // route that has one.
   const loaderDispose = runLoadersOnNav(router, loaders, loaderStore);
 
+  // Drop action results whenever the user navigates away from the route
+  // that produced them. Without this a stale `useActionData()` would
+  // keep returning the previous submit's result after the user moved on.
+  const actionDispose = clearActionsOnNav(router, actionStore);
+
   return {
     router,
     dispose: () => {
       loaderDispose();
+      actionDispose();
       renderDispose();
     },
   };
@@ -155,14 +181,15 @@ export { ErrorBoundary } from '@mikata/runtime';
 
 /**
  * Walk the route tree, replacing each `lazy()` with a memoizing shim
- * that resolves the original, records any `load` export into `loaders`
- * under the route's full path, and returns just the component half to
- * the router.
+ * that resolves the original, records any `load` / `action` exports
+ * into their side maps under the route's full path, and returns just
+ * the component half to the router.
  */
 function wrapLazyRoutes(
   routes: RouteDefinition[],
   parentPath: string,
   loaders: Map<string, Loader>,
+  actions: Map<string, Action>,
 ): RouteDefinition[] {
   return routes.map((route) => {
     const fullPath = joinPaths(parentPath, route.path);
@@ -174,15 +201,16 @@ function wrapLazyRoutes(
       wrappedLazy = () => {
         if (cached) return cached;
         cached = Promise.resolve(original()).then((mod) => {
-          const m = mod as LazyResult & { load?: Loader };
+          const m = mod as LazyResult & { load?: Loader; action?: Action };
           if (typeof m.load === 'function') loaders.set(fullPath, m.load);
+          if (typeof m.action === 'function') actions.set(fullPath, m.action);
           return m;
         });
         return cached;
       };
     }
     const wrappedChildren = route.children
-      ? wrapLazyRoutes([...route.children], fullPath, loaders)
+      ? wrapLazyRoutes([...route.children], fullPath, loaders, actions)
       : undefined;
     return { ...route, lazy: wrappedLazy, children: wrappedChildren };
   });
@@ -264,5 +292,28 @@ function runLoadersOnNav(
     });
   });
 
+  return () => dispose();
+}
+
+// ---------------------------------------------------------------------------
+// internal: drop action data on navigation
+// ---------------------------------------------------------------------------
+
+/**
+ * Clear the action store whenever the user navigates to a different URL.
+ * Action results are conceptually a reply to a specific submission; once
+ * the user moves on, showing the previous response is worse than showing
+ * nothing. Same-URL re-renders (e.g. searchParams changes elsewhere) are
+ * left alone so the just-submitted result survives incidental refreshes.
+ */
+function clearActionsOnNav(router: Router, store: ActionStore): () => void {
+  let lastPath: string | null = null;
+  const dispose = effect(() => {
+    const current = router.route();
+    if (lastPath !== null && lastPath !== current.path) {
+      store.clear();
+    }
+    lastPath = current.path;
+  });
   return () => dispose();
 }

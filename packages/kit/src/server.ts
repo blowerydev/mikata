@@ -10,7 +10,11 @@
  * Usage:
  *   import { renderRoute } from '@mikata/kit/server';
  *   import routes from 'virtual:mikata-routes';
- *   const { html, stateScript } = await renderRoute(routes, req.url);
+ *   const { html, stateScript } = await renderRoute(routes, { url: req.url });
+ *
+ * For form submissions (non-GET requests), pass the Request as well:
+ *   const result = await renderRoute(routes, { url, request });
+ *   // result.redirect is set when the action returned a redirect Response.
  */
 
 import {
@@ -34,6 +38,13 @@ import {
   type LoaderData,
   type LoaderEntry,
 } from './loader';
+import {
+  provideActionData,
+  ACTION_DATA_GLOBAL,
+  type Action,
+  type ActionData,
+  type ActionEntry,
+} from './action';
 import { createCollectMetaRegistry, provideMetaRegistry } from './head';
 
 /**
@@ -53,6 +64,14 @@ export interface RenderRouteOptions extends Omit<RouterOptions, 'routes' | 'hist
    */
   url: string;
   /**
+   * The inbound Request. When present and `request.method` isn't GET,
+   * the matched leaf route's `action()` (if any) runs before loaders
+   * and its result is serialised into the hydration payload. A GET
+   * request is equivalent to omitting this option entirely — the
+   * action path stays dormant.
+   */
+  request?: Request;
+  /**
    * 404 component loader from the virtual manifest (i.e.
    * `import { notFound } from 'virtual:mikata-routes'`). When the URL
    * matches no route, its module is awaited and its default export
@@ -66,7 +85,8 @@ export interface RenderRouteResult extends RenderToStringResult {
   /**
    * HTTP status the caller should respond with. `404` when the URL
    * did not match any route (the `notFound` handler's HTML, if any,
-   * is still in `html`). `200` otherwise.
+   * is still in `html`). `500` when a loader or action threw.
+   * `200` otherwise.
    */
   status: number;
   /**
@@ -75,6 +95,25 @@ export interface RenderRouteResult extends RenderToStringResult {
    * (or before `</head>` when that marker is absent).
    */
   headTags: string;
+  /**
+   * Result of every matched route's `load()` — keyed by the route's
+   * `fullPath`. Raw map (not serialised); adapters use this for
+   * enhanced-submit JSON responses.
+   */
+  loaderData: Record<string, LoaderEntry>;
+  /**
+   * Result of the matched leaf route's `action()`, if any ran. Keyed
+   * by `fullPath` the same way loaderData is so clients can index into
+   * a single map regardless of which route handled the submit.
+   */
+  actionData: Record<string, ActionEntry>;
+  /**
+   * Present when a matched action returned a `Response` with a
+   * `Location` header (typically from `redirect()`). Adapters forward
+   * this as a 302 (or the action's chosen status) + Location header
+   * instead of emitting the rendered HTML.
+   */
+  redirect?: { url: string; status: number };
 }
 
 /**
@@ -87,6 +126,12 @@ export interface RenderRouteResult extends RenderToStringResult {
  * via `@mikata/kit`'s loader context. Loader data is also embedded
  * in the returned `stateScript` so the client can read it back during
  * hydration.
+ *
+ * When `options.request` is set and its method isn't GET, the matched
+ * leaf route's `action()` runs first. If the action returns a Response
+ * with a `Location` header the result is surfaced as `redirect` and
+ * rendering is skipped; otherwise its value becomes the actionData for
+ * that route and loaders run against the post-action state.
  */
 export async function renderRoute(
   routes: readonly RouteDefinition[],
@@ -99,11 +144,11 @@ export async function renderRoute(
   // shim again internally; the second call is a no-op.
   const shim = installShim();
   try {
-    const { routes: resolvedRoutes, loaders } = await resolveLazyRoutes(
+    const { routes: resolvedRoutes, loaders, actions } = await resolveLazyRoutes(
       routes,
       options.url,
     );
-    const { url, notFound: notFoundLoader, ...routerRest } = options;
+    const { url, request, notFound: notFoundLoader, ...routerRest } = options;
 
     // Resolve the 404 module eagerly so the render closure can return
     // final HTML for an unmatched URL — the renderToString pass can't
@@ -129,6 +174,71 @@ export async function renderRoute(
     const matches = matcher.route().matches;
     let status = matches.length === 0 ? 404 : 200;
 
+    // --- Action phase (non-GET only) ---------------------------------
+    // Only the leaf route's action runs — mutating parent actions would
+    // be surprising (the URL already identified the thing being mutated).
+    // A thrown action surfaces like a loader error: captured in
+    // actionData, status bumped to 500, re-raised client-side via
+    // useActionData() for an ErrorBoundary to catch.
+    const actionData: Record<string, ActionEntry> = {};
+    let redirectInfo: { url: string; status: number } | undefined;
+    const isMutatingRequest =
+      request !== undefined && request.method !== 'GET' && request.method !== 'HEAD';
+    if (isMutatingRequest && matches.length > 0) {
+      const leaf = matches[matches.length - 1]!;
+      const action = actions.get(leaf.route.fullPath);
+      if (action) {
+        try {
+          const result = await action({
+            request: request!,
+            params: leaf.params,
+            url,
+          });
+          if (result instanceof Response) {
+            const location = result.headers.get('Location');
+            if (location) {
+              redirectInfo = { url: location, status: result.status || 302 };
+            } else {
+              // A Response without a Location — treat its body as the
+              // action result. Most users want redirect() for Responses
+              // so this path is intentionally minimal.
+              actionData[leaf.route.fullPath] = {
+                data: await tryReadResponseBody(result),
+              };
+            }
+          } else {
+            actionData[leaf.route.fullPath] = { data: result };
+          }
+        } catch (err) {
+          actionData[leaf.route.fullPath] = {
+            error:
+              err instanceof Error
+                ? { message: err.message, name: err.name }
+                : { message: String(err), name: 'Error' },
+          };
+          if (status === 200) status = 500;
+        }
+      }
+    }
+
+    // Bail out before rendering when the action redirected. Loaders
+    // would run against the old URL and any work they did is wasted
+    // the instant the client follows the Location header.
+    if (redirectInfo) {
+      matcher.dispose();
+      return {
+        html: '',
+        stateScript: '',
+        state: {},
+        status: redirectInfo.status,
+        headTags: '',
+        loaderData: {},
+        actionData,
+        redirect: redirectInfo,
+      };
+    }
+
+    // --- Loader phase ------------------------------------------------
     // Invoke loaders in parallel, capturing both successes and failures
     // so a thrown `load()` can surface via `useLoaderData()` → parent
     // ErrorBoundary rather than rejecting `renderRoute` outright.
@@ -171,6 +281,7 @@ export async function renderRoute(
       function App() {
         provideRouter(router);
         provideLoaderData({ ...loaderData } as LoaderData);
+        provideActionData({ ...actionData } as ActionData);
         provideMetaRegistry(headRegistry);
         return routeOutlet();
       }
@@ -178,22 +289,41 @@ export async function renderRoute(
       return App();
     });
 
-    // Append a second script that mirrors the loader payload onto the
-    // client. Kept separate from `__MIKATA_STATE__` so existing
-    // consumers of the query-state global don't need to branch on
+    // Emit a second + third script that mirror the loader and action
+    // payloads onto the client. Kept separate from `__MIKATA_STATE__`
+    // so existing query-state consumers don't need to branch on
     // whether kit is in use.
     const loaderScript = Object.keys(loaderData).length
       ? renderStateScript(loaderData, LOADER_DATA_GLOBAL)
       : '';
+    const actionScript = Object.keys(actionData).length
+      ? renderStateScript(actionData, ACTION_DATA_GLOBAL)
+      : '';
 
     return {
       ...rendered,
-      stateScript: rendered.stateScript + loaderScript,
+      stateScript: rendered.stateScript + loaderScript + actionScript,
       status,
       headTags: headRegistry.serialize(),
+      loaderData,
+      actionData,
     };
   } finally {
     shim.restore();
+  }
+}
+
+// Fallback for the rare case of a non-redirect Response: try JSON
+// first (the common "action returned new Response(JSON.stringify(...))"
+// pattern), fall back to text. Silent on parse failure — the adapter
+// will still serialise `undefined` cleanly.
+async function tryReadResponseBody(res: Response): Promise<unknown> {
+  const contentType = res.headers.get('content-type') ?? '';
+  try {
+    if (contentType.includes('application/json')) return await res.json();
+    return await res.text();
+  } catch {
+    return undefined;
   }
 }
 
@@ -203,21 +333,27 @@ export async function renderRoute(
  * stall on a dynamic import. Non-matching lazy routes stay lazy; they
  * still code-split on the client and only load on navigation.
  *
- * Returned `loaders` map is keyed by each resolved route's `fullPath`
- * — the same key the router reports on each `RouteMatch.route.fullPath`,
- * so the render phase can look up a match's loader in O(1).
+ * Returned `loaders` / `actions` maps are keyed by each resolved route's
+ * `fullPath` — the same key the router reports on each
+ * `RouteMatch.route.fullPath`, so the render phase can look up a
+ * match's handlers in O(1).
  */
 async function resolveLazyRoutes(
   routes: readonly RouteDefinition[],
   url: string,
-): Promise<{ routes: RouteDefinition[]; loaders: Map<string, Loader> }> {
+): Promise<{
+  routes: RouteDefinition[];
+  loaders: Map<string, Loader>;
+  actions: Map<string, Action>;
+}> {
   const pathname = extractPathname(url);
   const loaders = new Map<string, Loader>();
+  const actions = new Map<string, Action>();
   const out: RouteDefinition[] = [];
   for (const route of routes) {
-    out.push(await resolveRoute(route, pathname, '', loaders));
+    out.push(await resolveRoute(route, pathname, '', loaders, actions));
   }
-  return { routes: out, loaders };
+  return { routes: out, loaders, actions };
 }
 
 async function resolveRoute(
@@ -225,13 +361,16 @@ async function resolveRoute(
   pathname: string,
   parentPath: string,
   loaders: Map<string, Loader>,
+  actions: Map<string, Action>,
 ): Promise<RouteDefinition> {
   const fullPath = joinPaths(parentPath, route.path);
   const candidate = pathMightMatch(pathname, fullPath);
 
   const resolvedChildren: RouteDefinition[] | undefined = route.children
     ? await Promise.all(
-        route.children.map((c) => resolveRoute(c, pathname, fullPath, loaders)),
+        route.children.map((c) =>
+          resolveRoute(c, pathname, fullPath, loaders, actions),
+        ),
       )
     : undefined;
 
@@ -241,9 +380,11 @@ async function resolveRoute(
     const mod = (await lazy()) as {
       default: RouteDefinition['component'];
       load?: Loader;
+      action?: Action;
     };
     component = mod.default;
     if (typeof mod.load === 'function') loaders.set(fullPath, mod.load);
+    if (typeof mod.action === 'function') actions.set(fullPath, mod.action);
     lazy = undefined;
   }
 

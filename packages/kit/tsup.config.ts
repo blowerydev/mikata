@@ -7,6 +7,8 @@ export default defineConfig({
     'src/client.ts',
     'src/server.ts',
     'src/loader.ts',
+    'src/action.ts',
+    'src/form.ts',
     'src/head.ts',
     'src/adapter-node.ts',
   ],

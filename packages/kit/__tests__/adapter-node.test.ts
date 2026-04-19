@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach } from 'vitest';
 import { promises as fs } from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { PassThrough } from 'node:stream';
+import { PassThrough, Readable } from 'node:stream';
 import { createRequestHandler } from '../src/adapter-node';
 import type { ServerEntry } from '../src/adapter-node';
 
@@ -13,8 +13,20 @@ type FakeRes = PassThrough & {
   body: string;
 };
 
-function makeReq(url: string, method = 'GET') {
-  return { url, method, headers: {} } as never;
+function makeReq(
+  url: string,
+  method = 'GET',
+  options: { body?: string; headers?: Record<string, string> } = {},
+) {
+  const stream = options.body != null
+    ? Readable.from([Buffer.from(options.body)])
+    : Readable.from([]);
+  Object.assign(stream, {
+    url,
+    method,
+    headers: options.headers ?? {},
+  });
+  return stream as never;
 }
 
 function makeRes(): FakeRes {
@@ -129,17 +141,88 @@ describe('createRequestHandler — SSR path', () => {
     expect(res.body).toBe('<body>X</body>');
   });
 
-  it('rejects non-GET/HEAD with 405 and an Allow header', async () => {
-    const clientDir = await mkClientDir({ 'index.html': '' });
-    const handler = createRequestHandler({
-      clientDir,
-      serverEntry: { render: () => ({ html: '' }) },
-    });
+  it('builds a Request for POST and passes it to the server entry', async () => {
+    const clientDir = await mkClientDir({ 'index.html': '<!--ssr-outlet-->' });
+    let seenRequest: Request | undefined;
+    const serverEntry: ServerEntry = {
+      render: async (ctx) => {
+        seenRequest = ctx.request;
+        const form = await ctx.request!.formData();
+        return { html: `<p>got ${form.get('name')}</p>` };
+      },
+    };
+    const handler = createRequestHandler({ clientDir, serverEntry });
     const res = makeRes();
-    await handler(makeReq('/', 'POST'), res as never);
+    await handler(
+      makeReq('/contact', 'POST', {
+        body: 'name=Ada',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      }),
+      res as never,
+    );
     await waitFinish(res);
-    expect(res.statusCode).toBe(405);
-    expect(res._headers['allow']).toBe('GET, HEAD');
+    expect(seenRequest).toBeInstanceOf(Request);
+    expect(seenRequest!.method).toBe('POST');
+    expect(res.body).toContain('<p>got Ada</p>');
+  });
+
+  it('forwards redirect results as an HTTP redirect for native submits', async () => {
+    const clientDir = await mkClientDir({ 'index.html': '<!--ssr-outlet-->' });
+    const serverEntry: ServerEntry = {
+      render: () => ({
+        html: '',
+        redirect: { url: '/thanks', status: 303 },
+      }),
+    };
+    const handler = createRequestHandler({ clientDir, serverEntry });
+    const res = makeRes();
+    await handler(makeReq('/contact', 'POST'), res as never);
+    await waitFinish(res);
+    expect(res.statusCode).toBe(303);
+    expect(res._headers['location']).toBe('/thanks');
+  });
+
+  it('replies with JSON for enhanced submits (X-Mikata-Form header)', async () => {
+    const clientDir = await mkClientDir({ 'index.html': '<!--ssr-outlet-->' });
+    const serverEntry: ServerEntry = {
+      render: () => ({
+        html: 'unused',
+        loaderData: { '/contact': { data: { hi: 1 } } },
+        actionData: { '/contact': { data: { ok: true } } },
+      }),
+    };
+    const handler = createRequestHandler({ clientDir, serverEntry });
+    const res = makeRes();
+    await handler(
+      makeReq('/contact', 'POST', { headers: { 'x-mikata-form': '1' } }),
+      res as never,
+    );
+    await waitFinish(res);
+    expect(res._headers['content-type']).toBe('application/json; charset=utf-8');
+    const payload = JSON.parse(res.body);
+    expect(payload.actionData['/contact'].data.ok).toBe(true);
+    expect(payload.loaderData['/contact'].data.hi).toBe(1);
+  });
+
+  it('replies with JSON redirect for enhanced submits', async () => {
+    const clientDir = await mkClientDir({ 'index.html': '<!--ssr-outlet-->' });
+    const serverEntry: ServerEntry = {
+      render: () => ({
+        html: '',
+        redirect: { url: '/thanks', status: 303 },
+      }),
+    };
+    const handler = createRequestHandler({ clientDir, serverEntry });
+    const res = makeRes();
+    await handler(
+      makeReq('/contact', 'POST', { headers: { 'x-mikata-form': '1' } }),
+      res as never,
+    );
+    await waitFinish(res);
+    expect(res.statusCode).toBe(303);
+    expect(res._headers['content-type']).toBe('application/json; charset=utf-8');
+    const payload = JSON.parse(res.body);
+    expect(payload.redirect).toEqual({ url: '/thanks', status: 303 });
   });
 });
 

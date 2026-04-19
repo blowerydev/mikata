@@ -36,6 +36,13 @@ import { spliceHead } from './splice-head';
 export interface AdapterRenderContext {
   url: string;
   req: IncomingMessage;
+  /**
+   * Pre-built Fetch `Request` mirroring the inbound `req`. Present only
+   * for mutating methods (POST/PUT/PATCH/DELETE) — GET/HEAD leave it
+   * undefined so the cheap path doesn't pay for body buffering. Pass it
+   * straight through to `renderRoute({ request })` to run actions.
+   */
+  request?: Request;
 }
 
 export interface AdapterRenderResult {
@@ -50,6 +57,23 @@ export interface AdapterRenderResult {
    * is equivalent to omission.
    */
   headTags?: string;
+  /**
+   * When a matched action returned a Response with a `Location` header
+   * (typically from `redirect()`), this carries the target URL + status.
+   * The adapter responds with an HTTP redirect instead of rendering.
+   */
+  redirect?: { url: string; status: number };
+  /**
+   * Loader results keyed by route `fullPath`. The adapter echoes these
+   * as part of the JSON reply to enhanced form submissions so the client
+   * form handler can refresh `useLoaderData()` without a navigation.
+   */
+  loaderData?: Record<string, unknown>;
+  /**
+   * Action results keyed by route `fullPath`. Same shape as `loaderData`
+   * — forwarded in the enhanced-submit JSON reply.
+   */
+  actionData?: Record<string, unknown>;
 }
 
 export interface ServerEntry {
@@ -94,6 +118,9 @@ const ASSET_EXT_RE = /\.[a-z0-9]+(?:\?|$)/i;
 const DEFAULT_OUTLET = '<!--ssr-outlet-->';
 const DEFAULT_HEAD_MARKER = '<!--mikata-head-->';
 
+/** Request header that marks a fetch-enhanced form submit — see `form.ts`. */
+const FORM_SUBMIT_HEADER = 'x-mikata-form';
+
 /**
  * Build a `(req, res) => Promise<void>` handler suitable for
  * `http.createServer()` or any Connect-style middleware host.
@@ -118,20 +145,15 @@ export function createRequestHandler(
   };
 
   return async function mikataHandler(req, res) {
-    if (req.method !== 'GET' && req.method !== 'HEAD') {
-      res.statusCode = 405;
-      res.setHeader('Allow', 'GET, HEAD');
-      res.end();
-      return;
-    }
-
+    const method = req.method ?? 'GET';
     const rawUrl = req.url ?? '/';
     const pathname = rawUrl.split('?')[0];
 
     // Prefer static assets first so hashed Vite bundles never race the
-    // SSR path. Anything without a recognisable extension falls through
-    // to the renderer.
-    if (ASSET_EXT_RE.test(pathname)) {
+    // SSR path. Only valid for safe methods — a POST to a .js URL is
+    // almost certainly a misrouted mutation that belongs in the render
+    // path (where the 405 will come from the route not matching).
+    if ((method === 'GET' || method === 'HEAD') && ASSET_EXT_RE.test(pathname)) {
       const served = await tryServeStatic(clientDir, pathname, res);
       if (served) return;
       // Fall through to SSR for e.g. `/users/foo.bar` if it happens to
@@ -139,13 +161,60 @@ export function createRequestHandler(
     }
 
     try {
-      const [template, rendered] = await Promise.all([
-        readTemplate(),
-        Promise.resolve(
-          options.serverEntry.render({ url: rawUrl, req }),
-        ),
-      ]);
-      const { html, stateScript = '', status = 200, headers, headTags = '' } = rendered;
+      // Build a fetch `Request` for methods that carry a body so route
+      // actions can read `request.formData()` / `.json()` directly.
+      // GET/HEAD skip this — the cost (buffering + Request construction)
+      // isn't worth it on the hot read path.
+      let request: Request | undefined;
+      if (method !== 'GET' && method !== 'HEAD') {
+        request = await buildFetchRequest(req);
+      }
+
+      const isEnhancedSubmit =
+        request !== undefined && req.headers[FORM_SUBMIT_HEADER] !== undefined;
+
+      const rendered = await Promise.resolve(
+        options.serverEntry.render({ url: rawUrl, req, request }),
+      );
+
+      const {
+        html,
+        stateScript = '',
+        status = 200,
+        headers,
+        headTags = '',
+        redirect,
+        loaderData,
+        actionData,
+      } = rendered;
+
+      // Redirect short-circuit: the action returned a Response with a
+      // Location header. For a native (no-JS) submit respond with a real
+      // HTTP redirect; for an enhanced submit reply with JSON so the
+      // client-side form handler can call `router.navigate()` without
+      // a full-page reload.
+      if (redirect) {
+        if (isEnhancedSubmit) {
+          sendJson(res, redirect.status, { redirect, loaderData, actionData });
+        } else {
+          res.statusCode = redirect.status;
+          res.setHeader('Location', redirect.url);
+          if (headers) {
+            for (const [k, v] of Object.entries(headers)) res.setHeader(k, v);
+          }
+          res.end();
+        }
+        return;
+      }
+
+      // Enhanced submits never want an HTML page back — the client is
+      // going to merge the JSON into its stores in place.
+      if (isEnhancedSubmit) {
+        sendJson(res, status, { loaderData, actionData });
+        return;
+      }
+
+      const template = await readTemplate();
       const withHead = spliceHead(template, headTags, headMarker);
       const full = withHead.replace(outletMarker, html + stateScript);
 
@@ -165,6 +234,63 @@ export function createRequestHandler(
       res.end('Internal Server Error');
     }
   };
+}
+
+// ---------------------------------------------------------------------------
+// IncomingMessage → fetch Request
+// ---------------------------------------------------------------------------
+
+/**
+ * Buffer the request body and wrap it in a Fetch `Request` object.
+ * We buffer (rather than stream) because route actions are written
+ * against the Fetch API — `.formData()` / `.json()` expect a body that
+ * can be read as a whole. The buffering is bounded by whatever the HTTP
+ * server already accepted; no explicit cap is imposed here because real
+ * deployments should front this with a reverse proxy that enforces one.
+ */
+async function buildFetchRequest(req: IncomingMessage): Promise<Request> {
+  const chunks: Buffer[] = [];
+  for await (const chunk of req) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  }
+  const body = chunks.length > 0 ? Buffer.concat(chunks) : undefined;
+
+  // Build an absolute URL so `new Request()` accepts it. The scheme /
+  // host hint from the proxy headers is preferred; fall back to
+  // synthetic defaults when none are set (keeps local curl calls working).
+  const host = (req.headers['x-forwarded-host'] ?? req.headers.host ?? 'localhost') as string;
+  const proto = (req.headers['x-forwarded-proto'] ?? 'http') as string;
+  const url = `${proto}://${host}${req.url ?? '/'}`;
+
+  // Mirror node headers into fetch Headers. Skip undefined and host
+  // pseudo-headers; duplicate headers (set-cookie-ish) come through as
+  // arrays and are joined with commas — Fetch Headers handles that for
+  // us via `append`.
+  const headers = new Headers();
+  for (const [name, value] of Object.entries(req.headers)) {
+    if (value === undefined) continue;
+    if (Array.isArray(value)) {
+      for (const v of value) headers.append(name, v);
+    } else {
+      headers.set(name, value);
+    }
+  }
+
+  return new Request(url, {
+    method: req.method,
+    headers,
+    body: body ? new Uint8Array(body) : undefined,
+    // Node's undici Request requires `duplex: 'half'` when a body is
+    // present on the request side — the 'half' value matches the
+    // single-read-then-done pattern actions use.
+    ...(body ? { duplex: 'half' } : {}),
+  } as RequestInit);
+}
+
+function sendJson(res: ServerResponse, status: number, body: unknown): void {
+  res.statusCode = status;
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.end(JSON.stringify(body));
 }
 
 // ---------------------------------------------------------------------------

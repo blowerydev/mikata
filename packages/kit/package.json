@@ -50,6 +50,16 @@
       "import": "./dist/loader.js",
       "require": "./dist/loader.cjs"
     },
+    "./action": {
+      "types": "./dist/action.d.ts",
+      "import": "./dist/action.js",
+      "require": "./dist/action.cjs"
+    },
+    "./form": {
+      "types": "./dist/form.d.ts",
+      "import": "./dist/form.js",
+      "require": "./dist/form.cjs"
+    },
     "./head": {
       "types": "./dist/head.d.ts",
       "import": "./dist/head.js",

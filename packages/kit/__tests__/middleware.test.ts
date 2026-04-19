@@ -2,6 +2,7 @@ import { describe, it, expect, afterEach, vi } from 'vitest';
 import { promises as fs } from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { Readable } from 'node:stream';
 import { createSsrMiddleware } from '../src/middleware';
 
 interface FakeServer {
@@ -23,6 +24,21 @@ function makeServer(overrides: Partial<FakeServer> = {}): FakeServer {
 
 function makeReq(url: string, headers: Record<string, string> = {}) {
   return { url, method: 'GET', headers: { accept: 'text/html', ...headers } } as any;
+}
+
+function makeBodyReq(
+  url: string,
+  method: string,
+  body: string,
+  headers: Record<string, string> = {},
+) {
+  const stream = Readable.from([Buffer.from(body)]);
+  Object.assign(stream, {
+    url,
+    method,
+    headers: { accept: 'text/html', ...headers },
+  });
+  return stream as any;
 }
 
 function makeRes() {
@@ -120,7 +136,7 @@ describe('createSsrMiddleware', () => {
     expect(server.ssrLoadModule).not.toHaveBeenCalled();
   });
 
-  it('skips non-GET requests', async () => {
+  it('skips HEAD requests', async () => {
     const root = await mkProject({
       'index.html': '<!--ssr-outlet-->',
       'src/entry-server.ts': 'export const render = () => ({});',
@@ -130,11 +146,93 @@ describe('createSsrMiddleware', () => {
     const next = vi.fn();
 
     const req = makeReq('/');
-    req.method = 'POST';
+    req.method = 'HEAD';
     await mw(req, makeRes(), next);
 
     expect(next).toHaveBeenCalledTimes(1);
     expect(server.ssrLoadModule).not.toHaveBeenCalled();
+  });
+
+  it('hands POST requests to render() with a built Request object', async () => {
+    const root = await mkProject({
+      'index.html': '<html><body><!--ssr-outlet--></body></html>',
+      'src/entry-server.ts': 'export const render = () => ({});',
+    });
+    let seenRequest: Request | undefined;
+    const render = vi.fn(async (ctx: any) => {
+      seenRequest = ctx.request;
+      const form = await ctx.request.formData();
+      return { html: `<p>saw ${form.get('name')}</p>` };
+    });
+    const server = makeServer({ ssrLoadModule: vi.fn(async () => ({ render })) });
+    const mw = createSsrMiddleware(server as any, { projectRoot: root });
+    const res = makeRes();
+
+    await mw(
+      makeBodyReq('/contact', 'POST', 'name=Ada', {
+        'content-type': 'application/x-www-form-urlencoded',
+      }),
+      res,
+      vi.fn(),
+    );
+
+    expect(seenRequest).toBeInstanceOf(Request);
+    expect(res.body).toContain('<p>saw Ada</p>');
+  });
+
+  it('forwards action redirects as HTTP redirects', async () => {
+    const root = await mkProject({
+      'index.html': '<!--ssr-outlet-->',
+      'src/entry-server.ts': 'export const render = () => ({});',
+    });
+    const render = vi.fn(() => ({
+      html: '',
+      redirect: { url: '/thanks', status: 303 },
+    }));
+    const server = makeServer({ ssrLoadModule: vi.fn(async () => ({ render })) });
+    const mw = createSsrMiddleware(server as any, { projectRoot: root });
+    const res = makeRes();
+
+    await mw(
+      makeBodyReq('/contact', 'POST', '', {
+        'content-type': 'application/x-www-form-urlencoded',
+      }),
+      res,
+      vi.fn(),
+    );
+
+    expect(res.statusCode).toBe(303);
+    expect(res._headers['Location']).toBe('/thanks');
+  });
+
+  it('returns JSON for enhanced submits marked with X-Mikata-Form', async () => {
+    const root = await mkProject({
+      'index.html': '<!--ssr-outlet-->',
+      'src/entry-server.ts': 'export const render = () => ({});',
+    });
+    const render = vi.fn(() => ({
+      html: 'unused',
+      actionData: { '/c': { data: { ok: true } } },
+      loaderData: { '/c': { data: 1 } },
+    }));
+    const server = makeServer({ ssrLoadModule: vi.fn(async () => ({ render })) });
+    const mw = createSsrMiddleware(server as any, { projectRoot: root });
+    const res = makeRes();
+
+    await mw(
+      makeBodyReq('/c', 'POST', '', {
+        'content-type': 'application/x-www-form-urlencoded',
+        'x-mikata-form': '1',
+        accept: 'application/json',
+      }),
+      res,
+      vi.fn(),
+    );
+
+    expect(res._headers['Content-Type']).toBe('application/json; charset=utf-8');
+    const payload = JSON.parse(res.body);
+    expect(payload.actionData['/c'].data.ok).toBe(true);
+    expect(payload.loaderData['/c'].data).toBe(1);
   });
 
   it('forwards a helpful error when the server entry is missing', async () => {

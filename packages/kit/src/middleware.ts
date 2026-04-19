@@ -52,9 +52,18 @@ const DEFAULT_HEAD_MARKER = '<!--mikata-head-->';
 // request. `?` lets query strings come along for the ride.
 const ASSET_EXT_RE = /\.[a-z0-9]+(?:\?|$)/i;
 
+/** Request header that marks a fetch-enhanced form submit — see `form.ts`. */
+const FORM_SUBMIT_HEADER = 'x-mikata-form';
+
 export interface RenderContext {
   url: string;
   req: Connect.IncomingMessage;
+  /**
+   * Pre-built Fetch `Request` mirroring `req`. Present only for mutating
+   * methods (POST/PUT/PATCH/DELETE). Forward it to
+   * `renderRoute({ request })` so route actions can read the body.
+   */
+  request?: Request;
 }
 
 export interface RenderResult {
@@ -67,6 +76,16 @@ export interface RenderResult {
    * is treated the same as omission.
    */
   headTags?: string;
+  /**
+   * Populated when a matched action returned a Response with a
+   * `Location` header. Middleware responds with an HTTP redirect
+   * instead of rendering the HTML.
+   */
+  redirect?: { url: string; status: number };
+  /** Loader results keyed by route `fullPath` — echoed on enhanced submits. */
+  loaderData?: Record<string, unknown>;
+  /** Action results keyed by route `fullPath` — echoed on enhanced submits. */
+  actionData?: Record<string, unknown>;
 }
 
 interface UserEntry {
@@ -83,11 +102,23 @@ export function createSsrMiddleware(
   const indexHtmlPath = path.resolve(options.projectRoot, 'index.html');
 
   return async function mikataSsrMiddleware(req, res, next) {
-    if (!req.url || req.method !== 'GET') return next();
+    if (!req.url) return next();
+    const method = req.method ?? 'GET';
+    // HEAD isn't interesting for SSR — let Vite's later middleware
+    // return the expected metadata. GET serves pages; POST/PUT/PATCH/
+    // DELETE drive action flows.
+    if (method === 'HEAD') return next();
+    const isMutation = method !== 'GET';
     // Accept: "*/*", "text/html" etc. — but an HMR ping or a JS import
     // comes through with application/javascript preferences; skip those.
+    // Form submits set Accept: application/json — let those through too.
     const accept = req.headers.accept ?? '';
-    if (accept && !accept.includes('text/html') && !accept.includes('*/*')) {
+    if (
+      accept &&
+      !accept.includes('text/html') &&
+      !accept.includes('*/*') &&
+      !accept.includes('application/json')
+    ) {
       return next();
     }
     if (ASSET_EXT_RE.test(req.url)) return next();
@@ -102,9 +133,6 @@ export function createSsrMiddleware(
         );
       }
 
-      const template = await fs.readFile(indexHtmlPath, 'utf-8');
-      const transformed = await server.transformIndexHtml(req.url, template);
-
       const mod = (await server.ssrLoadModule(entryAbs)) as Partial<UserEntry>;
       if (typeof mod.render !== 'function') {
         return next(
@@ -114,11 +142,46 @@ export function createSsrMiddleware(
         );
       }
 
-      const { html, stateScript = '', status = 200, headTags = '' } = await mod.render({
+      // Buffer body + build a Request for mutating methods. GET stays on
+      // the cheap read path (no body, no Request construction).
+      const request = isMutation ? await buildFetchRequest(req) : undefined;
+      const isEnhancedSubmit =
+        request !== undefined && req.headers[FORM_SUBMIT_HEADER] !== undefined;
+
+      const rendered = await mod.render({
         url: req.url,
         req,
+        request,
       });
+      const {
+        html,
+        stateScript = '',
+        status = 200,
+        headTags = '',
+        redirect,
+        loaderData,
+        actionData,
+      } = rendered;
 
+      // Redirect short-circuit (see adapter-node.ts for the full rationale).
+      if (redirect) {
+        if (isEnhancedSubmit) {
+          sendJson(res, redirect.status, { redirect, loaderData, actionData });
+        } else {
+          res.statusCode = redirect.status;
+          res.setHeader('Location', redirect.url);
+          res.end();
+        }
+        return;
+      }
+
+      if (isEnhancedSubmit) {
+        sendJson(res, status, { loaderData, actionData });
+        return;
+      }
+
+      const template = await fs.readFile(indexHtmlPath, 'utf-8');
+      const transformed = await server.transformIndexHtml(req.url, template);
       const withHead = spliceHead(transformed, headTags, headMarker);
       const full = withHead.replace(outletMarker, html + stateScript);
       res.statusCode = status;
@@ -131,6 +194,46 @@ export function createSsrMiddleware(
       next(err);
     }
   };
+}
+
+/**
+ * Buffer a Node `IncomingMessage` body and wrap it in a Fetch `Request`.
+ * Matches the adapter-node helper — dev and prod must give actions the
+ * same `request` shape so `request.formData()` works in both modes.
+ */
+async function buildFetchRequest(req: Connect.IncomingMessage): Promise<Request> {
+  const chunks: Buffer[] = [];
+  for await (const chunk of req) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  }
+  const body = chunks.length > 0 ? Buffer.concat(chunks) : undefined;
+
+  const host = (req.headers['x-forwarded-host'] ?? req.headers.host ?? 'localhost') as string;
+  const proto = (req.headers['x-forwarded-proto'] ?? 'http') as string;
+  const url = `${proto}://${host}${req.url ?? '/'}`;
+
+  const headers = new Headers();
+  for (const [name, value] of Object.entries(req.headers)) {
+    if (value === undefined) continue;
+    if (Array.isArray(value)) {
+      for (const v of value) headers.append(name, v);
+    } else {
+      headers.set(name, value);
+    }
+  }
+
+  return new Request(url, {
+    method: req.method,
+    headers,
+    body: body ? new Uint8Array(body) : undefined,
+    ...(body ? { duplex: 'half' } : {}),
+  } as RequestInit);
+}
+
+function sendJson(res: import('node:http').ServerResponse, status: number, body: unknown): void {
+  res.statusCode = status;
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.end(JSON.stringify(body));
 }
 
 async function resolveEntry(

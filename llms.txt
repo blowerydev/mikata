@@ -1150,6 +1150,86 @@ Exports from `@mikata/kit/loader`:
 - `LOADER_DATA_GLOBAL = '__MIKATA_LOADER_DATA__'` — the global name `renderRoute` serialises into.
 - `LoadContext`, `Loader<T>`, `LoaderData`, `LoaderStore` — types.
 
+### Form actions (`@mikata/kit/action`, `@mikata/kit/form`)
+
+A route module can export `action()` alongside `load()` and the default component. `action()` runs on non-GET requests (POST/PUT/PATCH/DELETE); use it for mutations:
+
+```tsx
+// src/routes/contact.tsx
+import { Form } from '@mikata/kit/form';
+import {
+  redirect,
+  useActionData,
+  type ActionContext,
+} from '@mikata/kit/action';
+import { useLoaderData, type LoadContext } from '@mikata/kit/loader';
+
+export async function load(_ctx: LoadContext) {
+  return { messages: await db.messages.list() };
+}
+
+export async function action({ request }: ActionContext) {
+  const form = await request.formData();
+  if (form.get('_intent') === 'clear') {
+    await db.messages.clear();
+    return redirect('/contact'); // POST-redirect-GET
+  }
+  const name = String(form.get('name') ?? '');
+  const body = String(form.get('body') ?? '');
+  if (!name || !body) throw new Error('Name and message are required.');
+  await db.messages.create({ name, body });
+  return { ok: true, savedAt: new Date().toISOString() };
+}
+
+export default function Contact() {
+  const data = useLoaderData<typeof load>();
+  const result = useActionData<typeof action>();
+  return (
+    <section>
+      {result()?.ok && <p>Saved at {result()!.savedAt}.</p>}
+      <Form method="post">
+        <input name="name" />
+        <input name="body" />
+        <button type="submit" name="_intent" value="send">Send</button>
+      </Form>
+    </section>
+  );
+}
+```
+
+Request flow:
+
+- `renderRoute` sees a non-GET `request` (threaded in by the Node adapter / dev middleware) and invokes the matched leaf route's `action({ request, params, url })` **before** loaders run. This ordering is load-bearing: loaders render against the post-mutation state.
+- `action()` returns either a plain value (serialised to the actionData map) or a `Response`. `redirect(url, status = 302)` returns a `Response` with the given `Location` header. Kit surfaces this as `result.redirect = { url, status }` and skips the render phase entirely.
+- Thrown actions are caught and serialised the same way thrown loaders are — `{ error: { message, name } }` in `actionData`, status bumped to 500. `useActionData()` rethrows the synthesised Error on first read, which a parent `<ErrorBoundary>` can catch.
+- Loaders run after a successful (non-redirect) action so `useLoaderData()` sees the post-mutation state inside the same render. Both maps are JSON-embedded (`__MIKATA_LOADER_DATA__`, `__MIKATA_ACTION_DATA__`) and replayed by `mount()`.
+
+Progressive enhancement:
+
+- Without JavaScript, `<Form>` is a plain `<form method="post">` — the browser POSTs natively, the adapter runs `renderRoute` with a Request built from the inbound body, renders the post-mutation HTML, and flushes a full page.
+- With JavaScript, `<Form>` intercepts the first submit, calls `fetch()` with `Accept: application/json` and `X-Mikata-Form: 1`. The adapter sees that header and responds with `{ loaderData, actionData, redirect? }` JSON instead of HTML. The Form handler updates both stores in place and calls `router.navigate(redirect.url)` when a redirect is present. No full-page reload; the SPA stays in the same scope.
+
+`<Form>` props:
+- `method?: 'post' | 'put' | 'patch' | 'delete'` — default `post`. GET is intentionally excluded; use `<Link>` for navigation.
+- `action?: string` — submission URL. Defaults to the current route's path.
+- `encType?: 'application/x-www-form-urlencoded' | 'multipart/form-data'` — default `x-www-form-urlencoded`. Use `multipart/form-data` when the form has a file input.
+- `reloadDocument?: boolean` — skip the fetch interception and let the browser POST natively.
+- `onSubmit?: (event: SubmitEvent) => void` — runs before the enhanced submit. Call `event.preventDefault()` to cancel the submission (useful for client validation).
+- Extra attributes (`class`, `id`, `aria-*`, ...) forward to the underlying `<form>` element.
+
+Exports from `@mikata/kit/action`:
+- `useActionData<typeof action>()` — `ReadSignal<Awaited<ReturnType<action>> | undefined>`. Rethrows on error so a parent `ErrorBoundary` catches it. Cleared automatically on navigation to a different URL.
+- `redirect(url, status = 302)` — helper that returns a `Response` with the `Location` header set. Recognised by the adapter.
+- `provideActionData(data | store)` — seeds the action-data context; wired automatically by `renderRoute` and `mount`.
+- `createActionStore(initial)` — signal-backed store. Used internally; exposed for custom hosts.
+- `ACTION_DATA_GLOBAL = '__MIKATA_ACTION_DATA__'`, `ActionContext`, `Action<T>`, `ActionData`, `ActionStore`, `ActionEntry` — types.
+
+Exports from `@mikata/kit/form`:
+- `Form(props)` — the form component described above.
+- `FORM_SUBMIT_HEADER = 'X-Mikata-Form'` — request header custom adapters can branch on.
+- `provideFormContext({ router, actionStore, loaderStore })` — wired automatically by `mount()` so `<Form>` can reach the live stores. Reach for this yourself only when embedding kit in a custom host.
+- `FormProps`, `FormSubmitResponse`, `FormContextValue`, `FormMethod` — types.
+
 ### Error handling (`@mikata/kit`)
 
 `@mikata/kit` re-exports `ErrorBoundary` from `@mikata/runtime` so route modules don't have to reach into the runtime directly. Wrap a suspect subtree — typically a loader-heavy route body — and provide a fallback:
@@ -1169,6 +1249,8 @@ export default function UserDetail() {
 A thrown synchronous error inside a descendant component is caught by the nearest boundary. `retry()` re-mounts the boundary's children — useful for "try again" buttons after a transient failure.
 
 `load()` errors integrate with boundaries the same way. On the server, a thrown `load()` gets serialised into the hydration payload as `{ error: { message, name } }` and the response status becomes `500`. On the client, `useLoaderData()` rethrows a synthesised `Error` the first time it's read, so wrapping the route body in an `ErrorBoundary` lets the fallback render on both the server and client paths.
+
+`action()` errors follow the same pattern — serialised into `actionData`, status bumped to 500, `useActionData()` rethrows on first read. Place the `ErrorBoundary` around just the `useActionData()` consumer (typically a small status component) so a failed submit doesn't blank the whole form.
 
 ### Per-route `<head>` (`@mikata/kit/head`)
 
