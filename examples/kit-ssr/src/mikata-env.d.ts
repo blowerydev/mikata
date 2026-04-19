@@ -3,4 +3,7 @@ declare module 'virtual:mikata-routes' {
   const routes: readonly RouteDefinition[];
   export default routes;
   export { routes };
+  export const notFound:
+    | (() => Promise<{ default: (props: Record<string, unknown>) => unknown }>)
+    | undefined;
 }

@@ -101,10 +101,24 @@ export function generateManifestModule(opts: GenerateManifestOptions): string {
 
   // Skip the synthetic root node — emit its children directly.
   const topLevel = root.children.map(emitNode).join(', ');
+
+  // If scan-routes detected a top-level `404.tsx`, emit a lazy import
+  // for it and expose it as `notFound` so kit's server/client entries
+  // can hand it to the router. The loader is async (lazy-imported) so
+  // consumers call it the same way they'd call `lazy()`-backed route
+  // components: `await notFound()` resolves to the module with a default
+  // export of the component function.
+  let notFoundExport = '';
+  if (manifest.notFound) {
+    const imp = emitImport(manifest.notFound);
+    notFoundExport = `export const notFound = ${imp};\n`;
+  }
+
   return (
     imports.join('\n') +
     (imports.length ? '\n\n' : '') +
     `export const routes = [${topLevel}];\n` +
+    notFoundExport +
     'export default routes;\n'
   );
 }

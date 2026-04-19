@@ -1079,7 +1079,32 @@ export async function render(ctx: { url: string; req?: unknown }) {
 }
 ```
 
-Returns everything `renderToString` does plus `status: 200 | 404`. `404` when no route matched — the middleware writes that status automatically.
+Returns everything `renderToString` does plus a `status` field:
+- `200` when every matched route's `load()` (if any) resolved cleanly.
+- `404` when no route matched. Rendered output is whatever the virtual manifest's `notFound` export produces (see below); with no 404 route configured the outlet renders empty.
+- `500` when at least one matched loader threw. The error is serialised into `stateScript` so the first `useLoaderData()` read on the client rethrows for a parent `ErrorBoundary` to catch — same HTML both sides.
+
+The middleware/adapter pick this up and set the HTTP status on the response.
+
+A top-level `src/routes/404.tsx` becomes the named `notFound` export on `virtual:mikata-routes`; pass it through both entry points so unmatched URLs render your page instead of a blank outlet:
+
+```tsx
+// src/entry-server.tsx
+import { renderRoute } from '@mikata/kit/server';
+import routes, { notFound } from 'virtual:mikata-routes';
+export async function render(ctx: { url: string }) {
+  return renderRoute(routes, { url: ctx.url, notFound });
+}
+```
+
+```tsx
+// src/entry-client.tsx
+import { mount } from '@mikata/kit/client';
+import routes, { notFound } from 'virtual:mikata-routes';
+mount(routes, document.getElementById('root')!, { notFound });
+```
+
+Nested `404.tsx` files (e.g. `routes/foo/404.tsx`) stay on the normal route map — only the top-level file is special-cased.
 
 ### mount(routes, container) — client entry
 
@@ -1141,7 +1166,9 @@ export default function UserDetail() {
 }
 ```
 
-A thrown synchronous error inside a descendant component is caught by the nearest boundary. `retry()` re-mounts the boundary's children — useful for "try again" buttons after a transient failure. Note that `load()` rejections on client-side navigation are currently surfaced to `console.error` and leave the previous loader data in place; boundary propagation for loader errors is a future enhancement (see "future work" comment in `@mikata/kit`'s client entry).
+A thrown synchronous error inside a descendant component is caught by the nearest boundary. `retry()` re-mounts the boundary's children — useful for "try again" buttons after a transient failure.
+
+`load()` errors integrate with boundaries the same way. On the server, a thrown `load()` gets serialised into the hydration payload as `{ error: { message, name } }` and the response status becomes `500`. On the client, `useLoaderData()` rethrows a synthesised `Error` the first time it's read, so wrapping the route body in an `ErrorBoundary` lets the fallback render on both the server and client paths.
 
 ### Per-route `<head>` (`@mikata/kit/head`)
 

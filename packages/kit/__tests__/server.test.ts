@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { _template, _insert, _createComponent } from '@mikata/runtime';
+import { _template, _insert, _createComponent, ErrorBoundary } from '@mikata/runtime';
 import { routeOutlet } from '@mikata/router';
 import { renderRoute } from '../src/server';
 import { useLoaderData, LOADER_DATA_GLOBAL } from '../src/loader';
@@ -198,6 +198,90 @@ describe('renderRoute', () => {
         params: { id: 'abc' },
         url: '/posts/abc?q=1',
       });
+    });
+  });
+
+  describe('notFound', () => {
+    it('renders the notFound module with status 404 when no route matches', async () => {
+      const Home = staticNode('<h1>home <!>!</h1>', 'x');
+      const NotFound = staticNode('<h1>not <!>!</h1>', 'found');
+      const routes = [
+        { path: '/', component: () => _createComponent(Home, {}) },
+      ];
+      const { html, status } = await renderRoute(routes, {
+        url: '/nope',
+        notFound: async () => ({
+          default: () => _createComponent(NotFound, {}),
+        }),
+      });
+      expect(status).toBe(404);
+      expect(html).toContain('not found');
+      expect(html).not.toContain('home');
+    });
+
+    it('still returns 404 even when notFound is omitted', async () => {
+      const Home = staticNode('<h1>home <!>!</h1>', 'x');
+      const routes = [
+        { path: '/', component: () => _createComponent(Home, {}) },
+      ];
+      const { status } = await renderRoute(routes, { url: '/nope' });
+      expect(status).toBe(404);
+    });
+  });
+
+  describe('loader errors', () => {
+    it('routes a thrown load() through useLoaderData into a parent ErrorBoundary', async () => {
+      const Boom = () => {
+        const data = useLoaderData();
+        const root = _template('<p>data <!></p>').cloneNode(true) as any;
+        _insert(root, () => String((data as any)()), root.childNodes[1]);
+        return root;
+      };
+      const Fallback = (err: Error) => {
+        const root = _template('<div class="err"><!></div>').cloneNode(true) as any;
+        _insert(root, () => err.message, root.childNodes[0]);
+        return root;
+      };
+      const routes = [
+        {
+          path: '/boom',
+          lazy: async () => ({
+            default: () =>
+              _createComponent(ErrorBoundary, {
+                fallback: Fallback,
+                get children() {
+                  return _createComponent(Boom, {});
+                },
+              }),
+            load: async () => {
+              throw new Error('kaboom');
+            },
+          }),
+        },
+      ];
+      const { html, status, stateScript } = await renderRoute(routes, {
+        url: '/boom',
+      });
+      expect(status).toBe(500);
+      expect(html).toContain('kaboom');
+      expect(html).not.toContain('data undefined');
+      expect(stateScript).toContain('"message":"kaboom"');
+      expect(stateScript).toContain('"name":"Error"');
+    });
+
+    it('keeps status 200 for matched routes whose loaders all succeed', async () => {
+      const Page = () => _template('<p>ok</p>').cloneNode(true) as any;
+      const routes = [
+        {
+          path: '/ok',
+          lazy: async () => ({
+            default: Page,
+            load: async () => ({ ok: true }),
+          }),
+        },
+      ];
+      const { status } = await renderRoute(routes, { url: '/ok' });
+      expect(status).toBe(200);
     });
   });
 

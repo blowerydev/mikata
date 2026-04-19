@@ -31,16 +31,35 @@ import {
   provideLoaderData,
   LOADER_DATA_GLOBAL,
   type Loader,
+  type LoaderData,
+  type LoaderEntry,
 } from './loader';
 import { createCollectMetaRegistry, provideMetaRegistry } from './head';
 
-export interface RenderRouteOptions extends Omit<RouterOptions, 'routes' | 'history'> {
+/**
+ * Signature of the `notFound` entry in a generated `virtual:mikata-routes`
+ * manifest: a dynamic-import-backed module loader whose default export is
+ * the 404 component.
+ */
+export type NotFoundModuleLoader = () => Promise<{
+  default: (props: Record<string, unknown>) => unknown;
+}>;
+
+export interface RenderRouteOptions extends Omit<RouterOptions, 'routes' | 'history' | 'notFound'> {
   /**
    * Full request URL (including pathname + search + hash). Only the
    * pathname is matched against the routes; the rest is preserved
    * on the router state so the rendered tree can read it.
    */
   url: string;
+  /**
+   * 404 component loader from the virtual manifest (i.e.
+   * `import { notFound } from 'virtual:mikata-routes'`). When the URL
+   * matches no route, its module is awaited and its default export
+   * rendered in place; the returned `status` is still `404` so the
+   * adapter responds with the right HTTP code.
+   */
+  notFound?: NotFoundModuleLoader;
 }
 
 export interface RenderRouteResult extends RenderToStringResult {
@@ -84,7 +103,17 @@ export async function renderRoute(
       routes,
       options.url,
     );
-    const { url, ...routerRest } = options;
+    const { url, notFound: notFoundLoader, ...routerRest } = options;
+
+    // Resolve the 404 module eagerly so the render closure can return
+    // final HTML for an unmatched URL — the renderToString pass can't
+    // `await` inside a component. The extra chunk is cheap in the miss
+    // case and skipped entirely when no `routes/404.tsx` is configured.
+    let notFoundComponent: (() => unknown) | undefined;
+    if (notFoundLoader) {
+      const mod = await notFoundLoader();
+      notFoundComponent = () => mod.default({});
+    }
 
     // Pre-render pass: build the match chain so we know which loaders
     // to invoke (and so we can surface a 404 status even before the
@@ -95,21 +124,38 @@ export async function renderRoute(
       routes: [...resolvedRoutes],
       history: createMemoryHistory(url),
       ...routerRest,
+      ...(notFoundComponent ? { notFound: notFoundComponent as () => Node } : {}),
     });
     const matches = matcher.route().matches;
-    const status = matches.length === 0 ? 404 : 200;
+    let status = matches.length === 0 ? 404 : 200;
 
-    const loaderData: Record<string, unknown> = {};
+    // Invoke loaders in parallel, capturing both successes and failures
+    // so a thrown `load()` can surface via `useLoaderData()` → parent
+    // ErrorBoundary rather than rejecting `renderRoute` outright.
+    // When any loader threw, bump the status to 500 so the HTTP response
+    // reflects that the page had a problem even if the fallback rendered
+    // clean HTML.
+    const loaderData: Record<string, LoaderEntry> = {};
+    let anyLoaderErrored = false;
     await Promise.all(
       matches.map(async (match) => {
         const loader = loaders.get(match.route.fullPath);
         if (!loader) return;
-        loaderData[match.route.fullPath] = await loader({
-          params: match.params,
-          url,
-        });
+        try {
+          const value = await loader({ params: match.params, url });
+          loaderData[match.route.fullPath] = { data: value };
+        } catch (err) {
+          anyLoaderErrored = true;
+          loaderData[match.route.fullPath] = {
+            error:
+              err instanceof Error
+                ? { message: err.message, name: err.name }
+                : { message: String(err), name: 'Error' },
+          };
+        }
       }),
     );
+    if (anyLoaderErrored && status === 200) status = 500;
     matcher.dispose();
 
     const headRegistry = createCollectMetaRegistry();
@@ -119,11 +165,12 @@ export async function renderRoute(
         routes: [...resolvedRoutes],
         history: createMemoryHistory(url),
         ...routerRest,
+        ...(notFoundComponent ? { notFound: notFoundComponent as () => Node } : {}),
       });
 
       function App() {
         provideRouter(router);
-        provideLoaderData({ ...loaderData });
+        provideLoaderData({ ...loaderData } as LoaderData);
         provideMetaRegistry(headRegistry);
         return routeOutlet();
       }

@@ -79,6 +79,11 @@ export function routeOutlet(options?: {
 
   let currentNode: Node = document.createComment('route-outlet');
   let currentScope: Scope | null = null;
+  // Distinguishes "no render yet" from "last render had no match" — both
+  // have a null route key, but only the latter should short-circuit the
+  // swap. Without this guard, an initial no-match URL would never run the
+  // `notFound` branch because `null === null` returned early.
+  let hasRendered = false;
   let currentKey: string | null = null;
 
   // Track which route component is rendered at this depth
@@ -103,7 +108,8 @@ export function routeOutlet(options?: {
     const key = routeDef?.fullPath ?? null;
 
     // Same route component - don't swap
-    if (key === currentKey) return;
+    if (hasRendered && key === currentKey) return;
+    hasRendered = true;
     currentKey = key;
 
     // Dispose previous scope

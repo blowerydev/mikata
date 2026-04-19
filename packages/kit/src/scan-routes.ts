@@ -13,6 +13,8 @@
  *   users/[id].tsx       →  /users/:id        (dynamic segment)
  *   blog/[...slug].tsx   →  /blog/*           (catch-all)
  *   _layout.tsx          →  layout; wraps sibling + descendant routes
+ *   404.tsx              →  not-found route; rendered when no other route matches
+ *                           (only recognised at the top-level routes/ directory)
  *   files prefixed _     →  ignored (except _layout which has special meaning)
  *   files not ending .tsx/.jsx/.ts/.js  →  ignored
  */
@@ -41,6 +43,12 @@ export interface RouteManifestLayout {
 export interface RouteManifest {
   routes: RouteManifestEntry[];
   layouts: RouteManifestLayout[];
+  /**
+   * POSIX-style path to the top-level `404.tsx` (or equivalent extension)
+   * if present in the routes directory. Wired through as the router's
+   * `notFound` option and used to produce a 404-status HTML response.
+   */
+  notFound?: string;
 }
 
 const ROUTE_EXT_RE = /\.(?:tsx|jsx|ts|js|mjs|cjs|mts|cts)$/;
@@ -54,6 +62,7 @@ export function scanRoutes(files: string[]): RouteManifest {
   const layouts: RouteManifestLayout[] = [];
   const layoutsByDir = new Map<string, RouteManifestLayout>();
   const routes: RouteManifestEntry[] = [];
+  let notFound: string | undefined;
 
   // Deterministic order so the manifest is stable from one scan to the
   // next. Sorting also ensures a directory's layout is registered before
@@ -92,6 +101,14 @@ export function scanRoutes(files: string[]): RouteManifest {
     const basename = segments[segments.length - 1]!;
     const stem = basename.replace(ROUTE_EXT_RE, '');
     if (stem.startsWith('_')) continue; // _layout, _private helpers
+    // `routes/404.tsx` becomes the not-found fallback instead of a normal
+    // route. Only recognised at the top level — nested /foo/404.tsx
+    // stays as a plain `/foo/404` route so users who actually want a
+    // literal `/404` URL under a subtree aren't surprised.
+    if (stem === '404' && segments.length === 1) {
+      notFound = file;
+      continue;
+    }
     const dirSegments = segments.slice(0, -1);
     const pathSegments = dirSegments.map(toPathSegment);
     if (stem !== 'index') {
@@ -118,7 +135,7 @@ export function scanRoutes(files: string[]): RouteManifest {
     });
   }
 
-  return { routes, layouts };
+  return notFound ? { routes, layouts, notFound } : { routes, layouts };
 }
 
 function toPathSegment(raw: string): string {

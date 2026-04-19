@@ -71,3 +71,18 @@ describe('generateManifestModule: empty manifest', () => {
     expect(src).toContain('export default routes;');
   });
 });
+
+describe('generateManifestModule: 404 route', () => {
+  it('emits a named `notFound` export when the manifest has one', () => {
+    const manifest = scanRoutes(['index.tsx', '404.tsx']);
+    const src = generateManifestModule({ routesDir: ROUTES_DIR, manifest });
+    expect(src).toContain('export const notFound =');
+    expect(src).toContain('import("/abs/project/src/routes/404.tsx")');
+  });
+
+  it('omits the `notFound` export when no 404 route exists', () => {
+    const manifest = scanRoutes(['index.tsx']);
+    const src = generateManifestModule({ routesDir: ROUTES_DIR, manifest });
+    expect(src).not.toContain('export const notFound');
+  });
+});

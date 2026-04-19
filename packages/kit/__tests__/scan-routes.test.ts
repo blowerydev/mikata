@@ -77,6 +77,27 @@ describe('scanRoutes: layouts', () => {
   });
 });
 
+describe('scanRoutes: 404 route', () => {
+  it('records the top-level 404.tsx as notFound and excludes it from routes', () => {
+    const m = scanRoutes(['index.tsx', '404.tsx']);
+    expect(m.notFound).toBe('404.tsx');
+    const paths = m.routes.map((r) => r.path);
+    expect(paths).toEqual(['/']);
+  });
+
+  it('treats nested foo/404.tsx as a normal /foo/404 route', () => {
+    const m = scanRoutes(['index.tsx', 'foo/404.tsx']);
+    expect(m.notFound).toBeUndefined();
+    const paths = m.routes.map((r) => r.path).sort();
+    expect(paths).toEqual(['/', '/foo/404']);
+  });
+
+  it('omits notFound when no 404 file is present', () => {
+    const m = scanRoutes(['index.tsx']);
+    expect(m.notFound).toBeUndefined();
+  });
+});
+
 describe('scanRoutes: determinism', () => {
   it('is stable across input permutations', () => {
     const files = [

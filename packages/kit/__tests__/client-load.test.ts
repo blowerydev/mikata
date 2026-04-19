@@ -49,7 +49,7 @@ describe('client-side load() re-runs', () => {
       },
     ];
 
-    resetGlobal({ '/users/:id': { id: '1' } });
+    resetGlobal({ '/users/:id': { data: { id: '1' } } });
 
     const container = document.createElement('div');
     document.body.appendChild(container);

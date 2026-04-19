@@ -19,7 +19,7 @@
  * consumers in the new tree see up-to-date data.
  */
 
-import { hydrate, render } from '@mikata/runtime';
+import { hydrate, render, lazy } from '@mikata/runtime';
 import { effect } from '@mikata/reactivity';
 import {
   createRouter,
@@ -39,13 +39,30 @@ import {
 } from './loader';
 import { createDomMetaRegistry, provideMetaRegistry } from './head';
 
-export interface MountOptions extends Omit<RouterOptions, 'routes'> {
+/**
+ * Signature of the `notFound` entry in a generated `virtual:mikata-routes`
+ * manifest: a dynamic-import-backed module loader whose default export is
+ * the 404 component. Kit wraps it with `lazy()` so the underlying JS
+ * chunk is only fetched when the user hits an unmatched URL.
+ */
+export type NotFoundModuleLoader = () => Promise<{
+  default: (props: Record<string, unknown>) => Node | null;
+}>;
+
+export interface MountOptions extends Omit<RouterOptions, 'routes' | 'notFound'> {
   /**
    * Skip hydration and do a full client render instead. Useful when the
    * container has no pre-rendered content (e.g. plain SPA dev mode).
    * Default: auto-detect by looking for a child node in `container`.
    */
   hydrate?: boolean;
+  /**
+   * 404 component loader from the virtual manifest (i.e.
+   * `import { notFound } from 'virtual:mikata-routes'`). When present,
+   * it's wrapped with `lazy()` and passed to the router so any
+   * unmatched URL renders it instead of a blank page.
+   */
+  notFound?: NotFoundModuleLoader;
 }
 
 export interface MountResult {
@@ -58,7 +75,7 @@ export function mount(
   container: HTMLElement,
   options: MountOptions = {},
 ): MountResult {
-  const { hydrate: shouldHydrate, ...routerOptions } = options;
+  const { hydrate: shouldHydrate, notFound: notFoundLoader, ...routerOptions } = options;
 
   // Wrap each lazy route so we can intercept the resolved module and
   // capture any `load` export into a side map. The router still sees
@@ -67,7 +84,22 @@ export function mount(
   const loaders = new Map<string, Loader>();
   const wrappedRoutes = wrapLazyRoutes([...routes], '', loaders);
 
-  const router = createRouter({ routes: wrappedRoutes, ...routerOptions });
+  // Wrap the 404 module loader in lazy() so it only fetches on first
+  // unmatched URL and shows the router's configured fallback while the
+  // chunk is in flight. The router expects `() => Node`, not a module
+  // loader — lazy() bridges the two.
+  const notFoundComponent = notFoundLoader
+    ? lazy(notFoundLoader as Parameters<typeof lazy>[0])
+    : undefined;
+  const routerNotFound = notFoundComponent
+    ? (): Node => notFoundComponent({})
+    : undefined;
+
+  const router = createRouter({
+    routes: wrappedRoutes,
+    ...routerOptions,
+    ...(routerNotFound ? { notFound: routerNotFound } : {}),
+  });
 
   // Pick up any loader data the server embedded into the page shell.
   // Absent on pure-SPA mounts — we fall back to an empty object so
@@ -219,11 +251,14 @@ function runLoadersOnNav(
             if (generations.get(fullPath) === gen) store.set(fullPath, value);
           })
           .catch((err) => {
-            // Surface loader errors on the console; the loader data
-            // stays at its previous value so the UI keeps rendering.
-            // Future work: propagate to an ErrorBoundary slot.
-            // eslint-disable-next-line no-console
-            console.error(`[mikata/kit] load() failed for ${fullPath}:`, err);
+            if (generations.get(fullPath) === gen) {
+              store.setError(fullPath, err);
+              // Also log — the error-signal path only reaches consumers
+              // that actually read `useLoaderData()`; an unwired route
+              // would otherwise fail silently.
+              // eslint-disable-next-line no-console
+              console.error(`[mikata/kit] load() failed for ${fullPath}:`, err);
+            }
           });
       }
     });

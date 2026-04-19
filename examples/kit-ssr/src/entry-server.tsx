@@ -1,6 +1,6 @@
 import { renderRoute } from '@mikata/kit/server';
-import routes from 'virtual:mikata-routes';
+import routes, { notFound } from 'virtual:mikata-routes';
 
 export async function render(ctx: { url: string }) {
-  return renderRoute(routes, { url: ctx.url });
+  return renderRoute(routes, { url: ctx.url, notFound });
 }
