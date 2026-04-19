@@ -5,7 +5,9 @@
   "type": "module",
   "description": "End-to-end example of @mikata/kit with file-based routing + SSR.",
   "scripts": {
-    "dev": "vite"
+    "dev": "vite",
+    "build": "vite build --outDir dist/client && vite build --ssr src/entry-server.tsx --outDir dist/server",
+    "start": "node server.js"
   },
   "dependencies": {
     "@mikata/kit": "workspace:*",

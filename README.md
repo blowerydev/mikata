@@ -155,7 +155,9 @@ import { mikataKit } from '@mikata/kit';
 export default { plugins: [mikata(), mikataKit()] };
 ```
 
-Routing conventions: `index.tsx` → parent path, `[id].tsx` → `:id`, `[...rest].tsx` → catch-all, `_layout.tsx` → nested layout. See `examples/kit-ssr/` for a runnable app.
+Routing conventions: `index.tsx` → parent path, `[id].tsx` → `:id`, `[...rest].tsx` → catch-all, `_layout.tsx` → nested layout. Route modules can export `load(ctx)` to fetch data server-side; `useLoaderData()` returns the seeded value during hydration. See `examples/kit-ssr/` for a runnable app.
+
+Production deploys use `@mikata/kit/adapter-node` — a zero-dependency Node HTTP handler. `vite build && vite build --ssr` emits `dist/client/` + `dist/server/`; a tiny `server.js` wires the adapter against those outputs. Full pattern + gotchas in `llms.txt`.
 
 ## Why
 

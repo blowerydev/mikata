@@ -1,0 +1,244 @@
+import { describe, it, expect, afterEach } from 'vitest';
+import { promises as fs } from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
+import { PassThrough } from 'node:stream';
+import { createRequestHandler } from '../src/adapter-node';
+import type { ServerEntry } from '../src/adapter-node';
+
+type FakeRes = PassThrough & {
+  statusCode: number;
+  _headers: Record<string, string>;
+  setHeader: (k: string, v: string) => void;
+  body: string;
+};
+
+function makeReq(url: string, method = 'GET') {
+  return { url, method, headers: {} } as never;
+}
+
+function makeRes(): FakeRes {
+  const chunks: Buffer[] = [];
+  const stream = new PassThrough();
+  stream.on('data', (c: Buffer) => chunks.push(c));
+  const res = stream as unknown as FakeRes;
+  res.statusCode = 0;
+  res._headers = {};
+  res.setHeader = (k, v) => {
+    res._headers[k.toLowerCase()] = v;
+  };
+  Object.defineProperty(res, 'body', {
+    get: () => Buffer.concat(chunks).toString('utf-8'),
+  });
+  return res;
+}
+
+async function waitFinish(res: FakeRes): Promise<void> {
+  if ((res as unknown as { writableEnded: boolean }).writableEnded) return;
+  await new Promise<void>((resolve) => res.once('finish', () => resolve()));
+}
+
+const tempRoots: string[] = [];
+afterEach(async () => {
+  while (tempRoots.length) {
+    await fs.rm(tempRoots.pop()!, { recursive: true, force: true });
+  }
+});
+
+async function mkClientDir(files: Record<string, string>): Promise<string> {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'mikata-adapter-test-'));
+  for (const [rel, body] of Object.entries(files)) {
+    const full = path.join(root, rel);
+    await fs.mkdir(path.dirname(full), { recursive: true });
+    await fs.writeFile(full, body);
+  }
+  tempRoots.push(root);
+  return root;
+}
+
+describe('createRequestHandler — SSR path', () => {
+  it('splices render output into the template at the outlet marker', async () => {
+    const clientDir = await mkClientDir({
+      'index.html': '<html><body><div id="root"><!--ssr-outlet--></div></body></html>',
+    });
+    const serverEntry: ServerEntry = {
+      render: () => ({ html: '<p>Hello</p>', stateScript: '<script>1</script>' }),
+    };
+    const handler = createRequestHandler({ clientDir, serverEntry });
+    const res = makeRes();
+    await handler(makeReq('/'), res as never);
+    await waitFinish(res);
+    expect(res.statusCode).toBe(200);
+    expect(res._headers['content-type']).toBe('text/html; charset=utf-8');
+    expect(res.body).toContain('<p>Hello</p><script>1</script>');
+    expect(res.body).not.toContain('<!--ssr-outlet-->');
+  });
+
+  it('respects status and custom headers returned from render', async () => {
+    const clientDir = await mkClientDir({
+      'index.html': '<!--ssr-outlet-->',
+    });
+    const serverEntry: ServerEntry = {
+      render: () => ({
+        html: 'gone',
+        status: 410,
+        headers: { 'Cache-Control': 'no-store' },
+      }),
+    };
+    const handler = createRequestHandler({ clientDir, serverEntry });
+    const res = makeRes();
+    await handler(makeReq('/'), res as never);
+    await waitFinish(res);
+    expect(res.statusCode).toBe(410);
+    expect(res._headers['cache-control']).toBe('no-store');
+  });
+
+  it('returns 500 when render throws without leaking the error body', async () => {
+    const clientDir = await mkClientDir({
+      'index.html': '<!--ssr-outlet-->',
+    });
+    const serverEntry: ServerEntry = {
+      render: () => {
+        throw new Error('boom with secret detail');
+      },
+    };
+    const handler = createRequestHandler({ clientDir, serverEntry });
+    const res = makeRes();
+    await handler(makeReq('/'), res as never);
+    await waitFinish(res);
+    expect(res.statusCode).toBe(500);
+    expect(res.body).toBe('Internal Server Error');
+    expect(res.body).not.toContain('secret');
+  });
+
+  it('honors a custom outletMarker', async () => {
+    const clientDir = await mkClientDir({
+      'index.html': '<body>%APP%</body>',
+    });
+    const serverEntry: ServerEntry = {
+      render: () => ({ html: 'X' }),
+    };
+    const handler = createRequestHandler({
+      clientDir,
+      serverEntry,
+      outletMarker: '%APP%',
+    });
+    const res = makeRes();
+    await handler(makeReq('/'), res as never);
+    await waitFinish(res);
+    expect(res.body).toBe('<body>X</body>');
+  });
+
+  it('rejects non-GET/HEAD with 405 and an Allow header', async () => {
+    const clientDir = await mkClientDir({ 'index.html': '' });
+    const handler = createRequestHandler({
+      clientDir,
+      serverEntry: { render: () => ({ html: '' }) },
+    });
+    const res = makeRes();
+    await handler(makeReq('/', 'POST'), res as never);
+    await waitFinish(res);
+    expect(res.statusCode).toBe(405);
+    expect(res._headers['allow']).toBe('GET, HEAD');
+  });
+});
+
+describe('createRequestHandler — static files', () => {
+  it('serves a file from clientDir with a matching MIME type', async () => {
+    const clientDir = await mkClientDir({
+      'index.html': '<!--ssr-outlet-->',
+      'assets/app.js': 'console.log("hi")',
+    });
+    const handler = createRequestHandler({
+      clientDir,
+      serverEntry: { render: () => ({ html: '' }) },
+    });
+    const res = makeRes();
+    await handler(makeReq('/assets/app.js'), res as never);
+    await waitFinish(res);
+    expect(res.statusCode).toBe(200);
+    expect(res._headers['content-type']).toBe('text/javascript; charset=utf-8');
+    expect(res.body).toBe('console.log("hi")');
+  });
+
+  it('applies immutable cache headers for content-hashed filenames', async () => {
+    const clientDir = await mkClientDir({
+      'index.html': '<!--ssr-outlet-->',
+      'assets/app-abc12345.js': 'x',
+    });
+    const handler = createRequestHandler({
+      clientDir,
+      serverEntry: { render: () => ({ html: '' }) },
+    });
+    const res = makeRes();
+    await handler(makeReq('/assets/app-abc12345.js'), res as never);
+    await waitFinish(res);
+    expect(res._headers['cache-control']).toBe('public, max-age=31536000, immutable');
+  });
+
+  it('does not apply immutable cache headers for unhashed filenames', async () => {
+    const clientDir = await mkClientDir({
+      'index.html': '<!--ssr-outlet-->',
+      'favicon.ico': 'x',
+    });
+    const handler = createRequestHandler({
+      clientDir,
+      serverEntry: { render: () => ({ html: '' }) },
+    });
+    const res = makeRes();
+    await handler(makeReq('/favicon.ico'), res as never);
+    await waitFinish(res);
+    expect(res._headers['cache-control']).toBeUndefined();
+  });
+
+  it('falls through to SSR when an asset-looking path has no file on disk', async () => {
+    const clientDir = await mkClientDir({
+      'index.html': '<!--ssr-outlet-->',
+    });
+    const rendered: string[] = [];
+    const handler = createRequestHandler({
+      clientDir,
+      serverEntry: {
+        render: (ctx) => {
+          rendered.push(ctx.url);
+          return { html: 'page' };
+        },
+      },
+    });
+    const res = makeRes();
+    await handler(makeReq('/users/foo.bar'), res as never);
+    await waitFinish(res);
+    expect(rendered).toEqual(['/users/foo.bar']);
+    expect(res.statusCode).toBe(200);
+  });
+
+  it('rejects path traversal attempts with 403', async () => {
+    const clientDir = await mkClientDir({
+      'index.html': '<!--ssr-outlet-->',
+    });
+    const handler = createRequestHandler({
+      clientDir,
+      serverEntry: { render: () => ({ html: '' }) },
+    });
+    const res = makeRes();
+    await handler(makeReq('/../secret.js'), res as never);
+    await waitFinish(res);
+    expect(res.statusCode).toBe(403);
+  });
+
+  it('decodes percent-encoded paths before serving', async () => {
+    const clientDir = await mkClientDir({
+      'index.html': '<!--ssr-outlet-->',
+      'assets/a b.js': 'spaced',
+    });
+    const handler = createRequestHandler({
+      clientDir,
+      serverEntry: { render: () => ({ html: '' }) },
+    });
+    const res = makeRes();
+    await handler(makeReq('/assets/a%20b.js'), res as never);
+    await waitFinish(res);
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toBe('spaced');
+  });
+});

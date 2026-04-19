@@ -49,6 +49,11 @@
       "types": "./dist/loader.d.ts",
       "import": "./dist/loader.js",
       "require": "./dist/loader.cjs"
+    },
+    "./adapter-node": {
+      "types": "./dist/adapter-node.d.ts",
+      "import": "./dist/adapter-node.js",
+      "require": "./dist/adapter-node.cjs"
     }
   },
   "sideEffects": false,
@@ -67,5 +72,8 @@
   },
   "peerDependencies": {
     "vite": "^6.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0"
   }
 }

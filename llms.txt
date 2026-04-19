@@ -1030,6 +1030,8 @@ File-based routing + Vite plugin + dev-mode SSR middleware on top of `@mikata/ro
 - `@mikata/kit` — Node-safe: the plugin, scanner, manifest generator
 - `@mikata/kit/client` — `mount(routes, container)` for the client entry
 - `@mikata/kit/server` — `renderRoute(routes, { url })` for the server entry
+- `@mikata/kit/loader` — `load()` API: `useLoaderData`, `provideLoaderData`, `LoadContext`
+- `@mikata/kit/adapter-node` — `createRequestHandler()` for production Node deploys
 
 ### Routing conventions
 
@@ -1124,6 +1126,50 @@ Exports from `@mikata/kit/loader`:
 ### Example app
 
 `examples/kit-ssr` is a runnable example with `index.tsx`, `about.tsx`, `_layout.tsx`, and `users/[id].tsx` (with a `load()` demo) routes plus a shared `<Nav />` component. Run it with `pnpm dev:kit` from the repo root.
+
+### Production deploy (`@mikata/kit/adapter-node`)
+
+The dev middleware that lives inside `mikataKit()` is for dev only. Production builds are two Vite passes — client + SSR — and run against a tiny Node HTTP handler from `@mikata/kit/adapter-node`:
+
+```jsonc
+// package.json
+{
+  "scripts": {
+    "build": "vite build --outDir dist/client && vite build --ssr src/entry-server.tsx --outDir dist/server",
+    "start": "node server.js"
+  }
+}
+```
+
+```js
+// server.js
+import { createServer } from 'node:http';
+import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { createRequestHandler } from '@mikata/kit/adapter-node';
+import * as serverEntry from './dist/server/entry-server.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const handler = createRequestHandler({
+  clientDir: path.join(__dirname, 'dist/client'),
+  serverEntry,
+});
+createServer(handler).listen(process.env.PORT ?? 3000);
+```
+
+`createRequestHandler({ clientDir, serverEntry, outletMarker? })`:
+
+- Reads `dist/client/index.html` once, caches the template. (Immutable for the lifetime of the process — rebuilding means redeploying.)
+- Asset requests — anything whose pathname has an extension — are served straight from `clientDir` with MIME detection. Vite-hashed filenames (matching `[.-][a-f0-9]{8,}.`) get `Cache-Control: public, max-age=31536000, immutable`; unhashed files (e.g. `favicon.ico`) are served without caching directives so you can control them at the CDN edge.
+- Non-asset requests call `serverEntry.render({ url, req })`, splice `html + stateScript` into the template at `outletMarker` (default `<!--ssr-outlet-->`), and flush with `text/html; charset=utf-8`. Status + extra headers from the render result are applied.
+- Non-`GET`/`HEAD` → `405` with `Allow: GET, HEAD`. Render errors → logged to stderr + `500 Internal Server Error` (terse body so no stack traces leak).
+- Path traversal is rejected with `403` — the resolved path must stay under `clientDir`.
+
+Gotchas:
+- The client Vite build emits `dist/client/index.html` *with* `<!--ssr-outlet-->` preserved — don't strip it in a post-build step.
+- The server bundle is ESM; import it via `import * as serverEntry from './dist/server/entry-server.js'`. Node ≥ 18 resolves the dynamic-import chunks in `dist/server/assets/` transparently.
+- `@mikata/kit/adapter-node` has zero dependencies (stdlib only) and no peer dep on `vite`, so it is safe to include in a production deploy image.
+- To put it behind a reverse proxy (e.g. nginx), mount the handler on any Connect-style host: `app.use(handler)`. The handler does not read `req.url` beyond the leading path, so rewrites upstream work as expected.
 
 ---
 
