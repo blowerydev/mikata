@@ -31,6 +31,7 @@
 import { promises as fs, createReadStream } from 'node:fs';
 import * as path from 'node:path';
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import { spliceHead } from './splice-head';
 
 export interface AdapterRenderContext {
   url: string;
@@ -44,6 +45,11 @@ export interface AdapterRenderResult {
   status?: number;
   /** Extra response headers — for e.g. cache control. */
   headers?: Record<string, string>;
+  /**
+   * Serialised `<head>` tags to splice into the template. Empty string
+   * is equivalent to omission.
+   */
+  headTags?: string;
 }
 
 export interface ServerEntry {
@@ -67,6 +73,13 @@ export interface CreateRequestHandlerOptions {
    * component tree + state script. Default: `<!--ssr-outlet-->`.
    */
   outletMarker?: string;
+  /**
+   * HTML marker replaced with the render's `headTags`. Default:
+   * `<!--mikata-head-->`. When the template omits this marker the
+   * handler falls back to inserting the tags immediately before
+   * `</head>`.
+   */
+  headMarker?: string;
 }
 
 export type RequestHandler = (
@@ -79,6 +92,7 @@ export type RequestHandler = (
 const ASSET_EXT_RE = /\.[a-z0-9]+(?:\?|$)/i;
 
 const DEFAULT_OUTLET = '<!--ssr-outlet-->';
+const DEFAULT_HEAD_MARKER = '<!--mikata-head-->';
 
 /**
  * Build a `(req, res) => Promise<void>` handler suitable for
@@ -88,6 +102,7 @@ export function createRequestHandler(
   options: CreateRequestHandlerOptions,
 ): RequestHandler {
   const outletMarker = options.outletMarker ?? DEFAULT_OUTLET;
+  const headMarker = options.headMarker ?? DEFAULT_HEAD_MARKER;
   const clientDir = path.resolve(options.clientDir);
   const indexHtmlPath = path.join(clientDir, 'index.html');
 
@@ -130,8 +145,9 @@ export function createRequestHandler(
           options.serverEntry.render({ url: rawUrl, req }),
         ),
       ]);
-      const { html, stateScript = '', status = 200, headers } = rendered;
-      const full = template.replace(outletMarker, html + stateScript);
+      const { html, stateScript = '', status = 200, headers, headTags = '' } = rendered;
+      const withHead = spliceHead(template, headTags, headMarker);
+      const full = withHead.replace(outletMarker, html + stateScript);
 
       res.statusCode = status;
       res.setHeader('Content-Type', 'text/html; charset=utf-8');

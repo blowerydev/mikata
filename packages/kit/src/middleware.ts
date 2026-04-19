@@ -20,6 +20,7 @@
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 import type { Connect, ViteDevServer } from 'vite';
+import { spliceHead } from './splice-head';
 
 export interface SsrMiddlewareOptions {
   /** Project root (usually `config.root`). */
@@ -32,11 +33,19 @@ export interface SsrMiddlewareOptions {
   entry?: string;
   /** HTML marker replaced with the rendered component tree. */
   outletMarker?: string;
+  /**
+   * HTML marker replaced with the serialised `<head>` tags. Default:
+   * `<!--mikata-head-->`. When the template omits this marker the
+   * middleware falls back to inserting the tags immediately before the
+   * closing `</head>` tag.
+   */
+  headMarker?: string;
 }
 
 const DEFAULT_ENTRY = 'src/entry-server';
 const ENTRY_EXTENSIONS = ['.tsx', '.ts', '.jsx', '.js'] as const;
 const DEFAULT_OUTLET = '<!--ssr-outlet-->';
+const DEFAULT_HEAD_MARKER = '<!--mikata-head-->';
 
 // URLs that look like a static asset get skipped — Vite's static-file
 // middleware handles those, and we don't want to render HTML for a CSS
@@ -53,6 +62,11 @@ export interface RenderResult {
   stateScript?: string;
   /** HTTP status — defaults to 200 if the user entry omits it. */
   status?: number;
+  /**
+   * Serialised `<head>` tags to splice into the template. Empty string
+   * is treated the same as omission.
+   */
+  headTags?: string;
 }
 
 interface UserEntry {
@@ -65,6 +79,7 @@ export function createSsrMiddleware(
 ): Connect.NextHandleFunction {
   const entryRel = options.entry ?? DEFAULT_ENTRY;
   const outletMarker = options.outletMarker ?? DEFAULT_OUTLET;
+  const headMarker = options.headMarker ?? DEFAULT_HEAD_MARKER;
   const indexHtmlPath = path.resolve(options.projectRoot, 'index.html');
 
   return async function mikataSsrMiddleware(req, res, next) {
@@ -99,12 +114,13 @@ export function createSsrMiddleware(
         );
       }
 
-      const { html, stateScript = '', status = 200 } = await mod.render({
+      const { html, stateScript = '', status = 200, headTags = '' } = await mod.render({
         url: req.url,
         req,
       });
 
-      const full = transformed.replace(outletMarker, html + stateScript);
+      const withHead = spliceHead(transformed, headTags, headMarker);
+      const full = withHead.replace(outletMarker, html + stateScript);
       res.statusCode = status;
       res.setHeader('Content-Type', 'text/html');
       res.end(full);
@@ -132,3 +148,4 @@ async function resolveEntry(
   }
   return null;
 }
+

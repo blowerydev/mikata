@@ -32,6 +32,7 @@ import {
   LOADER_DATA_GLOBAL,
   type Loader,
 } from './loader';
+import { createCollectMetaRegistry, provideMetaRegistry } from './head';
 
 export interface RenderRouteOptions extends Omit<RouterOptions, 'routes' | 'history'> {
   /**
@@ -49,6 +50,12 @@ export interface RenderRouteResult extends RenderToStringResult {
    * is still in `html`). `200` otherwise.
    */
   status: number;
+  /**
+   * Serialized `<head>` tags collected from `useMeta()` calls inside
+   * the rendered tree. The adapter splices this at `<!--mikata-head-->`
+   * (or before `</head>` when that marker is absent).
+   */
+  headTags: string;
 }
 
 /**
@@ -105,6 +112,8 @@ export async function renderRoute(
     );
     matcher.dispose();
 
+    const headRegistry = createCollectMetaRegistry();
+
     const rendered = await renderToString(() => {
       const router = createRouter({
         routes: [...resolvedRoutes],
@@ -114,7 +123,8 @@ export async function renderRoute(
 
       function App() {
         provideRouter(router);
-        provideLoaderData(loaderData);
+        provideLoaderData({ ...loaderData });
+        provideMetaRegistry(headRegistry);
         return routeOutlet();
       }
 
@@ -133,6 +143,7 @@ export async function renderRoute(
       ...rendered,
       stateScript: rendered.stateScript + loaderScript,
       status,
+      headTags: headRegistry.serialize(),
     };
   } finally {
     shim.restore();

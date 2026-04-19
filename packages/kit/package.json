@@ -50,6 +50,11 @@
       "import": "./dist/loader.js",
       "require": "./dist/loader.cjs"
     },
+    "./head": {
+      "types": "./dist/head.d.ts",
+      "import": "./dist/head.js",
+      "require": "./dist/head.cjs"
+    },
     "./adapter-node": {
       "types": "./dist/adapter-node.d.ts",
       "import": "./dist/adapter-node.js",

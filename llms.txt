@@ -1031,6 +1031,7 @@ File-based routing + Vite plugin + dev-mode SSR middleware on top of `@mikata/ro
 - `@mikata/kit/client` — `mount(routes, container)` for the client entry
 - `@mikata/kit/server` — `renderRoute(routes, { url })` for the server entry
 - `@mikata/kit/loader` — `load()` API: `useLoaderData`, `provideLoaderData`, `LoadContext`
+- `@mikata/kit/head` — `useMeta()` for per-route `<title>`/`<meta>`/`<link>` tags on both server and client
 - `@mikata/kit/adapter-node` — `createRequestHandler()` for production Node deploys
 
 ### Routing conventions
@@ -1114,18 +1115,76 @@ export default function UserPage() {
 
 - `renderRoute` invokes `load()` for every matched route **in parallel** before rendering, passing `{ params, url }`. The results are keyed by `route.fullPath` and made available through `useLoaderData()` during the same render.
 - Loader results are JSON-embedded into `stateScript` under `window.__MIKATA_LOADER_DATA__`. The client's `mount()` reads it back so the first hydration pass returns the same data the server rendered — no refetch on load.
-- v1 scope: loaders do **not** re-run on client-side navigation. Use `createQuery` for data that refreshes after the initial paint.
+- On client-side navigation, `mount()` re-invokes `load()` for each matched route whose `{ path + params }` changed and writes the result into the reactive loader store; `useLoaderData()` is a signal, so consuming components re-render automatically. A per-path sequence counter discards stale responses, so a slow loader for a route you've already navigated away from cannot clobber newer data. For data that refreshes on a cadence unrelated to navigation (poll, mutate-then-refetch, window focus), reach for `createQuery` — `load()` is URL-keyed, `createQuery` is key-agnostic.
 - Loaders are only invoked for *lazy-loaded* routes (the default for `@mikata/kit` manifests). A route wired up by hand with `{ component: ... }` will not pick up its module's `load` export.
 
 Exports from `@mikata/kit/loader`:
-- `useLoaderData<typeof load>()` — `ReadSignal<Awaited<ReturnType<load>> | undefined>` keyed by the current outlet's route.
-- `provideLoaderData(data)` — seeds the loader-data context; called automatically by `renderRoute` and `mount`.
+- `useLoaderData<typeof load>()` — `ReadSignal<Awaited<ReturnType<load>> | undefined>` keyed by the current outlet's route. Reactively re-runs when the store updates (e.g. after a client-side navigation re-fires `load()`).
+- `provideLoaderData(data | store)` — seeds the loader-data context; called automatically by `renderRoute` and `mount`. Accepts a plain map (creates a fresh store) or a pre-built `LoaderStore` for hosts that want to mutate it themselves.
+- `createLoaderStore(initial)` — build a signal-backed loader store. Rarely needed in app code; kit's `mount()` uses it internally so client-side navigation can write new loader results into a live store.
 - `LOADER_DATA_GLOBAL = '__MIKATA_LOADER_DATA__'` — the global name `renderRoute` serialises into.
-- `LoadContext`, `Loader<T>`, `LoaderData` — types.
+- `LoadContext`, `Loader<T>`, `LoaderData`, `LoaderStore` — types.
+
+### Error handling (`@mikata/kit`)
+
+`@mikata/kit` re-exports `ErrorBoundary` from `@mikata/runtime` so route modules don't have to reach into the runtime directly. Wrap a suspect subtree — typically a loader-heavy route body — and provide a fallback:
+
+```tsx
+import { ErrorBoundary } from '@mikata/kit';
+
+export default function UserDetail() {
+  return (
+    <ErrorBoundary fallback={(err, retry) => <div>Failed: {err.message} <button onClick={retry}>Retry</button></div>}>
+      <ProfileCard />
+    </ErrorBoundary>
+  );
+}
+```
+
+A thrown synchronous error inside a descendant component is caught by the nearest boundary. `retry()` re-mounts the boundary's children — useful for "try again" buttons after a transient failure. Note that `load()` rejections on client-side navigation are currently surfaced to `console.error` and leave the previous loader data in place; boundary propagation for loader errors is a future enhancement (see "future work" comment in `@mikata/kit`'s client entry).
+
+### Per-route `<head>` (`@mikata/kit/head`)
+
+Route components call `useMeta()` to declare the tags their page owns. Works identically on server and client — the server collects them into a string spliced into the template; the client mounts them as DOM nodes in `document.head` and tears them down on navigation.
+
+```tsx
+import { useMeta } from '@mikata/kit/head';
+import { useLoaderData, type LoadContext } from '@mikata/kit/loader';
+
+export async function load({ params }: LoadContext) {
+  return { user: { name: `Ada-${params.id}` } };
+}
+
+export default function UserDetail() {
+  const data = useLoaderData<typeof load>();
+  // Function form re-evaluates when signals change (reactive title).
+  useMeta(() => ({
+    title: `${data()?.user.name ?? 'User'} — MyApp`,
+    description: `Profile page for ${data()?.user.name ?? 'a user'}.`,
+    meta: [{ property: 'og:title', content: data()?.user.name ?? 'User' }],
+  }));
+  // ...
+}
+```
+
+`MetaDescriptor` shape:
+- `title?: string` — `<title>`. Last-writer-wins across nested scopes (child route overrides parent layout).
+- `description?: string` — shortcut for `<meta name="description" content="...">`.
+- `meta?: readonly MetaEntry[]` — additional `<meta>` tags. Dedup by `name` / `property` / `httpEquiv` (maps to `http-equiv`). Other attrs (`content`, `charset`, `media`, ...) pass through verbatim.
+- `link?: readonly LinkEntry[]` — `<link>` tags. No dedup except `rel="canonical"` which is last-writer-wins. Extra attrs (`crossorigin`, `media`, `sizes`, `type`, ...) pass through.
+
+Template wiring:
+- The server splices collected head tags at `<!--mikata-head-->` in your `index.html`. If the marker is absent, tags are injected immediately before `</head>` instead.
+- Static tags already in `index.html` (e.g. `<meta charset>`, stylesheets) are untouched. On the client, `useMeta`-managed tags carry a `data-mikata-head` attribute so cleanup never disturbs template-shipped tags.
+- On the client, nested scopes stack tags under their dedup key. When a child scope disposes, its `<title>` (or other keyed tag) is removed and the parent's is re-attached — so back navigation restores the previous page's title cleanly.
+
+Escaping: attribute values and title text are HTML-escaped (`&`, `<`, `>`, `"`, `'` in attrs; `&`, `<`, `>` in text). User-supplied strings are safe to pass through.
+
+Advanced exports: `provideMetaRegistry(registry)`, `createCollectMetaRegistry()`, `createDomMetaRegistry(target)`, and `MANAGED_ATTR` are exposed for custom hosts. Regular route code only needs `useMeta`.
 
 ### Example app
 
-`examples/kit-ssr` is a runnable example with `index.tsx`, `about.tsx`, `_layout.tsx`, and `users/[id].tsx` (with a `load()` demo) routes plus a shared `<Nav />` component. Run it with `pnpm dev:kit` from the repo root.
+`examples/kit-ssr` is a runnable example with `index.tsx`, `about.tsx`, `_layout.tsx`, and `users/[id].tsx` (with `load()` + `useMeta()` demos) routes plus a shared `<Nav />` component. Run it with `pnpm dev:kit` from the repo root.
 
 ### Production deploy (`@mikata/kit/adapter-node`)
 
@@ -1161,7 +1220,7 @@ createServer(handler).listen(process.env.PORT ?? 3000);
 
 - Reads `dist/client/index.html` once, caches the template. (Immutable for the lifetime of the process — rebuilding means redeploying.)
 - Asset requests — anything whose pathname has an extension — are served straight from `clientDir` with MIME detection. Vite-hashed filenames (matching `[.-][a-f0-9]{8,}.`) get `Cache-Control: public, max-age=31536000, immutable`; unhashed files (e.g. `favicon.ico`) are served without caching directives so you can control them at the CDN edge.
-- Non-asset requests call `serverEntry.render({ url, req })`, splice `html + stateScript` into the template at `outletMarker` (default `<!--ssr-outlet-->`), and flush with `text/html; charset=utf-8`. Status + extra headers from the render result are applied.
+- Non-asset requests call `serverEntry.render({ url, req })`, splice collected head tags at `headMarker` (default `<!--mikata-head-->`; falls back to injecting before `</head>` when the marker is absent), splice `html + stateScript` into the template at `outletMarker` (default `<!--ssr-outlet-->`), and flush with `text/html; charset=utf-8`. Status + extra headers from the render result are applied.
 - Non-`GET`/`HEAD` → `405` with `Allow: GET, HEAD`. Render errors → logged to stderr + `500 Internal Server Error` (terse body so no stack traces leak).
 - Path traversal is rejected with `403` — the resolved path must stay under `clientDir`.
 

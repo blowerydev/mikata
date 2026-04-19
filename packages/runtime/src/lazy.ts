@@ -19,7 +19,12 @@
  *   <Dashboard userId={userId()} />
  */
 
-import { createScope, type Scope } from '@mikata/reactivity';
+import {
+  createScope,
+  getCurrentScope,
+  setCurrentScope,
+  type Scope,
+} from '@mikata/reactivity';
 import { _createComponent, disposeComponent } from './component';
 
 declare const __DEV__: boolean;
@@ -95,14 +100,29 @@ export function lazy<P extends Record<string, unknown>>(
 
     let currentScope: Scope | null = null;
     let currentNode: Node | null = null;
+    // Capture the scope that owned us at call time so the post-load
+    // swap sees the same context chain (router, loader data, etc.)
+    // even though it fires from a microtask where `currentScope` would
+    // otherwise be null.
+    const ownerScope = getCurrentScope();
+    function runInOwner<T>(fn: () => T): T {
+      const prev = setCurrentScope(ownerScope);
+      try {
+        return fn();
+      } finally {
+        setCurrentScope(prev);
+      }
+    }
 
     function renderFallback() {
       clear();
       if (options?.fallback) {
-        currentScope = createScope(() => {
-          currentNode = options.fallback!();
-          container.appendChild(currentNode);
-        });
+        currentScope = runInOwner(() =>
+          createScope(() => {
+            currentNode = options.fallback!();
+            container.appendChild(currentNode);
+          }),
+        );
       } else {
         currentNode = document.createComment('lazy:loading');
         container.appendChild(currentNode);
@@ -112,10 +132,12 @@ export function lazy<P extends Record<string, unknown>>(
     function renderError(err: Error) {
       clear();
       if (options?.error) {
-        currentScope = createScope(() => {
-          currentNode = options.error!(err, retry);
-          container.appendChild(currentNode);
-        });
+        currentScope = runInOwner(() =>
+          createScope(() => {
+            currentNode = options.error!(err, retry);
+            container.appendChild(currentNode);
+          }),
+        );
       } else {
         if (__DEV__) {
           currentNode = document.createComment(`lazy:error - ${err.message}`);
@@ -129,10 +151,12 @@ export function lazy<P extends Record<string, unknown>>(
     function renderComponent() {
       clear();
       if (resolved) {
-        currentScope = createScope(() => {
-          currentNode = _createComponent(resolved!, props);
-          container.appendChild(currentNode);
-        });
+        currentScope = runInOwner(() =>
+          createScope(() => {
+            currentNode = _createComponent(resolved!, props);
+            container.appendChild(currentNode);
+          }),
+        );
       }
     }
 

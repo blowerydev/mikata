@@ -15,7 +15,7 @@ import {
   popSubscriber,
 } from './tracking';
 import { scheduleDirty, flushSync } from './scheduler';
-import { getCurrentScope } from './scope';
+import { getCurrentScope, setCurrentScope, type Scope } from './scope';
 import { registerNode, recordEffectRun, unregisterNode } from './debug';
 import { beginLeakFrame, endLeakFrame } from './leak-detector';
 
@@ -33,6 +33,16 @@ interface EffectNode extends ReactiveNode {
    */
   _sourceVersions?: Map<ReactiveNode, number>;
   _sources: Set<ReactiveNode>;
+  /**
+   * The scope that owned this effect at creation time. Restored for
+   * every re-run so that `createScope()` / `onCleanup()` calls inside
+   * the effect body see the same parent on re-runs as on the first
+   * run. Without this, scheduler-triggered re-runs happen with a null
+   * current scope (the scheduler has no ambient owner), which would
+   * make child scopes orphans and break provide/inject across
+   * dynamic subtrees (routeOutlet, show, each, etc.).
+   */
+  _owner: Scope | null;
 }
 
 function createEffectNode(
@@ -40,6 +50,7 @@ function createEffectNode(
   isRender: boolean,
   label?: string
 ): () => void {
+  const owner = getCurrentScope();
   const node: EffectNode = {
     _sources: new Set(),
     _subscribers: new Set(),
@@ -48,6 +59,7 @@ function createEffectNode(
     _cleanup: undefined,
     _fn: fn,
     _isRender: isRender,
+    _owner: owner,
 
     _run() {
       const runStart = __DEV__ ? performance.now() : 0;
@@ -86,14 +98,19 @@ function createEffectNode(
       cleanupPropertySources(node);
       node._hasPropertyDeps = false;
 
-      // Execute and track new dependencies
+      // Execute and track new dependencies. Restore the owner scope so
+      // createScope()/onCleanup()/provide() inside the effect body see
+      // the same ambient scope on scheduler-driven re-runs as they did
+      // on the first (synchronous) run.
       pushSubscriber(node);
+      const prevScope = setCurrentScope(node._owner);
       const leakFrame = __DEV__
         ? beginLeakFrame(isRender ? 'renderEffect' : 'effect', label)
         : null;
       try {
         node._cleanup = node._fn();
       } finally {
+        setCurrentScope(prevScope);
         popSubscriber();
         if (__DEV__) {
           endLeakFrame(leakFrame, node, typeof node._cleanup === 'function');

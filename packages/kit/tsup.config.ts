@@ -7,6 +7,7 @@ export default defineConfig({
     'src/client.ts',
     'src/server.ts',
     'src/loader.ts',
+    'src/head.ts',
     'src/adapter-node.ts',
   ],
   format: ['esm', 'cjs'],

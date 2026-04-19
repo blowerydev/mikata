@@ -12,9 +12,15 @@
  * which the router loads lazily on navigation. On first render, the
  * matched route's server-emitted HTML is adopted in place (see
  * `@mikata/runtime`'s hydration cursor) — no flicker, no repaint.
+ *
+ * On navigation, any route whose module exports `load()` has that
+ * function re-invoked with the fresh `{ params, url }`; the resolved
+ * value is written to a reactive loader store so `useLoaderData()`
+ * consumers in the new tree see up-to-date data.
  */
 
 import { hydrate, render } from '@mikata/runtime';
+import { effect } from '@mikata/reactivity';
 import {
   createRouter,
   provideRouter,
@@ -23,7 +29,15 @@ import {
   type Router,
   type RouterOptions,
 } from '@mikata/router';
-import { provideLoaderData, LOADER_DATA_GLOBAL, type LoaderData } from './loader';
+import {
+  provideLoaderData,
+  createLoaderStore,
+  LOADER_DATA_GLOBAL,
+  type LoaderData,
+  type Loader,
+  type LoaderStore,
+} from './loader';
+import { createDomMetaRegistry, provideMetaRegistry } from './head';
 
 export interface MountOptions extends Omit<RouterOptions, 'routes'> {
   /**
@@ -45,7 +59,15 @@ export function mount(
   options: MountOptions = {},
 ): MountResult {
   const { hydrate: shouldHydrate, ...routerOptions } = options;
-  const router = createRouter({ routes: [...routes], ...routerOptions });
+
+  // Wrap each lazy route so we can intercept the resolved module and
+  // capture any `load` export into a side map. The router still sees
+  // a plain `{ default: Component }` result — load-on-nav is our
+  // concern, not the router's.
+  const loaders = new Map<string, Loader>();
+  const wrappedRoutes = wrapLazyRoutes([...routes], '', loaders);
+
+  const router = createRouter({ routes: wrappedRoutes, ...routerOptions });
 
   // Pick up any loader data the server embedded into the page shell.
   // Absent on pure-SPA mounts — we fall back to an empty object so
@@ -56,18 +78,156 @@ export function mount(
           | LoaderData
           | undefined)
       : undefined;
-  const loaderData: LoaderData = embedded ?? {};
+  const loaderStore = createLoaderStore(embedded ?? {});
+
+  const headRegistry =
+    typeof document !== 'undefined'
+      ? createDomMetaRegistry(document.head)
+      : null;
 
   function App() {
     provideRouter(router);
-    provideLoaderData(loaderData);
+    provideLoaderData(loaderStore);
+    if (headRegistry) provideMetaRegistry(headRegistry);
     return routeOutlet();
   }
 
   const wantsHydrate = shouldHydrate ?? container.firstChild !== null;
-  const dispose = wantsHydrate
+  const renderDispose = wantsHydrate
     ? hydrate(App, container)
     : render(App, container);
 
-  return { router, dispose };
+  // Watch the router's match chain. Each time it changes, fire any
+  // `load()` functions we haven't already settled for the current URL.
+  // The seeded loader data (from SSR) means the first pass has nothing
+  // to fetch; navigation to a new URL re-runs load() for every matched
+  // route that has one.
+  const loaderDispose = runLoadersOnNav(router, loaders, loaderStore);
+
+  return {
+    router,
+    dispose: () => {
+      loaderDispose();
+      renderDispose();
+    },
+  };
+}
+
+// Re-export ErrorBoundary so users can wrap route subtrees without
+// reaching into @mikata/runtime directly.
+export { ErrorBoundary } from '@mikata/runtime';
+
+// ---------------------------------------------------------------------------
+// internal: lazy-module interception
+// ---------------------------------------------------------------------------
+
+/**
+ * Walk the route tree, replacing each `lazy()` with a memoizing shim
+ * that resolves the original, records any `load` export into `loaders`
+ * under the route's full path, and returns just the component half to
+ * the router.
+ */
+function wrapLazyRoutes(
+  routes: RouteDefinition[],
+  parentPath: string,
+  loaders: Map<string, Loader>,
+): RouteDefinition[] {
+  return routes.map((route) => {
+    const fullPath = joinPaths(parentPath, route.path);
+    let wrappedLazy = route.lazy;
+    if (route.lazy) {
+      const original = route.lazy;
+      type LazyResult = Awaited<ReturnType<typeof original>>;
+      let cached: Promise<LazyResult> | null = null;
+      wrappedLazy = () => {
+        if (cached) return cached;
+        cached = Promise.resolve(original()).then((mod) => {
+          const m = mod as LazyResult & { load?: Loader };
+          if (typeof m.load === 'function') loaders.set(fullPath, m.load);
+          return m;
+        });
+        return cached;
+      };
+    }
+    const wrappedChildren = route.children
+      ? wrapLazyRoutes([...route.children], fullPath, loaders)
+      : undefined;
+    return { ...route, lazy: wrappedLazy, children: wrappedChildren };
+  });
+}
+
+function joinPaths(parent: string, child: string): string {
+  if (child === '/' || !child) return parent || '/';
+  if (!parent || parent === '/') {
+    return child.startsWith('/') ? child : '/' + child;
+  }
+  const base = parent.endsWith('/') ? parent.slice(0, -1) : parent;
+  const segment = child.startsWith('/') ? child : '/' + child;
+  return base + segment;
+}
+
+// ---------------------------------------------------------------------------
+// internal: loader re-run on navigation
+// ---------------------------------------------------------------------------
+
+/**
+ * Subscribe to `router.route()` and re-run `load()` for each matched
+ * route whose module has registered one. Uses a per-path sequence
+ * number so a slow response for a route we've already navigated away
+ * from cannot overwrite newer data. The first render is seeded from
+ * the server payload, so the initial effect pass is a no-op for routes
+ * whose data already matches.
+ *
+ * Returned dispose tears down the effect so host apps that unmount and
+ * re-mount the router don't leak subscriptions.
+ */
+function runLoadersOnNav(
+  router: Router,
+  loaders: Map<string, Loader>,
+  store: LoaderStore,
+): () => void {
+  // Track the in-flight generation for each fullPath. A resolved
+  // promise only writes if its generation still matches the current
+  // counter; otherwise a faster navigation has already superseded it.
+  const generations = new Map<string, number>();
+  // Snapshot of the last URL each path's loader was invoked for, so
+  // param/search changes trigger a re-run but a same-URL re-render
+  // (e.g. searchParams-only update elsewhere in the tree) doesn't.
+  const lastKeyed = new Map<string, string>();
+
+  const dispose = effect(() => {
+    const current = router.route();
+    // The effect reads the signal; trigger load() outside the sync
+    // read-phase so any setData inside the load chain doesn't disturb
+    // the in-progress reactive pass.
+    queueMicrotask(() => {
+      for (const match of current.matches) {
+        const fullPath = match.route.fullPath;
+        const loader = loaders.get(fullPath);
+        if (!loader) continue;
+        // Key includes params + raw URL so distinct /users/1 → /users/2
+        // navigations count as different invocations.
+        const key = current.path + '?' + JSON.stringify(match.params);
+        if (lastKeyed.get(fullPath) === key) continue;
+        lastKeyed.set(fullPath, key);
+
+        const gen = (generations.get(fullPath) ?? 0) + 1;
+        generations.set(fullPath, gen);
+
+        Promise.resolve(loader({ params: match.params, url: current.path }))
+          .then((value) => {
+            if (generations.get(fullPath) === gen) store.set(fullPath, value);
+          })
+          .catch((err) => {
+            // Surface loader errors on the console; the loader data
+            // stays at its previous value so the UI keeps rendering.
+            // Future work: propagate to an ErrorBoundary slot.
+            // eslint-disable-next-line no-console
+            console.error(`[mikata/kit] load() failed for ${fullPath}:`, err);
+          });
+      }
+    });
+  });
+
+  return () => dispose();
 }
