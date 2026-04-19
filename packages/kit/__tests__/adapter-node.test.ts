@@ -226,6 +226,144 @@ describe('createRequestHandler — SSR path', () => {
   });
 });
 
+describe('createRequestHandler — API routes', () => {
+  async function setupApi(
+    apiRoutes: ServerEntry['apiRoutes'],
+    renderSpy?: (ctx: { url: string }) => void,
+  ): Promise<ReturnType<typeof createRequestHandler>> {
+    const clientDir = await mkClientDir({
+      'index.html': '<html><body><!--ssr-outlet--></body></html>',
+    });
+    const serverEntry: ServerEntry = {
+      render: (ctx) => {
+        renderSpy?.(ctx);
+        return { html: '<p>page</p>' };
+      },
+      apiRoutes,
+    };
+    return createRequestHandler({ clientDir, serverEntry });
+  }
+
+  it('forwards a matching GET API response without rendering a page', async () => {
+    let pageRendered = 0;
+    const handler = await setupApi(
+      [
+        {
+          path: '/api/ping',
+          lazy: async () => ({
+            GET: () => Response.json({ ok: true }),
+          }),
+        },
+      ],
+      () => {
+        pageRendered++;
+      },
+    );
+    const res = makeRes();
+    await handler(makeReq('/api/ping'), res as never);
+    await waitFinish(res);
+    expect(res.statusCode).toBe(200);
+    expect(res._headers['content-type']).toContain('application/json');
+    expect(JSON.parse(res.body)).toEqual({ ok: true });
+    expect(pageRendered).toBe(0);
+  });
+
+  it('forwards a matching POST API response with the request body', async () => {
+    const handler = await setupApi([
+      {
+        path: '/api/echo',
+        lazy: async () => ({
+          POST: async (ctx) => {
+            const body = await ctx.request.text();
+            return new Response(`echo:${body}`, { status: 201 });
+          },
+        }),
+      },
+    ]);
+    const res = makeRes();
+    await handler(
+      makeReq('/api/echo', 'POST', {
+        body: 'hello',
+        headers: { 'content-type': 'text/plain' },
+      }),
+      res as never,
+    );
+    await waitFinish(res);
+    expect(res.statusCode).toBe(201);
+    expect(res.body).toBe('echo:hello');
+  });
+
+  it('returns 405 with Allow header when the verb does not match', async () => {
+    const handler = await setupApi([
+      {
+        path: '/api/users',
+        lazy: async () => ({
+          GET: () => Response.json([]),
+        }),
+      },
+    ]);
+    const res = makeRes();
+    await handler(makeReq('/api/users', 'POST'), res as never);
+    await waitFinish(res);
+    expect(res.statusCode).toBe(405);
+    expect(res._headers['allow']).toBe('GET');
+  });
+
+  it('falls through to SSR when no API route matches the URL', async () => {
+    let rendered = 0;
+    const handler = await setupApi(
+      [
+        {
+          path: '/api/other',
+          lazy: async () => ({ GET: () => new Response('other') }),
+        },
+      ],
+      () => {
+        rendered++;
+      },
+    );
+    const res = makeRes();
+    await handler(makeReq('/about'), res as never);
+    await waitFinish(res);
+    expect(rendered).toBe(1);
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toContain('<p>page</p>');
+  });
+
+  it('extracts params from the URL and passes them to the handler', async () => {
+    const handler = await setupApi([
+      {
+        path: '/api/users/:id',
+        lazy: async () => ({
+          GET: (ctx) => Response.json({ id: ctx.params.id }),
+        }),
+      },
+    ]);
+    const res = makeRes();
+    await handler(makeReq('/api/users/42'), res as never);
+    await waitFinish(res);
+    expect(JSON.parse(res.body)).toEqual({ id: '42' });
+  });
+
+  it('returns 500 when an API handler throws', async () => {
+    const handler = await setupApi([
+      {
+        path: '/api/boom',
+        lazy: async () => ({
+          GET: () => {
+            throw new Error('boom');
+          },
+        }),
+      },
+    ]);
+    const res = makeRes();
+    await handler(makeReq('/api/boom'), res as never);
+    await waitFinish(res);
+    expect(res.statusCode).toBe(500);
+    expect(res.body).toBe('Internal Server Error');
+  });
+});
+
 describe('createRequestHandler — static files', () => {
   it('serves a file from clientDir with a matching MIME type', async () => {
     const clientDir = await mkClientDir({

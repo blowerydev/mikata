@@ -65,6 +65,11 @@
       "import": "./dist/head.js",
       "require": "./dist/head.cjs"
     },
+    "./api": {
+      "types": "./dist/api.d.ts",
+      "import": "./dist/api.js",
+      "require": "./dist/api.cjs"
+    },
     "./adapter-node": {
       "types": "./dist/adapter-node.d.ts",
       "import": "./dist/adapter-node.js",

@@ -17,6 +17,11 @@
  *                           (only recognised at the top-level routes/ directory)
  *   files prefixed _     →  ignored (except _layout which has special meaning)
  *   files not ending .tsx/.jsx/.ts/.js  →  ignored
+ *
+ * API routes (files with no `default` export but with at least one of
+ * `GET/POST/PUT/PATCH/DELETE`) follow the same path-derivation rules but
+ * are emitted into `apiRoutes` instead of `routes` and bypass layouts —
+ * they only ever produce `Response` objects, never UI.
  */
 
 export interface RouteManifestEntry {
@@ -40,15 +45,37 @@ export interface RouteManifestLayout {
   parent: string | null;
 }
 
+/**
+ * Flat entry for an API route. Layouts don't apply — the file is loaded
+ * directly and a verb handler dispatches the response.
+ */
+export interface ApiRouteManifestEntry {
+  path: string;
+  file: string;
+  id: string;
+}
+
 export interface RouteManifest {
   routes: RouteManifestEntry[];
   layouts: RouteManifestLayout[];
+  apiRoutes: ApiRouteManifestEntry[];
   /**
    * POSIX-style path to the top-level `404.tsx` (or equivalent extension)
    * if present in the routes directory. Wired through as the router's
    * `notFound` option and used to produce a 404-status HTML response.
    */
   notFound?: string;
+}
+
+export interface ScanOptions {
+  /**
+   * Set of route files that the caller has identified as API routes —
+   * typically by reading the file source and finding no `export default`
+   * but at least one `export function GET|POST|PUT|PATCH|DELETE`. The
+   * scanner itself stays pure by accepting this classification rather
+   * than doing the IO.
+   */
+  apiFiles?: ReadonlySet<string>;
 }
 
 const ROUTE_EXT_RE = /\.(?:tsx|jsx|ts|js|mjs|cjs|mts|cts)$/;
@@ -58,10 +85,15 @@ const DYNAMIC_SEGMENT_RE = /^\[(\.\.\.)?([A-Za-z_$][\w$]*)\]$/;
  * Scan a flat list of POSIX-style paths relative to the routes root and
  * return the route manifest.
  */
-export function scanRoutes(files: string[]): RouteManifest {
+export function scanRoutes(
+  files: string[],
+  options: ScanOptions = {},
+): RouteManifest {
+  const apiFiles = options.apiFiles ?? new Set<string>();
   const layouts: RouteManifestLayout[] = [];
   const layoutsByDir = new Map<string, RouteManifestLayout>();
   const routes: RouteManifestEntry[] = [];
+  const apiRoutes: ApiRouteManifestEntry[] = [];
   let notFound: string | undefined;
 
   // Deterministic order so the manifest is stable from one scan to the
@@ -117,6 +149,18 @@ export function scanRoutes(files: string[]): RouteManifest {
     const path = '/' + pathSegments.filter(Boolean).join('/');
     const normalisedPath = path === '/' ? '/' : path.replace(/\/+$/, '');
 
+    // API routes don't participate in the layout tree — they only
+    // return Response objects, so there's nothing to wrap. Route into
+    // the flat apiRoutes list and skip layout collection.
+    if (apiFiles.has(file)) {
+      apiRoutes.push({
+        path: normalisedPath,
+        file,
+        id: `api:${file}`,
+      });
+      continue;
+    }
+
     // Collect ancestor layouts, outer-most first.
     const layoutIds: string[] = [];
     let dir: string | null = dirSegments.join('/');
@@ -135,7 +179,24 @@ export function scanRoutes(files: string[]): RouteManifest {
     });
   }
 
-  return notFound ? { routes, layouts, notFound } : { routes, layouts };
+  const manifest: RouteManifest = { routes, layouts, apiRoutes };
+  if (notFound) manifest.notFound = notFound;
+  return manifest;
+}
+
+/**
+ * Quick heuristic that decides whether a route file's source describes
+ * an API route. The rule matches the user-facing convention: no default
+ * export, at least one HTTP-verb export. Lives here so the plugin and
+ * tests share one definition. False positives are inert (a file with
+ * `// export default foo` in a comment would still be an API candidate)
+ * but the verb-export requirement keeps random imports from qualifying.
+ */
+export function isApiRouteSource(source: string): boolean {
+  if (/^[ \t]*export\s+default\b/m.test(source)) return false;
+  return /^[ \t]*export\s+(?:async\s+)?(?:function|const|let|var)\s+(?:GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\b/m.test(
+    source,
+  );
 }
 
 function toPathSegment(raw: string): string {

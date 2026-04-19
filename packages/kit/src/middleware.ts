@@ -21,6 +21,7 @@ import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 import type { Connect, ViteDevServer } from 'vite';
 import { spliceHead } from './splice-head';
+import { dispatchApiRoute, type ApiRouteDefinition } from './api';
 
 export interface SsrMiddlewareOptions {
   /** Project root (usually `config.root`). */
@@ -90,6 +91,12 @@ export interface RenderResult {
 
 interface UserEntry {
   render(ctx: RenderContext): RenderResult | Promise<RenderResult>;
+  /**
+   * Optional flat list of API routes, typically re-exported from the
+   * `virtual:mikata-routes` module. When present, the middleware tries
+   * API dispatch before SSR rendering.
+   */
+  apiRoutes?: readonly ApiRouteDefinition[];
 }
 
 export function createSsrMiddleware(
@@ -142,16 +149,42 @@ export function createSsrMiddleware(
         );
       }
 
+      const apiRoutes = mod.apiRoutes;
+      const hasApi = !!(apiRoutes && apiRoutes.length > 0);
+
       // Buffer body + build a Request for mutating methods. GET stays on
-      // the cheap read path (no body, no Request construction).
-      const request = isMutation ? await buildFetchRequest(req) : undefined;
+      // the cheap read path — unless there are API routes registered,
+      // in which case we need a Request for every method so
+      // `dispatchApiRoute()` can hand it to the verb handler.
+      const request = isMutation
+        ? await buildFetchRequest(req)
+        : hasApi
+          ? await buildFetchRequest(req)
+          : undefined;
+
+      // API dispatch before SSR — a matching handler's `Response` is
+      // forwarded to the Node socket and we're done. `null` means no
+      // API route matched so we fall through to page rendering.
+      if (hasApi && request) {
+        const apiResponse = await dispatchApiRoute(
+          req.url,
+          method,
+          apiRoutes!,
+          request,
+        );
+        if (apiResponse) {
+          await sendFetchResponse(res, apiResponse);
+          return;
+        }
+      }
+
       const isEnhancedSubmit =
         request !== undefined && req.headers[FORM_SUBMIT_HEADER] !== undefined;
 
       const rendered = await mod.render({
         url: req.url,
         req,
-        request,
+        request: isMutation ? request : undefined,
       });
       const {
         html,
@@ -234,6 +267,26 @@ function sendJson(res: import('node:http').ServerResponse, status: number, body:
   res.statusCode = status;
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   res.end(JSON.stringify(body));
+}
+
+/**
+ * Forward a Fetch `Response` to the Node socket, mirroring the prod
+ * adapter so API handlers behave identically in dev and in production.
+ */
+async function sendFetchResponse(
+  res: import('node:http').ServerResponse,
+  response: Response,
+): Promise<void> {
+  res.statusCode = response.status;
+  response.headers.forEach((value, key) => {
+    res.setHeader(key, value);
+  });
+  if (response.body === null) {
+    res.end();
+    return;
+  }
+  const buf = Buffer.from(await response.arrayBuffer());
+  res.end(buf);
 }
 
 async function resolveEntry(

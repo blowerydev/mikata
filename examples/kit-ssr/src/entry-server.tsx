@@ -1,5 +1,5 @@
 import { renderRoute } from '@mikata/kit/server';
-import routes, { notFound } from 'virtual:mikata-routes';
+import routes, { notFound, apiRoutes } from 'virtual:mikata-routes';
 
 export async function render(ctx: { url: string; request?: Request }) {
   return renderRoute(routes, {
@@ -8,3 +8,6 @@ export async function render(ctx: { url: string; request?: Request }) {
     notFound,
   });
 }
+
+// Re-export so kit's adapter + middleware dispatch API verbs before SSR.
+export { apiRoutes };

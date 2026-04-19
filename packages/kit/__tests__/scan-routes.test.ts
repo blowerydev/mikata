@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { scanRoutes } from '../src/scan-routes';
+import { scanRoutes, isApiRouteSource } from '../src/scan-routes';
 
 describe('scanRoutes: file → path conversion', () => {
   it('maps index.tsx to the parent path', () => {
@@ -95,6 +95,76 @@ describe('scanRoutes: 404 route', () => {
   it('omits notFound when no 404 file is present', () => {
     const m = scanRoutes(['index.tsx']);
     expect(m.notFound).toBeUndefined();
+  });
+});
+
+describe('scanRoutes: API routes', () => {
+  it('routes files listed in apiFiles into the apiRoutes list', () => {
+    const m = scanRoutes(
+      ['api/ping.ts', 'api/users/[id].ts', 'index.tsx'],
+      { apiFiles: new Set(['api/ping.ts', 'api/users/[id].ts']) },
+    );
+    expect(m.apiRoutes.map((r) => r.path).sort()).toEqual([
+      '/api/ping',
+      '/api/users/:id',
+    ]);
+    // API files don't leak into the page routes list.
+    expect(m.routes.map((r) => r.path)).toEqual(['/']);
+  });
+
+  it('emits an empty apiRoutes list when no apiFiles are passed', () => {
+    const m = scanRoutes(['index.tsx', 'about.tsx']);
+    expect(m.apiRoutes).toEqual([]);
+  });
+
+  it('does not associate API routes with layouts', () => {
+    const m = scanRoutes(
+      ['_layout.tsx', 'api/ping.ts', 'index.tsx'],
+      { apiFiles: new Set(['api/ping.ts']) },
+    );
+    const api = m.apiRoutes.find((r) => r.path === '/api/ping')!;
+    // ApiRouteManifestEntry has no `layouts` field — by contract, API
+    // handlers don't render UI, so there's nothing to wrap. Check the
+    // shape is exactly the flat one we expect.
+    expect(Object.keys(api).sort()).toEqual(['file', 'id', 'path']);
+  });
+});
+
+describe('isApiRouteSource', () => {
+  it('treats a module with GET and no default export as an API route', () => {
+    expect(
+      isApiRouteSource(
+        "export async function GET() { return new Response('ok'); }",
+      ),
+    ).toBe(true);
+  });
+
+  it('rejects modules that have a default export', () => {
+    const src = `
+      export default function Page() { return null; }
+      export async function GET() { return new Response('ok'); }
+    `;
+    expect(isApiRouteSource(src)).toBe(false);
+  });
+
+  it('accepts any HTTP verb, not just GET', () => {
+    for (const verb of ['POST', 'PUT', 'PATCH', 'DELETE']) {
+      expect(
+        isApiRouteSource(`export function ${verb}() { return new Response(); }`),
+      ).toBe(true);
+    }
+  });
+
+  it('accepts const-style verb exports', () => {
+    expect(
+      isApiRouteSource(
+        'export const POST = async () => new Response("created");',
+      ),
+    ).toBe(true);
+  });
+
+  it('rejects a module with no verb exports', () => {
+    expect(isApiRouteSource('export function helper() {}')).toBe(false);
   });
 });
 

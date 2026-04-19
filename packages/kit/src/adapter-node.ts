@@ -32,6 +32,7 @@ import { promises as fs, createReadStream } from 'node:fs';
 import * as path from 'node:path';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { spliceHead } from './splice-head';
+import { dispatchApiRoute, type ApiRouteDefinition } from './api';
 
 export interface AdapterRenderContext {
   url: string;
@@ -78,6 +79,15 @@ export interface AdapterRenderResult {
 
 export interface ServerEntry {
   render(ctx: AdapterRenderContext): Promise<AdapterRenderResult> | AdapterRenderResult;
+  /**
+   * Flat list of API-route definitions, typically re-exported from the
+   * `virtual:mikata-routes` module that the kit plugin emits. When
+   * present, the adapter tries API dispatch before SSR so URL patterns
+   * like `/api/users/:id` resolve to the handler's `Response` without
+   * touching the renderer. Optional — a server entry without API
+   * routes just sets this to `undefined` (or omits it).
+   */
+  apiRoutes?: readonly ApiRouteDefinition[];
 }
 
 export interface CreateRequestHandlerOptions {
@@ -161,20 +171,52 @@ export function createRequestHandler(
     }
 
     try {
+      const apiRoutes = options.serverEntry.apiRoutes;
+      const hasApi = !!(apiRoutes && apiRoutes.length > 0);
+
       // Build a fetch `Request` for methods that carry a body so route
       // actions can read `request.formData()` / `.json()` directly.
-      // GET/HEAD skip this — the cost (buffering + Request construction)
-      // isn't worth it on the hot read path.
+      // GET/HEAD normally skip this — the cost (buffering + Request
+      // construction) isn't worth it on the hot read path. But when
+      // API routes are registered we need a Request for every method
+      // so `dispatchApiRoute()` can hand it to the verb handler.
       let request: Request | undefined;
       if (method !== 'GET' && method !== 'HEAD') {
         request = await buildFetchRequest(req);
+      } else if (hasApi) {
+        request = await buildFetchRequest(req);
+      }
+
+      // Try API dispatch first. A matching handler short-circuits the
+      // SSR path entirely — its `Response` flows straight to the Node
+      // socket. A `null` return means no API route matched the URL, so
+      // we fall through to the page renderer as usual.
+      if (hasApi && request) {
+        const apiResponse = await dispatchApiRoute(
+          rawUrl,
+          method,
+          apiRoutes!,
+          request,
+        );
+        if (apiResponse) {
+          await sendFetchResponse(res, apiResponse);
+          return;
+        }
       }
 
       const isEnhancedSubmit =
         request !== undefined && req.headers[FORM_SUBMIT_HEADER] !== undefined;
 
+      // Don't pass a GET Request into the renderer — `renderRoute`
+      // inspects `request.method` to decide whether to run actions, and
+      // while it'd guard correctly, leaving `request` undefined on GET
+      // keeps the SSR contract with the renderer unchanged and preserves
+      // the cheap read path for page-route rendering.
+      const renderRequest =
+        method !== 'GET' && method !== 'HEAD' ? request : undefined;
+
       const rendered = await Promise.resolve(
-        options.serverEntry.render({ url: rawUrl, req, request }),
+        options.serverEntry.render({ url: rawUrl, req, request: renderRequest }),
       );
 
       const {
@@ -291,6 +333,31 @@ function sendJson(res: ServerResponse, status: number, body: unknown): void {
   res.statusCode = status;
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   res.end(JSON.stringify(body));
+}
+
+/**
+ * Copy a Fetch `Response` into a Node `ServerResponse`. Status, headers
+ * and body are all forwarded; a null body (e.g. 204/304/redirect) ends
+ * the response empty. The body is read in one go rather than streamed —
+ * API handlers typically produce modest JSON payloads, and buffering
+ * avoids the complexity of pumping a web ReadableStream into a Node
+ * Writable. If larger payloads become a concern later, swap this for
+ * `Readable.fromWeb(response.body).pipe(res)`.
+ */
+async function sendFetchResponse(
+  res: ServerResponse,
+  response: Response,
+): Promise<void> {
+  res.statusCode = response.status;
+  response.headers.forEach((value, key) => {
+    res.setHeader(key, value);
+  });
+  if (response.body === null) {
+    res.end();
+    return;
+  }
+  const buf = Buffer.from(await response.arrayBuffer());
+  res.end(buf);
 }
 
 // ---------------------------------------------------------------------------

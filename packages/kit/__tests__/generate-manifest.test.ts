@@ -65,10 +65,53 @@ describe('generateManifestModule: empty manifest', () => {
   it('still exports `routes` as an empty array', () => {
     const src = generateManifestModule({
       routesDir: ROUTES_DIR,
-      manifest: { routes: [], layouts: [] },
+      manifest: { routes: [], layouts: [], apiRoutes: [] },
     });
     expect(src).toContain('export const routes = [];');
     expect(src).toContain('export default routes;');
+  });
+
+  it('always exports `apiRoutes` — empty array when no API routes detected', () => {
+    const src = generateManifestModule({
+      routesDir: ROUTES_DIR,
+      manifest: { routes: [], layouts: [], apiRoutes: [] },
+    });
+    expect(src).toContain('export const apiRoutes = [];');
+  });
+});
+
+describe('generateManifestModule: API routes', () => {
+  it('emits apiRoutes as a flat list of { path, lazy } entries', () => {
+    const manifest = scanRoutes(
+      ['api/users.ts', 'api/users/[id].ts', 'index.tsx'],
+      { apiFiles: new Set(['api/users.ts', 'api/users/[id].ts']) },
+    );
+    const src = generateManifestModule({ routesDir: ROUTES_DIR, manifest });
+    expect(src).toContain('export const apiRoutes = [');
+    expect(src).toContain('path: "/api/users"');
+    expect(src).toContain('path: "/api/users/:id"');
+    expect(src).toContain('import("/abs/project/src/routes/api/users.ts")');
+    expect(src).toContain('import("/abs/project/src/routes/api/users/[id].ts")');
+    // API entries are flat: no layouts, no children.
+    const apiBlock = src.slice(src.indexOf('export const apiRoutes'));
+    expect(apiBlock).not.toMatch(/children:/);
+  });
+
+  it('keeps page routes out of the apiRoutes list', () => {
+    const manifest = scanRoutes(
+      ['api/ping.ts', 'index.tsx'],
+      { apiFiles: new Set(['api/ping.ts']) },
+    );
+    const src = generateManifestModule({ routesDir: ROUTES_DIR, manifest });
+    const apiBlock = src.slice(
+      src.indexOf('export const apiRoutes'),
+      src.indexOf('export default'),
+    );
+    // The apiRoutes array should contain the API path but not the page
+    // path. Imports live above this block so we compare on the string
+    // paths emitted inside the entries.
+    expect(apiBlock).toContain('"/api/ping"');
+    expect(apiBlock).not.toContain('"/"');
   });
 });
 

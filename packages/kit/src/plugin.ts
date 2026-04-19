@@ -18,7 +18,7 @@
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 import type { Plugin, ViteDevServer } from 'vite';
-import { scanRoutes, type RouteManifest } from './scan-routes';
+import { scanRoutes, isApiRouteSource, type RouteManifest } from './scan-routes';
 import { generateManifestModule } from './generate-manifest';
 import { createSsrMiddleware } from './middleware';
 
@@ -64,7 +64,25 @@ export default function mikataKit(options: MikataKitOptions = {}): Plugin {
   async function readManifest(): Promise<RouteManifest> {
     const files: string[] = [];
     await walk(routesDirAbs, routesDirAbs, files, extensions);
-    return scanRoutes(files);
+    // Classify API routes by reading each file and checking the
+    // "no-default-export + at least one HTTP verb export" heuristic.
+    // Done here (not in scanRoutes) so the scanner stays a pure
+    // function of its filename inputs.
+    const apiFiles = new Set<string>();
+    await Promise.all(
+      files.map(async (rel) => {
+        const abs = path.join(routesDirAbs, rel);
+        try {
+          const source = await fs.readFile(abs, 'utf8');
+          if (isApiRouteSource(source)) apiFiles.add(rel);
+        } catch {
+          // A transient read failure (e.g. file deleted between walk
+          // and read) just means we treat it as a page route. The next
+          // invalidation will pick up the correct classification.
+        }
+      }),
+    );
+    return scanRoutes(files, { apiFiles });
   }
 
   return {

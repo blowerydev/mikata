@@ -114,10 +114,22 @@ export function generateManifestModule(opts: GenerateManifestOptions): string {
     notFoundExport = `export const notFound = ${imp};\n`;
   }
 
+  // API routes are a flat list of `{ path, lazy }` entries. They bypass
+  // the layout tree entirely — the adapter's `dispatchApiRoute()` only
+  // needs the URL pattern and a module loader for each handler file.
+  // Emitted even when empty so consumers can always import `apiRoutes`
+  // without a conditional guard.
+  const apiEntries = manifest.apiRoutes.map((api) => {
+    const imp = emitImport(api.file);
+    return `{ path: ${JSON.stringify(api.path)}, lazy: ${imp} }`;
+  });
+  const apiRoutesExport = `export const apiRoutes = [${apiEntries.join(', ')}];\n`;
+
   return (
     imports.join('\n') +
     (imports.length ? '\n\n' : '') +
     `export const routes = [${topLevel}];\n` +
+    apiRoutesExport +
     notFoundExport +
     'export default routes;\n'
   );

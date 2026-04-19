@@ -23,7 +23,17 @@ function makeServer(overrides: Partial<FakeServer> = {}): FakeServer {
 }
 
 function makeReq(url: string, headers: Record<string, string> = {}) {
-  return { url, method: 'GET', headers: { accept: 'text/html', ...headers } } as any;
+  // Use an empty Readable so `for await` over the body works in the
+  // middleware path that builds a Fetch Request (API dispatch needs
+  // this for GETs too). Assigning url/method/headers lets the middleware
+  // read them the same way it would on a real IncomingMessage.
+  const stream = Readable.from([]);
+  Object.assign(stream, {
+    url,
+    method: 'GET',
+    headers: { accept: 'text/html', ...headers },
+  });
+  return stream as any;
 }
 
 function makeBodyReq(
@@ -284,6 +294,97 @@ describe('createSsrMiddleware', () => {
     await mw(makeReq('/nope'), res, vi.fn());
 
     expect(res.statusCode).toBe(404);
+  });
+
+  it('dispatches API routes before rendering a page', async () => {
+    const root = await mkProject({
+      'index.html': '<html><body><!--ssr-outlet--></body></html>',
+      'src/entry-server.ts': 'export const render = () => ({});',
+    });
+    const render = vi.fn(() => ({ html: '<p>page</p>' }));
+    const server = makeServer({
+      ssrLoadModule: vi.fn(async () => ({
+        render,
+        apiRoutes: [
+          {
+            path: '/api/ping',
+            lazy: async () => ({
+              GET: () => Response.json({ pong: true }),
+            }),
+          },
+        ],
+      })),
+    });
+    const mw = createSsrMiddleware(server as any, { projectRoot: root });
+    const res = makeRes();
+
+    await mw(
+      makeReq('/api/ping', { accept: 'application/json' }),
+      res,
+      vi.fn(),
+    );
+
+    expect(render).not.toHaveBeenCalled();
+    expect(res.statusCode).toBe(200);
+    expect(res._headers['content-type']).toContain('application/json');
+    expect(JSON.parse(res.body)).toEqual({ pong: true });
+  });
+
+  it('falls through to SSR when no API route matches the URL', async () => {
+    const root = await mkProject({
+      'index.html': '<html><body><!--ssr-outlet--></body></html>',
+      'src/entry-server.ts': 'export const render = () => ({});',
+    });
+    const render = vi.fn(() => ({ html: '<p>page</p>' }));
+    const server = makeServer({
+      ssrLoadModule: vi.fn(async () => ({
+        render,
+        apiRoutes: [
+          {
+            path: '/api/other',
+            lazy: async () => ({ GET: () => new Response('other') }),
+          },
+        ],
+      })),
+    });
+    const mw = createSsrMiddleware(server as any, { projectRoot: root });
+    const res = makeRes();
+
+    await mw(makeReq('/about'), res, vi.fn());
+
+    expect(render).toHaveBeenCalledTimes(1);
+    expect(res.body).toContain('<p>page</p>');
+  });
+
+  it('returns 405 for API routes with a mismatched verb', async () => {
+    const root = await mkProject({
+      'index.html': '<html><body><!--ssr-outlet--></body></html>',
+      'src/entry-server.ts': 'export const render = () => ({});',
+    });
+    const server = makeServer({
+      ssrLoadModule: vi.fn(async () => ({
+        render: () => ({ html: '' }),
+        apiRoutes: [
+          {
+            path: '/api/users',
+            lazy: async () => ({ GET: () => Response.json([]) }),
+          },
+        ],
+      })),
+    });
+    const mw = createSsrMiddleware(server as any, { projectRoot: root });
+    const res = makeRes();
+
+    await mw(
+      makeBodyReq('/api/users', 'POST', '', {
+        'content-type': 'application/x-www-form-urlencoded',
+      }),
+      res,
+      vi.fn(),
+    );
+
+    expect(res.statusCode).toBe(405);
+    expect(res._headers['allow']).toBe('GET');
   });
 
   it('honours a custom entry path and outlet marker', async () => {

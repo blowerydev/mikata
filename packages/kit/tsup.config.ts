@@ -10,6 +10,7 @@ export default defineConfig({
     'src/action.ts',
     'src/form.ts',
     'src/head.ts',
+    'src/api.ts',
     'src/adapter-node.ts',
   ],
   format: ['esm', 'cjs'],
