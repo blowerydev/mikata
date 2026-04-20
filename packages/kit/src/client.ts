@@ -47,6 +47,7 @@ import {
 } from './action';
 import { provideFormContext } from './form';
 import { createDomMetaRegistry, provideMetaRegistry } from './head';
+import { createBrowserCookies } from './cookies';
 
 /**
  * Signature of the `notFound` entry in a generated `virtual:mikata-routes`
@@ -274,7 +275,13 @@ function runLoadersOnNav(
         const gen = (generations.get(fullPath) ?? 0) + 1;
         generations.set(fullPath, gen);
 
-        Promise.resolve(loader({ params: match.params, url: current.path }))
+        Promise.resolve(
+          loader({
+            params: match.params,
+            url: current.path,
+            cookies: createBrowserCookies(),
+          }),
+        )
           .then((value) => {
             if (generations.get(fullPath) === gen) store.set(fullPath, value);
           })

@@ -55,8 +55,8 @@ function makeRes() {
   const chunks: string[] = [];
   return {
     statusCode: 0,
-    _headers: {} as Record<string, string>,
-    setHeader(key: string, value: string) {
+    _headers: {} as Record<string, string | string[]>,
+    setHeader(key: string, value: string | string[]) {
       this._headers[key] = value;
     },
     end(chunk: string) {
@@ -385,6 +385,70 @@ describe('createSsrMiddleware', () => {
 
     expect(res.statusCode).toBe(405);
     expect(res._headers['allow']).toBe('GET');
+  });
+
+  it('forwards cookieHeader into render and echoes setCookies on the response', async () => {
+    const root = await mkProject({
+      'index.html': '<html><body><!--ssr-outlet--></body></html>',
+      'src/entry-server.ts': 'export const render = () => ({});',
+    });
+    const seen: Array<string | null | undefined> = [];
+    const render = vi.fn((ctx: any) => {
+      seen.push(ctx.cookieHeader);
+      return {
+        html: '<p>ok</p>',
+        setCookies: ['sid=abc; Path=/; HttpOnly'],
+      };
+    });
+    const server = makeServer({
+      ssrLoadModule: vi.fn(async () => ({ render })),
+    });
+    const mw = createSsrMiddleware(server as any, { projectRoot: root });
+    const res = makeRes();
+
+    await mw(makeReq('/', { cookie: 'flash=hi' }), res, vi.fn());
+
+    expect(seen).toEqual(['flash=hi']);
+    expect(res._headers['Set-Cookie']).toEqual(['sid=abc; Path=/; HttpOnly']);
+  });
+
+  it('flushes setCookies alongside an API route response', async () => {
+    const root = await mkProject({
+      'index.html': '<html><body><!--ssr-outlet--></body></html>',
+      'src/entry-server.ts': 'export const render = () => ({});',
+    });
+    const server = makeServer({
+      ssrLoadModule: vi.fn(async () => ({
+        render: () => ({ html: '' }),
+        apiRoutes: [
+          {
+            path: '/api/whoami',
+            lazy: async () => ({
+              GET: (ctx: any) => {
+                const who = ctx.cookies.get('sid') ?? 'anon';
+                ctx.cookies.set('visited', '1', { path: '/' });
+                return Response.json({ who });
+              },
+            }),
+          },
+        ],
+      })),
+    });
+    const mw = createSsrMiddleware(server as any, { projectRoot: root });
+    const res = makeRes();
+
+    await mw(
+      makeReq('/api/whoami', { accept: 'application/json', cookie: 'sid=u42' }),
+      res,
+      vi.fn(),
+    );
+
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body)).toEqual({ who: 'u42' });
+    const setCookie = res._headers['set-cookie'];
+    const first = Array.isArray(setCookie) ? setCookie[0] : setCookie;
+    expect(first).toContain('visited=1');
+    expect(first).toContain('Path=/');
   });
 
   it('honours a custom entry path and outlet marker', async () => {

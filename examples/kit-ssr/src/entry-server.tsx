@@ -1,10 +1,15 @@
 import { renderRoute } from '@mikata/kit/server';
 import routes, { notFound, apiRoutes } from 'virtual:mikata-routes';
 
-export async function render(ctx: { url: string; request?: Request }) {
+export async function render(ctx: {
+  url: string;
+  request?: Request;
+  cookieHeader?: string | null;
+}) {
   return renderRoute(routes, {
     url: ctx.url,
     request: ctx.request,
+    cookieHeader: ctx.cookieHeader,
     notFound,
   });
 }

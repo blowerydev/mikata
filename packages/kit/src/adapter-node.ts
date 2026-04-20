@@ -44,6 +44,12 @@ export interface AdapterRenderContext {
    * straight through to `renderRoute({ request })` to run actions.
    */
   request?: Request;
+  /**
+   * Raw inbound `Cookie:` header value (or `null` when the request had
+   * none). Forward to `renderRoute({ cookieHeader })` so loaders /
+   * actions receive a cookie handle that reads against the same snapshot.
+   */
+  cookieHeader?: string | null;
 }
 
 export interface AdapterRenderResult {
@@ -75,6 +81,13 @@ export interface AdapterRenderResult {
    * — forwarded in the enhanced-submit JSON reply.
    */
   actionData?: Record<string, unknown>;
+  /**
+   * Serialized `Set-Cookie` header values queued during the render
+   * (typically by a session-commit inside `action()`). Each entry is
+   * emitted as its own `Set-Cookie` header — Node supports an array for
+   * the Set-Cookie name and the adapter forwards it verbatim.
+   */
+  setCookies?: readonly string[];
 }
 
 export interface ServerEntry {
@@ -215,8 +228,20 @@ export function createRequestHandler(
       const renderRequest =
         method !== 'GET' && method !== 'HEAD' ? request : undefined;
 
+      // Node coerces a missing cookie header to undefined; renderRoute
+      // accepts `null` as "no cookie", so normalize here to keep both
+      // sides honest.
+      const rawCookieHeader = req.headers.cookie;
+      const cookieHeader =
+        typeof rawCookieHeader === 'string' ? rawCookieHeader : null;
+
       const rendered = await Promise.resolve(
-        options.serverEntry.render({ url: rawUrl, req, request: renderRequest }),
+        options.serverEntry.render({
+          url: rawUrl,
+          req,
+          request: renderRequest,
+          cookieHeader,
+        }),
       );
 
       const {
@@ -228,7 +253,17 @@ export function createRequestHandler(
         redirect,
         loaderData,
         actionData,
+        setCookies,
       } = rendered;
+
+      // Flush any Set-Cookie headers the render queued. Node allows an
+      // array for the Set-Cookie name and emits one header per entry,
+      // which matches the RFC 6265 "multiple headers, one cookie per
+      // header" shape. Runs before the three response paths below so
+      // redirects, enhanced submits, and HTML all see the same cookies.
+      if (setCookies && setCookies.length > 0) {
+        res.setHeader('Set-Cookie', [...setCookies]);
+      }
 
       // Redirect short-circuit: the action returned a Response with a
       // Location header. For a native (no-JS) submit respond with a real

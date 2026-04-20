@@ -11,6 +11,8 @@ export default defineConfig({
     'src/form.ts',
     'src/head.ts',
     'src/api.ts',
+    'src/cookies.ts',
+    'src/session.ts',
     'src/adapter-node.ts',
   ],
   format: ['esm', 'cjs'],

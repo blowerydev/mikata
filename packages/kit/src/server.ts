@@ -46,6 +46,7 @@ import {
   type ActionEntry,
 } from './action';
 import { createCollectMetaRegistry, provideMetaRegistry } from './head';
+import { createCookies } from './cookies';
 
 /**
  * Signature of the `notFound` entry in a generated `virtual:mikata-routes`
@@ -71,6 +72,13 @@ export interface RenderRouteOptions extends Omit<RouterOptions, 'routes' | 'hist
    * action path stays dormant.
    */
   request?: Request;
+  /**
+   * Raw inbound `Cookie:` header value. Pass `req.headers.cookie` from
+   * Node (or `request.headers.get('cookie')` from a Fetch handler) and
+   * loaders / actions receive a `cookies` handle that reads against it.
+   * Omit (or pass `null`) when there is no inbound cookie header.
+   */
+  cookieHeader?: string | null;
   /**
    * 404 component loader from the virtual manifest (i.e.
    * `import { notFound } from 'virtual:mikata-routes'`). When the URL
@@ -114,6 +122,14 @@ export interface RenderRouteResult extends RenderToStringResult {
    * instead of emitting the rendered HTML.
    */
   redirect?: { url: string; status: number };
+  /**
+   * Serialized `Set-Cookie` header values queued by loaders or the leaf
+   * route's action for this request. Adapters append each string as a
+   * separate `Set-Cookie` header — the list is in insertion order so a
+   * `delete` followed by a `set` for the same name lands on the browser
+   * in the intended sequence.
+   */
+  setCookies: readonly string[];
 }
 
 /**
@@ -148,7 +164,12 @@ export async function renderRoute(
       routes,
       options.url,
     );
-    const { url, request, notFound: notFoundLoader, ...routerRest } = options;
+    const { url, request, cookieHeader, notFound: notFoundLoader, ...routerRest } = options;
+    // One cookies handle per render: the action (if any) runs first and
+    // can queue Set-Cookies (e.g. session commit); loaders run against
+    // the same handle so they read the request snapshot — not what the
+    // action just queued, since writes don't mutate the snapshot.
+    const cookies = createCookies(cookieHeader);
 
     // Resolve the 404 module eagerly so the render closure can return
     // final HTML for an unmatched URL — the renderToString pass can't
@@ -193,6 +214,7 @@ export async function renderRoute(
             request: request!,
             params: leaf.params,
             url,
+            cookies,
           });
           if (result instanceof Response) {
             const location = result.headers.get('Location');
@@ -235,6 +257,7 @@ export async function renderRoute(
         loaderData: {},
         actionData,
         redirect: redirectInfo,
+        setCookies: [...cookies.outgoing()],
       };
     }
 
@@ -252,7 +275,7 @@ export async function renderRoute(
         const loader = loaders.get(match.route.fullPath);
         if (!loader) return;
         try {
-          const value = await loader({ params: match.params, url });
+          const value = await loader({ params: match.params, url, cookies });
           loaderData[match.route.fullPath] = { data: value };
         } catch (err) {
           anyLoaderErrored = true;
@@ -307,6 +330,7 @@ export async function renderRoute(
       headTags: headRegistry.serialize(),
       loaderData,
       actionData,
+      setCookies: [...cookies.outgoing()],
     };
   } finally {
     shim.restore();

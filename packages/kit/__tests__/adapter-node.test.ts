@@ -8,8 +8,8 @@ import type { ServerEntry } from '../src/adapter-node';
 
 type FakeRes = PassThrough & {
   statusCode: number;
-  _headers: Record<string, string>;
-  setHeader: (k: string, v: string) => void;
+  _headers: Record<string, string | string[]>;
+  setHeader: (k: string, v: string | string[]) => void;
   body: string;
 };
 
@@ -461,5 +461,114 @@ describe('createRequestHandler — static files', () => {
     await waitFinish(res);
     expect(res.statusCode).toBe(200);
     expect(res.body).toBe('spaced');
+  });
+});
+
+describe('createRequestHandler — cookies', () => {
+  it('forwards cookieHeader into render and echoes setCookies on the response', async () => {
+    const clientDir = await mkClientDir({
+      'index.html': '<!--ssr-outlet-->',
+    });
+    const seen: Array<string | null | undefined> = [];
+    const serverEntry: ServerEntry = {
+      render: (ctx) => {
+        seen.push(ctx.cookieHeader);
+        return {
+          html: '<p>ok</p>',
+          setCookies: ['sid=abc; Path=/; HttpOnly'],
+        };
+      },
+    };
+    const handler = createRequestHandler({ clientDir, serverEntry });
+    const res = makeRes();
+    await handler(
+      makeReq('/', 'GET', { headers: { cookie: 'flash=hi' } }),
+      res as never,
+    );
+    await waitFinish(res);
+    expect(seen).toEqual(['flash=hi']);
+    expect(res._headers['set-cookie']).toEqual(['sid=abc; Path=/; HttpOnly']);
+  });
+
+  it('emits one Set-Cookie per entry for multiple queued cookies', async () => {
+    const clientDir = await mkClientDir({
+      'index.html': '<!--ssr-outlet-->',
+    });
+    const serverEntry: ServerEntry = {
+      render: () => ({
+        html: '',
+        setCookies: [
+          'sid=; Max-Age=0; Path=/',
+          'theme=dark; Path=/',
+        ],
+      }),
+    };
+    const handler = createRequestHandler({ clientDir, serverEntry });
+    const res = makeRes();
+    await handler(makeReq('/'), res as never);
+    await waitFinish(res);
+    const setCookie = res._headers['set-cookie'];
+    expect(Array.isArray(setCookie)).toBe(true);
+    expect(setCookie).toHaveLength(2);
+    expect((setCookie as string[])[0]).toContain('Max-Age=0');
+    expect((setCookie as string[])[1]).toContain('theme=dark');
+  });
+
+  it('flushes setCookies alongside a redirect response', async () => {
+    const clientDir = await mkClientDir({
+      'index.html': '<!--ssr-outlet-->',
+    });
+    const serverEntry: ServerEntry = {
+      render: () => ({
+        html: '',
+        redirect: { url: '/', status: 303 },
+        setCookies: ['sid=fresh; Path=/'],
+      }),
+    };
+    const handler = createRequestHandler({ clientDir, serverEntry });
+    const res = makeRes();
+    await handler(makeReq('/login', 'POST'), res as never);
+    await waitFinish(res);
+    expect(res.statusCode).toBe(303);
+    expect(res._headers['location']).toBe('/');
+    expect(res._headers['set-cookie']).toEqual(['sid=fresh; Path=/']);
+  });
+
+  it('passes inbound cookies into API handlers and appends queued cookies to the response', async () => {
+    const clientDir = await mkClientDir({
+      'index.html': '<!--ssr-outlet-->',
+    });
+    const serverEntry: ServerEntry = {
+      render: () => ({ html: '' }),
+      apiRoutes: [
+        {
+          path: '/api/whoami',
+          lazy: async () => ({
+            GET: (ctx) => {
+              // Read the inbound session cookie…
+              const who = ctx.cookies.get('sid') ?? 'anon';
+              // …and queue a fresh "visited" cookie for the response.
+              ctx.cookies.set('visited', '1', { path: '/' });
+              return Response.json({ who });
+            },
+          }),
+        },
+      ],
+    };
+    const handler = createRequestHandler({ clientDir, serverEntry });
+    const res = makeRes();
+    await handler(
+      makeReq('/api/whoami', 'GET', { headers: { cookie: 'sid=user-42' } }),
+      res as never,
+    );
+    await waitFinish(res);
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body)).toEqual({ who: 'user-42' });
+    // Set-Cookie appears on the Fetch Response and is forwarded to Node.
+    const setCookie = res._headers['set-cookie'];
+    expect(setCookie).toBeDefined();
+    const first = Array.isArray(setCookie) ? setCookie[0] : setCookie;
+    expect(first).toContain('visited=1');
+    expect(first).toContain('Path=/');
   });
 });

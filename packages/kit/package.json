@@ -70,6 +70,16 @@
       "import": "./dist/api.js",
       "require": "./dist/api.cjs"
     },
+    "./cookies": {
+      "types": "./dist/cookies.d.ts",
+      "import": "./dist/cookies.js",
+      "require": "./dist/cookies.cjs"
+    },
+    "./session": {
+      "types": "./dist/session.d.ts",
+      "import": "./dist/session.js",
+      "require": "./dist/session.cjs"
+    },
     "./adapter-node": {
       "types": "./dist/adapter-node.d.ts",
       "import": "./dist/adapter-node.js",

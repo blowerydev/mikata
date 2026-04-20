@@ -200,10 +200,13 @@ describe('renderRoute', () => {
         },
       ];
       await renderRoute(routes, { url: '/posts/abc?q=1' });
-      expect(captured).toEqual({
+      expect(captured).toMatchObject({
         params: { id: 'abc' },
         url: '/posts/abc?q=1',
       });
+      // The cookies handle is always provided — even without a Cookie
+      // header — so load() can queue Set-Cookies unconditionally.
+      expect((captured as { cookies: unknown }).cookies).toBeDefined();
     });
   });
 

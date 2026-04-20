@@ -65,6 +65,12 @@ export interface RenderContext {
    * `renderRoute({ request })` so route actions can read the body.
    */
   request?: Request;
+  /**
+   * Raw inbound `Cookie:` header value, or `null` when there is none.
+   * Forward to `renderRoute({ cookieHeader })` so loaders / actions see
+   * the same snapshot the request arrived with.
+   */
+  cookieHeader?: string | null;
 }
 
 export interface RenderResult {
@@ -87,6 +93,12 @@ export interface RenderResult {
   loaderData?: Record<string, unknown>;
   /** Action results keyed by route `fullPath` — echoed on enhanced submits. */
   actionData?: Record<string, unknown>;
+  /**
+   * Set-Cookie header values queued by the render (typically a session
+   * commit inside an action). Each entry is flushed as a separate
+   * Set-Cookie header on the response.
+   */
+  setCookies?: readonly string[];
 }
 
 interface UserEntry {
@@ -181,10 +193,15 @@ export function createSsrMiddleware(
       const isEnhancedSubmit =
         request !== undefined && req.headers[FORM_SUBMIT_HEADER] !== undefined;
 
+      const rawCookieHeader = req.headers.cookie;
+      const cookieHeader =
+        typeof rawCookieHeader === 'string' ? rawCookieHeader : null;
+
       const rendered = await mod.render({
         url: req.url,
         req,
         request: isMutation ? request : undefined,
+        cookieHeader,
       });
       const {
         html,
@@ -194,7 +211,14 @@ export function createSsrMiddleware(
         redirect,
         loaderData,
         actionData,
+        setCookies,
       } = rendered;
+
+      // Flush cookies before any of the three response paths so
+      // redirects, enhanced submits, and HTML responses all carry them.
+      if (setCookies && setCookies.length > 0) {
+        res.setHeader('Set-Cookie', [...setCookies]);
+      }
 
       // Redirect short-circuit (see adapter-node.ts for the full rationale).
       if (redirect) {

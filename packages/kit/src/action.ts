@@ -39,6 +39,7 @@
 import { computed, signal, type ReadSignal } from '@mikata/reactivity';
 import { createContext, provide, inject } from '@mikata/runtime';
 import { useRoute } from '@mikata/router';
+import type { Cookies } from './cookies';
 
 export interface ActionContext {
   /** The inbound Request. Use `.formData()` / `.json()` to read the body. */
@@ -47,6 +48,12 @@ export interface ActionContext {
   params: Record<string, string>;
   /** Full request URL (pathname + search + hash). */
   url: string;
+  /**
+   * Per-request cookie handle. Writes queued here (typically to commit a
+   * session on login or drop it on logout) flow through as `Set-Cookie`
+   * headers on both the redirect and the non-redirect response.
+   */
+  cookies: Cookies;
 }
 
 /**

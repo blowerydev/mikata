@@ -25,6 +25,8 @@
  * list, which the adapter feeds into `dispatchApiRoute()`.
  */
 
+import { createCookies, type Cookies } from './cookies';
+
 export interface ApiContext {
   /** The inbound `Request`. Use `.json()` / `.formData()` / `.text()` etc. */
   request: Request;
@@ -32,6 +34,12 @@ export interface ApiContext {
   params: Record<string, string>;
   /** Full request URL (pathname + search + hash). */
   url: string;
+  /**
+   * Per-request cookie handle. Queue writes via `set` / `delete`; the
+   * dispatcher splices the outgoing `Set-Cookie` values onto the
+   * handler's returned `Response` before forwarding it to the adapter.
+   */
+  cookies: Cookies;
 }
 
 export type HttpMethod =
@@ -114,10 +122,26 @@ export async function dispatchApiRoute(
       return new Response(null, { status: 405, headers });
     }
 
+    // Build a per-dispatch cookie handle. The handler reads incoming
+    // values via `cookies.get()` and can queue `Set-Cookie`s via `set`
+    // / `delete`; we splice those into the response below so API routes
+    // and page routes share identical cookie semantics.
+    const cookies = createCookies(request.headers.get('cookie'));
+
     // Let handler errors surface as 500s — the adapter's try/catch wraps
     // us and will log + send a terse 500 body. That matches how loader
     // and action throws behave for page routes.
-    return await handler({ request, params, url });
+    const response = await handler({ request, params, url, cookies });
+
+    const queued = cookies.outgoing();
+    if (queued.length === 0) return response;
+    // The handler's Response may already carry Set-Cookie headers
+    // (common if the handler uses `new Response(..., { headers: ... })`
+    // directly). Append rather than set so we don't clobber those.
+    for (const setCookie of queued) {
+      response.headers.append('Set-Cookie', setCookie);
+    }
+    return response;
   }
 
   return null;

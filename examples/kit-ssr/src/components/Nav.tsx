@@ -10,6 +10,8 @@ export function Nav() {
       <Link to="/users/2">User 2</Link>{' '}
       <Link to="/users/42">User 42</Link>{' '}
       <Link to="/boom">Boom</Link>{' '}
+      <Link to="/login">Log in</Link>{' '}
+      <Link to="/logout">Log out</Link>{' '}
       <Link to="/does-not-exist">404</Link>
     </nav>
   );

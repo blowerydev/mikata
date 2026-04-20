@@ -33,12 +33,19 @@
 import { computed, signal, type ReadSignal } from '@mikata/reactivity';
 import { createContext, provide, inject } from '@mikata/runtime';
 import { useRoute } from '@mikata/router';
+import type { Cookies } from './cookies';
 
 export interface LoadContext {
   /** Path params for the matched route (e.g. `{ id: '42' }`). */
   params: Record<string, string>;
   /** The full request URL (pathname + search + hash). */
   url: string;
+  /**
+   * Per-request cookie handle. `cookies.get()` reads the snapshot parsed
+   * from the inbound `Cookie` header; `cookies.set()` / `cookies.delete()`
+   * queue `Set-Cookie` headers the adapter will flush on the response.
+   */
+  cookies: Cookies;
 }
 
 export type Loader<T = unknown> = (ctx: LoadContext) => T | Promise<T>;
