@@ -48,6 +48,7 @@ import {
 import { provideFormContext } from './form';
 import { createDomMetaRegistry, provideMetaRegistry } from './head';
 import { createBrowserCookies } from './cookies';
+import { provideCsrfToken, CSRF_GLOBAL } from './csrf';
 
 /**
  * Signature of the `notFound` entry in a generated `virtual:mikata-routes`
@@ -136,12 +137,24 @@ export function mount(
       ? createDomMetaRegistry(document.head)
       : null;
 
+  // Pick up the CSRF token the server embedded on initial render. Absent
+  // on pure-SPA mounts; `<Form>` falls back to no injection in that case,
+  // and actions will reject any submit with 403 — which is what we want
+  // when no server primed the cookie.
+  const csrfToken =
+    typeof window !== 'undefined'
+      ? ((window as unknown as Record<string, unknown>)[CSRF_GLOBAL] as
+          | string
+          | undefined)
+      : undefined;
+
   function App() {
     provideRouter(router);
     provideLoaderData(loaderStore);
     provideActionData(actionStore);
     provideFormContext({ router, actionStore, loaderStore });
     if (headRegistry) provideMetaRegistry(headRegistry);
+    if (csrfToken) provideCsrfToken(csrfToken);
     return routeOutlet();
   }
 

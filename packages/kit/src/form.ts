@@ -24,6 +24,7 @@ import type { Router } from '@mikata/router';
 import { createContext, provide, inject } from '@mikata/runtime';
 import type { ActionStore } from './action';
 import type { LoaderStore } from './loader';
+import { useCsrfToken, CSRF_FORM_FIELD, CSRF_HEADER } from './csrf';
 
 declare const __DEV__: boolean;
 
@@ -54,6 +55,14 @@ export interface FormProps {
    * a regular `<form>` element). Default: `false`.
    */
   reloadDocument?: boolean;
+  /**
+   * Skip CSRF protection for this form. The hidden `_csrf` input is
+   * omitted and enhanced submit doesn't send the `X-Mikata-CSRF`
+   * header — the server will refuse the action with `403`. Use only
+   * when the target route deliberately opts out of CSRF (e.g. a public
+   * webhook endpoint accepting form data). Default: `true` (on).
+   */
+  csrf?: boolean;
   /**
    * Called before the enhanced fetch runs. Invoke `event.preventDefault()`
    * to cancel the submission entirely; otherwise the fetch proceeds.
@@ -120,6 +129,12 @@ export function Form(props: FormProps): HTMLFormElement {
     ctx = undefined;
   }
 
+  // CSRF token is also captured at render time. Both `provideCsrfToken`
+  // paths (server + client) seed it outside the submit handler's scope,
+  // so reading it eagerly matches how we read FormContext above.
+  const csrfToken = useCsrfToken();
+  const csrfEnabled = props.csrf !== false;
+
   const form = document.createElement('form');
   const method = props.method ?? 'post';
   const encType = props.encType ?? 'application/x-www-form-urlencoded';
@@ -140,6 +155,7 @@ export function Form(props: FormProps): HTMLFormElement {
     'reloadDocument',
     'onSubmit',
     'children',
+    'csrf',
   ]);
   for (const [key, value] of Object.entries(props)) {
     if (RESERVED.has(key)) continue;
@@ -151,6 +167,18 @@ export function Form(props: FormProps): HTMLFormElement {
     }
   }
 
+  // Inject the hidden CSRF input *before* user children so the form
+  // data order matches what a user would have written by hand. Skipped
+  // when no token is in context (plain SPA / standalone use) or the
+  // caller opted out.
+  if (csrfEnabled && csrfToken) {
+    const hidden = document.createElement('input');
+    hidden.setAttribute('type', 'hidden');
+    hidden.setAttribute('name', CSRF_FORM_FIELD);
+    hidden.setAttribute('value', csrfToken);
+    form.appendChild(hidden);
+  }
+
   appendChildren(form, props.children);
 
   // Only install the enhancement hook when a live `window.fetch` is
@@ -160,6 +188,7 @@ export function Form(props: FormProps): HTMLFormElement {
   // browser submit the form natively.
   if (typeof window !== 'undefined' && !props.reloadDocument && ctx) {
     const capturedCtx = ctx;
+    const capturedCsrf = csrfEnabled ? csrfToken : undefined;
     form.addEventListener('submit', (event) => {
       if (props.onSubmit) {
         props.onSubmit(event as SubmitEvent);
@@ -167,7 +196,7 @@ export function Form(props: FormProps): HTMLFormElement {
       }
       // Delegate to the enhanced submit path. It calls preventDefault()
       // itself so the browser doesn't also do a native submit.
-      void enhancedSubmit(form, event as SubmitEvent, capturedCtx);
+      void enhancedSubmit(form, event as SubmitEvent, capturedCtx, capturedCsrf);
     });
   }
 
@@ -178,6 +207,7 @@ async function enhancedSubmit(
   form: HTMLFormElement,
   event: SubmitEvent,
   ctx: FormContextValue,
+  csrfToken: string | undefined,
 ): Promise<void> {
   event.preventDefault();
 
@@ -190,15 +220,22 @@ async function enhancedSubmit(
   // also picks up any programmatic changes the onSubmit handler made.
   const formData = new FormData(form);
 
+  // Duplicate the token onto a header as well. The server accepts
+  // either, so if the hidden input was stripped by an earlier handler
+  // or the form was assembled without `<Form>`'s injection path, the
+  // header still carries the proof-of-same-origin.
+  const submitHeaders: Record<string, string> = {
+    Accept: 'application/json',
+    [FORM_SUBMIT_HEADER]: '1',
+  };
+  if (csrfToken) submitHeaders[CSRF_HEADER] = csrfToken;
+
   let response: Response;
   try {
     response = await fetch(actionUrl, {
       method,
       body: formData,
-      headers: {
-        Accept: 'application/json',
-        [FORM_SUBMIT_HEADER]: '1',
-      },
+      headers: submitHeaders,
     });
   } catch (err) {
     // Network/CORS failure. Surface under the current route's

@@ -295,13 +295,22 @@ describe('renderRoute', () => {
   });
 
   describe('actions', () => {
+    // Fixed token used for every POST in this block. `postRequest` sets
+    // `X-Mikata-CSRF` and `CSRF_COOKIE_HEADER` pairs them with the
+    // inbound cookie so kit's double-submit check passes.
+    const CSRF_TOKEN = 'a'.repeat(32);
+    const CSRF_COOKIE_HEADER = `mikata_csrf=${CSRF_TOKEN}`;
+
     // Build a mutation Request the same way a real adapter would — fetch's
     // Request is fine in jsdom and matches the shape server.ts expects.
     function postRequest(url: string, body = 'name=ada'): Request {
       return new Request(`http://x${url}`, {
         method: 'POST',
         body,
-        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        headers: {
+          'content-type': 'application/x-www-form-urlencoded',
+          'X-Mikata-CSRF': CSRF_TOKEN,
+        },
       });
     }
 
@@ -324,6 +333,7 @@ describe('renderRoute', () => {
       const { actionData, stateScript, status } = await renderRoute(routes, {
         url: '/contact',
         request: postRequest('/contact'),
+        cookieHeader: CSRF_COOKIE_HEADER,
       });
       expect(actionCalls).toBe(1);
       expect(actionData['/contact']).toEqual({
@@ -399,6 +409,7 @@ describe('renderRoute', () => {
       const result = await renderRoute(routes, {
         url: '/c',
         request: postRequest('/c'),
+        cookieHeader: CSRF_COOKIE_HEADER,
       });
       expect(result.redirect).toEqual({ url: '/thanks', status: 303 });
       expect(result.status).toBe(303);
@@ -426,6 +437,7 @@ describe('renderRoute', () => {
       const { actionData, status, stateScript } = await renderRoute(routes, {
         url: '/c',
         request: postRequest('/c'),
+        cookieHeader: CSRF_COOKIE_HEADER,
       });
       expect(status).toBe(500);
       expect(actionData['/c']).toEqual({
@@ -457,6 +469,7 @@ describe('renderRoute', () => {
       const { html } = await renderRoute(routes, {
         url: '/c',
         request: postRequest('/c'),
+        cookieHeader: CSRF_COOKIE_HEADER,
       });
       expect(html).toContain('status saved');
     });
@@ -493,6 +506,7 @@ describe('renderRoute', () => {
       const { html, status } = await renderRoute(routes, {
         url: '/c',
         request: postRequest('/c'),
+        cookieHeader: CSRF_COOKIE_HEADER,
       });
       expect(status).toBe(500);
       expect(html).toContain('rip');
@@ -521,6 +535,7 @@ describe('renderRoute', () => {
       await renderRoute(routes, {
         url: '/c',
         request: postRequest('/c'),
+        cookieHeader: CSRF_COOKIE_HEADER,
       });
       expect(order).toEqual(['action', 'load']);
     });
@@ -558,11 +573,113 @@ describe('renderRoute', () => {
       const { actionData } = await renderRoute(routes, {
         url: '/app/edit',
         request: postRequest('/app/edit'),
+        cookieHeader: CSRF_COOKIE_HEADER,
       });
       expect(childActions).toBe(1);
       expect(parentActions).toBe(0);
       expect(actionData['/app/edit']).toEqual({ data: { child: true } });
       expect(actionData['/app']).toBeUndefined();
+    });
+
+    describe('CSRF protection', () => {
+      it('refuses the submit with 403 when no CSRF token is supplied', async () => {
+        let actionCalls = 0;
+        const Page = staticNode('<p>p</p>', '');
+        const routes = [
+          {
+            path: '/c',
+            lazy: async () => ({
+              default: () => _createComponent(Page, {}),
+              action: async () => {
+                actionCalls++;
+                return { ok: true };
+              },
+            }),
+          },
+        ];
+        // POST without any CSRF token or cookie — the action must never fire.
+        const naked = new Request('http://x/c', {
+          method: 'POST',
+          body: 'name=ada',
+          headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        });
+        const { status, actionData } = await renderRoute(routes, {
+          url: '/c',
+          request: naked,
+        });
+        expect(status).toBe(403);
+        expect(actionCalls).toBe(0);
+        expect(actionData).toEqual({});
+      });
+
+      it('refuses the submit with 403 when tokens do not match', async () => {
+        let actionCalls = 0;
+        const Page = staticNode('<p>p</p>', '');
+        const routes = [
+          {
+            path: '/c',
+            lazy: async () => ({
+              default: () => _createComponent(Page, {}),
+              action: async () => {
+                actionCalls++;
+                return { ok: true };
+              },
+            }),
+          },
+        ];
+        const cookieToken = 'a'.repeat(32);
+        const submittedToken = 'b'.repeat(32);
+        const req = new Request('http://x/c', {
+          method: 'POST',
+          body: 'name=ada',
+          headers: {
+            'content-type': 'application/x-www-form-urlencoded',
+            'X-Mikata-CSRF': submittedToken,
+          },
+        });
+        const { status } = await renderRoute(routes, {
+          url: '/c',
+          request: req,
+          cookieHeader: `mikata_csrf=${cookieToken}`,
+        });
+        expect(status).toBe(403);
+        expect(actionCalls).toBe(0);
+      });
+
+      it('still issues a Set-Cookie on 403 so the client can retry', async () => {
+        const Page = staticNode('<p>p</p>', '');
+        const routes = [
+          {
+            path: '/c',
+            lazy: async () => ({
+              default: () => _createComponent(Page, {}),
+              action: async () => ({ ok: true }),
+            }),
+          },
+        ];
+        // No inbound cookie at all — server should mint a token and echo it
+        // even though the action is refused.
+        const req = new Request('http://x/c', {
+          method: 'POST',
+          body: 'name=ada',
+          headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        });
+        const { status, setCookies } = await renderRoute(routes, {
+          url: '/c',
+          request: req,
+        });
+        expect(status).toBe(403);
+        expect(setCookies.some((c) => c.startsWith('mikata_csrf='))).toBe(true);
+      });
+
+      it('embeds the CSRF token in the state script on normal renders', async () => {
+        const Page = staticNode('<p>p</p>', '');
+        const routes = [
+          { path: '/', component: () => _createComponent(Page, {}) },
+        ];
+        const { stateScript } = await renderRoute(routes, { url: '/' });
+        expect(stateScript).toContain('__MIKATA_CSRF__');
+      });
     });
   });
 

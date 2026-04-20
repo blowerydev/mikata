@@ -80,6 +80,16 @@
       "import": "./dist/session.js",
       "require": "./dist/session.cjs"
     },
+    "./csrf": {
+      "types": "./dist/csrf.d.ts",
+      "import": "./dist/csrf.js",
+      "require": "./dist/csrf.cjs"
+    },
+    "./csrf-server": {
+      "types": "./dist/csrf-server.d.ts",
+      "import": "./dist/csrf-server.js",
+      "require": "./dist/csrf-server.cjs"
+    },
     "./adapter-node": {
       "types": "./dist/adapter-node.d.ts",
       "import": "./dist/adapter-node.js",

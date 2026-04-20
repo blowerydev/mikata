@@ -47,6 +47,8 @@ import {
 } from './action';
 import { createCollectMetaRegistry, provideMetaRegistry } from './head';
 import { createCookies } from './cookies';
+import { provideCsrfToken, CSRF_GLOBAL } from './csrf';
+import { ensureCsrfToken, verifyCsrfFromRequest } from './csrf-server';
 
 /**
  * Signature of the `notFound` entry in a generated `virtual:mikata-routes`
@@ -171,6 +173,13 @@ export async function renderRoute(
     // action just queued, since writes don't mutate the snapshot.
     const cookies = createCookies(cookieHeader);
 
+    // Mint (or reuse) the CSRF token before the action runs. On a GET
+    // this primes the cookie + hidden input so a subsequent POST has
+    // something to verify against; on a POST we need `ensureCsrfToken`
+    // to have returned the existing token so the next render after a
+    // redirect still embeds the same value.
+    const csrfToken = ensureCsrfToken(cookies);
+
     // Resolve the 404 module eagerly so the render closure can return
     // final HTML for an unmatched URL — the renderToString pass can't
     // `await` inside a component. The extra chunk is cheap in the miss
@@ -206,6 +215,27 @@ export async function renderRoute(
     const isMutatingRequest =
       request !== undefined && request.method !== 'GET' && request.method !== 'HEAD';
     if (isMutatingRequest && matches.length > 0) {
+      // Double-submit verify before anything destructive runs. Failure
+      // short-circuits with 403 + no body — legitimate submitters always
+      // have the cookie (it was set on the prior render), so a failure
+      // is either a stale tab or a cross-site attempt. No redirect, no
+      // rendered fallback: the browser surfaces the bare 403 and the
+      // user retries on a fresh page load.
+      const csrfOk = await verifyCsrfFromRequest(request!, cookies);
+      if (!csrfOk) {
+        matcher.dispose();
+        return {
+          html: '',
+          stateScript: '',
+          state: {},
+          status: 403,
+          headTags: '',
+          loaderData: {},
+          actionData: {},
+          setCookies: [...cookies.outgoing()],
+        };
+      }
+
       const leaf = matches[matches.length - 1]!;
       const action = actions.get(leaf.route.fullPath);
       if (action) {
@@ -306,6 +336,7 @@ export async function renderRoute(
         provideLoaderData({ ...loaderData } as LoaderData);
         provideActionData({ ...actionData } as ActionData);
         provideMetaRegistry(headRegistry);
+        provideCsrfToken(csrfToken);
         return routeOutlet();
       }
 
@@ -322,10 +353,15 @@ export async function renderRoute(
     const actionScript = Object.keys(actionData).length
       ? renderStateScript(actionData, ACTION_DATA_GLOBAL)
       : '';
+    // Hand the CSRF token off to the client so SPA-rendered forms (which
+    // mount after server HTML has already shipped) still inject the same
+    // value the cookie holds.
+    const csrfScript = renderStateScript(csrfToken, CSRF_GLOBAL);
 
     return {
       ...rendered,
-      stateScript: rendered.stateScript + loaderScript + actionScript,
+      stateScript:
+        rendered.stateScript + loaderScript + actionScript + csrfScript,
       status,
       headTags: headRegistry.serialize(),
       loaderData,

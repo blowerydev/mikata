@@ -4,6 +4,7 @@ import { mount } from '../src/client';
 import { Form, FORM_SUBMIT_HEADER } from '../src/form';
 import { LOADER_DATA_GLOBAL, useLoaderData } from '../src/loader';
 import { ACTION_DATA_GLOBAL, useActionData } from '../src/action';
+import { CSRF_GLOBAL, CSRF_FORM_FIELD, CSRF_HEADER } from '../src/csrf';
 import type { Router } from '@mikata/router';
 
 // Poll a predicate — mount()'s lazy routes resolve asynchronously,
@@ -91,6 +92,9 @@ describe('<Form>', () => {
     (globalThis as any).fetch = fetchMock;
     delete (window as any)[LOADER_DATA_GLOBAL];
     delete (window as any)[ACTION_DATA_GLOBAL];
+    // Pretend the server primed the CSRF global the way renderRoute would.
+    // Individual tests can `delete` it to exercise the no-provider path.
+    (window as any)[CSRF_GLOBAL] = 'z'.repeat(32);
   });
 
   afterEach(() => {
@@ -99,6 +103,7 @@ describe('<Form>', () => {
     } else {
       delete (globalThis as any).fetch;
     }
+    delete (window as any)[CSRF_GLOBAL];
   });
 
   describe('rendering', () => {
@@ -427,6 +432,61 @@ describe('<Form>', () => {
       expect(onSubmit).toHaveBeenCalledTimes(1);
       expect(fetchMock).toHaveBeenCalledTimes(1);
 
+      h.dispose();
+    });
+  });
+
+  describe('CSRF protection', () => {
+    it('injects a hidden _csrf input populated from the window global', async () => {
+      const h = mountForm();
+      const form = await waitForForm(h.container);
+      const hidden = form.querySelector(
+        `input[name="${CSRF_FORM_FIELD}"]`,
+      ) as HTMLInputElement | null;
+      expect(hidden).not.toBeNull();
+      expect(hidden!.getAttribute('type')).toBe('hidden');
+      expect(hidden!.getAttribute('value')).toBe('z'.repeat(32));
+      h.dispose();
+    });
+
+    it('omits the hidden input when no CSRF global is present', async () => {
+      delete (window as any)[CSRF_GLOBAL];
+      const h = mountForm();
+      const form = await waitForForm(h.container);
+      expect(form.querySelector(`input[name="${CSRF_FORM_FIELD}"]`)).toBeNull();
+      h.dispose();
+    });
+
+    it('omits the hidden input when `csrf={false}` is set', async () => {
+      const h = mountForm({ csrf: false });
+      const form = await waitForForm(h.container);
+      expect(form.querySelector(`input[name="${CSRF_FORM_FIELD}"]`)).toBeNull();
+      h.dispose();
+    });
+
+    it('sets the X-Mikata-CSRF header on enhanced submits', async () => {
+      fetchMock.mockResolvedValue(mockJsonResponse({}));
+      const h = mountForm({ method: 'post', action: '/submit' });
+      const form = await waitForForm(h.container);
+
+      form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+      await waitUntil(() => fetchMock.mock.calls.length === 1);
+
+      const [, init] = fetchMock.mock.calls[0];
+      expect(init.headers[CSRF_HEADER]).toBe('z'.repeat(32));
+      h.dispose();
+    });
+
+    it('omits the CSRF header when the form opts out', async () => {
+      fetchMock.mockResolvedValue(mockJsonResponse({}));
+      const h = mountForm({ method: 'post', action: '/submit', csrf: false });
+      const form = await waitForForm(h.container);
+
+      form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+      await waitUntil(() => fetchMock.mock.calls.length === 1);
+
+      const [, init] = fetchMock.mock.calls[0];
+      expect(init.headers[CSRF_HEADER]).toBeUndefined();
       h.dispose();
     });
   });
