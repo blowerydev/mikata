@@ -180,16 +180,16 @@ describe('dom-shim install: restores prior globals', () => {
     expect(after).toBe(before);
   });
 
-  it('isServerRendering is only true during the render', async () => {
-    const { isServerRendering } = await import('../src/dom-shim');
-    expect(isServerRendering()).toBe(false);
+  it('isSSR is only true during the render', async () => {
+    const { isSSR } = await import('@mikata/runtime');
+    expect(isSSR()).toBe(false);
     await renderToString(() => {
-      expect(isServerRendering()).toBe(true);
+      expect(isSSR()).toBe(true);
       const shim = installShim();
       // Second install inside the same render returns the active handle.
       expect(shim).toBeTruthy();
       return _template('<div></div>').cloneNode(true);
     });
-    expect(isServerRendering()).toBe(false);
+    expect(isSSR()).toBe(false);
   });
 });

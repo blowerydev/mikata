@@ -403,10 +403,6 @@ export interface ShimHandle {
 
 let active: ShimHandle | null = null;
 
-export function isServerRendering(): boolean {
-  return active !== null;
-}
-
 export function installShim(): ShimHandle {
   if (active) return active;
   const globals = globalThis as unknown as Record<string, unknown>;

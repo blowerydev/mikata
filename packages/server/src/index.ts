@@ -114,5 +114,9 @@ function coerceToNode(value: unknown): SNode | null {
   return null;
 }
 
-export { installShim, isServerRendering } from './dom-shim';
+export { installShim } from './dom-shim';
+// Re-export the canonical SSR flag from `@mikata/runtime` so callers
+// that only depend on `@mikata/server` can still branch on it without
+// reaching for a second package.
+export { isSSR } from '@mikata/runtime';
 export { escapeStateScript, renderStateScript };

@@ -50,14 +50,11 @@ import { createCookies } from './cookies';
 import { provideCsrfToken, CSRF_GLOBAL } from './csrf';
 import { ensureCsrfToken, verifyCsrfFromRequest } from './csrf-server';
 
-/**
- * Signature of the `notFound` entry in a generated `virtual:mikata-routes`
- * manifest: a dynamic-import-backed module loader whose default export is
- * the 404 component.
- */
-export type NotFoundModuleLoader = () => Promise<{
-  default: (props: Record<string, unknown>) => unknown;
-}>;
+// Canonical `NotFoundModuleLoader` lives on `./client` so the two
+// entries stay in lock-step. Re-exported here because server consumers
+// don't otherwise import from the client module.
+import type { NotFoundModuleLoader } from './client';
+export type { NotFoundModuleLoader };
 
 export interface RenderRouteOptions extends Omit<RouterOptions, 'routes' | 'history' | 'notFound'> {
   /**
