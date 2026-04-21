@@ -13,6 +13,7 @@ export default defineConfig({
     'src/api.ts',
     'src/cookies.ts',
     'src/session.ts',
+    'src/session-browser.ts',
     'src/csrf.ts',
     'src/csrf-server.ts',
     'src/adapter-node.ts',
