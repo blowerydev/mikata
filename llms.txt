@@ -596,6 +596,8 @@ const [color, setColor] = signal('red');
 
 Supported types: `'text'` (default), `'checkbox'`, `'radio'`, `'number'`, `'select'`.
 
+The return shape is narrowed per `type` via overloads — text/number/default → `{ value: T, onInput }`, checkbox/radio → `{ checked: boolean, onChange }`, select → `{ value: T, onChange }`. Destructuring gives you tightly-typed bindings (`const { checked, onChange } = model(agree, setAgree, 'checkbox')`) with no optionality — no `props.onChange!(e)` non-null assertion needed.
+
 ### portal(render, target) → Node
 
 Render content into a different DOM subtree. Returns a comment placeholder in the original position.
