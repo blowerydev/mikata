@@ -17,6 +17,7 @@ import { isValidProjectName, PROJECT_NAME_HINT } from './validate.js';
 const PRESETS: Record<string, Feature[]> = {
   minimal: [],
   spa: ['router', 'testing'],
+  ssr: ['kit', 'testing'],
   full: ['router', 'ui', 'icons', 'form', 'i18n', 'store', 'testing', 'eslint'],
 };
 
@@ -28,8 +29,9 @@ ${pc.bold('Usage')}
   ${pc.dim('$')} npm  create mikata@latest ${pc.italic('<name>')} [options]
 
 ${pc.bold('Options')}
-  --template <preset>     minimal | spa | full
+  --template <preset>     minimal | spa | ssr | full
   --router                add @mikata/router
+  --kit                   add @mikata/kit (file-based routing + SSR; replaces --router)
   --ui                    add @mikata/ui + ThemeProvider
   --icons                 add @mikata/icons
   --form                  add form example

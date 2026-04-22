@@ -14,5 +14,7 @@ export async function render(ctx: {
   });
 }
 
-// Re-export so kit's adapter + middleware dispatch API verbs before SSR.
-export { apiRoutes };
+// Re-exports:
+//   - `routes` so @mikata/kit/prerender can walk the tree at build time.
+//   - `apiRoutes` so the adapter + middleware dispatch API verbs before SSR.
+export { routes, apiRoutes };

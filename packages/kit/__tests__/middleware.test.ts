@@ -9,6 +9,7 @@ interface FakeServer {
   transformIndexHtml: ReturnType<typeof vi.fn>;
   ssrLoadModule: ReturnType<typeof vi.fn>;
   ssrFixStacktrace: (err: Error) => void;
+  ws: { send: ReturnType<typeof vi.fn> };
 }
 
 function makeServer(overrides: Partial<FakeServer> = {}): FakeServer {
@@ -18,6 +19,7 @@ function makeServer(overrides: Partial<FakeServer> = {}): FakeServer {
     ),
     ssrLoadModule: vi.fn(),
     ssrFixStacktrace: () => {},
+    ws: { send: vi.fn() },
     ...overrides,
   };
 }
@@ -245,22 +247,26 @@ describe('createSsrMiddleware', () => {
     expect(payload.loaderData['/c'].data).toBe(1);
   });
 
-  it('forwards a helpful error when the server entry is missing', async () => {
+  it('surfaces a helpful error when the server entry is missing', async () => {
     const root = await mkProject({
       'index.html': '<!--ssr-outlet-->',
     });
     const server = makeServer();
     const mw = createSsrMiddleware(server as any, { projectRoot: root });
     const next = vi.fn();
+    const res = makeRes();
 
-    await mw(makeReq('/'), makeRes(), next);
+    await mw(makeReq('/'), res, next);
 
-    expect(next).toHaveBeenCalledTimes(1);
-    const err = next.mock.calls[0][0] as Error;
-    expect(err.message).toContain('server entry not found');
+    expect(next).not.toHaveBeenCalled();
+    expect(res.statusCode).toBe(500);
+    expect(res.body).toContain('server entry not found');
+    const sent = server.ws.send.mock.calls[0]?.[0];
+    expect(sent.type).toBe('error');
+    expect(sent.err.message).toContain('server entry not found');
   });
 
-  it('errors if the loaded entry has no render export', async () => {
+  it('surfaces an error if the loaded entry has no render export', async () => {
     const root = await mkProject({
       'index.html': '<!--ssr-outlet-->',
       'src/entry-server.ts': 'export const other = 1;',
@@ -270,12 +276,96 @@ describe('createSsrMiddleware', () => {
     });
     const mw = createSsrMiddleware(server as any, { projectRoot: root });
     const next = vi.fn();
+    const res = makeRes();
 
-    await mw(makeReq('/'), makeRes(), next);
+    await mw(makeReq('/'), res, next);
 
-    expect(next).toHaveBeenCalledTimes(1);
-    const err = next.mock.calls[0][0] as Error;
-    expect(err.message).toContain('must export a named `render');
+    expect(next).not.toHaveBeenCalled();
+    expect(res.statusCode).toBe(500);
+    expect(res.body).toContain('must export a named `render');
+  });
+
+  it('pipes render() errors to the Vite HMR overlay and serves a 500 shell', async () => {
+    const root = await mkProject({
+      'index.html': '<html><head></head><body><!--ssr-outlet--></body></html>',
+      'src/entry-server.ts': 'export const render = () => ({});',
+    });
+    const boom = new Error('loader blew up');
+    const server = makeServer({
+      ssrLoadModule: vi.fn(async () => ({
+        render: () => {
+          throw boom;
+        },
+      })),
+    });
+    const fixed = vi.fn();
+    (server as any).ssrFixStacktrace = fixed;
+    const mw = createSsrMiddleware(server as any, { projectRoot: root });
+    const next = vi.fn();
+    const res = makeRes();
+
+    await mw(makeReq('/'), res, next);
+
+    expect(next).not.toHaveBeenCalled();
+    expect(fixed).toHaveBeenCalledWith(boom);
+    expect(server.ws.send).toHaveBeenCalledTimes(1);
+    const payload = server.ws.send.mock.calls[0][0];
+    expect(payload.type).toBe('error');
+    expect(payload.err.message).toBe('loader blew up');
+    expect(typeof payload.err.stack).toBe('string');
+
+    expect(res.statusCode).toBe(500);
+    expect(res._headers['Content-Type']).toContain('text/html');
+    expect(res.body).toContain('/@vite/client');
+    expect(res.body).toContain('loader blew up');
+  });
+
+  it('escapes HTML in the 500 error page so the message cannot inject markup', async () => {
+    const root = await mkProject({
+      'index.html': '<!--ssr-outlet-->',
+      'src/entry-server.ts': 'export const render = () => ({});',
+    });
+    const server = makeServer({
+      ssrLoadModule: vi.fn(async () => ({
+        render: () => {
+          throw new Error('<script>alert(1)</script>');
+        },
+      })),
+    });
+    const mw = createSsrMiddleware(server as any, { projectRoot: root });
+    const res = makeRes();
+
+    await mw(makeReq('/'), res, vi.fn());
+
+    expect(res.body).not.toContain('<script>alert(1)</script>');
+    expect(res.body).toContain('&lt;script&gt;alert(1)&lt;/script&gt;');
+  });
+
+  it('still responds with 500 HTML when server.ws is unavailable', async () => {
+    const root = await mkProject({
+      'index.html': '<!--ssr-outlet-->',
+      'src/entry-server.ts': 'export const render = () => ({});',
+    });
+    const throwingWs = {
+      send: vi.fn(() => {
+        throw new Error('ws closed');
+      }),
+    };
+    const server = makeServer({
+      ssrLoadModule: vi.fn(async () => ({
+        render: () => {
+          throw new Error('boom');
+        },
+      })),
+      ws: throwingWs,
+    });
+    const mw = createSsrMiddleware(server as any, { projectRoot: root });
+    const res = makeRes();
+
+    await mw(makeReq('/'), res, vi.fn());
+
+    expect(res.statusCode).toBe(500);
+    expect(res.body).toContain('boom');
   });
 
   it('passes render()-returned status through to res.statusCode', async () => {

@@ -30,6 +30,8 @@ import { noSignalWriteInComputed } from './rules/no-signal-write-in-computed';
 import { requireSignalCall } from './rules/require-signal-call';
 import { noSignalAssignment } from './rules/no-signal-assignment';
 import { noStaleSignalReadInEffect } from './rules/no-stale-signal-read-in-effect';
+import { noDiscardedRedirect } from './rules/no-discarded-redirect';
+import { noApiRouteDefaultExport } from './rules/no-api-route-default-export';
 
 const rules: Record<string, Rule.RuleModule> = {
   'rules-of-setup': rulesOfSetup,
@@ -40,6 +42,8 @@ const rules: Record<string, Rule.RuleModule> = {
   'require-signal-call': requireSignalCall,
   'no-signal-assignment': noSignalAssignment,
   'no-stale-signal-read-in-effect': noStaleSignalReadInEffect,
+  'no-discarded-redirect': noDiscardedRedirect,
+  'no-api-route-default-export': noApiRouteDefaultExport,
 };
 
 const plugin: ESLint.Plugin = {
@@ -68,14 +72,34 @@ const recommendedFlat: Linter.FlatConfig = {
   },
 };
 
+// Kit-aware preset: the base rules plus lints that catch @mikata/kit-specific
+// mistakes (discarded redirects, default-export-mixed-with-verbs in route files).
+const recommendedKitFlat: Linter.FlatConfig = {
+  plugins: {
+    '@mikata': plugin,
+  },
+  rules: {
+    ...recommendedFlat.rules,
+    '@mikata/no-discarded-redirect': 'error',
+    '@mikata/no-api-route-default-export': 'error',
+  },
+};
+
 // Legacy config - `"extends": ["plugin:@mikata/recommended"]`.
 const recommendedLegacy: Linter.LegacyConfig = {
   plugins: ['@mikata'],
   rules: recommendedFlat.rules,
 };
 
+const recommendedKitLegacy: Linter.LegacyConfig = {
+  plugins: ['@mikata'],
+  rules: recommendedKitFlat.rules,
+};
+
 (plugin.configs as Record<string, unknown>).recommended = recommendedFlat;
+(plugin.configs as Record<string, unknown>)['recommended-kit'] = recommendedKitFlat;
 (plugin.configs as Record<string, unknown>)['legacy-recommended'] = recommendedLegacy;
+(plugin.configs as Record<string, unknown>)['legacy-recommended-kit'] = recommendedKitLegacy;
 
 export default plugin;
 export { rules };

@@ -17,10 +17,12 @@
 
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
-import type { Plugin, ViteDevServer } from 'vite';
+import { pathToFileURL } from 'node:url';
+import type { Plugin, ResolvedConfig, ViteDevServer } from 'vite';
 import { scanRoutes, isApiRouteSource, type RouteManifest } from './scan-routes';
 import { generateManifestModule } from './generate-manifest';
 import { createSsrMiddleware } from './middleware';
+import { prerender, type PrerenderOptions } from './prerender';
 
 export interface MikataKitOptions {
   /**
@@ -43,6 +45,38 @@ export interface MikataKitOptions {
     /** HTML comment replaced with the rendered tree. Default: `<!--ssr-outlet-->`. */
     outletMarker?: string;
   };
+  /**
+   * Static-site generation. Runs after the SSR build completes (hooked
+   * into `closeBundle` of the SSR invocation) and writes a ready-to-deploy
+   * site to `outDir`. Pass `true` to enable with defaults, an object to
+   * override, or `false` / omit to disable.
+   *
+   * The plugin only acts on SSR builds — `vite build --ssr ...` — so the
+   * standard two-invocation flow (client build, then server build) works
+   * unchanged.
+   */
+  prerender?: boolean | {
+    /** Output directory for the static site. Default: `dist/static`. */
+    outDir?: string;
+    /** Client-build directory to copy assets from. Default: `dist/client`. */
+    clientDir?: string;
+    /** Extra concrete URLs to render on top of auto-discovered ones. */
+    paths?: readonly string[];
+    /**
+     * Origin used when constructing per-page Fetch requests. Default:
+     * `http://localhost`. Only the origin is used — pathname + search
+     * come from the discovered URL.
+     */
+    baseUrl?: string;
+    /** Emit a `404.html`. Default: `true`. */
+    notFoundHtml?: boolean;
+    /**
+     * Behaviour when a parametric route has no `getStaticPaths` export
+     * and no entry in `paths` matches its pattern. `'error'` (default)
+     * fails the build; `'skip'` logs a warning and continues.
+     */
+    fallback?: 'error' | 'skip';
+  };
 }
 
 const VIRTUAL_ID = 'virtual:mikata-routes';
@@ -56,10 +90,14 @@ export default function mikataKit(options: MikataKitOptions = {}): Plugin {
   const routesDirRel = options.routesDir ?? 'src/routes';
   const extensions = options.extensions ?? DEFAULT_EXTENSIONS;
   const ssrOptions = options.ssr === false ? null : (options.ssr ?? {});
+  const prerenderOptions = normalizePrerenderOptions(options.prerender);
+  const ssrEntryRel =
+    (ssrOptions && ssrOptions.entry) ?? 'src/entry-server';
 
   let server: ViteDevServer | undefined;
   let projectRoot = '';
   let routesDirAbs = '';
+  let resolvedConfig: ResolvedConfig | undefined;
 
   async function readManifest(): Promise<RouteManifest> {
     const files: string[] = [];
@@ -98,6 +136,7 @@ export default function mikataKit(options: MikataKitOptions = {}): Plugin {
     },
 
     configResolved(config) {
+      resolvedConfig = config;
       projectRoot = config.root;
       routesDirAbs = toPosix(path.resolve(projectRoot, routesDirRel));
     },
@@ -146,8 +185,144 @@ export default function mikataKit(options: MikataKitOptions = {}): Plugin {
         manifest,
       });
     },
+
+    // Run the SSG pass after the SSR build finishes. Vite invokes the
+    // build twice in a typical kit app — once for the client bundle and
+    // once for the SSR bundle — and we key off `build.ssr` so the client
+    // pass is a no-op here. By the time this fires, both
+    // `dist/client/index.html` and the SSR entry (`dist/server/...`) are
+    // on disk, so we can import the entry and call `prerender()`.
+    async closeBundle() {
+      if (!prerenderOptions) return;
+      if (!resolvedConfig) return;
+      if (!resolvedConfig.build.ssr) return;
+
+      const clientDir = path.resolve(projectRoot, prerenderOptions.clientDir);
+      const outDir = path.resolve(projectRoot, prerenderOptions.outDir);
+
+      const templatePath = path.join(clientDir, 'index.html');
+      let template: string;
+      try {
+        template = await fs.readFile(templatePath, 'utf-8');
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error(
+          `[mikata-kit prerender] missing ${templatePath}. Build the client bundle first (\`vite build --outDir ${prerenderOptions.clientDir}\`).`,
+        );
+        throw err;
+      }
+
+      // The SSR output dir is this build's `build.outDir`. We need the
+      // same filename Vite just wrote; by convention that's the entry
+      // stem with a `.js` extension. Pull it out of `rollupOptions.input`
+      // to stay robust against renames (e.g. users who rename
+      // entry-server.tsx to server.tsx).
+      const ssrEntryFilename = resolveSsrEntryFilename(
+        resolvedConfig,
+        ssrEntryRel,
+      );
+      const ssrOutDir = path.resolve(
+        projectRoot,
+        resolvedConfig.build.outDir,
+      );
+      const entryPath = path.join(ssrOutDir, ssrEntryFilename);
+
+      // Dynamic import via `file://` URL — Windows file paths can't be
+      // used as import specifiers directly. The user's server entry is
+      // expected to re-export `routes` alongside `render` so the
+      // prerender can walk the route tree without a second build pass.
+      // (The kit template does this by default.)
+      const entryModule = (await import(
+        pathToFileURL(entryPath).href
+      )) as {
+        render: Parameters<typeof prerender>[0]['serverEntry']['render'];
+        apiRoutes?: Parameters<typeof prerender>[0]['serverEntry']['apiRoutes'];
+        routes?: Parameters<typeof prerender>[0]['routes'];
+      };
+
+      if (!entryModule.routes) {
+        throw new Error(
+          `[mikata-kit prerender] ${entryPath} does not export \`routes\`. ` +
+            `Add \`export { default as routes } from 'virtual:mikata-routes';\` to the server entry.`,
+        );
+      }
+
+      // eslint-disable-next-line no-console
+      console.log(`\n[mikata-kit] prerendering → ${path.relative(projectRoot, outDir)}/`);
+      const result = await prerender({
+        template,
+        clientDir,
+        outDir,
+        serverEntry: entryModule,
+        routes: entryModule.routes,
+        paths: prerenderOptions.paths,
+        baseUrl: prerenderOptions.baseUrl,
+        notFoundHtml: prerenderOptions.notFoundHtml,
+        fallback: prerenderOptions.fallback,
+        // eslint-disable-next-line no-console
+        log: (msg) => console.log(msg),
+      });
+
+      if (result.errors.length > 0) {
+        // eslint-disable-next-line no-console
+        console.error(
+          `[mikata-kit] prerender finished with ${result.errors.length} error${result.errors.length === 1 ? '' : 's'}:`,
+        );
+        for (const e of result.errors) {
+          // eslint-disable-next-line no-console
+          console.error(`  ${e.url}: ${e.error.message}`);
+        }
+        throw new Error('Prerender failed — see errors above.');
+      }
+    },
   };
 }
+
+interface NormalizedPrerenderOptions {
+  outDir: string;
+  clientDir: string;
+  paths?: readonly string[];
+  baseUrl?: string;
+  notFoundHtml?: boolean;
+  fallback?: 'error' | 'skip';
+}
+
+function normalizePrerenderOptions(
+  raw: MikataKitOptions['prerender'],
+): NormalizedPrerenderOptions | null {
+  if (!raw) return null;
+  if (raw === true) {
+    return { outDir: 'dist/static', clientDir: 'dist/client' };
+  }
+  return {
+    outDir: raw.outDir ?? 'dist/static',
+    clientDir: raw.clientDir ?? 'dist/client',
+    paths: raw.paths,
+    baseUrl: raw.baseUrl,
+    notFoundHtml: raw.notFoundHtml,
+    fallback: raw.fallback,
+  };
+}
+
+/**
+ * Figure out the filename Vite wrote for the SSR entry. Prefers the
+ * rollup input map (handles renames and multi-entry builds), falling
+ * back to the `<entry-stem>.js` convention.
+ */
+function resolveSsrEntryFilename(
+  config: ResolvedConfig,
+  entryRel: string,
+): string {
+  const input = config.build.rollupOptions?.input;
+  if (input && typeof input === 'object' && !Array.isArray(input)) {
+    // Named input map: `{ 'entry-server': 'src/entry-server.tsx' }`
+    // becomes `entry-server.js` on disk.
+    const keys = Object.keys(input);
+    if (keys.length === 1) return keys[0]! + '.js';
+  }
+  return path.basename(entryRel) + '.js';
+}
+
 
 // ---------------------------------------------------------------------------
 // filesystem walk

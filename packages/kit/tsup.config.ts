@@ -17,6 +17,8 @@ export default defineConfig({
     'src/csrf.ts',
     'src/csrf-server.ts',
     'src/adapter-node.ts',
+    'src/adapter-edge.ts',
+    'src/prerender.ts',
   ],
   format: ['esm', 'cjs'],
   dts: true,

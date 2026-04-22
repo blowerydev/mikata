@@ -13,6 +13,7 @@ interface PromptInput {
 
 const FEATURE_CHOICES: { value: Feature; title: string; description: string }[] = [
   { value: 'router',   title: 'Router',        description: 'File-like routes, nested layouts, typed search params' },
+  { value: 'kit',      title: 'Kit (SSR)',     description: '@mikata/kit - file-based routes + SSR (replaces Router)' },
   { value: 'ui',       title: 'UI components', description: '@mikata/ui - 80+ components + ThemeProvider'           },
   { value: 'icons',    title: 'Icons',         description: '@mikata/icons - tree-shakable SVG set'                  },
   { value: 'form',     title: 'Form',          description: '@mikata/form - createForm with validation'              },

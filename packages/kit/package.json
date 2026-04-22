@@ -95,6 +95,16 @@
       "types": "./dist/adapter-node.d.ts",
       "import": "./dist/adapter-node.js",
       "require": "./dist/adapter-node.cjs"
+    },
+    "./adapter-edge": {
+      "types": "./dist/adapter-edge.d.ts",
+      "import": "./dist/adapter-edge.js",
+      "require": "./dist/adapter-edge.cjs"
+    },
+    "./prerender": {
+      "types": "./dist/prerender.d.ts",
+      "import": "./dist/prerender.js",
+      "require": "./dist/prerender.cjs"
     }
   },
   "sideEffects": false,

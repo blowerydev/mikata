@@ -94,16 +94,18 @@ export async function scaffold(cfg: ResolvedConfig): Promise<ScaffoldResult> {
 }
 
 function writeProject(cfg: ResolvedConfig, targetDir: string): void {
+  const features = normalizeFeatures(cfg.features);
+
   // Collect files from base + each feature overlay (later overlays win).
   const files = new Map<string, string>();
   copyTreeInto(join(TEMPLATES, 'base'), files);
-  for (const feat of cfg.features) {
+  for (const feat of features) {
     const featDir = join(TEMPLATES, 'features', feat);
     if (existsSync(featDir)) copyTreeInto(featDir, files);
   }
 
   // Strip unselected conditional blocks and write to disk.
-  const selected = new Set<Feature>(cfg.features);
+  const selected = new Set<Feature>(features);
   const unknownTags = new Set<string>();
   for (const [relPath, content] of files) {
     // feature.json files only carry package.json patches - not project output.
@@ -126,30 +128,33 @@ function writeProject(cfg: ResolvedConfig, targetDir: string): void {
     );
   }
 
-  // Generate the entrypoint + root component based on selected features.
-  mkdirSync(join(targetDir, 'src'), { recursive: true });
-  writeFileSync(join(targetDir, 'src', 'main.tsx'), generateMainTsx(selected));
-  process.stdout.write(pc.dim(`  ${pc.green('+')} src/main.tsx\n`));
-  writeFileSync(join(targetDir, 'src', 'App.tsx'), generateAppTsx(selected));
-  process.stdout.write(pc.dim(`  ${pc.green('+')} src/App.tsx\n`));
-  if (selected.has('testing')) {
-    writeFileSync(join(targetDir, 'src', 'App.test.tsx'), generateAppTest(selected));
-    process.stdout.write(pc.dim(`  ${pc.green('+')} src/App.test.tsx\n`));
-  }
-  if (selected.has('router')) {
-    const pagesDir = join(targetDir, 'src', 'pages');
-    mkdirSync(pagesDir, { recursive: true });
-    writeFileSync(join(pagesDir, 'Home.tsx'), generateRouterHome(selected));
-    process.stdout.write(pc.dim(`  ${pc.green('+')} src/pages/Home.tsx\n`));
-    writeFileSync(join(pagesDir, 'About.tsx'), generateRouterAbout());
-    process.stdout.write(pc.dim(`  ${pc.green('+')} src/pages/About.tsx\n`));
+  // Kit apps drive everything through file-based routes in src/routes/ - the
+  // client/server entries come from the kit feature overlay, not this generator.
+  if (!selected.has('kit')) {
+    mkdirSync(join(targetDir, 'src'), { recursive: true });
+    writeFileSync(join(targetDir, 'src', 'main.tsx'), generateMainTsx(selected));
+    process.stdout.write(pc.dim(`  ${pc.green('+')} src/main.tsx\n`));
+    writeFileSync(join(targetDir, 'src', 'App.tsx'), generateAppTsx(selected));
+    process.stdout.write(pc.dim(`  ${pc.green('+')} src/App.tsx\n`));
+    if (selected.has('testing')) {
+      writeFileSync(join(targetDir, 'src', 'App.test.tsx'), generateAppTest(selected));
+      process.stdout.write(pc.dim(`  ${pc.green('+')} src/App.test.tsx\n`));
+    }
+    if (selected.has('router')) {
+      const pagesDir = join(targetDir, 'src', 'pages');
+      mkdirSync(pagesDir, { recursive: true });
+      writeFileSync(join(pagesDir, 'Home.tsx'), generateRouterHome(selected));
+      process.stdout.write(pc.dim(`  ${pc.green('+')} src/pages/Home.tsx\n`));
+      writeFileSync(join(pagesDir, 'About.tsx'), generateRouterAbout());
+      process.stdout.write(pc.dim(`  ${pc.green('+')} src/pages/About.tsx\n`));
+    }
   }
 
   // Merge package.json from base + each feature manifest.
   const pkg = JSON.parse(readFileSync(join(TEMPLATES, 'base', '_package.json'), 'utf8'));
   pkg.name = cfg.name;
   const depVersions = new Map<string, { version: string; source: string }>();
-  for (const feat of cfg.features) {
+  for (const feat of features) {
     const manifestPath = join(TEMPLATES, 'features', feat, 'feature.json');
     if (!existsSync(manifestPath)) continue;
     let manifest: FeatureManifest;
@@ -166,6 +171,25 @@ function writeProject(cfg: ResolvedConfig, targetDir: string): void {
   pkg.dependencies = sortKeys(pkg.dependencies);
   pkg.devDependencies = sortKeys(pkg.devDependencies);
   writeFileSync(join(targetDir, 'package.json'), JSON.stringify(pkg, null, 2) + '\n');
+}
+
+/**
+ * Kit brings its own router (file-based), so `router` is redundant when `kit`
+ * is selected - and its manual-routing App.tsx scaffold would collide with
+ * kit's `src/routes/` tree. Drop router silently-ish when both are present.
+ */
+function normalizeFeatures(features: Feature[]): Feature[] {
+  const set = new Set<Feature>(features);
+  if (set.has('kit') && set.has('router')) {
+    process.stderr.write(
+      pc.yellow(
+        `  ! kit includes file-based routing - dropping "router" (use one or the other).\n`
+      )
+    );
+    set.delete('router');
+  }
+  // Preserve original order, minus anything we dropped.
+  return features.filter((f) => set.has(f));
 }
 
 function mergeDeps(
@@ -209,9 +233,15 @@ function copyTreeInto(sourceDir: string, acc: Map<string, string>, prefix = ''):
  * Filenames beginning with `_` (e.g. `_gitignore`, `_npmrc`, `_package.json`)
  * get mapped to dotfiles on write. npm strips dotfiles from published packages,
  * so we store the source with `_` and restore the dot at scaffold time.
+ *
+ * A literal leading `_` (e.g. kit's `_layout.tsx` marker for file-based
+ * routing) is escaped in the template as `__layout.tsx` and emitted as
+ * `_layout.tsx` here.
  */
 function renameDotfiles(path: string): string {
-  return path.replace(/(^|\/)_(?=[a-zA-Z])/g, '$1.');
+  return path.replace(/(^|\/)(_+)(?=[a-zA-Z])/g, (_m, pre: string, us: string) =>
+    pre + (us.length > 1 ? us.slice(1) : '.')
+  );
 }
 
 /**

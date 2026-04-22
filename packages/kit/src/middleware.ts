@@ -145,19 +145,15 @@ export function createSsrMiddleware(
     try {
       const entryAbs = await resolveEntry(options.projectRoot, entryRel);
       if (!entryAbs) {
-        return next(
-          new Error(
-            `[mikata-kit] server entry not found. Looked for ${entryRel}${ENTRY_EXTENSIONS.join('|')} under ${options.projectRoot}`,
-          ),
+        throw new Error(
+          `[mikata-kit] server entry not found. Looked for ${entryRel}${ENTRY_EXTENSIONS.join('|')} under ${options.projectRoot}`,
         );
       }
 
       const mod = (await server.ssrLoadModule(entryAbs)) as Partial<UserEntry>;
       if (typeof mod.render !== 'function') {
-        return next(
-          new Error(
-            `[mikata-kit] ${entryRel} must export a named \`render(context)\` function`,
-          ),
+        throw new Error(
+          `[mikata-kit] ${entryRel} must export a named \`render(context)\` function`,
         );
       }
 
@@ -245,12 +241,73 @@ export function createSsrMiddleware(
       res.setHeader('Content-Type', 'text/html');
       res.end(full);
     } catch (err) {
-      // Let Vite rewrite the stack so source maps point at the user's
-      // original file, not the bundled SSR output.
-      if (err instanceof Error) server.ssrFixStacktrace(err);
-      next(err);
+      if (!(err instanceof Error)) {
+        return next(err);
+      }
+      // Rewrite the stack through the Vite SSR source map so frames point
+      // at the user's original file, not the bundled SSR output.
+      server.ssrFixStacktrace(err);
+
+      // Surface to Vite's built-in HMR overlay. When the page already has
+      // an HMR client connected (the common dev loop - user was on a page
+      // and triggered a request), the overlay appears on that current
+      // page immediately. For a fresh load that hits the error directly,
+      // the 500 HTML response below is the visible fallback.
+      try {
+        server.ws.send({
+          type: 'error',
+          err: {
+            message: err.message,
+            stack: err.stack ?? '',
+          },
+        });
+      } catch {
+        // `server.ws` may be unavailable (server closing, some test
+        // harnesses). Swallow - the HTML response still carries the
+        // full error text.
+      }
+
+      res.statusCode = 500;
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.end(renderErrorPage(err));
     }
   };
+}
+
+/**
+ * Dev-only 500 page. Embeds `/@vite/client` so the HMR overlay surfaces
+ * if/when it connects, and inlines the error text as a readable fallback.
+ * Prod adapters render a plain response and let the user's ErrorBoundary
+ * handle rendering.
+ */
+function renderErrorPage(err: Error): string {
+  const message = escapeHtml(err.message || 'SSR error');
+  const stack = escapeHtml(err.stack ?? '');
+  return (
+    '<!doctype html><html><head>' +
+    '<meta charset="utf-8">' +
+    '<title>SSR Error - Mikata Kit</title>' +
+    '<script type="module" src="/@vite/client"></script>' +
+    '<style>' +
+    'body{font:14px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;' +
+    'background:#1a1a1a;color:#fff;margin:0;padding:24px}' +
+    'h1{color:#e5484d;margin:0 0 16px;font-size:18px;font-weight:600}' +
+    'pre{white-space:pre-wrap;word-break:break-word;margin:0;opacity:.85}' +
+    '</style>' +
+    '</head><body>' +
+    `<h1>${message}</h1>` +
+    `<pre>${stack}</pre>` +
+    '</body></html>'
+  );
+}
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 /**

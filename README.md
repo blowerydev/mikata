@@ -157,7 +157,13 @@ export default { plugins: [mikata(), mikataKit()] };
 
 Routing conventions: `index.tsx` → parent path, `[id].tsx` → `:id`, `[...rest].tsx` → catch-all, `_layout.tsx` → nested layout. Route modules can export `load(ctx)` to fetch data server-side; `useLoaderData()` returns the seeded value during hydration. See `examples/kit-ssr/` for a runnable app.
 
-Production deploys use `@mikata/kit/adapter-node` — a zero-dependency Node HTTP handler. `vite build && vite build --ssr` emits `dist/client/` + `dist/server/`; a tiny `server.js` wires the adapter against those outputs. Full pattern + gotchas in `llms.txt`.
+Production ships three deploy targets:
+
+- **Node** — `@mikata/kit/adapter-node` exposes `createRequestHandler()`, a zero-dependency `(req, res) => Promise<void>` wired against `dist/client/` + `dist/server/` from the two Vite build passes.
+- **Edge / Workers** — `@mikata/kit/adapter-edge` exposes `createFetchHandler()`, a web-standard `(request: Request) => Promise<Response>` for Cloudflare Workers, Deno Deploy, Vercel Edge, Netlify Edge, Bun.serve — anywhere a Fetch handler is the native entry.
+- **Static (SSG)** — `@mikata/kit/prerender` (or `mikataKit({ prerender: true })`) walks the route tree, expands parametric routes via each route's `getStaticPaths` export, renders every URL through the Fetch handler, copies client assets in, and writes a drop-in static site to `dist/static/`. Missing `getStaticPaths` on a `:param` route fails the build by default.
+
+Full patterns, options, and gotchas for all three in `llms.txt`.
 
 ## Why
 

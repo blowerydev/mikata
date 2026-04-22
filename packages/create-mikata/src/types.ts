@@ -1,5 +1,6 @@
 export const FEATURES = [
   'router',
+  'kit',
   'ui',
   'icons',
   'form',

@@ -18,6 +18,8 @@ export default tseslint.config(
       'mikata/require-signal-call': 'error',
       'mikata/no-signal-assignment': 'error',
       'mikata/no-stale-signal-read-in-effect': 'error',
+      'mikata/no-discarded-redirect': 'error', // @line-if:kit
+      'mikata/no-api-route-default-export': 'error', // @line-if:kit
     },
   }
 );

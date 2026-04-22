@@ -1031,8 +1031,16 @@ File-based routing + Vite plugin + dev-mode SSR middleware on top of `@mikata/ro
 - `@mikata/kit/client` — `mount(routes, container)` for the client entry
 - `@mikata/kit/server` — `renderRoute(routes, { url })` for the server entry
 - `@mikata/kit/loader` — `load()` API: `useLoaderData`, `provideLoaderData`, `LoadContext`
+- `@mikata/kit/action` — `action()` API + `redirect()` helper for form submits
+- `@mikata/kit/form` — enhanced `<Form>` component (progressive-enhancement submit)
+- `@mikata/kit/api` — types for `GET/POST/...` verb handlers in route files
 - `@mikata/kit/head` — `useMeta()` for per-route `<title>`/`<meta>`/`<link>` tags on both server and client
+- `@mikata/kit/cookies` — per-request cookie handle (read/set/delete) available in loaders + actions
+- `@mikata/kit/session` — signed-cookie sessions with rotation + expiry
+- `@mikata/kit/csrf` / `@mikata/kit/csrf-server` — double-submit CSRF tokens (client hidden input + server verify)
 - `@mikata/kit/adapter-node` — `createRequestHandler()` for production Node deploys
+- `@mikata/kit/adapter-edge` — `createFetchHandler()` for Cloudflare Workers, Deno Deploy, Vercel Edge, Bun.serve, etc.
+- `@mikata/kit/prerender` — `prerender()` for static-site generation (SSG)
 
 ### Routing conventions
 
@@ -1059,11 +1067,13 @@ export default { plugins: [mikata(), mikataKit()] };
 Options:
 - `routesDir`: directory scanned for routes (default `src/routes`)
 - `ssr`: `false` disables the dev SSR middleware (default enabled). Object form: `{ entry?: string, outletMarker?: string }` — `entry` defaults to `src/entry-server.tsx`, `outletMarker` defaults to `<!--ssr-outlet-->`.
+- `prerender`: `true` | `{ outDir?, clientDir?, paths?, baseUrl?, notFoundHtml?, fallback? }`. Enables SSG — the plugin hooks the SSR build's `closeBundle`, imports the built entry, and writes a static site to `outDir` (default `dist/static`). See the `@mikata/kit/prerender` section below.
 
 The plugin:
 - resolves `virtual:mikata-routes` to a manifest of lazy imports
 - HMRs the manifest when files are added / renamed / deleted
 - sets `appType: 'custom'` and installs a Connect middleware that reads `index.html`, transforms it via `server.transformIndexHtml`, loads the server entry via `server.ssrLoadModule`, calls `mod.render({ url, req })`, and splices the result at `<!--ssr-outlet-->`
+- on a render error, calls `server.ssrFixStacktrace(err)` and pushes `{ type: 'error', err }` via `server.ws.send(...)` so the Vite HMR overlay surfaces the crash on any connected page; simultaneously returns a 500 HTML shell that embeds `/@vite/client` (so a fresh load also gets the overlay) and the HTML-escaped error message
 
 Asset URLs (anything with an extension) and non-GET / non-HTML requests bypass the SSR middleware.
 
@@ -1338,6 +1348,120 @@ Gotchas:
 - The server bundle is ESM; import it via `import * as serverEntry from './dist/server/entry-server.js'`. Node ≥ 18 resolves the dynamic-import chunks in `dist/server/assets/` transparently.
 - `@mikata/kit/adapter-node` has zero dependencies (stdlib only) and no peer dep on `vite`, so it is safe to include in a production deploy image.
 - To put it behind a reverse proxy (e.g. nginx), mount the handler on any Connect-style host: `app.use(handler)`. The handler does not read `req.url` beyond the leading path, so rewrites upstream work as expected.
+
+### Edge / Fetch deploy (`@mikata/kit/adapter-edge`)
+
+For Cloudflare Workers, Deno Deploy, Vercel Edge Functions, Netlify Edge Functions, Bun.serve, or anywhere else the native entry point is a Fetch handler. Same render contract as the Node adapter — so one `entry-server.tsx` feeds both:
+
+```ts
+// worker.ts (Cloudflare)
+import { createFetchHandler } from '@mikata/kit/adapter-edge';
+import * as serverEntry from './dist/server/entry-server.js';
+import template from './dist/client/index.html?raw';
+
+const handler = createFetchHandler({ template, serverEntry });
+
+export default {
+  async fetch(request: Request, env: { ASSETS: { fetch(r: Request): Promise<Response> } }) {
+    const assetResp = await env.ASSETS.fetch(request);
+    if (assetResp.status !== 404) return assetResp;
+    return handler(request);
+  },
+};
+```
+
+`createFetchHandler({ template, serverEntry, outletMarker?, headMarker? })` returns `(request: Request) => Promise<Response>`. Contract:
+
+- `template` is the built `index.html` contents as a string (not a path). Edge runtimes have no filesystem in the usual sense — bundle it in at build time (e.g. Vite's `?raw` import).
+- API dispatch runs first, same as Node. Matching handler short-circuits SSR and its `Response` is returned directly.
+- Otherwise `serverEntry.render({ url, request, cookieHeader })` runs. `request` is always present (Fetch Request reads are lazy so it costs nothing); `url` is the pathname + search + hash with the origin stripped.
+- Redirects become `new Response(null, { status, headers: { Location } })` for native submits, or JSON `{ redirect, loaderData, actionData }` when the `x-mikata-form` header is present.
+- Enhanced-submit JSON response is `application/json; charset=utf-8` with `{ loaderData, actionData }`.
+- `setCookies` entries are appended one-by-one via `headers.append('set-cookie', ...)` so the runtime emits each as its own HTTP header (RFC 6265 shape).
+- Render throws become a 500 `Internal Server Error` plain-text response; the error is logged via `console.error`.
+- **Static assets are the platform's job** — no equivalent of adapter-node's `tryServeStatic`. On Workers use an `ASSETS` binding (as above); on Vercel/Netlify Edge use the platform's asset routing.
+
+### Static-site generation (`@mikata/kit/prerender`)
+
+Build-time SSG: walks the route tree, expands parametric routes via each route file's `getStaticPaths` export, drives every concrete URL through the Fetch handler, and writes a pretty-URL static site. Two entry points — the plugin hook (recommended) and the programmatic `prerender()`.
+
+**Plugin hook (recommended):**
+
+```ts
+// vite.config.ts
+mikataKit({ prerender: true })
+// or with options:
+mikataKit({ prerender: { paths: ['/archive/2024'], fallback: 'error' } })
+```
+
+The plugin keys off `config.build.ssr` so only the SSR build triggers it. After the SSR bundle is written, the plugin imports the built entry, reads `entryModule.routes`, and calls `prerender()` with the built template. `pnpm build` (client pass + SSR pass) becomes one command.
+
+**Requirement**: the server entry must re-export `routes` so the plugin can walk them without a second build pass. The `create-mikata` kit template already does this:
+
+```tsx
+// src/entry-server.tsx
+import { renderRoute } from '@mikata/kit/server';
+import routes, { notFound, apiRoutes } from 'virtual:mikata-routes';
+
+export async function render(ctx) {
+  return renderRoute(routes, { ...ctx, notFound });
+}
+export { routes, apiRoutes };
+```
+
+**Parametric routes — `getStaticPaths`:**
+
+```tsx
+// src/routes/posts/[id].tsx
+export function getStaticPaths() {
+  return [{ id: '1' }, { id: '2' }, { id: '3' }];
+}
+export default function Post() { /* ... */ }
+```
+
+Return value is `Record<string, string>[]` (or a Promise of one). Each entry maps each `:name` segment in the route's full path to a value; values are URL-encoded during substitution. A missing param throws with a clear message naming the pattern + missing key.
+
+**`fallback` — the "forgot getStaticPaths" safety net:**
+
+- `'error'` (default): when a parametric route has no `getStaticPaths` and no entry in `paths` matches its pattern, `prerender()` throws at the end of the run with the list of uncovered patterns and a fix hint. Catches the most common SSG bug at build time.
+- `'skip'`: record into `result.skipped` and keep going. Use while prototyping, or when a route is legitimately dev-only.
+
+A user-supplied `paths` entry whose URL matches the pattern (`:name` → `[^/]+`, `*` → `.*`) suppresses the error for that pattern — so `paths: ['/posts/42']` is a valid opt-out for `/posts/:id`.
+
+**`prerender(options)` — programmatic:**
+
+```ts
+import { prerender } from '@mikata/kit/prerender';
+import * as serverEntry from './dist/server/entry-server.js';
+import { readFile } from 'node:fs/promises';
+
+const result = await prerender({
+  template: await readFile('./dist/client/index.html', 'utf8'),
+  clientDir: './dist/client',
+  outDir: './dist/static',
+  serverEntry,
+  routes: serverEntry.routes,
+  paths: ['/posts/42'],  // optional override list
+  fallback: 'error',      // default
+  log: console.log,
+});
+// result: { pages, errors, skipped }
+```
+
+**Output layout** (pretty URLs by default):
+
+- `/` → `{outDir}/index.html`
+- `/about` → `{outDir}/about/index.html`
+- `/posts/42` → `{outDir}/posts/42/index.html`
+- `404.html` at the root — rendered by poking a sentinel URL that can't match any real route, so whatever the entry's `notFound` handler returns ends up here. Disable with `notFoundHtml: false`.
+
+**Asset copy**: if `clientDir` is provided, its contents are copied verbatim into `outDir` before pages are written, so the root `index.html` (SPA shell) gets *overwritten* by the prerendered `/` page. The result is a drop-in static-deploy directory (`rsync` / `wrangler pages` / `netlify deploy` / `gh-pages` friendly).
+
+**Gotchas**:
+- Cookies, sessions, CSRF tokens are empty at build time — loaders that read them see `null`. A form baked into SSG HTML that relies on a CSRF token will ship a blank/broken token. For those pages, either hydrate the form on the client or don't prerender.
+- `setCookies` returned by the render is discarded — no HTTP response to attach them to.
+- API routes are never prerendered (inherently dynamic).
+- A parametric route can still be included even without `getStaticPaths` by listing concrete URLs in `paths`; the pattern-match coverage logic lets that through under `fallback: 'error'`.
 
 ---
 

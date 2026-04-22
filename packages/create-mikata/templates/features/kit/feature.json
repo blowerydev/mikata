@@ -1,0 +1,10 @@
+{
+  "deps": {
+    "@mikata/kit": "^0.1.0"
+  },
+  "scripts": {
+    "build": "vite build --outDir dist/client && vite build --ssr src/entry-server.tsx --outDir dist/server",
+    "preview": "node server.js",
+    "start": "node server.js"
+  }
+}
