@@ -33,7 +33,7 @@ export interface LinkProps {
  *   Link({ to: '/about', class: 'nav-link', activeClass: 'active' })
  */
 export function Link(props: LinkProps): Node {
-  const { router } = inject(RouterContext);
+  const { router, base } = inject(RouterContext);
   const {
     to,
     replace = false,
@@ -47,27 +47,35 @@ export function Link(props: LinkProps): Node {
 
   const el = document.createElement('a');
 
-  // Resolve href
+  // Resolve href. `base` is prefixed so the rendered `<a href>` lands on
+  // the correct URL when the app is hosted under a sub-path — the
+  // browser handles right-click-open-in-new-tab, middle-click, and
+  // no-JS navigation entirely via the href attribute, so a bare
+  // route path would 404 on GitHub Pages' `/mikata/` mount.
   const href = computed(() => {
-    if (typeof to === 'string') return to;
-    let path = to.path;
-    if (to.params) {
-      for (const [key, value] of Object.entries(to.params)) {
-        path = path.replace(`:${key}`, encodeURIComponent(String(value)));
+    let path: string;
+    if (typeof to === 'string') {
+      path = to;
+    } else {
+      path = to.path;
+      if (to.params) {
+        for (const [key, value] of Object.entries(to.params)) {
+          path = path.replace(`:${key}`, encodeURIComponent(String(value)));
+        }
+      }
+      if (to.search) {
+        const params = new URLSearchParams();
+        for (const [key, value] of Object.entries(to.search)) {
+          if (value != null) params.set(key, String(value));
+        }
+        const str = params.toString();
+        if (str) path += '?' + str;
+      }
+      if (to.hash) {
+        path += to.hash.startsWith('#') ? to.hash : '#' + to.hash;
       }
     }
-    if (to.search) {
-      const params = new URLSearchParams();
-      for (const [key, value] of Object.entries(to.search)) {
-        if (value != null) params.set(key, String(value));
-      }
-      const str = params.toString();
-      if (str) path += '?' + str;
-    }
-    if (to.hash) {
-      path += to.hash.startsWith('#') ? to.hash : '#' + to.hash;
-    }
-    return path;
+    return applyBase(base, path);
   });
 
   // Keep href in sync
@@ -82,17 +90,23 @@ export function Link(props: LinkProps): Node {
     el.setAttribute('href', value);
   });
 
-  // Active state
+  // Active state. `router.path()` is base-stripped (the history adapter
+  // removes the prefix before handing paths to the router), so we
+  // compare against the logical, un-prefixed target rather than `href()`
+  // which carries the base for display purposes.
+  const logicalTarget = computed(() => {
+    const raw = typeof to === 'string' ? to : to.path;
+    return raw.split('?')[0].split('#')[0];
+  });
   const isActive = computed(() => {
     const current = router.path();
-    const target = href().split('?')[0].split('#')[0];
+    const target = logicalTarget();
     return current === target || current.startsWith(target + '/');
   });
 
   const isExactActive = computed(() => {
     const current = router.path();
-    const target = href().split('?')[0].split('#')[0];
-    return current === target;
+    return current === logicalTarget();
   });
 
   // Apply classes
@@ -134,4 +148,20 @@ export function Link(props: LinkProps): Node {
   }
 
   return el;
+}
+
+/**
+ * Prepend the router base to a logical path. Leaves absolute URLs,
+ * anchors (`#frag`), query strings (`?x=1`), and already-prefixed
+ * paths alone - users explicitly writing `/mikata/foo` in `to` don't
+ * want the base added a second time.
+ */
+function applyBase(base: string, path: string): string {
+  if (!base) return path;
+  if (/^[a-z][a-z0-9+.-]*:/i.test(path)) return path; // absolute scheme
+  if (path.startsWith('//')) return path;              // protocol-relative
+  if (path.startsWith('#') || path.startsWith('?')) return path;
+  if (path === base || path.startsWith(base + '/')) return path;
+  const segment = path.startsWith('/') ? path : '/' + path;
+  return base + segment;
 }

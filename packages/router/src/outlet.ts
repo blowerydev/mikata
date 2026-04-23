@@ -29,6 +29,14 @@ declare const __DEV__: boolean;
 
 interface RouterContextValue {
   router: Router & { _options: RouterOptions; _normalizedRoutes: NormalizedRoute[]; _componentGuards: Set<any> };
+  /**
+   * Normalised base path the router was created with - always without
+   * a trailing slash, `''` when absent. Link reads this to prefix
+   * `<a href>` attributes so SSR, right-click-open, and no-JS paints
+   * all land on the correct URL when the app is hosted under a
+   * sub-path (e.g. GitHub Pages at `/mikata/`).
+   */
+  base: string;
 }
 
 interface OutletContextValue {
@@ -53,7 +61,15 @@ const OutletContext = createContext<OutletContextValue>({ depth: 0 });
  *   }
  */
 export function provideRouter(router: Router): void {
-  provide(RouterContext, { router: router as any });
+  const routerAny = router as unknown as {
+    _options?: { base?: string };
+  };
+  const rawBase = routerAny._options?.base ?? '';
+  // Normalise: strip trailing slash, keep leading one. `'/mikata/'` →
+  // `'/mikata'`; `''` / `'/'` both collapse to `''`.
+  const base =
+    rawBase && rawBase !== '/' ? rawBase.replace(/\/+$/, '') : '';
+  provide(RouterContext, { router: router as any, base });
   provide(OutletContext, { depth: 0 });
 }
 

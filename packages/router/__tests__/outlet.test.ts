@@ -298,6 +298,107 @@ describe('Link children', () => {
   });
 });
 
+describe('Link base-path awareness', () => {
+  let container: HTMLElement;
+  let dispose: () => void;
+
+  beforeEach(() => {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+  });
+
+  afterEach(() => {
+    dispose?.();
+    container.remove();
+  });
+
+  function renderLink(router: Router, props: Parameters<typeof Link>[0]) {
+    dispose = render(() => {
+      provideRouter(router);
+      return Link(props);
+    }, container);
+    flushSync();
+    return container.querySelector('a')!;
+  }
+
+  it('prefixes href with the router base', () => {
+    // The SSR-rendered anchor has to point at the actual URL the
+    // browser should navigate to on right-click-open or no-JS paint.
+    const router = createRouter({
+      routes: [{ path: '/about', component: () => document.createElement('div') }],
+      history: 'memory',
+      base: '/mikata',
+    });
+    const a = renderLink(router, { to: '/about' });
+    expect(a.getAttribute('href')).toBe('/mikata/about');
+    router.dispose();
+  });
+
+  it('does not double-prefix when `to` already includes the base', () => {
+    // Guard against users who manually prefix - writing `/mikata/about`
+    // in `to` should stay a single `/mikata/about` in the href.
+    const router = createRouter({
+      routes: [{ path: '/about', component: () => document.createElement('div') }],
+      history: 'memory',
+      base: '/mikata',
+    });
+    const a = renderLink(router, { to: '/mikata/about' });
+    expect(a.getAttribute('href')).toBe('/mikata/about');
+    router.dispose();
+  });
+
+  it('leaves absolute URLs, anchors, and query-only paths alone', () => {
+    const router = createRouter({
+      routes: [{ path: '/', component: () => document.createElement('div') }],
+      history: 'memory',
+      base: '/mikata',
+    });
+    expect(renderLink(router, { to: 'https://example.com' }).getAttribute('href')).toBe(
+      'https://example.com',
+    );
+    // Fresh render per case — previous calls attach to the same container.
+    dispose();
+    expect(renderLink(router, { to: '#section' }).getAttribute('href')).toBe('#section');
+    dispose();
+    expect(renderLink(router, { to: '?q=1' }).getAttribute('href')).toBe('?q=1');
+    router.dispose();
+  });
+
+  it('compares active state against the base-stripped logical path', () => {
+    // router.path() is base-stripped by the history adapter, so the
+    // active-state computation has to use the logical target, not the
+    // base-prefixed href.
+    const router = createRouter({
+      routes: [{ path: '/about', component: () => document.createElement('div') }],
+      history: 'memory',
+      base: '/mikata',
+    });
+    router.navigate('/about');
+    flushSync();
+    const a = renderLink(router, {
+      to: '/about',
+      activeClass: 'is-active',
+      exactActiveClass: 'is-exact',
+    });
+    expect(a.className).toContain('is-active');
+    expect(a.className).toContain('is-exact');
+    router.dispose();
+  });
+
+  it('no base = no prefix', () => {
+    // Regression: the base-prefix logic must not kick in when `base`
+    // wasn't configured. Otherwise existing users start seeing `//`
+    // or extraneous path segments in every `<a href>`.
+    const router = createRouter({
+      routes: [{ path: '/', component: () => document.createElement('div') }],
+      history: 'memory',
+    });
+    const a = renderLink(router, { to: '/about' });
+    expect(a.getAttribute('href')).toBe('/about');
+    router.dispose();
+  });
+});
+
 describe('useRoute()', () => {
   let container: HTMLElement;
   let router: Router;
