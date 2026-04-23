@@ -86,6 +86,26 @@ const RESOLVED_VIRTUAL_ID = '\0' + VIRTUAL_ID;
 
 const DEFAULT_EXTENSIONS = ['.tsx', '.jsx', '.ts', '.js', '.mdx'] as const;
 
+// Every `@mikata/*` package, kept manually so the exclude list is
+// explicit and doesn't quietly expand to packages the user added
+// under an unrelated scope. Used to seed Vite's `optimizeDeps.exclude`
+// below — see the `config()` hook for the full rationale.
+const MIKATA_PACKAGES = [
+  '@mikata/compiler',
+  '@mikata/form',
+  '@mikata/i18n',
+  '@mikata/icons',
+  '@mikata/kit',
+  '@mikata/persist',
+  '@mikata/reactivity',
+  '@mikata/router',
+  '@mikata/runtime',
+  '@mikata/server',
+  '@mikata/store',
+  '@mikata/testing',
+  '@mikata/ui',
+];
+
 export default function mikataKit(options: MikataKitOptions = {}): Plugin {
   const routesDirRel = options.routesDir ?? 'src/routes';
   const extensions = options.extensions ?? DEFAULT_EXTENSIONS;
@@ -127,12 +147,27 @@ export default function mikataKit(options: MikataKitOptions = {}): Plugin {
     name: 'mikata-kit',
 
     config() {
+      // Exclude every `@mikata/*` package from Vite's dep pre-bundler.
+      // Pre-bundling snapshots the package's `dist/` at dev-server
+      // start; rebuilding a workspace Mikata package mid-session
+      // leaves the snapshot stale (we've hit this in the docs app as
+      // an empty `head.js` with no `useMeta` export, among other
+      // symptoms). Sending these through Vite's normal module graph
+      // means the file watcher invalidates on change, so
+      // `pnpm -C packages/kit build` propagates without a dev-server
+      // restart.
+      //
+      // For users installing from npm this is a cheap no-op — the
+      // packages aren't being rebuilt, so the pre-bundling saved
+      // nothing anyway. For workspace / contributor setups it
+      // eliminates the "why isn't my change showing up" rabbit hole.
+      const optimizeDeps = { exclude: MIKATA_PACKAGES };
       // With `appType: 'custom'`, Vite skips its built-in index.html and
       // SPA-fallback middlewares, letting ours take over. We only apply
       // the flag when SSR is enabled — users who pass `ssr: false` want
       // Vite's default SPA dev experience.
-      if (ssrOptions) return { appType: 'custom' };
-      return undefined;
+      if (ssrOptions) return { appType: 'custom' as const, optimizeDeps };
+      return { optimizeDeps };
     },
 
     configResolved(config) {
