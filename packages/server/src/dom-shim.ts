@@ -243,6 +243,62 @@ export class SElement extends SNode {
     return this._attrs.entries();
   }
 
+  // ---- Reflected HTML boolean properties ----
+  //
+  // A handful of boolean props (hidden, disabled, readonly, required,
+  // checked, selected, autofocus, multiple, open) reflect to attributes
+  // in the real DOM. Components commonly write `el.hidden = true` or
+  // `input.disabled = !!props.disabled`; without these setters the
+  // shim silently drops the write and SSR HTML goes out with the
+  // attribute missing, producing a visible flash on hydration when the
+  // client finally applies the state. Each reflected prop: setting
+  // `true` adds the boolean attribute (empty value), `false` removes
+  // it. The getter reads back from the attribute bag.
+  get hidden(): boolean { return this.hasAttribute('hidden'); }
+  set hidden(v: boolean) {
+    if (v) this.setAttribute('hidden', '');
+    else this.removeAttribute('hidden');
+  }
+  get disabled(): boolean { return this.hasAttribute('disabled'); }
+  set disabled(v: boolean) {
+    if (v) this.setAttribute('disabled', '');
+    else this.removeAttribute('disabled');
+  }
+  get readOnly(): boolean { return this.hasAttribute('readonly'); }
+  set readOnly(v: boolean) {
+    if (v) this.setAttribute('readonly', '');
+    else this.removeAttribute('readonly');
+  }
+  get required(): boolean { return this.hasAttribute('required'); }
+  set required(v: boolean) {
+    if (v) this.setAttribute('required', '');
+    else this.removeAttribute('required');
+  }
+  get checked(): boolean { return this.hasAttribute('checked'); }
+  set checked(v: boolean) {
+    if (v) this.setAttribute('checked', '');
+    else this.removeAttribute('checked');
+  }
+  get selected(): boolean { return this.hasAttribute('selected'); }
+  set selected(v: boolean) {
+    if (v) this.setAttribute('selected', '');
+    else this.removeAttribute('selected');
+  }
+  get multiple(): boolean { return this.hasAttribute('multiple'); }
+  set multiple(v: boolean) {
+    if (v) this.setAttribute('multiple', '');
+    else this.removeAttribute('multiple');
+  }
+  get open(): boolean { return this.hasAttribute('open'); }
+  set open(v: boolean) {
+    if (v) this.setAttribute('open', '');
+    else this.removeAttribute('open');
+  }
+  // Writable `value` for form controls - property writes should also
+  // reflect to the attribute so SSR carries the initial value.
+  get value(): string { return this.getAttribute('value') ?? ''; }
+  set value(v: string) { this.setAttribute('value', String(v)); }
+
   // ---- className / style / textContent / innerHTML ----
 
   get className(): string {

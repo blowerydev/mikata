@@ -1,6 +1,10 @@
 .mkt-checkbox {
   display: inline-flex;
-  align-items: flex-start;
+  /* `center` works for the common case (a single-line label); when a
+     description or error slot is visible below the label, each text
+     child adds the bottom-aligned mass back, so the visual centre
+     still lands on the icon/label row. */
+  align-items: center;
   gap: var(--mkt-space-2);
   cursor: pointer;
 }

@@ -2,6 +2,8 @@
 
 A reactive UI framework for the web. Signals for state, JSX compiled to real DOM operations (no virtual DOM), and components that run exactly once.
 
+**Docs:** [blowerydev.github.io/mikata](https://blowerydev.github.io/mikata/) - built with Mikata itself (SSG via `@mikata/kit`) and hosted on GitHub Pages. The UI components section has live playgrounds you can tweak in the browser.
+
 ```tsx
 import { signal, computed, render, show, each } from 'mikata';
 
