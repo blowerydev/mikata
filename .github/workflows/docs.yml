@@ -44,6 +44,12 @@ jobs:
       - run: pnpm --filter @mikata/docs build
 
       - uses: actions/configure-pages@v5
+        # `enablement: true` turns Pages on with "GitHub Actions" as the
+        # source the first time the workflow runs. Without it the action
+        # 404s for repos that haven't been set up manually via Settings →
+        # Pages. No-op once Pages is already enabled.
+        with:
+          enablement: true
 
       - uses: actions/upload-pages-artifact@v3
         with:
