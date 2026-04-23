@@ -8,6 +8,7 @@ export {
   _mergeProps,
   _template,
   _delegate,
+  adoptElement,
 } from './dom';
 
 // Component model

@@ -1,5 +1,5 @@
 import { signal, computed, renderEffect } from '@mikata/reactivity';
-import { createContext, provide, inject } from '@mikata/runtime';
+import { adoptElement, createContext, provide, inject } from '@mikata/runtime';
 import type { MikataTheme, ColorScheme, Direction, ThemeProviderProps, ThemeContextValue } from './types';
 import { flattenTheme } from './flatten';
 import { provideComponentDefaults } from './component-defaults';
@@ -99,46 +99,53 @@ export function ThemeProvider(props: ThemeProviderProps): Node {
   const initialTheme = typeof props.theme === 'function' ? props.theme() : props.theme;
   provideComponentDefaults(initialTheme?.components);
 
-  const el = document.createElement('div');
-  el.setAttribute('data-mkt-theme', '');
-  el.style.display = 'contents';
+  // Use `adoptElement` so the wrapper participates in hydration. Without
+  // it, `document.createElement('div')` would return a fresh orphan on
+  // the client and every effect below would write to that orphan
+  // instead of the server-rendered wrapper, leaving the page untouched.
+  return adoptElement<HTMLDivElement>('div', (el) => {
+    el.setAttribute('data-mkt-theme', '');
+    el.style.display = 'contents';
 
-  const styleEl = document.createElement('style');
-  styleEl.setAttribute('data-mkt-generated', '');
-  el.appendChild(styleEl);
+    const styleEl = adoptElement<HTMLStyleElement>('style', (styleEl) => {
+      styleEl.setAttribute('data-mkt-generated', '');
+    });
 
-  renderEffect(() => {
-    const scheme = resolvedColorScheme();
-    const theme = activeTheme();
-    const flat = flattenTheme(theme, scheme);
-    if (scheme === 'dark' && props.darkTheme) Object.assign(flat, props.darkTheme);
-    for (const [token, value] of Object.entries(flat)) {
-      el.style.setProperty(`--mkt-${token}`, value);
+    renderEffect(() => {
+      const scheme = resolvedColorScheme();
+      const theme = activeTheme();
+      const flat = flattenTheme(theme, scheme);
+      if (scheme === 'dark' && props.darkTheme) Object.assign(flat, props.darkTheme);
+      for (const [token, value] of Object.entries(flat)) {
+        el.style.setProperty(`--mkt-${token}`, value);
+      }
+      el.setAttribute('data-mkt-color-scheme', scheme);
+
+      const customPalettes = Object.keys(theme.colors ?? {});
+      styleEl.textContent = emitColoredRules(customPalettes);
+    });
+
+    renderEffect(() => {
+      el.setAttribute('dir', direction());
+    });
+
+    // Mount children. Reading `props.children` here (inside the setup
+    // scope) ensures descendants' `inject()` walks through ThemeProvider
+    // and finds the ThemeContext provided above. The compiler emits
+    // children as a getter so this is a one-shot evaluation in the
+    // right scope. During hydration the children are already inside the
+    // wrapper — appendChild is a no-op since the parent already matches.
+    const children = (props as { children?: Node | Node[] }).children;
+    if (children) {
+      if (Array.isArray(children)) {
+        for (const child of children) {
+          if (child.parentNode !== el) el.appendChild(child);
+        }
+      } else if (children.parentNode !== el) {
+        el.appendChild(children);
+      }
     }
-    el.setAttribute('data-mkt-color-scheme', scheme);
-
-    const customPalettes = Object.keys(theme.colors ?? {});
-    styleEl.textContent = emitColoredRules(customPalettes);
   });
-
-  renderEffect(() => {
-    el.setAttribute('dir', direction());
-  });
-
-  // Mount children. Reading `props.children` here (inside ThemeProvider's
-  // setup scope) ensures descendants' `inject()` walks through this scope
-  // and finds the ThemeContext provided above. The compiler emits children
-  // as a getter so this is a one-shot evaluation in the right scope.
-  const children = (props as { children?: Node | Node[] }).children;
-  if (children) {
-    if (Array.isArray(children)) {
-      for (const child of children) el.appendChild(child);
-    } else {
-      el.appendChild(children);
-    }
-  }
-
-  return el;
 }
 
 /**

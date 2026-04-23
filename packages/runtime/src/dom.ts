@@ -54,6 +54,96 @@ export function _createElement(tag: string): HTMLElement {
 }
 
 /**
+ * Hydration-aware element builder for hand-written components that
+ * assemble their DOM with `document.createElement` + `appendChild`
+ * instead of JSX.
+ *
+ * Without this, imperative components bypass the adoption cursor: the
+ * server renders a `<button>` with children, but on hydration the
+ * component calls `document.createElement('button')` to get a *fresh*
+ * element, attaches all its reactive effects to that orphan, and leaves
+ * the server's button in the DOM with no handlers wired. ThemeProvider,
+ * all of @mikata/ui, and anything else using the imperative pattern has
+ * this shape.
+ *
+ * Usage:
+ *   return adoptElement('button', (el) => {
+ *     renderEffect(() => { el.className = mergeClasses(...); });
+ *     adoptElement('span', (label) => {
+ *       renderEffect(() => { label.textContent = props.text; });
+ *     });
+ *     // no appendChild — nested adoptElement auto-attaches to `el`
+ *   });
+ *
+ * Children created by nested `adoptElement` calls inside `setup` are
+ * auto-attached to the outer element. On the client render path they
+ * get appended. During hydration they're adopted in place from the
+ * server output (and auto-attach is a no-op since they're already
+ * there). This matches how JSX compilation handles parent/child wiring
+ * — the user never writes `appendChild` manually.
+ *
+ * Tag mismatches at hydration time fall through to fresh elements
+ * with a dev warning; the orphaned SSR node is left in the DOM but
+ * not referenced.
+ */
+export function adoptElement<T extends HTMLElement = HTMLElement>(
+  tag: string,
+  setup?: (el: T) => void,
+): T {
+  let el: T;
+  if (isHydrating()) {
+    const adopted = adoptNext();
+    if (
+      adopted &&
+      adopted.nodeType === 1 &&
+      (adopted as Element).tagName.toUpperCase() === tag.toUpperCase()
+    ) {
+      el = adopted as unknown as T;
+    } else {
+      if (__DEV__ && adopted) {
+        console.warn(
+          `[mikata] adoptElement("${tag}") skipped: cursor pointed at <${
+            (adopted as Element).tagName?.toLowerCase() ?? adopted.nodeType
+          }>. Component output drifted from SSR.`,
+        );
+      }
+      el = document.createElement(tag) as unknown as T;
+    }
+  } else {
+    el = document.createElement(tag) as unknown as T;
+  }
+
+  // Auto-attach to an enclosing `adoptElement` setup's element. On the
+  // hydrate path the node is almost always already attached (we adopted
+  // it from its parent's children) so `appendChild` is a no-op; we guard
+  // it anyway in case the adopted node drifted out of the expected spot.
+  const parent = currentSetupParent();
+  if (parent && el.parentNode !== parent) {
+    parent.appendChild(el);
+  }
+
+  if (setup) {
+    pushFrame(el, 0);
+    setupStack.push(el);
+    try {
+      setup(el);
+    } finally {
+      setupStack.pop();
+      popFrame();
+    }
+  }
+  return el;
+}
+
+// Tracks the innermost `adoptElement(_, setup)` element so nested
+// `adoptElement` calls can auto-attach. A parallel array to the
+// adoption frame stack, but specific to the setup callback scope.
+const setupStack: HTMLElement[] = [];
+function currentSetupParent(): HTMLElement | null {
+  return setupStack.length ? setupStack[setupStack.length - 1]! : null;
+}
+
+/**
  * Parse a static HTML fragment once and return its root node so the compiler
  * can `cloneNode(true)` it per instantiation instead of issuing a chain of
  * `createElement` + `appendChild` calls.

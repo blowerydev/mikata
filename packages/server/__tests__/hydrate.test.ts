@@ -1,11 +1,12 @@
 import { describe, it, expect, vi } from 'vitest';
-import { signal, flushSync } from '@mikata/reactivity';
+import { signal, flushSync, renderEffect } from '@mikata/reactivity';
 import {
   _template,
   _insert,
   _delegate,
   _setProp,
   _createComponent,
+  adoptElement,
   hydrate,
 } from '@mikata/runtime';
 import { renderToString } from '../src/index';
@@ -526,6 +527,109 @@ describe('hydrate: multi-node dynamic slots in mid-tree', () => {
       // and h2 (the single slot), and compiled nav walks cleanly to h2.
       const paragraphs = Array.from(article.querySelectorAll('p'));
       expect(paragraphs.map((p) => p.textContent)).toEqual(['a', 'b', 'c']);
+    } finally {
+      dispose();
+    }
+  });
+});
+
+describe('adoptElement: imperative components hydrate cleanly', () => {
+  // The pattern @mikata/ui uses today (document.createElement + renderEffect
+  // + appendChild) breaks hydration because the compiler can't wire those
+  // calls into the adoption cursor. `adoptElement` gives imperative
+  // components the hydration machinery JSX components get for free.
+  it('adopts the server-rendered root instead of creating a fresh one', async () => {
+    const build = () =>
+      adoptElement<HTMLButtonElement>('button', (el) => {
+        el.className = 'adopt-btn';
+        el.textContent = 'go';
+      });
+
+    const { html } = await renderToString(build);
+    expect(html).toBe('<button class="adopt-btn">go</button>');
+
+    const container = mountSsr(html);
+    const serverBtn = container.firstChild as HTMLButtonElement;
+
+    const dispose = hydrate(build, container);
+    try {
+      // Same node, not a fresh one - this is the whole point.
+      expect(container.firstChild).toBe(serverBtn);
+      expect(serverBtn.className).toBe('adopt-btn');
+    } finally {
+      dispose();
+    }
+  });
+
+  it('scopes nested adoptElement calls to the parent element', async () => {
+    // Nested `adoptElement` calls inside a setup auto-attach to the
+    // enclosing element and adopt from its subtree. The user doesn't
+    // write `appendChild` - manual re-parenting during hydration would
+    // shuffle already-adopted children out of order.
+    const build = () =>
+      adoptElement<HTMLDivElement>('div', (root) => {
+        root.className = 'outer';
+        adoptElement<HTMLSpanElement>('span', (el) => {
+          el.className = 'label';
+          el.textContent = 'hi';
+        });
+        adoptElement<HTMLSpanElement>('span', (el) => {
+          el.className = 'icon';
+        });
+      });
+
+    const { html } = await renderToString(build);
+    expect(html).toBe(
+      '<div class="outer"><span class="label">hi</span><span class="icon"></span></div>',
+    );
+
+    const container = mountSsr(html);
+    const root = container.firstChild as HTMLElement;
+    const origLabel = root.children[0];
+    const origIcon = root.children[1];
+
+    const dispose = hydrate(build, container);
+    try {
+      // Nodes from the server survived adoption, un-reparented.
+      expect(root.children[0]).toBe(origLabel);
+      expect(root.children[1]).toBe(origIcon);
+      expect((origLabel as HTMLElement).className).toBe('label');
+      expect((origIcon as HTMLElement).className).toBe('icon');
+    } finally {
+      dispose();
+    }
+  });
+
+  it('reactive effects attached inside setup target the adopted node', async () => {
+    // renderEffects registered in `setup` should write to the server's
+    // button, not an orphan. Verified by capturing the server button
+    // and watching its className change when the source signal fires.
+    const [variant, setVariant] = signal('primary');
+
+    const build = () =>
+      adoptElement<HTMLButtonElement>('button', (el) => {
+        // renderEffect reads the signal and mutates the adopted element.
+        // If adoptElement handed back a fresh detached node the write
+        // wouldn't be visible in `container` after the signal changes.
+        renderEffect(() => {
+          el.className = `btn btn--${variant()}`;
+        });
+      });
+
+    const { html } = await renderToString(build);
+    expect(html).toBe('<button class="btn btn--primary"></button>');
+
+    const container = mountSsr(html);
+    const serverBtn = container.firstChild as HTMLButtonElement;
+
+    const dispose = hydrate(build, container);
+    try {
+      expect(container.firstChild).toBe(serverBtn);
+      expect(serverBtn.className).toBe('btn btn--primary');
+      setVariant('outline');
+      flushSync();
+      // The class write lands on the SAME adopted button, not an orphan.
+      expect(serverBtn.className).toBe('btn btn--outline');
     } finally {
       dispose();
     }
