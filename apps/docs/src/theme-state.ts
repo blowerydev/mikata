@@ -1,5 +1,5 @@
 import { signal, effect } from '@mikata/reactivity';
-import { defaultTheme, darkTheme, type ColorScheme } from '@mikata/ui';
+import { flattenTheme, type ColorScheme } from '@mikata/ui';
 
 const STORAGE_KEY = 'mikata-docs-theme';
 
@@ -60,8 +60,13 @@ export function installThemeVars(): void {
 
   effect(() => {
     const resolved = resolveScheme(colorScheme(), systemPrefersDark());
-    const tokens =
-      resolved === 'dark' ? { ...defaultTheme, ...darkTheme } : defaultTheme;
+    // `flattenTheme` produces the full semantic token set - not just the
+    // base palette (color-primary-0..9) but the derived aliases the
+    // component CSS actually references: color-primary-filled,
+    // color-primary-filled-hover, color-primary-light, font-weight-medium,
+    // radius-sm, etc. Iterating defaultTheme directly leaves those
+    // undefined and the styles fall back to invalid values.
+    const tokens = flattenTheme({}, resolved);
     for (const [key, value] of Object.entries(tokens)) {
       root.style.setProperty(`--mkt-${key}`, value);
     }
