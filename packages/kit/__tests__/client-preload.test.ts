@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { _template, _createComponent, lazy } from '@mikata/runtime';
+import { _template, _createComponent, lazy, _delegate } from '@mikata/runtime';
 import { mount } from '../src/client';
 
 // Sanity tests for the mount-time preload pass. The contract we care
@@ -110,6 +110,58 @@ describe('mount: lazy-route preload', () => {
     });
     await ready;
     expect(notFoundLoaded).toBe(true);
+
+    dispose();
+    container.remove();
+  });
+
+  it('hydrate of a lazy-matched URL adopts the SSR tree, not a placeholder', async () => {
+    // Regression: mount() used to kick off the import but leave
+    // routeOutlet's internal lazy() wrapper with resolved=null. The
+    // first render returned a placeholder `<div style="display:contents">`
+    // that hydration adopted, leaving the real SSR content orphaned and
+    // click handlers wired to the detached placeholder. Theme toggle +
+    // Playground controls went dead because of this.
+    //
+    // This test builds a server-rendered `<button>` with `_delegate`
+    // inside its component, hydrates via mount(), clicks the adopted
+    // button, and verifies the handler fires — which only happens if
+    // the server node (not a placeholder) received the `$$click` stash.
+    let clicks = 0;
+    const routes = [
+      {
+        path: '/',
+        lazy: async () => ({
+          default: () => {
+            const tmpl = _template('<button>go</button>');
+            const el = tmpl.cloneNode(true) as HTMLButtonElement;
+            _delegate(el, 'click', () => {
+              clicks++;
+            });
+            return el;
+          },
+        }),
+      },
+    ];
+
+    // Fake SSR: one `<button>` as the container's only child. Hydration
+    // should adopt this exact node.
+    const container = document.createElement('div');
+    container.innerHTML = '<button>go</button>';
+    document.body.appendChild(container);
+    const serverBtn = container.firstChild as HTMLButtonElement;
+
+    const { ready, dispose } = mount(routes, container, { history: 'memory' });
+    await ready;
+
+    // After hydration the adopted button is still first child. If mount
+    // left a placeholder div in its place, this identity check fails.
+    expect(container.firstChild).toBe(serverBtn);
+
+    // Click fires the handler only if `_delegate` attached `$$click` to
+    // the server button (not an orphan placeholder).
+    serverBtn.click();
+    expect(clicks).toBe(1);
 
     dispose();
     container.remove();

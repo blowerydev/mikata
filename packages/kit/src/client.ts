@@ -29,6 +29,14 @@ import {
   type Router,
   type RouterOptions,
 } from '@mikata/router';
+
+// Narrow local alias for the mutable shape `routeOutlet` reads. Avoids
+// pulling in `NormalizedRoute` from @mikata/router internals while still
+// capturing the two fields we rewrite after preload.
+type NormalizedRouteLike = {
+  lazy?: () => Promise<{ default: (props: never) => Node | null }>;
+  component?: (props: never) => Node | null;
+};
 import {
   provideLoaderData,
   createLoaderStore,
@@ -168,12 +176,16 @@ export function mount(
 
   const wantsHydrate = shouldHydrate ?? container.firstChild !== null;
 
-  // Preload every `lazy()` on the router's initial match chain before
-  // attaching hydrate/render. Without this, the first route render
-  // returns a placeholder from `lazy()` and the hydration cursor walks
-  // past the server's real DOM — ending up with handlers attached to
-  // detached placeholder nodes. Also preload the notFound module when
-  // the initial URL matches nothing, so direct 404 hits hydrate cleanly.
+  // Preload every `lazy()` on the router's initial match chain and pin
+  // the resolved component onto the route definition before
+  // hydrate/render runs. Kicking off the import isn't enough: the
+  // router's `routeOutlet` wraps each `routeDef.lazy` in a fresh
+  // `lazy()` helper with its own `resolved: null`, so the first render
+  // returns a placeholder node even when the module is cached. That
+  // placeholder is what the hydration cursor would adopt, leaving
+  // handlers wired to detached DOM and the server's real tree sitting
+  // there inert. Rewriting to `{ component: mod.default, lazy: undefined }`
+  // makes routeOutlet take the direct-component branch.
   //
   // Pulling matches from the router (rather than re-running the matcher
   // ourselves) means custom histories — memory, hash, anything that
@@ -182,14 +194,13 @@ export function mount(
   // current URL.
   let renderDispose: (() => void) | null = null;
   const initial = router.route();
-  const matchedLazys = initial.matches
-    .map((m) => m.route.lazy)
-    .filter((l): l is NonNullable<typeof l> => typeof l === 'function')
-    .map((l) => l());
+  const matchedLazyRoutes = initial.matches
+    .map((m) => m.route as NormalizedRouteLike)
+    .filter((r) => typeof r.lazy === 'function');
   const needsNotFound =
     !!(notFoundComponent && initial.matches.length === 0);
   let ready: Promise<void>;
-  if (matchedLazys.length === 0 && !needsNotFound) {
+  if (matchedLazyRoutes.length === 0 && !needsNotFound) {
     // Nothing to wait on - attach synchronously so tests, SPA dev mode,
     // and any code that expects routeOutlet() to have rendered before
     // the next tick see consistent behaviour.
@@ -198,10 +209,20 @@ export function mount(
       : render(App, container);
     ready = Promise.resolve();
   } else {
+    const preloadLazys = Promise.all(
+      matchedLazyRoutes.map(async (r) => {
+        const mod = (await r.lazy!()) as { default: (p: unknown) => Node };
+        // Pin the resolved component. `routeOutlet`'s check is
+        // `if (routeDef.lazy) ...else if (routeDef.component)`, so
+        // clearing `lazy` flips it onto the direct-component path.
+        r.component = mod.default as unknown as typeof r.component;
+        r.lazy = undefined;
+      }),
+    );
     const preloadNotFound = needsNotFound
       ? notFoundComponent!.preload()
       : Promise.resolve();
-    ready = Promise.all([...matchedLazys, preloadNotFound]).then(() => {
+    ready = Promise.all([preloadLazys, preloadNotFound]).then(() => {
       renderDispose = wantsHydrate
         ? hydrate(App, container)
         : render(App, container);
