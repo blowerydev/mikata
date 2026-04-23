@@ -60,5 +60,8 @@
     "@mikata/i18n": {
       "optional": true
     }
+  },
+  "devDependencies": {
+    "@mikata/server": "workspace:*"
   }
 }

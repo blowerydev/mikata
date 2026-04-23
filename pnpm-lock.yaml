@@ -311,6 +311,10 @@ importers:
       '@mikata/runtime':
         specifier: workspace:*
         version: link:../runtime
+    devDependencies:
+      '@mikata/server':
+        specifier: workspace:*
+        version: link:../server
 
   playground:
     dependencies:

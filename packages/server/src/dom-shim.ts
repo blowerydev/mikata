@@ -106,6 +106,21 @@ export abstract class SNode {
     return oldChild;
   }
 
+  /**
+   * Standard DOM: detach every existing child, then insert the given
+   * nodes (and/or strings) in order. Common in imperative components
+   * that rebuild a slot each render - calling it with no args is an
+   * idiomatic "clear children".
+   */
+  replaceChildren(...nodes: Array<SNode | string>): void {
+    for (const child of this.childNodes.slice()) this.removeChild(child);
+    for (const entry of nodes) {
+      const node =
+        typeof entry === 'string' ? (new SText(entry) as unknown as SNode) : entry;
+      this.appendChild(node);
+    }
+  }
+
   abstract cloneNode(deep?: boolean): SNode;
 
   // No-op listener API — server never dispatches events.
@@ -409,6 +424,17 @@ class STemplateElement extends SElement {
 class SDocument {
   createElement(tag: string): SElement {
     if (tag.toLowerCase() === 'template') return new STemplateElement();
+    return new SElement(tag);
+  }
+
+  /**
+   * SVG-aware element creation. Imperative components that use inline
+   * checkmarks / icons (Checkbox, Radio, Loader with <svg>) reach for
+   * this. The shim ignores the namespace - we don't paint, so the
+   * distinction doesn't affect the serialised markup beyond the tag
+   * name, which is already preserved.
+   */
+  createElementNS(_ns: string, tag: string): SElement {
     return new SElement(tag);
   }
 
