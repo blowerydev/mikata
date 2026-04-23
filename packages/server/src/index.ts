@@ -12,7 +12,7 @@
  */
 
 import { createScope, flushSync } from '@mikata/reactivity';
-import { _setSSR } from '@mikata/runtime';
+import { _setSSR, hydrate } from '@mikata/runtime';
 import {
   beginCollect,
   endCollect,
@@ -21,6 +21,7 @@ import {
 import {
   installShim,
   type SNode,
+  type SElement,
 } from './dom-shim';
 import { serializeNode, renderStateScript, escapeStateScript } from './serialize';
 
@@ -36,6 +37,18 @@ export interface RenderToStringOptions {
    * Default: `false`.
    */
   skipQueryCollection?: boolean;
+  /**
+   * After serialising, re-parse the HTML and run `hydrate()` against it
+   * with the same component factory. Any thrown error is re-raised with
+   * the offending HTML attached so prerender can surface it with the URL.
+   *
+   * Catches the class of bug that broke the docs app: SSR output whose
+   * sibling counts desync from the template (so the client's compiled
+   * index-based navigation walks onto the wrong node and crashes on
+   * `.firstChild` of a text/comment). Opt-in because it doubles the
+   * render cost; `@mikata/kit`'s prerender flips it on by default.
+   */
+  verifyHydration?: boolean;
 }
 
 export interface RenderToStringResult {
@@ -95,12 +108,63 @@ export async function renderToString(
       ? renderStateScript(state, options.stateGlobal ?? '__MIKATA_STATE__')
       : '';
 
+    if (options.verifyHydration && html) {
+      // Dispose the SSR scope first: hydrate spins up its own reactive
+      // graph, and leaving the old one live would mean two scopes racing
+      // to update the same DOM. The shim stays installed; hydrate's
+      // `document.createElement`, template parsing, and `adoptNext`
+      // cursor all work against SDocument just like they do client-side.
+      if (scopeDispose) {
+        scopeDispose();
+        scopeDispose = null;
+      }
+      _setSSR(false);
+      try {
+        verifyHydrate(html, component);
+      } finally {
+        _setSSR(true);
+      }
+    }
+
     return { html, stateScript, state };
   } finally {
     if (scopeDispose) scopeDispose();
     if (!options.skipQueryCollection) endCollect();
     _setSSR(false);
     shim.restore();
+  }
+}
+
+/**
+ * Parse `html` into a shim container and run `hydrate()` against it with
+ * `component`. Throws with the HTML attached if hydration raises — the
+ * thrown error's stack still points at the offending runtime call, which
+ * is usually enough to localise the failure.
+ *
+ * Called internally when `renderToString({ verifyHydration: true })`.
+ */
+function verifyHydrate(html: string, component: () => unknown): void {
+  const doc = globalThis.document as unknown as {
+    createElement(tag: string): SElement;
+  };
+  const container = doc.createElement('div');
+  (container as unknown as { innerHTML: string }).innerHTML = html;
+
+  try {
+    const disposeHydrate = hydrate(
+      component as () => Node,
+      container as unknown as HTMLElement,
+    );
+    flushSync();
+    disposeHydrate();
+  } catch (err) {
+    const cause = err instanceof Error ? err : new Error(String(err));
+    const wrapped = new Error(
+      `[mikata/server] hydration verify failed: ${cause.message}\n` +
+        `  HTML (first 400 chars): ${html.slice(0, 400)}${html.length > 400 ? '...' : ''}`,
+    );
+    (wrapped as { cause?: unknown }).cause = cause;
+    throw wrapped;
   }
 }
 

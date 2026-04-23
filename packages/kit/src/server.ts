@@ -56,6 +56,12 @@ import { ensureCsrfToken, verifyCsrfFromRequest } from './csrf-server';
 import type { NotFoundModuleLoader } from './client';
 export type { NotFoundModuleLoader };
 
+import { _getVerifyHydration } from './verify-flag';
+// Re-export for backwards compatibility — call sites that want to flip
+// the flag should import from `./verify-flag` directly (zero transitive
+// runtime deps) but the setter is safe to re-export here.
+export { _setVerifyHydration } from './verify-flag';
+
 export interface RenderRouteOptions extends Omit<RouterOptions, 'routes' | 'history' | 'notFound'> {
   /**
    * Full request URL (including pathname + search + hash). Only the
@@ -86,6 +92,14 @@ export interface RenderRouteOptions extends Omit<RouterOptions, 'routes' | 'hist
    * adapter responds with the right HTTP code.
    */
   notFound?: NotFoundModuleLoader;
+  /**
+   * Forward to `renderToString`'s `verifyHydration`. Prerender sets this
+   * on so SSG builds fail loudly when a page's serialised HTML can't
+   * be walked by the hydrator. Live servers leave it off — the extra
+   * render per request is real cost, and hydration issues surface at
+   * the browser anyway.
+   */
+  verifyHydration?: boolean;
 }
 
 export interface RenderRouteResult extends RenderToStringResult {
@@ -320,25 +334,28 @@ export async function renderRoute(
 
     const headRegistry = createCollectMetaRegistry();
 
-    const rendered = await renderToString(() => {
-      const router = createRouter({
-        routes: [...resolvedRoutes],
-        history: createMemoryHistory(url),
-        ...routerRest,
-        ...(notFoundComponent ? { notFound: notFoundComponent as () => Node } : {}),
-      });
+    const rendered = await renderToString(
+      () => {
+        const router = createRouter({
+          routes: [...resolvedRoutes],
+          history: createMemoryHistory(url),
+          ...routerRest,
+          ...(notFoundComponent ? { notFound: notFoundComponent as () => Node } : {}),
+        });
 
-      function App() {
-        provideRouter(router);
-        provideLoaderData({ ...loaderData } as LoaderData);
-        provideActionData({ ...actionData } as ActionData);
-        provideMetaRegistry(headRegistry);
-        provideCsrfToken(csrfToken);
-        return routeOutlet();
-      }
+        function App() {
+          provideRouter(router);
+          provideLoaderData({ ...loaderData } as LoaderData);
+          provideActionData({ ...actionData } as ActionData);
+          provideMetaRegistry(headRegistry);
+          provideCsrfToken(csrfToken);
+          return routeOutlet();
+        }
 
-      return App();
-    });
+        return App();
+      },
+      { verifyHydration: options.verifyHydration ?? _getVerifyHydration() },
+    );
 
     // Emit a second + third script that mirror the loader and action
     // payloads onto the client. Kept separate from `__MIKATA_STATE__`

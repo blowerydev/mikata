@@ -41,6 +41,7 @@ import {
   createFetchHandler,
   type EdgeServerEntry,
 } from './adapter-edge';
+import { _setVerifyHydration } from './verify-flag';
 
 /**
  * Shape of a route module's optional `getStaticPaths` export. Returns a
@@ -135,6 +136,17 @@ export interface PrerenderOptions {
    * each URL as it's generated.
    */
   log?: (message: string) => void;
+  /**
+   * After rendering each page, re-parse its HTML and run `hydrate()`
+   * against it with the same component tree. A mismatch between SSR
+   * output and the hydrator's structural expectations (the class of bug
+   * that silently shipped to the docs app before we noticed in the
+   * browser) fails the build with the URL attached. Default: `true`.
+   *
+   * Doubles the per-page render cost; set to `false` if you're rendering
+   * thousands of pages and have other confidence in hydration.
+   */
+  verifyHydration?: boolean;
 }
 
 export interface PrerenderPageResult {
@@ -182,7 +194,25 @@ export async function prerender(
   const log = options.log ?? (() => {});
   const baseUrl = options.baseUrl ?? DEFAULT_BASE_URL;
   const outDir = path.resolve(options.outDir);
+  const verifyHydration = options.verifyHydration ?? true;
+  // Flip the module-level verify flag for the whole prerender run so the
+  // user's existing entry-server.tsx (which doesn't know about this
+  // option) still triggers the verify pass. Reset in the finally below
+  // so a subsequent normal `renderRoute` doesn't inherit the flag.
+  _setVerifyHydration(verifyHydration);
+  try {
+    return await runPrerender(options, log, baseUrl, outDir);
+  } finally {
+    _setVerifyHydration(false);
+  }
+}
 
+async function runPrerender(
+  options: PrerenderOptions,
+  log: (message: string) => void,
+  baseUrl: string,
+  outDir: string,
+): Promise<PrerenderResult> {
   await fs.mkdir(outDir, { recursive: true });
 
   // Copy the client build verbatim so `outDir` is ready to deploy. Pages
