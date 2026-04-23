@@ -118,6 +118,18 @@ export function Link(props: LinkProps): Node {
     el.className = classes.join(' ');
   });
 
+  // `aria-current="page"` on the exact-match anchor. Screen readers
+  // announce it and CSS can target `a[aria-current='page']` without a
+  // per-app active-class convention. Removed (not set to `false`) when
+  // inactive — the attribute's absence is the "not current" state.
+  renderEffect(() => {
+    if (isExactActive()) {
+      el.setAttribute('aria-current', 'page');
+    } else {
+      el.removeAttribute('aria-current');
+    }
+  });
+
   // Click handler - intercept navigation
   el.addEventListener('click', (e: MouseEvent) => {
     // Allow normal behavior for modified clicks

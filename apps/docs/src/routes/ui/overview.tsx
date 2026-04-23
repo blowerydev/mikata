@@ -1,6 +1,6 @@
 import { useMeta } from '@mikata/kit/head';
 import { CodeBlock, highlight } from '../../components/CodeBlock';
-import { Link } from '../../components/Link';
+import { Link } from '@mikata/router';
 
 const setupExample = await highlight(
   `import { ThemeProvider, Button, TextInput } from '@mikata/ui';

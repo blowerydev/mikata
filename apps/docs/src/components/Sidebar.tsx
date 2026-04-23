@@ -1,5 +1,5 @@
+import { Link } from '@mikata/router';
 import { sections } from '../docs.config';
-import { Link } from './Link';
 
 /**
  * Sidebar navigation. The two levels of iteration are rendered via

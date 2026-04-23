@@ -1,5 +1,5 @@
 import { useMeta } from '@mikata/kit/head';
-import { Link } from '../components/Link';
+import { Link } from '@mikata/router';
 
 export default function Home() {
   useMeta({

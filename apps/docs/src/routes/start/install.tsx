@@ -1,6 +1,6 @@
 import { useMeta } from '@mikata/kit/head';
 import { CodeBlock, highlight } from '../../components/CodeBlock';
-import { Link } from '../../components/Link';
+import { Link } from '@mikata/router';
 
 const createCmd = await highlight(`npm create mikata@latest my-app`, 'bash');
 const runCmd = await highlight(

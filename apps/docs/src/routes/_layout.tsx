@@ -1,6 +1,5 @@
-import { routeOutlet } from '@mikata/router';
+import { Link, routeOutlet } from '@mikata/router';
 import { Sidebar } from '../components/Sidebar';
-import { Link } from '../components/Link';
 import { ThemeToggle } from '../components/ThemeToggle';
 
 export default function Layout() {
