@@ -12,8 +12,7 @@
     "test:run": "vitest run",
     "dev": "pnpm --filter playground dev",
     "dev:ssr": "tsx integration/src/ssr-smoke.ts",
-    "dev:kit": "pnpm --filter @mikata/example-kit-ssr dev",
-    "lint": "eslint packages/*/src/**/*.ts"
+    "dev:kit": "pnpm --filter @mikata/example-kit-ssr dev"
   },
   "devDependencies": {
     "@types/babel__core": "^7.20.5",
