@@ -362,6 +362,176 @@ describe('hydrate: round-trip with server output', () => {
   });
 });
 
+describe('hydrate: multi-node dynamic slots in mid-tree', () => {
+  // These shapes are the remaining hydration hole after the single-node
+  // fix landed. A dynamic slot that renders an array of nodes (`arr.map`,
+  // fragments, etc.) puts N nodes at a spot the template reserved for
+  // one. The compiler's `.nextSibling×K` navigation past the slot then
+  // walks onto a mid-array node instead of the intended static sibling,
+  // and any compiled writes to that static sibling clobber the wrong
+  // element. The tests live here; once the fix lands they should pass.
+  it('adopts an array of mapped items between static siblings', async () => {
+    const build = () => {
+      const root = _template(
+        '<article><h1>X</h1><!><h2>Y</h2></article>',
+      ).cloneNode(true) as HTMLElement;
+      const marker = root.childNodes[1] as Node;
+      const items = ['a', 'b', 'c'];
+      _insert(
+        root,
+        () =>
+          items.map((label) => {
+            const p = _template('<p> </p>').cloneNode(true) as HTMLElement;
+            (p.firstChild as Text).data = label;
+            return p;
+          }),
+        marker,
+      );
+      return root;
+    };
+
+    const { html } = await renderToString(build);
+    // Multi-node content at a mid-tree slot is wrapped in a
+    // `display:contents` `<mkt-slot>` so the structural count matches
+    // the template's single marker position.
+    expect(html).toContain('<article><h1>X</h1>');
+    expect(html).toContain('<mkt-slot');
+    expect(html).toContain('<p>a</p><p>b</p><p>c</p>');
+    expect(html).toContain('<h2>Y</h2></article>');
+
+    const container = mountSsr(html);
+    const article = container.firstChild as HTMLElement;
+    const h1 = article.childNodes[0];
+    const h2 = article.childNodes[article.childNodes.length - 1];
+
+    const dispose = hydrate(build, container);
+    try {
+      // Static siblings intact.
+      expect(article.firstChild).toBe(h1);
+      expect(article.lastChild).toBe(h2);
+      // The three mapped items live inside the wrapper, in order.
+      const paragraphs = article.querySelectorAll('p');
+      expect(paragraphs.length).toBe(3);
+      expect(
+        Array.from(paragraphs).map((n) => n.textContent),
+      ).toEqual(['a', 'b', 'c']);
+    } finally {
+      dispose();
+    }
+  });
+
+  it('upgrades to a slot wrapper when reactive output grows from 1 to many', async () => {
+    // The SSR pass rendered a single-node slot — no wrapper needed at
+    // that point — so `currentNodes` starts as `[div1]`. When a signal
+    // change pushes the accessor to return three items, `_insert` has
+    // to remove the single child and install a wrapper at the correct
+    // position (before the static sibling) so later updates don't
+    // desync the DOM.
+    const [items, setItems] = signal<string[]>(['one']);
+
+    const build = () => {
+      const root = _template(
+        '<div><header>head</header><!><footer>foot</footer></div>',
+      ).cloneNode(true) as HTMLElement;
+      const marker = root.childNodes[1] as Node;
+      _insert(
+        root,
+        () =>
+          items().map((label) => {
+            const p = _template('<p> </p>').cloneNode(true) as HTMLElement;
+            (p.firstChild as Text).data = label;
+            return p;
+          }),
+        marker,
+      );
+      return root;
+    };
+
+    const { html } = await renderToString(build);
+    expect(html).toContain('<header>head</header><p>one</p><footer>foot</footer>');
+    expect(html).not.toContain('<mkt-slot');
+
+    const container = mountSsr(html);
+    const root = container.firstChild as HTMLElement;
+    const header = root.firstChild as HTMLElement;
+    const footer = root.lastChild as HTMLElement;
+
+    const dispose = hydrate(build, container);
+    try {
+      setItems(['a', 'b', 'c']);
+      flushSync();
+
+      // Statics still anchored.
+      expect(root.firstChild).toBe(header);
+      expect(root.lastChild).toBe(footer);
+      // Wrapper installed on upgrade, paragraphs inside.
+      const slot = root.children[1] as HTMLElement;
+      expect(slot.tagName).toBe('MKT-SLOT');
+      expect(
+        Array.from(slot.querySelectorAll('p')).map((p) => p.textContent),
+      ).toEqual(['a', 'b', 'c']);
+    } finally {
+      dispose();
+    }
+  });
+
+  it('static sibling after a multi-node slot keeps its dynamic text', async () => {
+    // The test that would have caught the silent clobber: a dynamic
+    // slot renders 3 items, then the compiled code walks to the next
+    // static sibling (the <h2>) and writes into its text node. With
+    // SSR-count out of sync, the "next static" is actually a mid-array
+    // item and its text gets overwritten instead.
+    const build = () => {
+      const root = _template(
+        '<article><h1>t</h1><!><h2> </h2></article>',
+      ).cloneNode(true) as HTMLElement;
+      const marker = root.childNodes[1] as Node;
+      _insert(
+        root,
+        () =>
+          ['a', 'b', 'c'].map((label) => {
+            const p = _template('<p> </p>').cloneNode(true) as HTMLElement;
+            (p.firstChild as Text).data = label;
+            return p;
+          }),
+        marker,
+      );
+      // Simulate what the compiler would emit: after _insert, the "next
+      // static" is `_marker.nextSibling` (template-relative). Write
+      // `subtitle` to that node's text.
+      const nextStatic = (marker as Node).nextSibling as HTMLElement;
+      (nextStatic.firstChild as Text).data = 'subtitle';
+      return root;
+    };
+
+    const { html } = await renderToString(build);
+    expect(html).toContain('<h2>subtitle</h2></article>');
+    expect(html).toContain('<p>a</p><p>b</p><p>c</p>');
+
+    const container = mountSsr(html);
+    const article = container.firstChild as HTMLElement;
+    const h2Before = article.lastChild as HTMLElement;
+    expect(h2Before.tagName).toBe('H2');
+    expect(h2Before.textContent).toBe('subtitle');
+
+    const dispose = hydrate(build, container);
+    try {
+      const h2After = article.lastChild as HTMLElement;
+      expect(h2After.tagName).toBe('H2');
+      expect(h2After.textContent).toBe('subtitle');
+      // Each mapped <p> should retain its original 'a'/'b'/'c' — if the
+      // compiled navigation lands on a middle paragraph instead of the
+      // static h2 and writes 'subtitle' there, the letters get clobbered.
+      // With the `<mkt-slot>` wrapper, only 3 children sit between h1
+      // and h2 (the single slot), and compiled nav walks cleanly to h2.
+      const paragraphs = Array.from(article.querySelectorAll('p'));
+      expect(paragraphs.map((p) => p.textContent)).toEqual(['a', 'b', 'c']);
+    } finally {
+      dispose();
+    }
+  });
+});
+
 describe('renderToString({ verifyHydration: true })', () => {
   it('succeeds on a well-formed tree', async () => {
     const build = () => {

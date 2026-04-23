@@ -210,32 +210,66 @@ export function _insert(
     // post-hydration anchor (the first static sibling after our adopted
     // content) and use it from the second run onward.
     let effectiveMarker = marker;
+    // When the accessor produces multiple nodes at a mid-tree slot (a
+    // slot with static siblings after it), we wrap them in a synthetic
+    // `<mkt-slot>` element. Without the wrapper the SSR HTML contains
+    // N content nodes where the template reserved 1, so the client's
+    // index-based navigation (`.firstChild.nextSibling×K`) walks onto
+    // the wrong node for every subsequent static sibling. `<mkt-slot>`
+    // uses `display:contents` so it's layout-invisible.
+    let slot: HTMLElement | null = null;
 
     renderEffect(() => {
       const hydrate = firstRun && isHydrating();
-      // During hydration, scope the cursor to this parent so that any
-      // `cloneNode()` calls inside the accessor adopt `parent`'s existing
-      // children rather than siblings. Start at the marker's index when a
-      // marker is supplied — the marker is the SSR content occupying this
-      // slot, which is the node the accessor should adopt first. Without
-      // this, components with static siblings (e.g. `<h1/><!/><h2/>`)
-      // would adopt the wrong element.
-      if (hydrate) pushFrame(parent, markerIndex(parent, marker));
+
+      if (hydrate) {
+        // SSR may have already wrapped this slot. When the marker we
+        // navigated to is a `<mkt-slot>`, enter it so adoption pops
+        // the wrapped children in order.
+        if (isMktSlot(marker)) {
+          slot = marker as HTMLElement;
+          pushFrame(slot, 0);
+        } else {
+          // Scope the adoption cursor to `parent` starting at the
+          // marker's index so any `cloneNode()` calls inside the
+          // accessor adopt the correct sibling.
+          pushFrame(parent, markerIndex(parent, marker));
+        }
+      }
+
       try {
         const value = (accessor as () => unknown)();
         const newNodes = resolveNodes(value);
 
         if (hydrate) {
           currentNodes = newNodes;
-          // Capture the static sibling after our adopted content as the
-          // new anchor. If `newNodes` is empty (SSR had no content for
-          // this slot), fall back to the original marker — though note
-          // it may still be stale in that case.
-          const last = newNodes[newNodes.length - 1];
-          effectiveMarker = last?.nextSibling ?? undefined;
+          if (slot) {
+            // effectiveMarker isn't needed for reactive updates when
+            // a slot exists — we replace the slot's children wholesale.
+            effectiveMarker = undefined;
+          } else {
+            const last = newNodes[newNodes.length - 1];
+            effectiveMarker = last?.nextSibling ?? undefined;
+          }
           return;
         }
 
+        // Non-hydrating path.
+
+        // If we've established a slot (either from a prior multi-node
+        // render or adopted from SSR), all updates happen inside it.
+        if (slot) {
+          while (slot.firstChild) slot.removeChild(slot.firstChild);
+          for (const node of newNodes) slot.appendChild(node);
+          currentNodes = newNodes;
+          return;
+        }
+
+        // Clear the previous render's nodes before deciding the next
+        // placement. Doing this before the wrapper branch keeps the
+        // parent's child list in a known state — important because the
+        // eventual `insertBefore(slot, anchor)` below needs `anchor` to
+        // still be a valid sibling.
         for (const node of currentNodes) {
           if (node.parentNode === parent) parent.removeChild(node);
         }
@@ -244,6 +278,25 @@ export function _insert(
           effectiveMarker && effectiveMarker.parentNode === parent
             ? effectiveMarker
             : null;
+
+        // First-time multi-node at a mid-tree slot: wrap in `<mkt-slot>`
+        // so the SSR/HTML structural count stays at 1 per dynamic slot.
+        // Skip the wrap for tail slots (no marker) and single-node
+        // slots — those don't desync.
+        if (newNodes.length > 1 && marker !== undefined) {
+          slot = document.createElement('mkt-slot');
+          slot.setAttribute('style', 'display:contents');
+          for (const node of newNodes) slot.appendChild(node);
+          if (anchor) {
+            parent.insertBefore(slot, anchor);
+          } else {
+            parent.appendChild(slot);
+          }
+          currentNodes = newNodes;
+          effectiveMarker = undefined;
+          return;
+        }
+
         for (const node of newNodes) {
           if (anchor) {
             parent.insertBefore(node, anchor);
@@ -301,6 +354,20 @@ function markerIndex(parent: Node, marker?: Node): number {
     if (children[i] === marker) return i;
   }
   return 0;
+}
+
+/**
+ * Identify the `<mkt-slot>` wrapper emitted around multi-node dynamic
+ * content at mid-tree positions. Works across the shim too — we check
+ * `nodeType === 1` before reaching for `tagName`, and uppercase the
+ * result so jsdom (always uppercase) and the server shim (as-provided)
+ * both match.
+ */
+function isMktSlot(node: unknown): boolean {
+  if (!node || typeof node !== 'object') return false;
+  if ((node as Node).nodeType !== 1) return false;
+  const tag = (node as Element).tagName;
+  return typeof tag === 'string' && tag.toUpperCase() === 'MKT-SLOT';
 }
 
 function resolveNodes(value: unknown): Node[] {
