@@ -55,10 +55,23 @@ type ComponentModule<P extends Record<string, unknown>> = {
  * The loader function should return a dynamic import() that resolves
  * to a module with a default export (the component function).
  */
+/**
+ * A lazy component is callable like a normal component, with a
+ * `preload()` method bolted on for prefetching. Preloading on hover
+ * or during route preparation lets `lazy()` resolve synchronously
+ * on the first real render — which is what hydration needs, since a
+ * placeholder node during hydration breaks adoption.
+ */
+export type LazyComponentFn<P extends Record<string, unknown>> = ((
+  props: P,
+) => Node) & {
+  preload(): Promise<void>;
+};
+
 export function lazy<P extends Record<string, unknown>>(
   loader: () => Promise<{ default: (props: P) => Node | null }>,
   options?: LazyOptions
-): (props: P) => Node {
+): LazyComponentFn<P> {
   let resolved: ((props: P) => Node | null) | null = null;
   let loadError: Error | null = null;
   let loadPromise: Promise<void> | null = null;
@@ -213,7 +226,7 @@ export function lazy<P extends Record<string, unknown>>(
    * Preload the component without rendering it.
    * Useful for prefetching on hover or route preparation.
    */
-  LazyComponent.preload = (): Promise<void> => load();
+  (LazyComponent as LazyComponentFn<P>).preload = (): Promise<void> => load();
 
-  return LazyComponent as (props: P) => Node;
+  return LazyComponent as LazyComponentFn<P>;
 }

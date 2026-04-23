@@ -78,6 +78,14 @@ export interface MountOptions extends Omit<RouterOptions, 'routes' | 'notFound'>
 
 export interface MountResult {
   router: Router;
+  /**
+   * Resolves once every `lazy()` matching the initial URL has loaded
+   * and `hydrate()` (or `render()`) has attached to the container.
+   * Awaiting this is optional — UI is interactive as soon as it
+   * resolves, but synchronous setup after `mount()` works regardless
+   * because the router is already constructed.
+   */
+  ready: Promise<void>;
   dispose: () => void;
 }
 
@@ -159,9 +167,46 @@ export function mount(
   }
 
   const wantsHydrate = shouldHydrate ?? container.firstChild !== null;
-  const renderDispose = wantsHydrate
-    ? hydrate(App, container)
-    : render(App, container);
+
+  // Preload every `lazy()` on the router's initial match chain before
+  // attaching hydrate/render. Without this, the first route render
+  // returns a placeholder from `lazy()` and the hydration cursor walks
+  // past the server's real DOM — ending up with handlers attached to
+  // detached placeholder nodes. Also preload the notFound module when
+  // the initial URL matches nothing, so direct 404 hits hydrate cleanly.
+  //
+  // Pulling matches from the router (rather than re-running the matcher
+  // ourselves) means custom histories — memory, hash, anything that
+  // doesn't read `window.location` — preload the routes that will
+  // actually render, not the routes that happen to match the browser's
+  // current URL.
+  let renderDispose: (() => void) | null = null;
+  const initial = router.route();
+  const matchedLazys = initial.matches
+    .map((m) => m.route.lazy)
+    .filter((l): l is NonNullable<typeof l> => typeof l === 'function')
+    .map((l) => l());
+  const needsNotFound =
+    !!(notFoundComponent && initial.matches.length === 0);
+  let ready: Promise<void>;
+  if (matchedLazys.length === 0 && !needsNotFound) {
+    // Nothing to wait on - attach synchronously so tests, SPA dev mode,
+    // and any code that expects routeOutlet() to have rendered before
+    // the next tick see consistent behaviour.
+    renderDispose = wantsHydrate
+      ? hydrate(App, container)
+      : render(App, container);
+    ready = Promise.resolve();
+  } else {
+    const preloadNotFound = needsNotFound
+      ? notFoundComponent!.preload()
+      : Promise.resolve();
+    ready = Promise.all([...matchedLazys, preloadNotFound]).then(() => {
+      renderDispose = wantsHydrate
+        ? hydrate(App, container)
+        : render(App, container);
+    });
+  }
 
   // Watch the router's match chain. Each time it changes, fire any
   // `load()` functions we haven't already settled for the current URL.
@@ -177,10 +222,11 @@ export function mount(
 
   return {
     router,
+    ready,
     dispose: () => {
       loaderDispose();
       actionDispose();
-      renderDispose();
+      if (renderDispose) renderDispose();
     },
   };
 }
