@@ -381,25 +381,72 @@ export function mikataJSXPlugin({ types: t }: { types: typeof BabelTypes }): Plu
     }
     // Array literal: user likely returning a list of nodes/values.
     if (t.isArrayExpression(expr)) return true;
-    // Common chained-list shapes (`.map(...)`, `.flatMap(...)`,
-    // `.filter(...)`) almost always produce arrays of nodes in JSX
-    // contexts.
+    // JSX: a bare <X/> in an expression position produces a node.
+    if (t.isJSXElement(expr) || t.isJSXFragment(expr)) return true;
+    // Conditional `cond ? a : b`: text-bake only if *both* branches are
+    // safe. A branch returning a node would stringify to garbage.
+    if (t.isConditionalExpression(expr)) {
+      return (
+        isNonPrimitiveExpr(expr.consequent) ||
+        isNonPrimitiveExpr(expr.alternate)
+      );
+    }
+    // Logical `&&`, `||`, `??`: the expression can evaluate to the
+    // right-hand side, so if that side is non-primitive we must not
+    // bake. We also check the left of `||` / `??` since it's the
+    // fallback when the right hasn't taken over.
+    if (t.isLogicalExpression(expr)) {
+      return isNonPrimitiveExpr(expr.right) || isNonPrimitiveExpr(expr.left);
+    }
+    // Parenthesized expressions are usually wrapped as the inner type
+    // directly, but defensively unwrap and recurse.
+    if ((expr as { type: string }).type === 'ParenthesizedExpression') {
+      return isNonPrimitiveExpr((expr as unknown as { expression: BabelTypes.Expression }).expression);
+    }
+    // TS assertion shapes: `expr as T`, `<T>expr`, `expr!`. Unwrap.
+    if (t.isTSAsExpression(expr) || t.isTSTypeAssertion(expr) || t.isTSNonNullExpression(expr)) {
+      return isNonPrimitiveExpr(expr.expression);
+    }
+    // Common array-producing method calls. In JSX child position these
+    // almost always hold node arrays the compiler must send through
+    // `_insert` rather than stringify into `.data`.
     if (t.isCallExpression(expr) && t.isMemberExpression(expr.callee)) {
+      const obj = expr.callee.object;
       const member = expr.callee.property;
       if (t.isIdentifier(member)) {
-        if (
-          member.name === 'map' ||
-          member.name === 'flatMap' ||
-          member.name === 'filter' ||
-          member.name === 'flat'
-        ) {
-          return true;
-        }
+        if (ARRAY_METHODS.has(member.name)) return true;
+      }
+      // `Array.from(...)`, `Array.of(...)` — static builders.
+      if (
+        t.isIdentifier(obj) &&
+        obj.name === 'Array' &&
+        t.isIdentifier(member) &&
+        (member.name === 'from' || member.name === 'of')
+      ) {
+        return true;
       }
     }
     // Direct calls to Mikata's node-returning helpers.
     return isNodeReturningCall(expr);
   }
+
+  // Array-prototype methods whose return value is another array. `slice`
+  // / `concat` preserve element types; `reduce` and `reduceRight` bail
+  // conservatively since the accumulator could be a node array. `sort`
+  // and `reverse` mutate and return the same array. All of these come
+  // up when users build lists of nodes in JSX.
+  const ARRAY_METHODS = new Set([
+    'map',
+    'flatMap',
+    'filter',
+    'flat',
+    'concat',
+    'slice',
+    'reverse',
+    'sort',
+    'reduce',
+    'reduceRight',
+  ]);
 
   function isNodeReturningCall(expr: BabelTypes.Expression): boolean {
     if (!t.isCallExpression(expr)) return false;

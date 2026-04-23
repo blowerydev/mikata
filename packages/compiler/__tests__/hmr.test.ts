@@ -140,6 +140,47 @@ describe('HMR injection', () => {
     expect(output).not.toContain('let TodoList = function');
   });
 
+  it('does not match arrow-function component literals inside template strings', () => {
+    // Same concern as the function-declaration case, but for arrow
+    // syntax. The docs pages often document alternatives side by side.
+    const code = `
+      const sample = \`export const Widget = () => <div>wid</div>;\`;
+      export default function Page() {
+        return <pre>{sample}</pre>;
+      }
+    `;
+    const output = transformWithHMR(code);
+    expect(output).toContain('::Page');
+    expect(output).not.toContain('Widget = _registerComponent');
+    // The literal text should survive unchanged (backticks + arrow).
+    expect(output).toContain('export const Widget = () =>');
+  });
+
+  it('does not match component declarations inside regular string literals', () => {
+    // Plain strings (single/double quotes) are also parsed as strings
+    // by the AST walker. Same guarantee as for template literals.
+    const code = `
+      const sample = "function Foo() { return null }";
+      export default function Page() { return <p>{sample}</p>; }
+    `;
+    const output = transformWithHMR(code);
+    expect(output).toContain('::Page');
+    expect(output).not.toContain('Foo = _registerComponent');
+  });
+
+  it('does not match component declarations inside comments', () => {
+    // AST-based detection should also ignore comments, which can
+    // legitimately contain `function Component()` in documentation
+    // blocks without indicating a real top-level declaration.
+    const code = `
+      /** Pass a \`function Counter()\` as the fallback. */
+      export default function Page() { return <div>p</div>; }
+    `;
+    const output = transformWithHMR(code);
+    expect(output).toContain('::Page');
+    expect(output).not.toContain('Counter = _registerComponent');
+  });
+
   it('disables HMR in build mode', () => {
     const plugin = mikata({ hmr: true }) as any;
     // Simulate production build

@@ -189,3 +189,105 @@ describe('JSX transform', () => {
     expect(output).toContain('props.x');
   });
 });
+
+describe('text-bake skip list', () => {
+  // Text-bake writes a single dynamic child's value straight into a
+  // text node via `.data = expr`. That's a huge win for primitives but
+  // catastrophic for expressions that evaluate to a Node or node array
+  // — they'd stringify to "[object HTMLElement]" or arrow source.
+  // isNonPrimitiveExpr has to catch each shape before bake kicks in.
+
+  function bakesAsText(code: string): boolean {
+    const output = transform(code);
+    return output.includes('.data =') && !output.includes('_insert(');
+  }
+
+  it('does not bake arrow functions', () => {
+    expect(bakesAsText(`const el = <p>{() => count()}</p>;`)).toBe(false);
+  });
+
+  it('does not bake array literals', () => {
+    expect(bakesAsText(`const el = <p>{[a, b]}</p>;`)).toBe(false);
+  });
+
+  it('does not bake array .map / .flatMap / .filter / .flat', () => {
+    for (const m of ['map', 'flatMap', 'filter', 'flat']) {
+      expect(bakesAsText(`const el = <p>{arr.${m}(x => x)}</p>;`)).toBe(false);
+    }
+  });
+
+  it('does not bake array .concat / .slice / .sort / .reverse', () => {
+    // These preserve element types so a node array stays a node array.
+    for (const m of ['concat', 'slice', 'sort', 'reverse']) {
+      expect(bakesAsText(`const el = <p>{arr.${m}()}</p>;`)).toBe(false);
+    }
+  });
+
+  it('does not bake reduce / reduceRight', () => {
+    // Accumulator can plausibly be a node list.
+    expect(bakesAsText(`const el = <p>{arr.reduce(fn, [])}</p>;`)).toBe(false);
+    expect(bakesAsText(`const el = <p>{arr.reduceRight(fn, [])}</p>;`)).toBe(
+      false,
+    );
+  });
+
+  it('does not bake Array.from / Array.of', () => {
+    expect(bakesAsText(`const el = <p>{Array.from(set)}</p>;`)).toBe(false);
+    expect(bakesAsText(`const el = <p>{Array.of(a, b)}</p>;`)).toBe(false);
+  });
+
+  it('does not bake conditional expressions with a node branch', () => {
+    // `loading ? <Spinner/> : count` — text-bake would stringify the
+    // spinner when `loading` is true.
+    expect(
+      bakesAsText(`const el = <p>{loading ? <span/> : count()}</p>;`),
+    ).toBe(false);
+  });
+
+  it('bakes conditional expressions with only primitive branches', () => {
+    expect(
+      bakesAsText(`const el = <p>{loading ? 'wait' : count()}</p>;`),
+    ).toBe(true);
+  });
+
+  it('does not bake logical || with a node branch', () => {
+    expect(bakesAsText(`const el = <p>{name || <Default/>}</p>;`)).toBe(false);
+  });
+
+  it('does not bake logical ?? with a node branch', () => {
+    expect(bakesAsText(`const el = <p>{value ?? <Fallback/>}</p>;`)).toBe(
+      false,
+    );
+  });
+
+  it('does not bake bare JSX expressions', () => {
+    expect(bakesAsText(`const el = <p>{<span>hi</span>}</p>;`)).toBe(false);
+  });
+
+  it('does not bake node-returning helper calls (show, each, switchMatch, Dynamic)', () => {
+    for (const helper of ['show', 'each', 'switchMatch', 'Dynamic']) {
+      expect(bakesAsText(`const el = <p>{${helper}(a, b)}</p>;`)).toBe(false);
+    }
+  });
+
+  it('unwraps TS type assertions before classifying', () => {
+    // `arr.map(...) as Node[]` should still trip the skip list.
+    expect(
+      bakesAsText(`const el = <p>{arr.map(x => x) as unknown}</p>;`),
+    ).toBe(false);
+    expect(
+      bakesAsText(`const el = <p>{(<span/>)!}</p>;`),
+    ).toBe(false);
+  });
+
+  it('still bakes plain primitive getters', () => {
+    // Sanity: the skip list shouldn't be so eager that it kills the
+    // common-case win on plain values / signal getters.
+    // Pure string literals go a step further — the compiler inlines
+    // them into the template HTML directly, so they don't even hit
+    // the bake path.
+    expect(bakesAsText(`const el = <p>{count()}</p>;`)).toBe(true);
+    expect(bakesAsText(`const el = <p>{count}</p>;`)).toBe(true);
+    expect(bakesAsText(`const el = <p>{props.label}</p>;`)).toBe(true);
+  });
+});
