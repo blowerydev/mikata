@@ -73,9 +73,14 @@ export function adoptNext(): Node | null {
  * Push a new cursor frame so subsequent `adoptNext()` calls pull from
  * `parent`'s children. Callers must `popFrame()` once they finish
  * adopting the subtree.
+ *
+ * `startIndex` lets callers skip past children that have already been
+ * visited by ambient template navigation (e.g. `_insert` pushes a frame
+ * starting at the marker's index so the adopted slot is the one at that
+ * position, not the parent's first child).
  */
-export function pushFrame(parent: Node): void {
-  stack.push({ parent, next: 0 });
+export function pushFrame(parent: Node, startIndex = 0): void {
+  stack.push({ parent, next: startIndex });
 }
 
 export function popFrame(): void {

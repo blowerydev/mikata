@@ -1,0 +1,438 @@
+/* App-specific layout + typography on top of @mikata/ui's tokens.
+   The JS bootstrap in `theme-state.ts` writes the full @mikata/ui
+   token map onto `<html>` inline once `installThemeVars()` runs, but
+   the CSS below pre-seeds the subset we use most so the server-
+   rendered HTML paints with real colours even before JS loads. */
+
+:root,
+[data-mkt-color-scheme='light'] {
+  --mkt-color-text: #212529;
+  --mkt-color-text-dimmed: #868e96;
+  --mkt-color-text-inverse: #ffffff;
+  --mkt-color-bg: #ffffff;
+  --mkt-color-bg-subtle: #f8f9fa;
+  --mkt-color-border: #dee2e6;
+  --mkt-color-border-strong: #ced4da;
+  --mkt-color-focus-ring: #228be6;
+  --mkt-color-primary-0: #e7f5ff;
+  --mkt-color-primary-5: #339af0;
+  --mkt-color-primary-6: #228be6;
+  --mkt-color-primary-7: #1c7ed6;
+  --mkt-radius-xs: 0.125rem;
+  --mkt-radius-sm: 0.25rem;
+  --mkt-radius-md: 0.5rem;
+  --mkt-space-4: 1rem;
+  --mkt-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
+  --mkt-font-family-mono: ui-monospace, 'Cascadia Code', 'Fira Code', Consolas,
+    monospace;
+  --mkt-font-size-sm: 0.875rem;
+  --mkt-z-sticky: 200;
+  --mkt-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+[data-mkt-color-scheme='dark'] {
+  --mkt-color-text: #c1c2c5;
+  --mkt-color-text-dimmed: #909296;
+  --mkt-color-text-inverse: #1a1b1e;
+  --mkt-color-bg: #1a1b1e;
+  --mkt-color-bg-subtle: #25262b;
+  --mkt-color-border: #373a40;
+  --mkt-color-border-strong: #495057;
+  --mkt-color-focus-ring: #339af0;
+  --mkt-color-primary-0: #1e3a5f;
+  --mkt-color-primary-6: #339af0;
+  --mkt-color-primary-7: #4dabf7;
+  --mkt-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+:root {
+  --sidebar-width: 260px;
+  --content-max: 48rem;
+  --topbar-height: 3.25rem;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--mkt-color-bg, #fff);
+  color: var(--mkt-color-text, #212529);
+  font-family: var(
+    --mkt-font-family,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    sans-serif
+  );
+  font-size: 15px;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+a {
+  color: var(--mkt-color-primary-6);
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+
+/* ---------- Layout ---------- */
+
+.docs-shell {
+  display: grid;
+  grid-template-columns: var(--sidebar-width) 1fr;
+}
+
+.docs-topbar {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0 1.5rem;
+  height: var(--topbar-height);
+  border-bottom: 1px solid var(--mkt-color-border);
+  background: var(--mkt-color-bg);
+  position: sticky;
+  top: 0;
+  z-index: var(--mkt-z-sticky, 200);
+  backdrop-filter: saturate(180%) blur(6px);
+}
+
+.docs-topbar .brand {
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--mkt-color-text);
+  letter-spacing: -0.01em;
+}
+
+.docs-topbar .topbar-links {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-left: auto;
+  font-size: var(--mkt-font-size-sm, 0.875rem);
+}
+
+.topbar-link {
+  color: var(--mkt-color-text-dimmed);
+  font-size: var(--mkt-font-size-sm, 0.875rem);
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--mkt-radius-sm, 0.25rem);
+}
+.topbar-link:hover {
+  color: var(--mkt-color-text);
+  text-decoration: none;
+  background: var(--mkt-color-bg-subtle);
+}
+
+/* Theme toggle (segmented control). Styling tracks the rest of the
+   surface - tight, 3-way button group that lives in the topbar. */
+.theme-toggle {
+  display: inline-flex;
+  padding: 2px;
+  gap: 2px;
+  border: 1px solid var(--mkt-color-border);
+  border-radius: 999px;
+  background: var(--mkt-color-bg-subtle);
+}
+.theme-toggle button {
+  padding: 0.2rem 0.6rem;
+  border: 0;
+  background: transparent;
+  color: var(--mkt-color-text-dimmed);
+  cursor: pointer;
+  font-size: 0.78rem;
+  border-radius: 999px;
+  font-family: inherit;
+  letter-spacing: 0.01em;
+  transition: color 0.1s ease, background 0.1s ease;
+}
+.theme-toggle button:hover {
+  color: var(--mkt-color-text);
+}
+.theme-toggle button[data-active] {
+  background: var(--mkt-color-bg);
+  color: var(--mkt-color-text);
+  box-shadow: var(--mkt-shadow-sm);
+}
+
+/* ---------- Sidebar ---------- */
+
+.docs-sidebar {
+  border-right: 1px solid var(--mkt-color-border);
+  padding: 1.5rem 1rem;
+  overflow-y: auto;
+  max-height: calc(100vh - var(--topbar-height));
+  position: sticky;
+  top: var(--topbar-height);
+  background: var(--mkt-color-bg-subtle);
+}
+
+.docs-sidebar h3 {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--mkt-color-text-dimmed);
+  margin: 1.25rem 0 0.35rem;
+  font-weight: 600;
+}
+.docs-sidebar h3:first-child {
+  margin-top: 0;
+}
+
+.docs-sidebar ul {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 0.5rem;
+}
+
+.docs-sidebar li a {
+  display: block;
+  padding: 0.3rem 0.6rem;
+  border-radius: var(--mkt-radius-sm, 0.25rem);
+  color: var(--mkt-color-text);
+  font-size: 0.88rem;
+  transition: background 0.1s ease;
+}
+
+.docs-sidebar li a:hover {
+  background: var(--mkt-color-bg);
+  text-decoration: none;
+}
+
+.docs-sidebar li a[aria-current='page'] {
+  background: var(--mkt-color-primary-0);
+  color: var(--mkt-color-primary-7);
+  font-weight: 600;
+}
+
+/* ---------- Content ---------- */
+
+.docs-content {
+  padding: 2.5rem 3rem 6rem;
+  max-width: calc(var(--content-max) + 6rem);
+}
+
+.docs-content h1 {
+  font-size: 2.1rem;
+  margin: 0 0 0.5rem;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.docs-content h2 {
+  margin-top: 2.5rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid var(--mkt-color-border);
+  font-size: 1.35rem;
+  letter-spacing: -0.01em;
+}
+
+.docs-content p {
+  margin: 1rem 0;
+}
+
+.docs-content ul,
+.docs-content ol {
+  padding-left: 1.4rem;
+}
+
+.docs-content li + li {
+  margin-top: 0.35rem;
+}
+
+/* Inline <code> styling. Explicitly scoped to prose containers so the
+   rule cannot cascade into `<code>`/`<span>` elements inside a
+   `.codeblock` (where Shiki's inline styles should win). */
+.docs-content p code,
+.docs-content li code,
+.docs-content h1 code,
+.docs-content h2 code,
+.docs-content h3 code,
+.docs-content h4 code,
+.docs-content dt code,
+.docs-content dd code,
+.docs-content td code,
+.docs-content th code {
+  font-family: var(
+    --mkt-font-family-mono,
+    ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace
+  );
+  font-size: 0.85em;
+  background: var(--mkt-color-bg-subtle);
+  border: 1px solid var(--mkt-color-border);
+  padding: 0.08em 0.38em;
+  border-radius: var(--mkt-radius-sm, 0.25rem);
+  color: var(--mkt-color-text);
+}
+
+.codeblock {
+  margin: 1.25rem 0;
+  border-radius: var(--mkt-radius-md, 0.5rem);
+  overflow: hidden;
+  font-size: 0.85rem;
+  line-height: 1.55;
+}
+
+/* Shiki's emitted <pre> is tabindex=0 for keyboard scroll; silence the
+   default focus ring and render a subtle one in our accent colour. */
+.codeblock pre {
+  margin: 0;
+  padding: 1rem 1.25rem;
+  overflow-x: auto;
+  outline: none;
+}
+.codeblock pre:focus-visible {
+  outline: 2px solid var(--mkt-color-focus-ring);
+  outline-offset: -2px;
+}
+
+/* Shiki's dual-theme output sets --shiki-light / --shiki-dark. Pick
+   the right palette based on ThemeProvider's resolved scheme attribute. */
+[data-mkt-color-scheme='light'] .codeblock .shiki,
+[data-mkt-color-scheme='light'] .codeblock .shiki span {
+  color: var(--shiki-light) !important;
+  background-color: var(--shiki-light-bg) !important;
+  font-style: var(--shiki-light-font-style) !important;
+  font-weight: var(--shiki-light-font-weight) !important;
+  text-decoration: var(--shiki-light-text-decoration) !important;
+}
+[data-mkt-color-scheme='dark'] .codeblock .shiki,
+[data-mkt-color-scheme='dark'] .codeblock .shiki span {
+  color: var(--shiki-dark) !important;
+  background-color: var(--shiki-dark-bg) !important;
+  font-style: var(--shiki-dark-font-style) !important;
+  font-weight: var(--shiki-dark-font-weight) !important;
+  text-decoration: var(--shiki-dark-text-decoration) !important;
+}
+
+/* ---------- Playground ---------- */
+
+.playground {
+  border: 1px solid var(--mkt-color-border);
+  border-radius: var(--mkt-radius-md, 0.5rem);
+  overflow: hidden;
+  margin: 1.75rem 0;
+  background: var(--mkt-color-bg);
+  box-shadow: var(--mkt-shadow-sm);
+}
+
+.playground-preview {
+  padding: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--mkt-color-bg);
+  border-bottom: 1px solid var(--mkt-color-border);
+  min-height: 120px;
+}
+
+.playground-controls {
+  padding: 1rem;
+  background: var(--mkt-color-bg-subtle);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.75rem 1rem;
+  align-items: end;
+}
+
+.playground-controls .control {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+  color: var(--mkt-color-text-dimmed);
+  font-weight: 500;
+  min-height: 2.6rem;
+}
+
+.playground-controls .control-label {
+  letter-spacing: 0.01em;
+}
+
+.playground-controls .control--boolean {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.6rem;
+  padding-bottom: 0.35rem; /* aligns baseline with neighbouring inputs */
+}
+.playground-controls .control--boolean input[type='checkbox'] {
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+  accent-color: var(--mkt-color-primary-6);
+}
+
+.playground-controls input[type='text'],
+.playground-controls input[type='number'],
+.playground-controls select {
+  padding: 0.4rem 0.55rem;
+  border: 1px solid var(--mkt-color-border-strong);
+  border-radius: var(--mkt-radius-sm, 0.25rem);
+  font-size: 0.88rem;
+  background: var(--mkt-color-bg);
+  color: var(--mkt-color-text);
+  font-family: inherit;
+}
+.playground-controls input:focus-visible,
+.playground-controls select:focus-visible {
+  outline: 2px solid var(--mkt-color-focus-ring);
+  outline-offset: -1px;
+  border-color: transparent;
+}
+
+/* Button demo styles used by the Button page playground. */
+
+.demo-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 1rem;
+  border-radius: var(--mkt-radius-sm, 0.375rem);
+  border: 1px solid transparent;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.12s ease;
+}
+.demo-btn--sm {
+  padding: 0.3rem 0.7rem;
+  font-size: 0.85rem;
+}
+.demo-btn--md {
+  padding: 0.5rem 1rem;
+  font-size: 0.95rem;
+}
+.demo-btn--lg {
+  padding: 0.7rem 1.4rem;
+  font-size: 1.05rem;
+}
+.demo-btn--primary {
+  background: var(--mkt-color-primary-6);
+  color: var(--mkt-color-text-inverse);
+}
+.demo-btn--outline {
+  background: transparent;
+  color: var(--mkt-color-primary-6);
+  border-color: var(--mkt-color-primary-6);
+}
+.demo-btn--ghost {
+  background: transparent;
+  color: var(--mkt-color-primary-6);
+}
+.demo-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}

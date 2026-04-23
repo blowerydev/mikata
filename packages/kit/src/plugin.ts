@@ -84,7 +84,7 @@ const VIRTUAL_ID = 'virtual:mikata-routes';
 // know not to try and read it from disk.
 const RESOLVED_VIRTUAL_ID = '\0' + VIRTUAL_ID;
 
-const DEFAULT_EXTENSIONS = ['.tsx', '.jsx', '.ts', '.js'] as const;
+const DEFAULT_EXTENSIONS = ['.tsx', '.jsx', '.ts', '.js', '.mdx'] as const;
 
 export default function mikataKit(options: MikataKitOptions = {}): Plugin {
   const routesDirRel = options.routesDir ?? 'src/routes';

@@ -25,8 +25,16 @@ export function serializeNode(node: SNode): string {
   }
   if (node.nodeType === COMMENT_NODE) {
     const data = (node as SComment).data;
-    // Empty comments are used as dynamic-slot markers — preserve them
-    // verbatim so `hydrate()` can line up with the server output.
+    // Compiler-emitted template markers (`<!>`, parsed as empty comments)
+    // do not survive serialization. Keeping them would inflate SSR child
+    // counts: templates have [static, <!>, static], but after rendering
+    // the tree is [static, content, <!>, static]. The client's compiled
+    // navigation walks `.firstChild.nextSibling` by template index, so
+    // the extra comment desynchronises every lookup. Dropping the marker
+    // leaves [static, content, static], which matches the template
+    // structurally (single-root dynamic content replaces the marker).
+    // Named comments (e.g. `<!--each-->`) are runtime-created and kept.
+    if (data === '') return '';
     return `<!--${data}-->`;
   }
   if (node.nodeType === DOCUMENT_FRAGMENT_NODE) {

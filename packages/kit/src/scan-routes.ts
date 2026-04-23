@@ -16,7 +16,13 @@
  *   404.tsx              →  not-found route; rendered when no other route matches
  *                           (only recognised at the top-level routes/ directory)
  *   files prefixed _     →  ignored (except _layout which has special meaning)
- *   files not ending .tsx/.jsx/.ts/.js  →  ignored
+ *   files not ending .tsx/.jsx/.ts/.js/.mdx  →  ignored
+ *
+ * `.mdx` files are treated as page routes - the default export is the
+ * compiled document. API-route classification ignores them: MDX modules
+ * don't export HTTP verb functions, so `isApiRouteSource` will never
+ * match. `.md` is deliberately not accepted so a route-tree `README.md`
+ * stays a README, not a route.
  *
  * API routes (files with no `default` export but with at least one of
  * `GET/POST/PUT/PATCH/DELETE`) follow the same path-derivation rules but
@@ -78,7 +84,7 @@ export interface ScanOptions {
   apiFiles?: ReadonlySet<string>;
 }
 
-const ROUTE_EXT_RE = /\.(?:tsx|jsx|ts|js|mjs|cjs|mts|cts)$/;
+const ROUTE_EXT_RE = /\.(?:tsx|jsx|ts|js|mjs|cjs|mts|cts|mdx)$/;
 const DYNAMIC_SEGMENT_RE = /^\[(\.\.\.)?([A-Za-z_$][\w$]*)\]$/;
 
 /**

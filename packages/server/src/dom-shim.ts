@@ -250,6 +250,39 @@ export class SElement extends SNode {
     }
   }
 
+  // HTMLElement.dataset — proxies to data-* attributes. The real DOM
+  // camelCase-to-kebab-case converts on access (el.dataset.fooBar →
+  // data-foo-bar); @mikata/ui only uses single-token keys so simple
+  // camel→kebab handles every current caller. Lazy so elements that
+  // never touch dataset pay nothing.
+  private _dataset: DOMStringMap | null = null;
+  get dataset(): DOMStringMap {
+    if (!this._dataset) {
+      const attrs = this._attrs;
+      this._dataset = new Proxy({} as DOMStringMap, {
+        get: (_t, prop) => {
+          if (typeof prop !== 'string') return undefined;
+          return attrs.get('data-' + camelToKebab(prop));
+        },
+        set: (_t, prop, value) => {
+          if (typeof prop !== 'string') return false;
+          attrs.set('data-' + camelToKebab(prop), String(value));
+          return true;
+        },
+        deleteProperty: (_t, prop) => {
+          if (typeof prop !== 'string') return false;
+          attrs.delete('data-' + camelToKebab(prop));
+          return true;
+        },
+        has: (_t, prop) => {
+          if (typeof prop !== 'string') return false;
+          return attrs.has('data-' + camelToKebab(prop));
+        },
+      });
+    }
+    return this._dataset;
+  }
+
   get textContent(): string {
     let out = '';
     for (const c of this.childNodes) {
@@ -410,11 +443,69 @@ export function installShim(): ShimHandle {
   const hadDocument = 'document' in globals;
   const doc = new SDocument();
   globals.document = doc;
+
+  // Some components do `x instanceof Node` / `instanceof Element` to tell
+  // real DOM nodes from strings. Expose the shim's base classes under
+  // those names so those checks don't throw ReferenceError server-side.
+  // Also shim a handful of browser-only scheduler/observer globals that
+  // @mikata/ui components reach for (animations, intersection) - all
+  // no-ops since the server never paints or observes. Restored to
+  // whatever was there on shim teardown.
+  const rafNoop = (_cb: FrameRequestCallback): number => 0;
+  const cafNoop = (_handle: number): void => undefined;
+  class NoopObserver {
+    observe(): void {}
+    unobserve(): void {}
+    disconnect(): void {}
+    takeRecords(): unknown[] {
+      return [];
+    }
+  }
+  const matchMediaNoop = (query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: () => {},
+    removeListener: () => {},
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    dispatchEvent: () => false,
+  });
+  const globalAliases: Array<[string, unknown]> = [
+    ['Node', SNode],
+    ['Element', SElement],
+    ['HTMLElement', SElement],
+    ['Text', SText],
+    ['Comment', SComment],
+    ['DocumentFragment', SDocumentFragment],
+    ['requestAnimationFrame', rafNoop],
+    ['cancelAnimationFrame', cafNoop],
+    ['requestIdleCallback', rafNoop],
+    ['cancelIdleCallback', cafNoop],
+    ['IntersectionObserver', NoopObserver],
+    ['ResizeObserver', NoopObserver],
+    ['MutationObserver', NoopObserver],
+    ['matchMedia', matchMediaNoop],
+  ];
+  const previousGlobals: Array<{ name: string; had: boolean; prev: unknown }> = [];
+  for (const [name, ctor] of globalAliases) {
+    previousGlobals.push({
+      name,
+      had: name in globals,
+      prev: globals[name],
+    });
+    globals[name] = ctor;
+  }
+
   const handle: ShimHandle = {
     document: doc,
     restore() {
       if (hadDocument) globals.document = previousDocument;
       else delete globals.document;
+      for (const entry of previousGlobals) {
+        if (entry.had) globals[entry.name] = entry.prev;
+        else delete globals[entry.name];
+      }
       if (active === handle) active = null;
     },
   };
@@ -441,6 +532,10 @@ const VOID_ELEMENTS = new Set([
   'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input',
   'link', 'meta', 'source', 'track', 'wbr',
 ]);
+
+function camelToKebab(s: string): string {
+  return s.replace(/[A-Z]/g, (c) => '-' + c.toLowerCase());
+}
 
 function parseHTMLInto(html: string, parent: SNode): void {
   let i = 0;
@@ -564,7 +659,16 @@ function parseOpenTag(raw: string): { tag: string; attrs: Array<[string, string]
 
 function unescapeEntities(s: string): string {
   if (s.indexOf('&') < 0) return s;
+  // Numeric character references first (decimal and hex) so text copied
+  // from syntax-highlighted output (Shiki emits `&#x3C;` for `<`)
+  // round-trips cleanly through innerHTML → children → serializer.
   return s
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) =>
+      String.fromCodePoint(parseInt(hex, 16)),
+    )
+    .replace(/&#([0-9]+);/g, (_, dec) =>
+      String.fromCodePoint(parseInt(dec, 10)),
+    )
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"')

@@ -114,6 +114,32 @@ describe('HMR injection', () => {
     expect(output).toContain('Widget');
   });
 
+  it('does not match component declarations inside template literals', () => {
+    // Docs pages embed JSX code samples as template-literal strings.
+    // The HMR injector must not treat `function TodoList()` inside a
+    // string as a real top-level declaration - otherwise the injector
+    // emits `TodoList = _registerComponent(...)` for an identifier
+    // that doesn't exist in the module scope.
+    const code = `
+      import { CodeBlock, highlight } from './CodeBlock';
+
+      const sample = await highlight(
+        \`function TodoList() {
+          return <div>sample</div>;
+        }\`,
+        'tsx',
+      );
+
+      export default function Page() {
+        return <CodeBlock html={sample} />;
+      }
+    `;
+    const output = transformWithHMR(code);
+    expect(output).toContain('_registerComponent("src/components/Counter.tsx::Page"');
+    expect(output).not.toContain('TodoList = _registerComponent');
+    expect(output).not.toContain('let TodoList = function');
+  });
+
   it('disables HMR in build mode', () => {
     const plugin = mikata({ hmr: true }) as any;
     // Simulate production build

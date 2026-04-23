@@ -100,7 +100,13 @@ describe('dom-shim: template parsing + cloneNode', () => {
     }
   });
 
-  it('preserves dynamic-slot comment markers emitted by the compiler', () => {
+  it('parses compiler-emitted <!> placeholders as comment nodes but drops them on serialize', () => {
+    // The DOM shim must parse `<!>` as a comment so the runtime can use it
+    // as an insertion anchor on the server. Serialization, however, strips
+    // empty comments: after rendering, the tree looks like
+    // `[static, content, <!>, static]` — keeping the `<!>` in the HTML
+    // would desync the client's index-based navigation, which walks
+    // template-structure (`[static, <!>, static]`).
     const shim = installShim();
     try {
       const tpl = shim.document.createElement('template') as unknown as {
@@ -111,7 +117,7 @@ describe('dom-shim: template parsing + cloneNode', () => {
       const p = tpl.content.firstChild;
       expect(p.childNodes.length).toBe(3);
       expect(p.childNodes[1].nodeType).toBe(8); // Comment
-      expect(serializeNode(tpl.content)).toBe('<p>Count: <!---->!</p>');
+      expect(serializeNode(tpl.content)).toBe('<p>Count: !</p>');
     } finally {
       shim.restore();
     }

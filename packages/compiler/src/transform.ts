@@ -337,14 +337,15 @@ export function mikataJSXPlugin({ types: t }: { types: typeof BabelTypes }): Plu
     // createTextNode + appendChild per slot, the single biggest remaining
     // creation-benchmark cost vs Solid.
     //
-    // Skip when the expression is a call to a known Node-returning helper
-    // (`each`, `show`, etc.) — stringifying a DocumentFragment into `.data`
-    // produces garbage like "[object DocumentFragment]". All other
-    // expressions fall through; if a user hands us a DOM Node there, they'll
-    // see the same stringification — same contract as React/Solid text.
+    // Skip when the expression is known to produce a non-primitive (a Node,
+    // a function accessor, an array of nodes, ...) — stringifying those
+    // into `.data` produces garbage like "[object DocumentFragment]" or
+    // the raw source text of an arrow. All other expressions fall through;
+    // `.data` assignment implicitly coerces signals/primitives to string
+    // which is the intended fast path.
     if (plan.children.length === 1 && plan.children[0].kind === 'dynamic') {
       const c = plan.children[0];
-      if (!isNodeReturningCall(c.expr)) {
+      if (!isNonPrimitiveExpr(c.expr)) {
         c.bakeText = true;
       }
     }
@@ -357,6 +358,48 @@ export function mikataJSXPlugin({ types: t }: { types: typeof BabelTypes }): Plu
     'each', 'show', 'switchMatch', 'Dynamic', 'For', 'Portal',
     '_createComponent', '_createFragment',
   ]);
+
+  /**
+   * Conservative static check: does this expression clearly produce a
+   * non-primitive (Node, array, function) that must go through `_insert`
+   * rather than straight `.data` assignment?
+   *
+   * Used to decide whether to apply the text-bake optimisation. The goal
+   * is not completeness - it's false-negative-safety: if we're unsure we
+   * text-bake (which is fine for strings/numbers) but we want to catch
+   * the common "obviously not a string" shapes so they don't silently
+   * stringify to garbage.
+   */
+  function isNonPrimitiveExpr(expr: BabelTypes.Expression): boolean {
+    // Arrow / function expression: a function accessor consumed by
+    // `_insert`'s reactive path. Must not be stringified as source.
+    if (
+      t.isArrowFunctionExpression(expr) ||
+      t.isFunctionExpression(expr)
+    ) {
+      return true;
+    }
+    // Array literal: user likely returning a list of nodes/values.
+    if (t.isArrayExpression(expr)) return true;
+    // Common chained-list shapes (`.map(...)`, `.flatMap(...)`,
+    // `.filter(...)`) almost always produce arrays of nodes in JSX
+    // contexts.
+    if (t.isCallExpression(expr) && t.isMemberExpression(expr.callee)) {
+      const member = expr.callee.property;
+      if (t.isIdentifier(member)) {
+        if (
+          member.name === 'map' ||
+          member.name === 'flatMap' ||
+          member.name === 'filter' ||
+          member.name === 'flat'
+        ) {
+          return true;
+        }
+      }
+    }
+    // Direct calls to Mikata's node-returning helpers.
+    return isNodeReturningCall(expr);
+  }
 
   function isNodeReturningCall(expr: BabelTypes.Expression): boolean {
     if (!t.isCallExpression(expr)) return false;
@@ -478,7 +521,17 @@ export function mikataJSXPlugin({ types: t }: { types: typeof BabelTypes }): Plu
         ? t.arrowFunctionExpression([], child.expr)
         : child.expr;
     } else if (child.kind === 'node') {
-      valueArg = child.expr;
+      // Wrap component / fragment insertions in an arrow so `_insert`'s
+      // function-accessor path evaluates them AFTER it has pushed a
+      // hydration frame for the target parent. If we pass the raw node
+      // expression, `_createComponent` runs before `_insert` — its
+      // internal `cloneNode` then adopts from whatever outer frame was
+      // active, which can grab the wrong SSR node and leave the real
+      // children as dead orphans. Adds a disposed-immediately
+      // renderEffect (no tracked sources → auto-dispose), negligible
+      // overhead.
+      addReactivityImport(state, 'renderEffect');
+      valueArg = t.arrowFunctionExpression([], child.expr);
     } else {
       return;
     }

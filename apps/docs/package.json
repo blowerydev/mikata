@@ -1,0 +1,26 @@
+{
+  "name": "@mikata/docs",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Documentation website for Mikata, built with @mikata/kit (SSG → GitHub Pages).",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build --outDir dist/client && vite build --ssr src/entry-server.tsx --outDir dist/server",
+    "start": "node server.js",
+    "preview": "npx -y serve dist/static -l 5173"
+  },
+  "dependencies": {
+    "@mikata/kit": "workspace:*",
+    "@mikata/reactivity": "workspace:*",
+    "@mikata/router": "workspace:*",
+    "@mikata/runtime": "workspace:*",
+    "@mikata/server": "workspace:*",
+    "@mikata/ui": "workspace:*"
+  },
+  "devDependencies": {
+    "@mikata/compiler": "workspace:*",
+    "shiki": "^1.24.0",
+    "vite": "^6.0.0"
+  }
+}

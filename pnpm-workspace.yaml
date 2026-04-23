@@ -3,5 +3,6 @@ packages:
   - 'integration'
   - 'playground'
   - 'examples/*'
+  - 'apps/*'
 allowBuilds:
   esbuild: true

@@ -40,6 +40,26 @@ describe('scanRoutes: file → path conversion', () => {
     const m = scanRoutes(['index.tsx', 'README.md', 'styles.css']);
     expect(m.routes.map((r) => r.path)).toEqual(['/']);
   });
+
+  it('accepts .mdx as a page route', () => {
+    const m = scanRoutes(['index.tsx', 'guide.mdx']);
+    const paths = m.routes.map((r) => r.path).sort();
+    expect(paths).toEqual(['/', '/guide']);
+  });
+
+  it('applies dynamic-segment and layout rules to .mdx the same as .tsx', () => {
+    const m = scanRoutes([
+      '_layout.tsx',
+      'docs/_layout.mdx',
+      'docs/index.mdx',
+      'docs/[slug].mdx',
+    ]);
+    const paths = m.routes.map((r) => r.path).sort();
+    expect(paths).toEqual(['/docs', '/docs/:slug']);
+    // Both the tsx root layout and the mdx docs layout should wrap the pages.
+    const docsIndex = m.routes.find((r) => r.path === '/docs')!;
+    expect(docsIndex.layouts).toEqual(['layout:/', 'layout:docs']);
+  });
 });
 
 describe('scanRoutes: layouts', () => {

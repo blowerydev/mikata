@@ -203,36 +203,50 @@ export function _insert(
     // Reactive child - set up an effect
     let currentNodes: Node[] = [];
     let firstRun = true;
+    // After hydration, `marker` (the compiler-passed anchor node) is often
+    // the SSR content we're about to replace, not a stable comment. Once
+    // we remove `currentNodes` on the next update, insertBefore(..., marker)
+    // would throw because marker is no longer in `parent`. Compute a
+    // post-hydration anchor (the first static sibling after our adopted
+    // content) and use it from the second run onward.
+    let effectiveMarker = marker;
 
     renderEffect(() => {
       const hydrate = firstRun && isHydrating();
       // During hydration, scope the cursor to this parent so that any
       // `cloneNode()` calls inside the accessor adopt `parent`'s existing
-      // children rather than siblings. After the first run we're in
-      // steady-state and behave like a normal reactive insert.
-      if (hydrate) pushFrame(parent);
+      // children rather than siblings. Start at the marker's index when a
+      // marker is supplied — the marker is the SSR content occupying this
+      // slot, which is the node the accessor should adopt first. Without
+      // this, components with static siblings (e.g. `<h1/><!/><h2/>`)
+      // would adopt the wrong element.
+      if (hydrate) pushFrame(parent, markerIndex(parent, marker));
       try {
         const value = (accessor as () => unknown)();
         const newNodes = resolveNodes(value);
 
         if (hydrate) {
-          // Nodes were adopted in place — don't touch the DOM, just record
-          // them so future updates can replace them.
           currentNodes = newNodes;
+          // Capture the static sibling after our adopted content as the
+          // new anchor. If `newNodes` is empty (SSR had no content for
+          // this slot), fall back to the original marker — though note
+          // it may still be stale in that case.
+          const last = newNodes[newNodes.length - 1];
+          effectiveMarker = last?.nextSibling ?? undefined;
           return;
         }
 
-        // Remove old nodes
         for (const node of currentNodes) {
-          if (node.parentNode) {
-            node.parentNode.removeChild(node);
-          }
+          if (node.parentNode === parent) parent.removeChild(node);
         }
 
-        // Insert new nodes
+        const anchor =
+          effectiveMarker && effectiveMarker.parentNode === parent
+            ? effectiveMarker
+            : null;
         for (const node of newNodes) {
-          if (marker) {
-            parent.insertBefore(node, marker);
+          if (anchor) {
+            parent.insertBefore(node, anchor);
           } else {
             parent.appendChild(node);
           }
@@ -248,7 +262,7 @@ export function _insert(
     // Static insert. During hydration, the server already emitted these
     // nodes — skip the DOM op and just advance the cursor.
     if (isHydrating()) {
-      pushFrame(parent);
+      pushFrame(parent, markerIndex(parent, marker));
       try {
         resolveNodes(accessor);
       } finally {
@@ -275,6 +289,20 @@ export function _insert(
  * `globalThis.document` — flows through unchanged. In the browser every real
  * Node has `nodeType`, so the check is equivalent.
  */
+/**
+ * Index of `marker` among `parent.childNodes`, or 0 if marker is absent
+ * or not a direct child. Used by `_insert` to position the hydration
+ * cursor at the right slot within `parent`.
+ */
+function markerIndex(parent: Node, marker?: Node): number {
+  if (!marker || marker.parentNode !== parent) return 0;
+  const children = parent.childNodes;
+  for (let i = 0; i < children.length; i++) {
+    if (children[i] === marker) return i;
+  }
+  return 0;
+}
+
 function resolveNodes(value: unknown): Node[] {
   if (value == null || typeof value === 'boolean') return [];
   if (isNodeLike(value)) return [value as Node];

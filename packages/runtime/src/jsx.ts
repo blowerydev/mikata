@@ -244,6 +244,12 @@ export interface HTMLAttributes<T extends HTMLElement = HTMLElement>
   // Escape hatch for direct DOM property / attribute setting
   innerHTML?: string;
   textContent?: string;
+
+  // Generic children slot. The compiler accepts any value as a JSX
+  // child (Node, string, number, array, function accessor, nullish);
+  // the type needs to be permissive enough to cover all shapes that
+  // survive through `_insert`.
+  children?: unknown;
 }
 
 // ---------------------------------------------------------------------------
