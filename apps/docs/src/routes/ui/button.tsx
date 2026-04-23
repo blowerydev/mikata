@@ -1,27 +1,32 @@
 import { useMeta } from '@mikata/kit/head';
+import { Button } from '@mikata/ui';
 import { CodeBlock, highlight } from '../../components/CodeBlock';
 import { Playground, type PlaygroundControl } from '../../components/Playground';
 
 const usage = await highlight(
   `import { Button } from '@mikata/ui';
 
-<Button variant="primary" size="md" onClick={...}>
+<Button variant="filled" size="md" onClick={...}>
   Click me
 </Button>`,
   'tsx',
 );
 
 const controls: PlaygroundControl[] = [
-  { name: 'size', type: 'select', options: ['sm', 'md', 'lg'], default: 'md' },
+  { name: 'size', type: 'select', options: ['xs', 'sm', 'md', 'lg', 'xl'], default: 'md' },
   {
     name: 'variant',
     type: 'select',
-    options: ['primary', 'outline', 'ghost'],
-    default: 'primary',
+    options: ['filled', 'outline', 'light', 'subtle', 'transparent'],
+    default: 'filled',
   },
   { name: 'label', type: 'text', default: 'Click me' },
   { name: 'disabled', type: 'boolean', default: false },
+  { name: 'loading', type: 'boolean', default: false },
 ];
+
+type ButtonVariant = 'filled' | 'outline' | 'light' | 'subtle' | 'transparent';
+type ButtonSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl';
 
 export default function ButtonPage() {
   useMeta({ title: 'Button - @mikata/ui' });
@@ -29,7 +34,7 @@ export default function ButtonPage() {
     <article>
       <h1>Button</h1>
       <p>
-        A clickable action. Variants cover the three hierarchy levels you
+        A clickable action. Variants cover the hierarchy levels you
         reach for in most UIs; sizes map to the density of the
         surrounding layout.
       </p>
@@ -45,30 +50,36 @@ export default function ButtonPage() {
       </p>
       <Playground
         controls={controls}
-        render={(props) => (
-          <button
-            class={`demo-btn demo-btn--${props.size} demo-btn--${props.variant}`}
-            disabled={props.disabled as boolean}
-          >
-            {props.label as string}
-          </button>
-        )}
+        render={(props) =>
+          Button({
+            variant: props.variant as ButtonVariant,
+            size: props.size as ButtonSize,
+            disabled: props.disabled as boolean,
+            loading: props.loading as boolean,
+            children: props.label as string,
+          })
+        }
       />
 
       <h2>Props</h2>
       <ul>
         <li>
-          <code>size</code> - <code>'sm' | 'md' | 'lg'</code>. Defaults to
-          <code> 'md'</code>.
+          <code>variant</code> -{' '}
+          <code>'filled' | 'outline' | 'light' | 'subtle' | 'transparent'</code>.
+          Defaults to <code>'filled'</code>.
         </li>
         <li>
-          <code>variant</code> -{' '}
-          <code>'primary' | 'outline' | 'ghost'</code>. Defaults to
-          <code> 'primary'</code>.
+          <code>size</code> -{' '}
+          <code>'xs' | 'sm' | 'md' | 'lg' | 'xl'</code>. Defaults to
+          <code> 'md'</code>.
         </li>
         <li>
           <code>disabled</code> - <code>boolean</code>. Prevents click
           handlers from firing and applies a muted style.
+        </li>
+        <li>
+          <code>loading</code> - <code>boolean</code>. Shows a spinner in
+          place of the children and disables the button.
         </li>
       </ul>
     </article>

@@ -1,4 +1,10 @@
 import { signal } from '@mikata/reactivity';
+import {
+  Checkbox,
+  NumberInput,
+  Select,
+  TextInput,
+} from '@mikata/ui';
 
 export type PlaygroundControl =
   | { name: string; type: 'select'; options: readonly string[]; default: string; label?: string }
@@ -27,6 +33,9 @@ export interface PlaygroundProps {
  * of `each()` because `each()` does not participate in the hydration
  * cursor (its items sit in a disconnected fragment, so click handlers
  * never reach the visible SSR-rendered DOM).
+ *
+ * Controls are rendered with real @mikata/ui inputs so the docs
+ * exercise the same components they document.
  */
 export function Playground(props: PlaygroundProps) {
   const getters = new Map<string, () => unknown>();
@@ -74,69 +83,41 @@ function ControlInput(props: {
   const label = c.label ?? c.name;
 
   if (c.type === 'select') {
-    return (
-      <label class="control control--select">
-        <span class="control-label">{label}</span>
-        <select
-          onChange={(e: Event) =>
-            props.set(c.name, (e.target as HTMLSelectElement).value)
-          }
-        >
-          {() =>
-            c.options.map((opt) => (
-              <option value={opt} selected={opt === c.default}>
-                {opt}
-              </option>
-            ))
-          }
-        </select>
-      </label>
-    );
+    return Select({
+      label,
+      size: 'sm',
+      data: c.options.map((opt) => ({ value: opt, label: opt })),
+      defaultValue: c.default,
+      onChange: (e) => props.set(c.name, e.currentTarget.value),
+    });
   }
 
   if (c.type === 'boolean') {
-    return (
-      <label class="control control--boolean">
-        <input
-          type="checkbox"
-          checked={c.default}
-          onChange={(e: Event) =>
-            props.set(c.name, (e.target as HTMLInputElement).checked)
-          }
-        />
-        <span class="control-label">{label}</span>
-      </label>
-    );
+    return Checkbox({
+      label,
+      size: 'sm',
+      defaultChecked: c.default,
+      onChange: (e) =>
+        props.set(c.name, (e.target as HTMLInputElement).checked),
+    });
   }
 
   if (c.type === 'number') {
-    return (
-      <label class="control control--number">
-        <span class="control-label">{label}</span>
-        <input
-          type="number"
-          value={String(c.default)}
-          min={c.min}
-          max={c.max}
-          step={c.step ?? 1}
-          onInput={(e: Event) =>
-            props.set(c.name, Number((e.target as HTMLInputElement).value))
-          }
-        />
-      </label>
-    );
+    return NumberInput({
+      label,
+      size: 'sm',
+      defaultValue: c.default,
+      min: c.min,
+      max: c.max,
+      step: c.step,
+      onValueChange: (v) => props.set(c.name, v),
+    });
   }
 
-  return (
-    <label class="control control--text">
-      <span class="control-label">{label}</span>
-      <input
-        type="text"
-        value={c.default}
-        onInput={(e: Event) =>
-          props.set(c.name, (e.target as HTMLInputElement).value)
-        }
-      />
-    </label>
-  );
+  return TextInput({
+    label,
+    size: 'sm',
+    defaultValue: c.default,
+    onInput: (e) => props.set(c.name, e.currentTarget.value),
+  });
 }

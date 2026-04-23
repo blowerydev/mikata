@@ -338,6 +338,9 @@ a:hover {
   min-height: 120px;
 }
 
+/* Controls come from @mikata/ui (Select, TextInput, NumberInput,
+   Checkbox) — each renders its own wrapper + inputs, so the only
+   rule here is the grid that lays them out. */
 .playground-controls {
   padding: 1rem;
   background: var(--mkt-color-bg-subtle);
@@ -345,94 +348,4 @@ a:hover {
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 0.75rem 1rem;
   align-items: end;
-}
-
-.playground-controls .control {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-  font-size: 0.8rem;
-  color: var(--mkt-color-text-dimmed);
-  font-weight: 500;
-  min-height: 2.6rem;
-}
-
-.playground-controls .control-label {
-  letter-spacing: 0.01em;
-}
-
-.playground-controls .control--boolean {
-  flex-direction: row;
-  align-items: center;
-  gap: 0.5rem;
-  min-height: 2.6rem;
-  padding-bottom: 0.35rem; /* aligns baseline with neighbouring inputs */
-}
-.playground-controls .control--boolean input[type='checkbox'] {
-  width: 1rem;
-  height: 1rem;
-  margin: 0;
-  accent-color: var(--mkt-color-primary-6);
-}
-
-.playground-controls input[type='text'],
-.playground-controls input[type='number'],
-.playground-controls select {
-  padding: 0.4rem 0.55rem;
-  border: 1px solid var(--mkt-color-border-strong);
-  border-radius: var(--mkt-radius-sm, 0.25rem);
-  font-size: 0.88rem;
-  background: var(--mkt-color-bg);
-  color: var(--mkt-color-text);
-  font-family: inherit;
-}
-.playground-controls input:focus-visible,
-.playground-controls select:focus-visible {
-  outline: 2px solid var(--mkt-color-focus-ring);
-  outline-offset: -1px;
-  border-color: transparent;
-}
-
-/* Button demo styles used by the Button page playground. */
-
-.demo-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.5rem 1rem;
-  border-radius: var(--mkt-radius-sm, 0.375rem);
-  border: 1px solid transparent;
-  font-weight: 500;
-  cursor: pointer;
-  font-family: inherit;
-  transition: background 0.12s ease;
-}
-.demo-btn--sm {
-  padding: 0.3rem 0.7rem;
-  font-size: 0.85rem;
-}
-.demo-btn--md {
-  padding: 0.5rem 1rem;
-  font-size: 0.95rem;
-}
-.demo-btn--lg {
-  padding: 0.7rem 1.4rem;
-  font-size: 1.05rem;
-}
-.demo-btn--primary {
-  background: var(--mkt-color-primary-6);
-  color: var(--mkt-color-text-inverse);
-}
-.demo-btn--outline {
-  background: transparent;
-  color: var(--mkt-color-primary-6);
-  border-color: var(--mkt-color-primary-6);
-}
-.demo-btn--ghost {
-  background: transparent;
-  color: var(--mkt-color-primary-6);
-}
-.demo-btn:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
 }
