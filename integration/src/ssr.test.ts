@@ -189,6 +189,48 @@ describe('SSR: renderToString → hydrate round-trip', () => {
     }
   });
 
+  it('hydrates ThemeProvider without orphaning its wrapper div', async () => {
+    const { ThemeProvider } = await import('@mikata/ui');
+
+    function View() {
+      // Children are evaluated lazily (as a getter) so cloneNode's
+      // adoption runs inside ThemeProvider's pushed frame — the same
+      // shape the compiler emits for `<ThemeProvider>{child}</ThemeProvider>`.
+      return ThemeProvider({
+        colorScheme: 'dark',
+        get children() {
+          return _template('<section><p>hello</p></section>').cloneNode(true) as any;
+        },
+      });
+    }
+
+    const { html } = await renderToString(() => _createComponent(View, {}));
+    expect(html).toContain('data-mkt-theme');
+    expect(html).toContain('data-mkt-color-scheme="dark"');
+
+    const host = document.createElement('div');
+    host.innerHTML = html;
+    document.body.appendChild(host);
+    const serverWrapper = host.querySelector('[data-mkt-theme]') as HTMLElement;
+    expect(serverWrapper).toBeTruthy();
+    const serverSection = host.querySelector('section')!;
+
+    const dispose = hydrate(() => _createComponent(View, {}), host);
+    try {
+      // Wrapper is adopted, not rebuilt, so we don't end up with a
+      // ghost SSR wrapper alongside a fresh client one.
+      const wrappers = host.querySelectorAll('[data-mkt-theme]');
+      expect(wrappers).toHaveLength(1);
+      expect(wrappers[0]).toBe(serverWrapper);
+      expect(host.querySelector('section')).toBe(serverSection);
+      expect(serverWrapper.getAttribute('data-mkt-color-scheme')).toBe('dark');
+      expect(serverWrapper.style.getPropertyValue('--mkt-color-bg')).toBeTruthy();
+    } finally {
+      dispose();
+      host.remove();
+    }
+  });
+
   it('preserves show() branch markers in the wire HTML', async () => {
     const { html } = await renderToString(() => {
       const [flag] = signal(true);

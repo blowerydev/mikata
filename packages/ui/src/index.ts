@@ -3,6 +3,8 @@ export {
   ThemeProvider, useTheme, useDirection, createTheme, defaultTheme, darkTheme,
   flattenTheme, useComponentDefaults, BUILT_IN_COLORS,
 } from './theme';
+export { applyThemeToDocument } from './theme/apply-document';
+export type { ApplyThemeToDocumentOptions } from './theme/apply-document';
 export type {
   MikataTheme, ColorScheme, Direction, ThemeProviderProps, ThemeContextValue,
   HeadingConfig, HeadingsConfig, CSSVariablesOutput, CSSVariablesResolver,
