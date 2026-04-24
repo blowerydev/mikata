@@ -11,6 +11,12 @@ export {
   adoptElement,
 } from './dom';
 
+// Public prop helpers. `mergeProps` is the user-facing alias of
+// `_mergeProps`; `reactiveProps` wraps a getter map into a props object
+// with getter descriptors, for programmatic prop construction outside
+// JSX (where the compiler handles getters automatically).
+export { mergeProps, reactiveProps } from './dom';
+
 // Component model
 export {
   _createComponent,

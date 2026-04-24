@@ -39,6 +39,8 @@ export {
   _createComponent,
   _spread,
   _mergeProps,
+  mergeProps,
+  reactiveProps,
   disposeComponent,
   onMount,
   createRef,

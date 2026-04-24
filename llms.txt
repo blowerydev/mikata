@@ -335,6 +335,38 @@ const Current = computed(() => kind() === 'button' ? Button : Link);
 
 Pass `component={null}` or `component={undefined}` to render nothing. Every prop except `component` is forwarded via getter, so the inner component sees live values even though the props bag is built once.
 
+### mergeProps(...sources) → props
+
+Merge multiple props objects into one, preserving getter descriptors (later sources win on key collisions). Use this instead of object-spread (`{ ...defaults, ...props }`), which snapshots each value and breaks reactivity.
+
+```tsx
+function Button(userProps: ButtonProps = {}) {
+  const props = mergeProps(
+    useComponentDefaults<ButtonProps>('Button'),
+    userProps,
+  );
+  // props.size re-reads through the getter - defaults apply when user
+  // didn't set it, but signal updates flow through if they did.
+}
+```
+
+Equivalent to the compiler-internal `_mergeProps`; both names point at the same function. Compiler-emitted code uses `_mergeProps`, user code should use `mergeProps`.
+
+### reactiveProps(getters) → props
+
+Wrap a map of `{ key: () => value }` into a props-shaped object whose every property is a getter. The JSX compiler already emits getters for `<Component attr={expr} />` - you only need this helper when building props programmatically outside JSX (a loop over a config array, a dynamic control panel, etc.).
+
+```tsx
+const [size, setSize] = signal<'sm' | 'md'>('md');
+const [color, setColor] = signal('primary');
+
+const props = reactiveProps({ size, color });
+Button(props);                    // mounts once
+setSize('sm');                    // Button updates in place
+```
+
+Without `reactiveProps`, passing `{ size: size() }` snapshots the value and the component won't react to later changes.
+
 ### createDerivedSignal(getter, fallback) → ReadSignal
 
 Mirror a reactive prop read into a `ReadSignal` so downstream code that destructures (or otherwise reads once at setup) stays current. Solves the "setup-once trap" without rewriting every consumer.
@@ -2403,7 +2435,8 @@ function CommandPalette() {
 
 ### vs SolidJS
 - Control flow uses functions (`show`, `each`, `switchMatch`), not components (`<Show>`, `<For>`, `<Switch>`/`<Match>`).
-- Props destructuring works (compiler transforms it to preserve reactivity).
+- Same props convention as Solid: **never destructure**. The compiler emits getter descriptors for JSX attributes at component call sites, and destructuring (`const { size } = props`) snapshots the value and breaks reactivity. The `no-destructured-props` eslint rule enforces this.
+- `mergeProps` / `reactiveProps` are the escape hatches for programmatic prop construction (outside JSX), mirroring Solid's `mergeProps`.
 - `reactive()` provides deep proxy tracking (like Vue), not just store-level tracking.
 - `model()` for form bindings (Solid has no built-in equivalent).
 - `portal()` is a function, not a `<Portal>` component.

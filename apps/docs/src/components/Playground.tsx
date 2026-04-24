@@ -1,4 +1,5 @@
 import { signal } from '@mikata/reactivity';
+import { reactiveProps } from '@mikata/runtime';
 import {
   Checkbox,
   NumberInput,
@@ -22,34 +23,47 @@ export type PlaygroundControl =
 
 export interface PlaygroundProps {
   controls: readonly PlaygroundControl[];
+  /**
+   * Build the preview subtree from reactive-backed props. The object
+   * passed in is a getter-per-key proxy built with `reactiveProps`, so
+   * the callback MUST NOT destructure - do `props.size`, not
+   * `{ size }`. `render` is called exactly once; control changes flow
+   * through the getters so downstream components update in place
+   * instead of being torn down and rebuilt.
+   */
   render: (props: Record<string, unknown>) => Node;
 }
 
 /**
- * Live-editable widget preview. Each control becomes a signal; the
- * preview is a function-child accessor that re-evaluates when any read
- * signal changes, swapping the subtree in place via the runtime's
- * `_insert` reactive path.
+ * Live-editable widget preview. Each control backs a signal, and the
+ * signals are wrapped into a getter-per-key props object with
+ * `reactiveProps`. The render callback runs once with that object; the
+ * previewed component reads `props.size` etc. through the getters, so
+ * internal scopes (Table's sort state, Calendar's focused date) survive
+ * control changes - only the specific `renderEffect` tied to a changed
+ * prop re-runs. The old `{() => render(resolved())}` pattern disposed
+ * the whole subtree on every change, which showed up as jank in
+ * stateful components.
  *
  * Controls are rendered with real @mikata/ui inputs so the docs
  * exercise the same components they document.
  */
 export function Playground(props: PlaygroundProps) {
-  const getters = new Map<string, () => unknown>();
+  const getters: Record<string, () => unknown> = {};
   const setters = new Map<string, (v: unknown) => void>();
   for (const control of props.controls) {
     const [get, setValue] = signal<unknown>(control.default);
-    getters.set(control.name, get);
+    getters[control.name] = get;
     setters.set(control.name, setValue);
   }
 
-  const resolved = (): Record<string, unknown> => {
-    const out: Record<string, unknown> = {};
-    for (const control of props.controls) {
-      out[control.name] = getters.get(control.name)!();
-    }
-    return out;
-  };
+  const liveProps = reactiveProps(getters);
+  // Compute the preview subtree once - `liveProps` is getter-backed so
+  // prop changes re-run individual effects inside the component rather
+  // than swapping the whole node. Assigning to a `const` (as opposed to
+  // writing `{props.render(liveProps)}` inline) avoids the compiler's
+  // text-bake heuristic for bare call expressions at JSX-child position.
+  const preview = props.render(liveProps);
 
   const set = (name: string, v: unknown): void => {
     setters.get(name)!(v);
@@ -57,7 +71,11 @@ export function Playground(props: PlaygroundProps) {
 
   return (
     <div class="playground">
-      <div class="playground-preview">{() => props.render(resolved())}</div>
+      {/* Accessor form (`{() => preview}`) so the compiler routes this
+          through `_insert` as a Node slot rather than text-baking a bare
+          identifier into a text node. `preview` is a stable reference -
+          the accessor never re-runs. */}
+      <div class="playground-preview">{() => preview}</div>
       <div class="playground-controls">
         {() =>
           props.controls.map((control) => (

@@ -50,15 +50,20 @@ export default function ButtonPage() {
       </p>
       <Playground
         controls={controls}
-        render={(props) =>
-          Button({
-            variant: props.variant as ButtonVariant,
-            size: props.size as ButtonSize,
-            disabled: props.disabled as boolean,
-            loading: props.loading as boolean,
-            children: props.label as string,
-          })
-        }
+        render={(props) => (
+          // JSX, not `Button({...})`, so the compiler wraps each attribute
+          // in a getter. Button's internal `props.size` etc. resolve
+          // through those getters back to the reactive signals, and
+          // control changes update the button in place.
+          <Button
+            variant={props.variant as ButtonVariant}
+            size={props.size as ButtonSize}
+            disabled={props.disabled as boolean}
+            loading={props.loading as boolean}
+          >
+            {props.label as string}
+          </Button>
+        )}
       />
 
       <h2>Props</h2>

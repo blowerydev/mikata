@@ -557,7 +557,25 @@ export function _spread(
 }
 
 /**
- * Merge multiple props objects, preserving getters.
+ * Merge multiple props objects into a new one, preserving getter
+ * descriptors. Later sources win on key collisions.
+ *
+ * This is the escape hatch for *programmatic* prop construction - the
+ * JSX compiler already emits getters for `<Component attr={expr} />`
+ * call sites, so reactivity is automatic there. The moment you build a
+ * props object in user code (default-merging, forwarding, overriding in
+ * a loop), plain property assignment snapshots the value and breaks
+ * reactivity. `mergeProps` threads each source through
+ * `Object.getOwnPropertyDescriptors` so a `get foo()` getter on any
+ * source survives the merge and re-reads on access.
+ *
+ * Exported under two names:
+ *   - `_mergeProps` is the compiler-emitted import - keep the underscore
+ *     prefix in generated code so user code and compiler output never
+ *     collide in searches.
+ *   - `mergeProps` is the stable user-facing name. Use this in
+ *     components and app code (see `Button.tsx` for the canonical
+ *     default-merging pattern).
  */
 export function _mergeProps(
   ...sources: Record<string, unknown>[]
@@ -568,4 +586,40 @@ export function _mergeProps(
     Object.defineProperties(result, descriptors);
   }
   return result;
+}
+
+export { _mergeProps as mergeProps };
+
+/**
+ * Wrap a map of `{ key: () => value }` into a props-shaped object whose
+ * every property is a getter. Pass the result to a component and each
+ * `props.key` access inside a `renderEffect` subscribes to the getter's
+ * reactive dependencies - the component is created once and updates in
+ * place as the underlying signals change.
+ *
+ * This is what you reach for when building props from a dynamic source
+ * (a list of controls, a loader result keyed by name, etc.) rather than
+ * JSX attributes. For JSX (`<Button size={x()} />`) the compiler already
+ * emits getters, so you don't need this helper there.
+ *
+ * Example:
+ *   const [size, setSize] = signal<'sm' | 'md'>('md');
+ *   const props = reactiveProps({ size });      // getter-backed
+ *   Button(props);                              // mount once
+ *   setSize('sm');                              // Button updates in place
+ */
+export function reactiveProps<T extends Record<string, unknown>>(
+  getters: { readonly [K in keyof T]: () => T[K] },
+): T {
+  const out = {} as Record<string, unknown>;
+  for (const key of Object.keys(getters)) {
+    Object.defineProperty(out, key, {
+      // Enumerable so `_mergeProps` / `{ ...out }` still pick it up;
+      // configurable so downstream helpers can redefine on top.
+      get: getters[key as keyof T] as () => unknown,
+      enumerable: true,
+      configurable: true,
+    });
+  }
+  return out as T;
 }
