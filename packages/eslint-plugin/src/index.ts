@@ -32,6 +32,7 @@ import { noSignalAssignment } from './rules/no-signal-assignment';
 import { noStaleSignalReadInEffect } from './rules/no-stale-signal-read-in-effect';
 import { noDiscardedRedirect } from './rules/no-discarded-redirect';
 import { noApiRouteDefaultExport } from './rules/no-api-route-default-export';
+import { noImperativeDomInUi } from './rules/no-imperative-dom-in-ui';
 
 const rules: Record<string, Rule.RuleModule> = {
   'rules-of-setup': rulesOfSetup,
@@ -44,6 +45,7 @@ const rules: Record<string, Rule.RuleModule> = {
   'no-stale-signal-read-in-effect': noStaleSignalReadInEffect,
   'no-discarded-redirect': noDiscardedRedirect,
   'no-api-route-default-export': noApiRouteDefaultExport,
+  'no-imperative-dom-in-ui': noImperativeDomInUi,
 };
 
 const plugin: ESLint.Plugin = {
