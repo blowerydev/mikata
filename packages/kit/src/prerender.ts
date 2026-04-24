@@ -37,6 +37,7 @@
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 import type { RouteDefinition } from '@mikata/router';
+import { installShim } from '@mikata/server';
 import {
   createFetchHandler,
   type EdgeServerEntry,
@@ -200,10 +201,21 @@ export async function prerender(
   // option) still triggers the verify pass. Reset in the finally below
   // so a subsequent normal `renderRoute` doesn't inherit the flag.
   _setVerifyHydration(verifyHydration);
+  // Install the DOM shim before we start walking the route tree.
+  // `flattenRoutes` calls `leaf.lazy()` for every parametric route so it
+  // can read `getStaticPaths`, and the compiler hoists `_template(...)`
+  // calls to each route module's top level - importing any route module
+  // without an active shim crashes on `document is not defined`. Each
+  // downstream `renderRoute` (per URL) installs + restores its own shim
+  // pair; by the time this `finally` runs, those pairs have returned the
+  // globals to their pre-shim state, so this outer `restore()` is an
+  // idempotent tail call that also handles the zero-URL case.
+  const shim = installShim();
   try {
     return await runPrerender(options, log, baseUrl, outDir);
   } finally {
     _setVerifyHydration(false);
+    shim.restore();
   }
 }
 
