@@ -29,6 +29,10 @@ export function Drawer(userProps: DrawerProps): Comment {
   const id = uniqueId('drawer');
   const labels = useUILabels();
 
+  // Portaled component — same pattern as Modal. The visible overlay +
+  // panel live under document.body, and the component returns a
+  // Comment for its logical slot. Hydration doesn't need `adoptElement`
+  // because nothing in the portal subtree is in the SSR tree to adopt.
   const overlay = document.createElement('div');
   renderEffect(() => {
     overlay.className = mergeClasses('mkt-drawer__overlay', props.classNames?.overlay);

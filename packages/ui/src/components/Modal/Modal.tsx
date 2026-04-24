@@ -27,6 +27,12 @@ export function Modal(userProps: ModalProps): Comment {
   const id = uniqueId('modal');
   const labels = useUILabels();
 
+  // Portaled component: the visible tree (overlay + content) is
+  // appended to document.body. Only the returned Comment lives in the
+  // component's logical slot in the SSR tree, which hydrates via the
+  // adoption cursor automatically (Comment nodes are nodeType 8 and
+  // adoptNext handles them). Nothing to route through `adoptElement`
+  // since there's no SSR-emitted portal content to adopt.
   const overlay = document.createElement('div');
   renderEffect(() => {
     overlay.className = mergeClasses('mkt-modal__overlay', props.classNames?.overlay);
