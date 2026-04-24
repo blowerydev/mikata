@@ -9,7 +9,8 @@
   "scripts": {
     "build": "pnpm -r --filter './packages/*' run build",
     "test": "vitest",
-    "test:run": "vitest run",
+    "test:run": "vitest run && pnpm --filter @mikata/docs test",
+    "test:docs": "pnpm --filter @mikata/docs test",
     "dev": "pnpm --filter playground dev",
     "dev:ssr": "tsx integration/src/ssr-smoke.ts",
     "dev:kit": "pnpm --filter @mikata/example-kit-ssr dev"

@@ -8,7 +8,9 @@
     "dev": "vite",
     "build": "vite build --outDir dist/client && vite build --ssr src/entry-server.tsx --outDir dist/server",
     "start": "node server.js",
-    "preview": "npx -y serve dist/static -l 5173"
+    "preview": "npx -y serve dist/static -l 5173",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@mikata/kit": "workspace:*",
@@ -20,7 +22,9 @@
   },
   "devDependencies": {
     "@mikata/compiler": "workspace:*",
+    "@mikata/testing": "workspace:*",
     "shiki": "^1.24.0",
-    "vite": "^6.0.0"
+    "vite": "^6.0.0",
+    "vitest": "^3.1.0"
   }
 }
