@@ -13,6 +13,10 @@ function resolveCss(v: number | string | undefined): string | undefined {
 export function Affix(userProps: AffixProps = {}): Comment {
   const props = _mergeProps(userProps as Record<string, unknown>) as AffixProps;
 
+  // Portaled element: attaches to document.body, no hydration adopt.
+  // Doesn't go through `adoptElement` because there is no SSR-
+  // rendered ancestor in the document's main tree to adopt from -
+  // the component's visible slot in the SSR HTML is a comment.
   const el = document.createElement('div');
   renderEffect(() => {
     el.className = mergeClasses('mkt-affix', props.class);
