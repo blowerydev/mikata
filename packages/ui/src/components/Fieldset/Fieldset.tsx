@@ -1,5 +1,5 @@
 import { renderEffect } from '@mikata/reactivity';
-import { _mergeProps } from '@mikata/runtime';
+import { _mergeProps, adoptElement } from '@mikata/runtime';
 import { mergeClasses } from '../../utils/class-merge';
 import type { FieldsetProps } from './Fieldset.types';
 import './Fieldset.css';
@@ -7,37 +7,41 @@ import './Fieldset.css';
 export function Fieldset(userProps: FieldsetProps = {}): HTMLFieldSetElement {
   const props = _mergeProps(userProps as unknown as Record<string, unknown>) as unknown as FieldsetProps;
 
-  // `legend`, `children` are structural — decide sub-elements.
   const legend = props.legend;
-  const children = props.children;
 
-  const el = document.createElement('fieldset');
-  renderEffect(() => {
-    el.className = mergeClasses('mkt-fieldset', props.class, props.classNames?.root);
-  });
-  renderEffect(() => { el.dataset.variant = props.variant ?? 'default'; });
-  renderEffect(() => { el.disabled = !!props.disabled; });
-
-  if (legend != null) {
-    const legendEl = document.createElement('legend');
+  return adoptElement<HTMLFieldSetElement>('fieldset', (el) => {
     renderEffect(() => {
-      legendEl.className = mergeClasses('mkt-fieldset__legend', props.classNames?.legend);
+      el.className = mergeClasses('mkt-fieldset', props.class, props.classNames?.root);
     });
-    if (legend instanceof Node) legendEl.appendChild(legend);
-    else legendEl.textContent = legend;
-    el.appendChild(legendEl);
-  }
+    renderEffect(() => { el.dataset.variant = props.variant ?? 'default'; });
+    renderEffect(() => { el.disabled = !!props.disabled; });
 
-  if (children) {
-    if (Array.isArray(children)) for (const c of children) el.appendChild(c);
-    else el.appendChild(children);
-  }
+    if (legend != null) {
+      adoptElement<HTMLLegendElement>('legend', (legendEl) => {
+        renderEffect(() => {
+          legendEl.className = mergeClasses('mkt-fieldset__legend', props.classNames?.legend);
+        });
+        if (legend instanceof Node) {
+          if (legend.parentNode !== legendEl) legendEl.appendChild(legend);
+        } else if (legendEl.textContent !== legend) {
+          legendEl.textContent = legend;
+        }
+      });
+    }
 
-  const ref = props.ref;
-  if (ref) {
-    if (typeof ref === 'function') ref(el);
-    else (ref as { current: HTMLFieldSetElement | null }).current = el;
-  }
+    const children = props.children;
+    if (children) {
+      if (Array.isArray(children)) {
+        for (const c of children) if (c.parentNode !== el) el.appendChild(c);
+      } else if (children.parentNode !== el) {
+        el.appendChild(children);
+      }
+    }
 
-  return el;
+    const ref = props.ref;
+    if (ref) {
+      if (typeof ref === 'function') ref(el);
+      else (ref as { current: HTMLFieldSetElement | null }).current = el;
+    }
+  });
 }
