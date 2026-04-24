@@ -1,5 +1,5 @@
 import { renderEffect } from '@mikata/reactivity';
-import { _mergeProps } from '@mikata/runtime';
+import { _mergeProps, adoptElement } from '@mikata/runtime';
 import { mergeClasses } from '../../utils/class-merge';
 import { useComponentDefaults } from '../../theme/component-defaults';
 import { useDirection } from '../../theme';
@@ -14,24 +14,11 @@ export function PinInput(userProps: PinInputProps = {}): HTMLElement {
 
   const direction = useDirection();
 
-  // Structural props read once: length (cell count), type (pattern), mask
-  // (input type). Re-initializing these reactively would require rebuilding
-  // the cell array and losing focus state.
   const length = props.length ?? 4;
   const type = props.type ?? 'number';
   const mask = !!props.mask;
   const initial = (props.value ?? props.defaultValue ?? '').split('');
   const autoFocus = props.autoFocus;
-
-  const root = document.createElement('div');
-  renderEffect(() => {
-    root.className = mergeClasses('mkt-pin-input', props.class, props.classNames?.root);
-  });
-  renderEffect(() => { root.dataset.size = props.size ?? 'md'; });
-  renderEffect(() => {
-    if (props.error) root.dataset.error = '';
-    else delete root.dataset.error;
-  });
 
   const inputs: HTMLInputElement[] = [];
   const pattern = type === 'number' ? /^[0-9]$/ : /^[a-zA-Z0-9]$/;
@@ -42,74 +29,86 @@ export function PinInput(userProps: PinInputProps = {}): HTMLElement {
     if (v.length === length) props.onComplete?.(v);
   };
 
-  for (let i = 0; i < length; i++) {
-    const input = document.createElement('input');
-    input.type = mask ? 'password' : 'text';
-    input.inputMode = type === 'number' ? 'numeric' : 'text';
-    input.maxLength = 1;
-    input.autocomplete = i === 0 ? 'one-time-code' : 'off';
+  return adoptElement<HTMLElement>('div', (root) => {
     renderEffect(() => {
-      input.className = mergeClasses('mkt-pin-input__input', props.classNames?.input);
+      root.className = mergeClasses('mkt-pin-input', props.class, props.classNames?.root);
     });
-    renderEffect(() => { input.dataset.size = props.size ?? 'md'; });
+    renderEffect(() => { root.dataset.size = props.size ?? 'md'; });
     renderEffect(() => {
-      if (props.error) input.setAttribute('aria-invalid', 'true');
-      else input.removeAttribute('aria-invalid');
-    });
-    renderEffect(() => { input.disabled = !!props.disabled; });
-    renderEffect(() => {
-      const p = props.placeholder ?? '○';
-      input.placeholder = p;
-    });
-    if (initial[i]) input.value = initial[i];
-
-    input.addEventListener('input', (e) => {
-      const target = e.target as HTMLInputElement;
-      const ch = target.value;
-      if (ch && !pattern.test(ch)) {
-        target.value = '';
-        return;
-      }
-      if (ch && i < length - 1) inputs[i + 1].focus();
-      emit();
+      if (props.error) root.dataset.error = '';
+      else delete root.dataset.error;
     });
 
-    input.addEventListener('keydown', (e) => {
-      const isRtl = direction() === 'rtl';
-      const prevKey = isRtl ? 'ArrowRight' : 'ArrowLeft';
-      const nextKey = isRtl ? 'ArrowLeft' : 'ArrowRight';
-      if (e.key === 'Backspace' && !input.value && i > 0) {
-        inputs[i - 1].focus();
-      } else if (e.key === prevKey && i > 0) {
-        inputs[i - 1].focus();
-      } else if (e.key === nextKey && i < length - 1) {
-        inputs[i + 1].focus();
-      }
-    });
+    for (let i = 0; i < length; i++) {
+      adoptElement<HTMLInputElement>('input', (input) => {
+        input.setAttribute('type', mask ? 'password' : 'text');
+        input.inputMode = type === 'number' ? 'numeric' : 'text';
+        input.maxLength = 1;
+        input.autocomplete = i === 0 ? 'one-time-code' : 'off';
+        renderEffect(() => {
+          input.className = mergeClasses('mkt-pin-input__input', props.classNames?.input);
+        });
+        renderEffect(() => { input.dataset.size = props.size ?? 'md'; });
+        renderEffect(() => {
+          if (props.error) input.setAttribute('aria-invalid', 'true');
+          else input.removeAttribute('aria-invalid');
+        });
+        renderEffect(() => { input.disabled = !!props.disabled; });
+        renderEffect(() => {
+          const p = props.placeholder ?? '○';
+          input.setAttribute('placeholder', p);
+        });
+        if (initial[i]) {
+          input.setAttribute('value', initial[i]);
+          input.value = initial[i];
+        }
 
-    input.addEventListener('paste', (e) => {
-      e.preventDefault();
-      const data = (e.clipboardData?.getData('text') ?? '').replace(/\s/g, '');
-      const cleaned = [...data].filter((c) => pattern.test(c));
-      for (let j = 0; j < cleaned.length && i + j < length; j++) {
-        inputs[i + j].value = cleaned[j];
-      }
-      const lastIdx = Math.min(i + cleaned.length, length - 1);
-      inputs[lastIdx].focus();
-      emit();
-    });
+        input.addEventListener('input', (e) => {
+          const target = e.target as HTMLInputElement;
+          const ch = target.value;
+          if (ch && !pattern.test(ch)) {
+            target.value = '';
+            return;
+          }
+          if (ch && i < length - 1) inputs[i + 1].focus();
+          emit();
+        });
 
-    inputs.push(input);
-    root.appendChild(input);
-  }
+        input.addEventListener('keydown', (e) => {
+          const isRtl = direction() === 'rtl';
+          const prevKey = isRtl ? 'ArrowRight' : 'ArrowLeft';
+          const nextKey = isRtl ? 'ArrowLeft' : 'ArrowRight';
+          if (e.key === 'Backspace' && !input.value && i > 0) {
+            inputs[i - 1].focus();
+          } else if (e.key === prevKey && i > 0) {
+            inputs[i - 1].focus();
+          } else if (e.key === nextKey && i < length - 1) {
+            inputs[i + 1].focus();
+          }
+        });
 
-  if (autoFocus) requestAnimationFrame(() => inputs[0]?.focus());
+        input.addEventListener('paste', (e) => {
+          e.preventDefault();
+          const data = (e.clipboardData?.getData('text') ?? '').replace(/\s/g, '');
+          const cleaned = [...data].filter((c) => pattern.test(c));
+          for (let j = 0; j < cleaned.length && i + j < length; j++) {
+            inputs[i + j].value = cleaned[j];
+          }
+          const lastIdx = Math.min(i + cleaned.length, length - 1);
+          inputs[lastIdx].focus();
+          emit();
+        });
 
-  const ref = props.ref;
-  if (ref) {
-    if (typeof ref === 'function') ref(root);
-    else (ref as { current: HTMLElement | null }).current = root;
-  }
+        inputs[i] = input;
+      });
+    }
 
-  return root;
+    if (autoFocus) requestAnimationFrame(() => inputs[0]?.focus());
+
+    const ref = props.ref;
+    if (ref) {
+      if (typeof ref === 'function') ref(root);
+      else (ref as { current: HTMLElement | null }).current = root;
+    }
+  });
 }

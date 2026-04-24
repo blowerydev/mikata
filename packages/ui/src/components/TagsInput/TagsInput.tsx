@@ -1,6 +1,6 @@
 import { createIcon, Close } from '@mikata/icons';
 import { renderEffect } from '@mikata/reactivity';
-import { _mergeProps } from '@mikata/runtime';
+import { _mergeProps, adoptElement } from '@mikata/runtime';
 import { mergeClasses } from '../../utils/class-merge';
 import { uniqueId } from '../../utils/unique-id';
 import { useUILabels } from '../../utils/use-i18n-optional';
@@ -12,8 +12,6 @@ export function TagsInput(userProps: TagsInputProps): HTMLDivElement {
   const props = _mergeProps(userProps as unknown as Record<string, unknown>) as unknown as TagsInputProps;
 
   const id = uniqueId('tags-input');
-  // `data` presence determines whether a suggestion dropdown exists at all —
-  // read once at setup. `splitChars` captured once for the keydown listener.
   const data = props.data;
   const listId = data ? `${id}-list` : undefined;
   const splitChars = props.splitChars ?? ['Enter', ','];
@@ -21,47 +19,13 @@ export function TagsInput(userProps: TagsInputProps): HTMLDivElement {
 
   const tags: string[] = [...(props.value ?? props.defaultValue ?? [])];
 
-  const control = document.createElement('div');
-  renderEffect(() => {
-    control.className = mergeClasses('mkt-tags-input', props.classNames?.control);
-  });
-  renderEffect(() => { control.dataset.size = props.size ?? 'md'; });
-  renderEffect(() => {
-    if (props.disabled) control.dataset.disabled = '';
-    else delete control.dataset.disabled;
-  });
-  renderEffect(() => {
-    if (props.error) control.dataset.invalid = '';
-    else delete control.dataset.invalid;
-  });
-
-  const input = document.createElement('input');
-  input.type = 'text';
-  input.id = id;
-  input.autocomplete = 'off';
-  renderEffect(() => {
-    input.className = mergeClasses('mkt-tags-input__input', props.classNames?.input);
-  });
-  renderEffect(() => {
-    const p = props.placeholder;
-    if (p) input.placeholder = p;
-    else input.removeAttribute('placeholder');
-  });
-  renderEffect(() => { input.disabled = !!props.disabled; });
-  renderEffect(() => {
-    if (props.required) input.setAttribute('aria-required', 'true');
-    else input.removeAttribute('aria-required');
-  });
-  renderEffect(() => {
-    if (props.error) input.setAttribute('aria-invalid', 'true');
-    else input.removeAttribute('aria-invalid');
-  });
-  if (listId) {
-    input.setAttribute('role', 'combobox');
-    input.setAttribute('aria-autocomplete', 'list');
-    input.setAttribute('aria-expanded', 'false');
-    input.setAttribute('aria-controls', listId);
-  }
+  // Refs captured from adoption callbacks so interaction handlers can
+  // mutate the DOM without re-running setup.
+  let inputEl!: HTMLInputElement;
+  let pillsContainerEl!: HTMLDivElement;
+  let dropdownEl: HTMLUListElement | undefined;
+  let activeIdx = -1;
+  let filtered: string[] = [];
 
   const emit = () => props.onChange?.(tags.slice());
 
@@ -78,15 +42,16 @@ export function TagsInput(userProps: TagsInputProps): HTMLDivElement {
     const maxTags = props.maxTags;
     if (maxTags != null && tags.length >= maxTags) return;
     tags.push(v);
-    input.value = '';
+    inputEl.value = '';
     renderPills();
-    if (listId) renderDropdown();
+    if (dropdownEl) renderDropdown();
     emit();
   };
 
   const renderPills = () => {
-    Array.from(control.querySelectorAll('.mkt-tags-input__pill')).forEach((el) => el.remove());
-    const frag = document.createDocumentFragment();
+    // Rebuild from scratch: clears any SSR-rendered pills plus stale
+    // client ones in one sweep.
+    pillsContainerEl.replaceChildren();
     tags.forEach((t, i) => {
       const pill = document.createElement('span');
       pill.className = mergeClasses('mkt-tags-input__pill', props.classNames?.pill);
@@ -102,38 +67,25 @@ export function TagsInput(userProps: TagsInputProps): HTMLDivElement {
         removeTag(i);
       });
       pill.appendChild(rm);
-      frag.appendChild(pill);
+      pillsContainerEl.appendChild(pill);
     });
-    control.insertBefore(frag, input);
   };
 
-  let dropdown: HTMLUListElement | undefined;
-  let activeIdx = -1;
-  let filtered: string[] = [];
-
-  if (data) {
-    dropdown = document.createElement('ul');
-    dropdown.id = listId!;
-    dropdown.className = 'mkt-tags-input__dropdown';
-    dropdown.setAttribute('role', 'listbox');
-    dropdown.hidden = true;
-  }
-
   const closeDropdown = () => {
-    if (!dropdown) return;
-    dropdown.hidden = true;
-    input.setAttribute('aria-expanded', 'false');
+    if (!dropdownEl) return;
+    dropdownEl.hidden = true;
+    inputEl.setAttribute('aria-expanded', 'false');
     activeIdx = -1;
   };
 
   const renderDropdown = () => {
-    if (!dropdown || !data) return;
-    const q = input.value.trim().toLowerCase();
+    if (!dropdownEl || !data) return;
+    const q = inputEl.value.trim().toLowerCase();
     filtered = data.filter((d) => {
       if (!props.allowDuplicates && tags.includes(d)) return false;
       return q ? d.toLowerCase().includes(q) : true;
     });
-    dropdown.textContent = '';
+    dropdownEl.textContent = '';
     if (!filtered.length) {
       closeDropdown();
       return;
@@ -148,68 +100,126 @@ export function TagsInput(userProps: TagsInputProps): HTMLDivElement {
         e.preventDefault();
         addTag(v);
       });
-      dropdown!.appendChild(li);
+      dropdownEl!.appendChild(li);
     });
-    dropdown.hidden = false;
-    input.setAttribute('aria-expanded', 'true');
+    dropdownEl.hidden = false;
+    inputEl.setAttribute('aria-expanded', 'true');
   };
 
-  input.addEventListener('keydown', (e) => {
-    if (splitChars.includes(e.key)) {
-      if (input.value.trim()) {
-        e.preventDefault();
-        if (dropdown && activeIdx >= 0) addTag(filtered[activeIdx]);
-        else addTag(input.value);
-      }
-      return;
-    }
-    if (e.key === 'Backspace' && !input.value && tags.length > 0) {
-      removeTag(tags.length - 1);
-      return;
-    }
-    if (dropdown) {
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        if (dropdown.hidden) renderDropdown();
-        else {
-          activeIdx = (activeIdx + 1) % filtered.length;
-          renderDropdown();
-        }
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        activeIdx = (activeIdx - 1 + filtered.length) % filtered.length;
-        renderDropdown();
-      } else if (e.key === 'Escape') {
-        closeDropdown();
-      }
-    }
-  });
+  const buildWrapper = () =>
+    adoptElement<HTMLDivElement>('div', (wrapper) => {
+      wrapper.className = 'mkt-tags-input__root';
 
-  if (dropdown) {
-    input.addEventListener('input', () => {
-      activeIdx = -1;
-      renderDropdown();
+      adoptElement<HTMLDivElement>('div', (control) => {
+        renderEffect(() => {
+          control.className = mergeClasses('mkt-tags-input', props.classNames?.control);
+        });
+        renderEffect(() => { control.dataset.size = props.size ?? 'md'; });
+        renderEffect(() => {
+          if (props.disabled) control.dataset.disabled = '';
+          else delete control.dataset.disabled;
+        });
+        renderEffect(() => {
+          if (props.error) control.dataset.invalid = '';
+          else delete control.dataset.invalid;
+        });
+
+        control.addEventListener('click', () => inputEl.focus());
+
+        adoptElement<HTMLDivElement>('div', (pillsContainer) => {
+          pillsContainerEl = pillsContainer;
+          pillsContainer.className = 'mkt-tags-input__pills';
+        });
+
+        adoptElement<HTMLInputElement>('input', (input) => {
+          inputEl = input;
+          input.type = 'text';
+          input.id = id;
+          input.autocomplete = 'off';
+          renderEffect(() => {
+            input.className = mergeClasses('mkt-tags-input__input', props.classNames?.input);
+          });
+          renderEffect(() => {
+            const p = props.placeholder;
+            if (p) input.placeholder = p;
+            else input.removeAttribute('placeholder');
+          });
+          renderEffect(() => { input.disabled = !!props.disabled; });
+          renderEffect(() => {
+            if (props.required) input.setAttribute('aria-required', 'true');
+            else input.removeAttribute('aria-required');
+          });
+          renderEffect(() => {
+            if (props.error) input.setAttribute('aria-invalid', 'true');
+            else input.removeAttribute('aria-invalid');
+          });
+          if (listId) {
+            input.setAttribute('role', 'combobox');
+            input.setAttribute('aria-autocomplete', 'list');
+            input.setAttribute('aria-expanded', 'false');
+            input.setAttribute('aria-controls', listId);
+          }
+
+          input.addEventListener('keydown', (e) => {
+            if (splitChars.includes(e.key)) {
+              if (input.value.trim()) {
+                e.preventDefault();
+                if (dropdownEl && activeIdx >= 0) addTag(filtered[activeIdx]);
+                else addTag(input.value);
+              }
+              return;
+            }
+            if (e.key === 'Backspace' && !input.value && tags.length > 0) {
+              removeTag(tags.length - 1);
+              return;
+            }
+            if (dropdownEl) {
+              if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (dropdownEl.hidden) renderDropdown();
+                else {
+                  activeIdx = (activeIdx + 1) % filtered.length;
+                  renderDropdown();
+                }
+              } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                activeIdx = (activeIdx - 1 + filtered.length) % filtered.length;
+                renderDropdown();
+              } else if (e.key === 'Escape') {
+                closeDropdown();
+              }
+            }
+          });
+
+          if (data) {
+            input.addEventListener('input', () => {
+              activeIdx = -1;
+              renderDropdown();
+            });
+            input.addEventListener('focus', renderDropdown);
+            input.addEventListener('blur', () => setTimeout(closeDropdown, 120));
+          }
+
+          const ref = props.ref;
+          if (ref) {
+            if (typeof ref === 'function') ref(input as unknown as HTMLElement);
+            else (ref as { current: HTMLInputElement | null }).current = input;
+          }
+        });
+      });
+
+      if (data) {
+        adoptElement<HTMLUListElement>('ul', (dropdown) => {
+          dropdownEl = dropdown;
+          dropdown.id = listId!;
+          dropdown.className = 'mkt-tags-input__dropdown';
+          dropdown.setAttribute('role', 'listbox');
+          dropdown.hidden = true;
+        });
+      }
+
+      renderPills();
     });
-    input.addEventListener('focus', renderDropdown);
-    input.addEventListener('blur', () => setTimeout(closeDropdown, 120));
-  }
-
-  control.addEventListener('click', () => input.focus());
-
-  control.appendChild(input);
-
-  const wrapper = document.createElement('div');
-  wrapper.className = 'mkt-tags-input__root';
-  wrapper.appendChild(control);
-  if (dropdown) wrapper.appendChild(dropdown);
-
-  renderPills();
-
-  const ref = props.ref;
-  if (ref) {
-    if (typeof ref === 'function') ref(input as unknown as HTMLElement);
-    else (ref as { current: HTMLInputElement | null }).current = input;
-  }
 
   return InputWrapper({
     id,
@@ -219,6 +229,6 @@ export function TagsInput(userProps: TagsInputProps): HTMLDivElement {
     get required() { return props.required; },
     get class() { return props.class; },
     get classNames() { return props.classNames; },
-    children: wrapper,
+    children: buildWrapper,
   });
 }

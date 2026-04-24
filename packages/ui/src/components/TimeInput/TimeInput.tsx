@@ -1,5 +1,5 @@
 import { renderEffect } from '@mikata/reactivity';
-import { _mergeProps } from '@mikata/runtime';
+import { _mergeProps, adoptElement } from '@mikata/runtime';
 import { mergeClasses } from '../../utils/class-merge';
 import { useComponentDefaults } from '../../theme/component-defaults';
 import { uniqueId } from '../../utils/unique-id';
@@ -24,47 +24,49 @@ export function TimeInput(userProps: TimeInputProps = {}): HTMLDivElement {
 
   const id = uniqueId('time-input');
 
-  const input = document.createElement('input');
-  input.type = 'time';
-  input.id = id;
-  renderEffect(() => {
-    input.className = mergeClasses('mkt-text-input__input', props.classNames?.input);
-  });
-  renderEffect(() => { input.dataset.size = props.size ?? 'md'; });
+  const buildWrapper = () =>
+    adoptElement<HTMLDivElement>('div', (wrapper) => {
+      wrapper.className = 'mkt-text-input';
 
-  if (props.value == null && defaultValue != null) input.value = defaultValue;
-  renderEffect(() => {
-    const v = props.value;
-    if (v != null && v !== input.value) input.value = v;
-  });
-  renderEffect(() => { input.disabled = !!props.disabled; });
-  renderEffect(() => {
-    if (props.required) input.setAttribute('aria-required', 'true');
-    else input.removeAttribute('aria-required');
-  });
-  renderEffect(() => { input.min = props.min ?? ''; });
-  renderEffect(() => { input.max = props.max ?? ''; });
-  renderEffect(() => {
-    const step = props.step;
-    if (step != null) input.step = String(step);
-    else if (props.withSeconds) input.step = '1';
-    else input.step = '';
-  });
+      adoptElement<HTMLInputElement>('input', (input) => {
+        input.type = 'time';
+        input.id = id;
+        renderEffect(() => {
+          input.className = mergeClasses('mkt-text-input__input', props.classNames?.input);
+        });
+        renderEffect(() => { input.dataset.size = props.size ?? 'md'; });
 
-  if (onChange) {
-    input.addEventListener('change', () => onChange(input.value));
-    input.addEventListener('input', () => onChange(input.value));
-  }
+        if (props.value == null && defaultValue != null) input.value = defaultValue;
+        renderEffect(() => {
+          const v = props.value;
+          if (v != null && v !== input.value) input.value = v;
+        });
+        renderEffect(() => { input.disabled = !!props.disabled; });
+        renderEffect(() => {
+          if (props.required) input.setAttribute('aria-required', 'true');
+          else input.removeAttribute('aria-required');
+        });
+        renderEffect(() => { input.min = props.min ?? ''; });
+        renderEffect(() => { input.max = props.max ?? ''; });
+        renderEffect(() => {
+          const step = props.step;
+          if (step != null) input.step = String(step);
+          else if (props.withSeconds) input.step = '1';
+          else input.step = '';
+        });
 
-  const wrapper = document.createElement('div');
-  wrapper.className = 'mkt-text-input';
-  wrapper.appendChild(input);
+        if (onChange) {
+          input.addEventListener('change', () => onChange(input.value));
+          input.addEventListener('input', () => onChange(input.value));
+        }
 
-  const ref = props.ref;
-  if (ref) {
-    if (typeof ref === 'function') ref(input as unknown as HTMLDivElement);
-    else (ref as { current: HTMLInputElement | null }).current = input;
-  }
+        const ref = props.ref;
+        if (ref) {
+          if (typeof ref === 'function') ref(input as unknown as HTMLDivElement);
+          else (ref as { current: HTMLInputElement | null }).current = input;
+        }
+      });
+    });
 
   return InputWrapper({
     id,
@@ -75,6 +77,6 @@ export function TimeInput(userProps: TimeInputProps = {}): HTMLDivElement {
     get size() { return props.size ?? 'md'; },
     get class() { return props.class; },
     get classNames() { return props.classNames; },
-    children: wrapper,
+    children: buildWrapper,
   });
 }

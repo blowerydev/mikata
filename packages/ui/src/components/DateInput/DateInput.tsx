@@ -1,5 +1,5 @@
 import { signal, effect, renderEffect } from '@mikata/reactivity';
-import { _mergeProps, createRef } from '@mikata/runtime';
+import { _mergeProps, createRef, adoptElement } from '@mikata/runtime';
 import { mergeClasses } from '../../utils/class-merge';
 import { onClickOutside } from '../../utils/on-click-outside';
 import { useComponentDefaults } from '../../theme/component-defaults';
@@ -33,27 +33,9 @@ export function DateInput(userProps: DateInputProps = {}): HTMLDivElement {
     return formatDisplayDate(d, locale, props.valueFormat);
   }
 
-  // Input
-  const input = document.createElement('input');
-  input.type = 'text';
-  input.id = id;
-  renderEffect(() => {
-    input.className = mergeClasses('mkt-text-input__input', props.classNames?.input);
-  });
-  renderEffect(() => { input.dataset.size = props.size ?? 'md'; });
-  input.autocomplete = 'off';
-  renderEffect(() => { input.placeholder = props.placeholder ?? ''; });
-  renderEffect(() => { input.disabled = !!props.disabled; });
-  renderEffect(() => {
-    if (props.required) input.setAttribute('aria-required', 'true');
-    else input.removeAttribute('aria-required');
-  });
-
-  effect(() => { input.value = displayValue(selected()); });
-
   // Allow typing ISO (YYYY-MM-DD) or a locale-parseable value. On blur or
   // Enter we try to parse; invalid stays as-is and selection is unchanged.
-  function commitTyped() {
+  function commitTyped(input: HTMLInputElement) {
     const raw = input.value.trim();
     if (!raw) {
       if (clearable) {
@@ -68,7 +50,6 @@ export function DateInput(userProps: DateInputProps = {}): HTMLDivElement {
       if (!Number.isNaN(asTime)) parsed = new Date(asTime);
     }
     if (!parsed) {
-      // Revert to current selected if present
       input.value = displayValue(selected());
       return;
     }
@@ -79,69 +60,86 @@ export function DateInput(userProps: DateInputProps = {}): HTMLDivElement {
     if (props.excludeDate?.(parsed)) { input.value = displayValue(selected()); return; }
     setSelected(parsed);
     onChange?.(parsed);
-    // Normalize display to the canonical format.
     input.value = displayValue(parsed);
   }
 
-  input.addEventListener('focus', () => { if (!props.disabled) setOpen(true); });
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') { setOpen(false); input.blur(); }
-    else if (e.key === 'Enter') { commitTyped(); setOpen(false); }
-    else if (e.key === 'ArrowDown' && !open()) { e.preventDefault(); setOpen(true); }
-  });
-  input.addEventListener('blur', () => {
-    // Commit typed value on blur, but defer close in case focus moved into dropdown.
-    commitTyped();
-  });
+  const buildContainer = () =>
+    adoptElement<HTMLDivElement>('div', (container) => {
+      renderEffect(() => {
+        container.className = mergeClasses('mkt-text-input', 'mkt-date-input', props.classNames?.root);
+      });
 
-  // Dropdown containing the calendar
-  const dropdown = document.createElement('div');
-  renderEffect(() => {
-    dropdown.className = mergeClasses('mkt-date-input__dropdown', props.classNames?.dropdown);
-  });
-  dropdown.hidden = true;
+      adoptElement<HTMLInputElement>('input', (input) => {
+        input.type = 'text';
+        input.id = id;
+        renderEffect(() => {
+          input.className = mergeClasses('mkt-text-input__input', props.classNames?.input);
+        });
+        renderEffect(() => { input.dataset.size = props.size ?? 'md'; });
+        input.autocomplete = 'off';
+        renderEffect(() => { input.placeholder = props.placeholder ?? ''; });
+        renderEffect(() => { input.disabled = !!props.disabled; });
+        renderEffect(() => {
+          if (props.required) input.setAttribute('aria-required', 'true');
+          else input.removeAttribute('aria-required');
+        });
 
-  const picker = DatePicker({
-    get value() { return selected(); },
-    get date() { return selected() ?? undefined; },
-    get minDate() { return props.minDate; },
-    get maxDate() { return props.maxDate; },
-    get excludeDate() { return props.excludeDate; },
-    locale,
-    firstDayOfWeek,
-    get size() { return props.size ?? 'md'; },
-    get classNames() {
-      const cal = props.classNames?.calendar;
-      return cal ? { root: cal as string } : undefined;
-    },
-    onChange: (v) => {
-      const d = v as Date;
-      setSelected(d);
-      onChange?.(d);
-      if (closeOnChange) setOpen(false);
-    },
-  });
-  dropdown.appendChild(picker);
+        effect(() => { input.value = displayValue(selected()); });
 
-  // Container wrapping input + dropdown for positioning.
-  const container = document.createElement('div');
-  renderEffect(() => {
-    container.className = mergeClasses('mkt-text-input', 'mkt-date-input', props.classNames?.root);
-  });
-  container.appendChild(input);
-  container.appendChild(dropdown);
+        input.addEventListener('focus', () => { if (!props.disabled) setOpen(true); });
+        input.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape') { setOpen(false); input.blur(); }
+          else if (e.key === 'Enter') { commitTyped(input); setOpen(false); }
+          else if (e.key === 'ArrowDown' && !open()) { e.preventDefault(); setOpen(true); }
+        });
+        input.addEventListener('blur', () => {
+          commitTyped(input);
+        });
+      });
 
-  effect(() => { dropdown.hidden = !open(); });
+      adoptElement<HTMLDivElement>('div', (dropdown) => {
+        renderEffect(() => {
+          dropdown.className = mergeClasses('mkt-date-input__dropdown', props.classNames?.dropdown);
+        });
+        dropdown.hidden = true;
 
-  const containerRef = createRef<HTMLElement>();
-  containerRef(container);
-  onClickOutside(containerRef, () => setOpen(false));
+        if (!dropdown.firstChild) {
+          const picker = DatePicker({
+            get value() { return selected(); },
+            get date() { return selected() ?? undefined; },
+            get minDate() { return props.minDate; },
+            get maxDate() { return props.maxDate; },
+            get excludeDate() { return props.excludeDate; },
+            locale,
+            firstDayOfWeek,
+            get size() { return props.size ?? 'md'; },
+            get classNames() {
+              const cal = props.classNames?.calendar;
+              return cal ? { root: cal as string } : undefined;
+            },
+            onChange: (v) => {
+              const d = v as Date;
+              setSelected(d);
+              onChange?.(d);
+              if (closeOnChange) setOpen(false);
+            },
+          });
+          dropdown.appendChild(picker);
+        }
 
-  const ref = props.ref;
-  if (ref) {
-    if (typeof ref === 'function') ref(container as unknown as HTMLInputElement);
-    else (ref as { current: HTMLElement | null }).current = container;
-  }
+        effect(() => { dropdown.hidden = !open(); });
+      });
+
+      const containerRef = createRef<HTMLElement>();
+      containerRef(container);
+      onClickOutside(containerRef, () => setOpen(false));
+
+      const ref = props.ref;
+      if (ref) {
+        if (typeof ref === 'function') ref(container as unknown as HTMLInputElement);
+        else (ref as { current: HTMLElement | null }).current = container;
+      }
+    });
 
   return InputWrapper({
     id,
@@ -152,6 +150,6 @@ export function DateInput(userProps: DateInputProps = {}): HTMLDivElement {
     get size() { return props.size ?? 'md'; },
     get class() { return props.class; },
     get classNames() { return props.classNames; },
-    children: container,
+    children: buildContainer,
   });
 }

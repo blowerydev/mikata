@@ -1,5 +1,5 @@
 import { signal, effect, renderEffect } from '@mikata/reactivity';
-import { _mergeProps, createRef } from '@mikata/runtime';
+import { _mergeProps, createRef, adoptElement } from '@mikata/runtime';
 import { mergeClasses } from '../../utils/class-merge';
 import { onClickOutside } from '../../utils/on-click-outside';
 import { useComponentDefaults } from '../../theme/component-defaults';
@@ -31,8 +31,8 @@ function displayFor(
   }
   if (type === 'range' && Array.isArray(value)) {
     const [s, e] = value as [Date | null, Date | null];
-    if (s && e) return `${formatDate(s, locale, fmt)} – ${formatDate(e, locale, fmt)}`;
-    if (s) return `${formatDate(s, locale, fmt)} – …`;
+    if (s && e) return `${formatDate(s, locale, fmt)} - ${formatDate(e, locale, fmt)}`;
+    if (s) return `${formatDate(s, locale, fmt)} - ...`;
   }
   return '';
 }
@@ -61,72 +61,76 @@ export function DatePickerInput(userProps: DatePickerInputProps = {}): HTMLDivEl
   );
   const [open, setOpen] = signal(false);
 
-  const trigger = document.createElement('button');
-  trigger.type = 'button';
-  trigger.id = id;
-  renderEffect(() => {
-    trigger.className = mergeClasses('mkt-picker-input__trigger', props.classNames?.trigger);
-  });
-  renderEffect(() => { trigger.dataset.size = props.size ?? 'md'; });
-  renderEffect(() => { trigger.disabled = !!props.disabled; });
-  trigger.setAttribute('aria-haspopup', 'dialog');
-  trigger.addEventListener('click', () => { if (!props.disabled) setOpen(!open()); });
+  const buildContainer = () =>
+    adoptElement<HTMLDivElement>('div', (container) => {
+      renderEffect(() => {
+        container.className = mergeClasses('mkt-picker-input', props.classNames?.root);
+      });
 
-  effect(() => {
-    const str = displayFor(selected(), type, locale, props.valueFormat);
-    trigger.replaceChildren();
-    if (str) {
-      trigger.textContent = str;
-    } else {
-      const ph = document.createElement('span');
-      ph.className = mergeClasses('mkt-picker-input__placeholder', props.classNames?.placeholder);
-      ph.textContent = props.placeholder ?? 'Pick a date';
-      trigger.appendChild(ph);
-    }
-    trigger.setAttribute('aria-expanded', String(open()));
-  });
+      adoptElement<HTMLButtonElement>('button', (trigger) => {
+        trigger.type = 'button';
+        trigger.id = id;
+        renderEffect(() => {
+          trigger.className = mergeClasses('mkt-picker-input__trigger', props.classNames?.trigger);
+        });
+        renderEffect(() => { trigger.dataset.size = props.size ?? 'md'; });
+        renderEffect(() => { trigger.disabled = !!props.disabled; });
+        trigger.setAttribute('aria-haspopup', 'dialog');
+        trigger.addEventListener('click', () => { if (!props.disabled) setOpen(!open()); });
 
-  const dropdown = document.createElement('div');
-  renderEffect(() => {
-    dropdown.className = mergeClasses('mkt-picker-input__dropdown', props.classNames?.dropdown);
-  });
-  dropdown.hidden = true;
+        effect(() => {
+          const str = displayFor(selected(), type, locale, props.valueFormat);
+          trigger.replaceChildren();
+          if (str) {
+            trigger.textContent = str;
+          } else {
+            const ph = document.createElement('span');
+            ph.className = mergeClasses('mkt-picker-input__placeholder', props.classNames?.placeholder);
+            ph.textContent = props.placeholder ?? 'Pick a date';
+            trigger.appendChild(ph);
+          }
+          trigger.setAttribute('aria-expanded', String(open()));
+        });
+      });
 
-  const picker = DatePicker({
-    type,
-    get value() { return selected() ?? undefined; },
-    get minDate() { return props.minDate; },
-    get maxDate() { return props.maxDate; },
-    get excludeDate() { return props.excludeDate; },
-    locale,
-    firstDayOfWeek,
-    get size() { return props.size ?? 'md'; },
-    onChange: (v) => {
-      setSelected(v);
-      onChange?.(v);
-      if (type === 'default' && closeOnChange) setOpen(false);
-    },
-  });
-  dropdown.appendChild(picker);
+      adoptElement<HTMLDivElement>('div', (dropdown) => {
+        renderEffect(() => {
+          dropdown.className = mergeClasses('mkt-picker-input__dropdown', props.classNames?.dropdown);
+        });
+        dropdown.hidden = true;
 
-  const container = document.createElement('div');
-  renderEffect(() => {
-    container.className = mergeClasses('mkt-picker-input', props.classNames?.root);
-  });
-  container.appendChild(trigger);
-  container.appendChild(dropdown);
+        if (!dropdown.firstChild) {
+          const picker = DatePicker({
+            type,
+            get value() { return selected() ?? undefined; },
+            get minDate() { return props.minDate; },
+            get maxDate() { return props.maxDate; },
+            get excludeDate() { return props.excludeDate; },
+            locale,
+            firstDayOfWeek,
+            get size() { return props.size ?? 'md'; },
+            onChange: (v) => {
+              setSelected(v);
+              onChange?.(v);
+              if (type === 'default' && closeOnChange) setOpen(false);
+            },
+          });
+          dropdown.appendChild(picker);
+        }
 
-  effect(() => { dropdown.hidden = !open(); });
+        effect(() => { dropdown.hidden = !open(); });
+      });
 
-  const containerRef = createRef<HTMLElement>();
-  containerRef(container);
-  onClickOutside(containerRef, () => setOpen(false));
+      const containerRef = createRef<HTMLElement>();
+      containerRef(container);
+      onClickOutside(containerRef, () => setOpen(false));
 
-  const ref = props.ref;
-  if (ref) {
-    if (typeof ref === 'function') ref(container);
-    else (ref as { current: HTMLElement | null }).current = container;
-  }
+      const ref = props.ref;
+      if (ref) {
+        if (typeof ref === 'function') ref(container);
+        else (ref as { current: HTMLElement | null }).current = container;
+      }
+    });
 
   return InputWrapper({
     id,
@@ -137,7 +141,7 @@ export function DatePickerInput(userProps: DatePickerInputProps = {}): HTMLDivEl
     get size() { return props.size ?? 'md'; },
     get class() { return props.class; },
     get classNames() { return props.classNames; },
-    children: container,
+    children: buildContainer,
   });
 }
 
@@ -158,68 +162,73 @@ export function MonthPickerInput(userProps: MonthPickerInputProps = {}): HTMLDiv
   const [selected, setSelected] = signal<Date | null>(value !== undefined ? value : defaultValue);
   const [open, setOpen] = signal(false);
 
-  const trigger = document.createElement('button');
-  trigger.type = 'button';
-  trigger.id = id;
-  renderEffect(() => {
-    trigger.className = mergeClasses('mkt-picker-input__trigger', props.classNames?.trigger);
-  });
-  renderEffect(() => { trigger.dataset.size = props.size ?? 'md'; });
-  renderEffect(() => { trigger.disabled = !!props.disabled; });
-  trigger.setAttribute('aria-haspopup', 'dialog');
-  trigger.addEventListener('click', () => { if (!props.disabled) setOpen(!open()); });
+  const buildContainer = () =>
+    adoptElement<HTMLDivElement>('div', (container) => {
+      renderEffect(() => {
+        container.className = mergeClasses('mkt-picker-input', props.classNames?.root);
+      });
 
-  effect(() => {
-    const v = selected();
-    trigger.replaceChildren();
-    if (v) {
-      trigger.textContent = formatDate(v, locale, props.valueFormat ?? { year: 'numeric', month: 'long' });
-    } else {
-      const ph = document.createElement('span');
-      ph.className = 'mkt-picker-input__placeholder';
-      ph.textContent = props.placeholder ?? 'Pick a month';
-      trigger.appendChild(ph);
-    }
-    trigger.setAttribute('aria-expanded', String(open()));
-  });
+      adoptElement<HTMLButtonElement>('button', (trigger) => {
+        trigger.type = 'button';
+        trigger.id = id;
+        renderEffect(() => {
+          trigger.className = mergeClasses('mkt-picker-input__trigger', props.classNames?.trigger);
+        });
+        renderEffect(() => { trigger.dataset.size = props.size ?? 'md'; });
+        renderEffect(() => { trigger.disabled = !!props.disabled; });
+        trigger.setAttribute('aria-haspopup', 'dialog');
+        trigger.addEventListener('click', () => { if (!props.disabled) setOpen(!open()); });
 
-  const dropdown = document.createElement('div');
-  renderEffect(() => {
-    dropdown.className = mergeClasses('mkt-picker-input__dropdown', props.classNames?.dropdown);
-  });
-  dropdown.hidden = true;
+        effect(() => {
+          const v = selected();
+          trigger.replaceChildren();
+          if (v) {
+            trigger.textContent = formatDate(v, locale, props.valueFormat ?? { year: 'numeric', month: 'long' });
+          } else {
+            const ph = document.createElement('span');
+            ph.className = 'mkt-picker-input__placeholder';
+            ph.textContent = props.placeholder ?? 'Pick a month';
+            trigger.appendChild(ph);
+          }
+          trigger.setAttribute('aria-expanded', String(open()));
+        });
+      });
 
-  const picker = MonthPicker({
-    get value() { return selected() ?? undefined; },
-    get minDate() { return props.minDate; },
-    get maxDate() { return props.maxDate; },
-    locale,
-    get size() { return props.size ?? 'md'; },
-    onChange: (v) => {
-      setSelected(v);
-      onChange?.(v);
-      if (closeOnChange) setOpen(false);
-    },
-  });
-  dropdown.appendChild(picker);
+      adoptElement<HTMLDivElement>('div', (dropdown) => {
+        renderEffect(() => {
+          dropdown.className = mergeClasses('mkt-picker-input__dropdown', props.classNames?.dropdown);
+        });
+        dropdown.hidden = true;
 
-  const container = document.createElement('div');
-  renderEffect(() => {
-    container.className = mergeClasses('mkt-picker-input', props.classNames?.root);
-  });
-  container.appendChild(trigger);
-  container.appendChild(dropdown);
+        if (!dropdown.firstChild) {
+          const picker = MonthPicker({
+            get value() { return selected() ?? undefined; },
+            get minDate() { return props.minDate; },
+            get maxDate() { return props.maxDate; },
+            locale,
+            get size() { return props.size ?? 'md'; },
+            onChange: (v) => {
+              setSelected(v);
+              onChange?.(v);
+              if (closeOnChange) setOpen(false);
+            },
+          });
+          dropdown.appendChild(picker);
+        }
 
-  effect(() => { dropdown.hidden = !open(); });
-  const containerRef = createRef<HTMLElement>();
-  containerRef(container);
-  onClickOutside(containerRef, () => setOpen(false));
+        effect(() => { dropdown.hidden = !open(); });
+      });
 
-  const ref = props.ref;
-  if (ref) {
-    if (typeof ref === 'function') ref(container);
-    else (ref as { current: HTMLElement | null }).current = container;
-  }
+      const containerRef = createRef<HTMLElement>();
+      containerRef(container);
+      onClickOutside(containerRef, () => setOpen(false));
+
+      const ref = props.ref;
+      if (ref) {
+        if (typeof ref === 'function') ref(container);
+        else (ref as { current: HTMLElement | null }).current = container;
+      }
+    });
 
   return InputWrapper({
     id,
@@ -230,7 +239,7 @@ export function MonthPickerInput(userProps: MonthPickerInputProps = {}): HTMLDiv
     get size() { return props.size ?? 'md'; },
     get class() { return props.class; },
     get classNames() { return props.classNames; },
-    children: container,
+    children: buildContainer,
   });
 }
 
@@ -251,67 +260,72 @@ export function YearPickerInput(userProps: YearPickerInputProps = {}): HTMLDivEl
   const [open, setOpen] = signal(false);
   const locale = typeof navigator !== 'undefined' ? navigator.language : 'en-US';
 
-  const trigger = document.createElement('button');
-  trigger.type = 'button';
-  trigger.id = id;
-  renderEffect(() => {
-    trigger.className = mergeClasses('mkt-picker-input__trigger', props.classNames?.trigger);
-  });
-  renderEffect(() => { trigger.dataset.size = props.size ?? 'md'; });
-  renderEffect(() => { trigger.disabled = !!props.disabled; });
-  trigger.setAttribute('aria-haspopup', 'dialog');
-  trigger.addEventListener('click', () => { if (!props.disabled) setOpen(!open()); });
+  const buildContainer = () =>
+    adoptElement<HTMLDivElement>('div', (container) => {
+      renderEffect(() => {
+        container.className = mergeClasses('mkt-picker-input', props.classNames?.root);
+      });
 
-  effect(() => {
-    const v = selected();
-    trigger.replaceChildren();
-    if (v) {
-      trigger.textContent = formatDate(v, locale, props.valueFormat ?? { year: 'numeric' });
-    } else {
-      const ph = document.createElement('span');
-      ph.className = 'mkt-picker-input__placeholder';
-      ph.textContent = props.placeholder ?? 'Pick a year';
-      trigger.appendChild(ph);
-    }
-    trigger.setAttribute('aria-expanded', String(open()));
-  });
+      adoptElement<HTMLButtonElement>('button', (trigger) => {
+        trigger.type = 'button';
+        trigger.id = id;
+        renderEffect(() => {
+          trigger.className = mergeClasses('mkt-picker-input__trigger', props.classNames?.trigger);
+        });
+        renderEffect(() => { trigger.dataset.size = props.size ?? 'md'; });
+        renderEffect(() => { trigger.disabled = !!props.disabled; });
+        trigger.setAttribute('aria-haspopup', 'dialog');
+        trigger.addEventListener('click', () => { if (!props.disabled) setOpen(!open()); });
 
-  const dropdown = document.createElement('div');
-  renderEffect(() => {
-    dropdown.className = mergeClasses('mkt-picker-input__dropdown', props.classNames?.dropdown);
-  });
-  dropdown.hidden = true;
+        effect(() => {
+          const v = selected();
+          trigger.replaceChildren();
+          if (v) {
+            trigger.textContent = formatDate(v, locale, props.valueFormat ?? { year: 'numeric' });
+          } else {
+            const ph = document.createElement('span');
+            ph.className = 'mkt-picker-input__placeholder';
+            ph.textContent = props.placeholder ?? 'Pick a year';
+            trigger.appendChild(ph);
+          }
+          trigger.setAttribute('aria-expanded', String(open()));
+        });
+      });
 
-  const picker = YearPicker({
-    get value() { return selected() ?? undefined; },
-    get minDate() { return props.minDate; },
-    get maxDate() { return props.maxDate; },
-    get size() { return props.size ?? 'md'; },
-    onChange: (v) => {
-      setSelected(v);
-      onChange?.(v);
-      if (closeOnChange) setOpen(false);
-    },
-  });
-  dropdown.appendChild(picker);
+      adoptElement<HTMLDivElement>('div', (dropdown) => {
+        renderEffect(() => {
+          dropdown.className = mergeClasses('mkt-picker-input__dropdown', props.classNames?.dropdown);
+        });
+        dropdown.hidden = true;
 
-  const container = document.createElement('div');
-  renderEffect(() => {
-    container.className = mergeClasses('mkt-picker-input', props.classNames?.root);
-  });
-  container.appendChild(trigger);
-  container.appendChild(dropdown);
+        if (!dropdown.firstChild) {
+          const picker = YearPicker({
+            get value() { return selected() ?? undefined; },
+            get minDate() { return props.minDate; },
+            get maxDate() { return props.maxDate; },
+            get size() { return props.size ?? 'md'; },
+            onChange: (v) => {
+              setSelected(v);
+              onChange?.(v);
+              if (closeOnChange) setOpen(false);
+            },
+          });
+          dropdown.appendChild(picker);
+        }
 
-  effect(() => { dropdown.hidden = !open(); });
-  const containerRef = createRef<HTMLElement>();
-  containerRef(container);
-  onClickOutside(containerRef, () => setOpen(false));
+        effect(() => { dropdown.hidden = !open(); });
+      });
 
-  const ref = props.ref;
-  if (ref) {
-    if (typeof ref === 'function') ref(container);
-    else (ref as { current: HTMLElement | null }).current = container;
-  }
+      const containerRef = createRef<HTMLElement>();
+      containerRef(container);
+      onClickOutside(containerRef, () => setOpen(false));
+
+      const ref = props.ref;
+      if (ref) {
+        if (typeof ref === 'function') ref(container);
+        else (ref as { current: HTMLElement | null }).current = container;
+      }
+    });
 
   return InputWrapper({
     id,
@@ -322,6 +336,6 @@ export function YearPickerInput(userProps: YearPickerInputProps = {}): HTMLDivEl
     get size() { return props.size ?? 'md'; },
     get class() { return props.class; },
     get classNames() { return props.classNames; },
-    children: container,
+    children: buildContainer,
   });
 }

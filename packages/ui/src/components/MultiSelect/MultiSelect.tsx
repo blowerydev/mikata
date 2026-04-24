@@ -1,5 +1,5 @@
 import { createIcon, Close } from '@mikata/icons';
-import { onCleanup, _mergeProps } from '@mikata/runtime';
+import { onCleanup, _mergeProps, adoptElement } from '@mikata/runtime';
 import { renderEffect } from '@mikata/reactivity';
 import { mergeClasses } from '../../utils/class-merge';
 import { uniqueId } from '../../utils/unique-id';
@@ -17,7 +17,6 @@ export function MultiSelect(userProps: MultiSelectProps): HTMLDivElement {
 
   const id = uniqueId('multi-select');
   const listId = `${id}-list`;
-  // `data` shape (array vs fetcher) determines the option-lifecycle — read once.
   const data = props.data;
   const isAsync = typeof data === 'function';
   const fetcher = isAsync ? (data as MultiSelectFetcher) : null;
@@ -32,56 +31,13 @@ export function MultiSelect(userProps: MultiSelectProps): HTMLDivElement {
 
   const selected = new Set<string>(props.value ?? props.defaultValue ?? []);
 
-  const control = document.createElement('div');
-  renderEffect(() => {
-    control.className = mergeClasses('mkt-multi-select', props.classNames?.control);
-  });
-  renderEffect(() => { control.dataset.size = props.size ?? 'md'; });
-  renderEffect(() => {
-    if (props.disabled) control.dataset.disabled = '';
-    else delete control.dataset.disabled;
-  });
-  renderEffect(() => {
-    if (props.error) control.dataset.invalid = '';
-    else delete control.dataset.invalid;
-  });
-
-  const input = document.createElement('input');
-  input.type = 'text';
-  input.id = id;
-  input.autocomplete = 'off';
-  input.setAttribute('role', 'combobox');
-  input.setAttribute('aria-autocomplete', 'list');
-  input.setAttribute('aria-expanded', 'false');
-  input.setAttribute('aria-controls', listId);
-  input.setAttribute('aria-multiselectable', 'true');
-  renderEffect(() => {
-    input.className = mergeClasses('mkt-multi-select__input', props.classNames?.input);
-  });
-  renderEffect(() => {
-    const p = props.placeholder;
-    if (p) input.placeholder = p;
-    else input.removeAttribute('placeholder');
-  });
-  renderEffect(() => { input.disabled = !!props.disabled; });
-  if (!searchable) input.readOnly = true;
-  renderEffect(() => {
-    if (props.required) input.setAttribute('aria-required', 'true');
-    else input.removeAttribute('aria-required');
-  });
-  renderEffect(() => {
-    if (props.error) input.setAttribute('aria-invalid', 'true');
-    else input.removeAttribute('aria-invalid');
-  });
-
-  const dropdown = document.createElement('ul');
-  dropdown.id = listId;
-  renderEffect(() => {
-    dropdown.className = mergeClasses('mkt-multi-select__dropdown', props.classNames?.dropdown);
-  });
-  dropdown.setAttribute('role', 'listbox');
-  dropdown.hidden = true;
-
+  // Refs captured from adoption callbacks so the interaction handlers
+  // (renderPills, renderDropdown, ...) can mutate the DOM without
+  // re-running setup. Pills and <li> options are dynamic client-only
+  // content that gets rebuilt inside the adopted containers.
+  let inputEl!: HTMLInputElement;
+  let pillsContainerEl!: HTMLDivElement;
+  let dropdownEl!: HTMLUListElement;
   let activeIdx = -1;
   let currentFiltered: MultiSelectOption[] = [];
   let loading = false;
@@ -101,8 +57,9 @@ export function MultiSelect(userProps: MultiSelectProps): HTMLDivElement {
   };
 
   const renderPills = () => {
-    Array.from(control.querySelectorAll('.mkt-multi-select__pill')).forEach((el) => el.remove());
-    const frag = document.createDocumentFragment();
+    // Rebuild from scratch: clears any SSR-rendered pills plus stale
+    // client ones in one sweep.
+    pillsContainerEl.replaceChildren();
     for (const v of selected) {
       const lbl = labelFor(v);
       const pill = document.createElement('span');
@@ -119,14 +76,13 @@ export function MultiSelect(userProps: MultiSelectProps): HTMLDivElement {
         removePill(v);
       });
       pill.appendChild(rm);
-      frag.appendChild(pill);
+      pillsContainerEl.appendChild(pill);
     }
-    control.insertBefore(frag, input);
   };
 
   const close = () => {
-    dropdown.hidden = true;
-    input.setAttribute('aria-expanded', 'false');
+    dropdownEl.hidden = true;
+    inputEl.setAttribute('aria-expanded', 'false');
     activeIdx = -1;
   };
 
@@ -138,14 +94,14 @@ export function MultiSelect(userProps: MultiSelectProps): HTMLDivElement {
       if (maxValues != null && selected.size >= maxValues) return;
       selected.add(opt.value);
     }
-    input.value = '';
+    inputEl.value = '';
     renderPills();
     renderDropdown();
     emit();
   };
 
   const renderDropdown = () => {
-    const q = input.value.trim().toLowerCase();
+    const q = inputEl.value.trim().toLowerCase();
     if (isAsync) {
       currentFiltered = options.slice();
     } else {
@@ -155,20 +111,20 @@ export function MultiSelect(userProps: MultiSelectProps): HTMLDivElement {
     if (loading) {
       for (const li of liByValue.values()) li.remove();
       liByValue.clear();
-      if (emptyLi && emptyLi.parentNode === dropdown) emptyLi.remove();
+      if (emptyLi && emptyLi.parentNode === dropdownEl) emptyLi.remove();
       if (!loadingLi) {
         loadingLi = document.createElement('li');
         loadingLi.className = mergeClasses('mkt-multi-select__loading', props.classNames?.loading);
         loadingLi.setAttribute('aria-live', 'polite');
         loadingLi.textContent = resolvedLoadingLabel;
       }
-      if (loadingLi.parentNode !== dropdown) dropdown.appendChild(loadingLi);
-      dropdown.hidden = false;
-      input.setAttribute('aria-expanded', 'true');
+      if (loadingLi.parentNode !== dropdownEl) dropdownEl.appendChild(loadingLi);
+      dropdownEl.hidden = false;
+      inputEl.setAttribute('aria-expanded', 'true');
       return;
     }
 
-    if (loadingLi && loadingLi.parentNode === dropdown) loadingLi.remove();
+    if (loadingLi && loadingLi.parentNode === dropdownEl) loadingLi.remove();
 
     if (!currentFiltered.length) {
       for (const li of liByValue.values()) li.remove();
@@ -178,13 +134,13 @@ export function MultiSelect(userProps: MultiSelectProps): HTMLDivElement {
         emptyLi.className = 'mkt-multi-select__empty';
         emptyLi.textContent = labels.noResults;
       }
-      if (emptyLi.parentNode !== dropdown) dropdown.appendChild(emptyLi);
-      dropdown.hidden = false;
-      input.setAttribute('aria-expanded', 'true');
+      if (emptyLi.parentNode !== dropdownEl) dropdownEl.appendChild(emptyLi);
+      dropdownEl.hidden = false;
+      inputEl.setAttribute('aria-expanded', 'true');
       return;
     }
 
-    if (emptyLi && emptyLi.parentNode === dropdown) emptyLi.remove();
+    if (emptyLi && emptyLi.parentNode === dropdownEl) emptyLi.remove();
 
     const seen = new Set<string>();
     let prev: HTMLLIElement | null = null;
@@ -209,8 +165,8 @@ export function MultiSelect(userProps: MultiSelectProps): HTMLDivElement {
       else delete li.dataset.selected;
       if (i === activeIdx) li.dataset.active = '';
       else delete li.dataset.active;
-      const expected = prev ? prev.nextSibling : dropdown.firstChild;
-      if (expected !== li) dropdown.insertBefore(li, expected);
+      const expected = prev ? prev.nextSibling : dropdownEl.firstChild;
+      if (expected !== li) dropdownEl.insertBefore(li, expected);
       prev = li;
     });
 
@@ -221,8 +177,8 @@ export function MultiSelect(userProps: MultiSelectProps): HTMLDivElement {
       }
     }
 
-    dropdown.hidden = false;
-    input.setAttribute('aria-expanded', 'true');
+    dropdownEl.hidden = false;
+    inputEl.setAttribute('aria-expanded', 'true');
   };
 
   const asyncController = fetcher
@@ -244,84 +200,142 @@ export function MultiSelect(userProps: MultiSelectProps): HTMLDivElement {
 
   if (asyncController) onCleanup(() => asyncController.dispose());
 
-  input.addEventListener('focus', () => {
-    if (asyncController) asyncController.request(input.value);
-    renderDropdown();
-  });
-  input.addEventListener('blur', () => setTimeout(close, 120));
-  input.addEventListener('input', () => {
-    activeIdx = -1;
-    if (asyncController) {
-      asyncController.request(input.value);
-      options = [];
-    }
-    renderDropdown();
-  });
-  input.addEventListener('keydown', (e) => {
-    if (dropdown.hidden && (e.key === 'ArrowDown' || e.key === 'Enter')) {
-      e.preventDefault();
-      if (asyncController) asyncController.request(input.value);
-      renderDropdown();
-      return;
-    }
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      if (!currentFiltered.length) return;
-      activeIdx = (activeIdx + 1) % currentFiltered.length;
-      renderDropdown();
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      if (!currentFiltered.length) return;
-      activeIdx = (activeIdx - 1 + currentFiltered.length) % currentFiltered.length;
-      renderDropdown();
-    } else if (e.key === 'Enter') {
-      if (activeIdx >= 0 && currentFiltered[activeIdx]) {
-        e.preventDefault();
-        toggleOption(currentFiltered[activeIdx]);
-      }
-    } else if (e.key === 'Escape') {
-      close();
-    } else if (e.key === 'Backspace' && !input.value && selected.size > 0) {
-      const last = Array.from(selected).pop();
-      if (last) removePill(last);
-    }
-  });
+  const buildWrapper = () =>
+    adoptElement<HTMLDivElement>('div', (wrapper) => {
+      wrapper.className = 'mkt-multi-select__root';
 
-  control.addEventListener('click', (e) => {
-    if ((e.target as HTMLElement).closest('.mkt-multi-select__pill-remove')) return;
-    input.focus();
-  });
+      adoptElement<HTMLDivElement>('div', (control) => {
+        renderEffect(() => {
+          control.className = mergeClasses('mkt-multi-select', props.classNames?.control);
+        });
+        renderEffect(() => { control.dataset.size = props.size ?? 'md'; });
+        renderEffect(() => {
+          if (props.disabled) control.dataset.disabled = '';
+          else delete control.dataset.disabled;
+        });
+        renderEffect(() => {
+          if (props.error) control.dataset.invalid = '';
+          else delete control.dataset.invalid;
+        });
 
-  control.appendChild(input);
+        control.addEventListener('click', (e) => {
+          if ((e.target as HTMLElement).closest('.mkt-multi-select__pill-remove')) return;
+          inputEl.focus();
+        });
 
-  const wrapper = document.createElement('div');
-  wrapper.className = 'mkt-multi-select__root';
-  wrapper.appendChild(control);
-  wrapper.appendChild(dropdown);
+        adoptElement<HTMLDivElement>('div', (pillsContainer) => {
+          pillsContainerEl = pillsContainer;
+          pillsContainer.className = 'mkt-multi-select__pills';
+        });
 
-  if (clearable) {
-    const clear = document.createElement('button');
-    clear.type = 'button';
-    clear.className = 'mkt-multi-select__clear';
-    clear.setAttribute('aria-label', labels.clear);
-    clear.appendChild(createIcon(Close, { size: 10, strokeWidth: 1.5 }));
-    clear.addEventListener('mousedown', (e) => {
-      e.preventDefault();
-      selected.clear();
+        adoptElement<HTMLInputElement>('input', (input) => {
+          inputEl = input;
+          input.type = 'text';
+          input.id = id;
+          input.autocomplete = 'off';
+          input.setAttribute('role', 'combobox');
+          input.setAttribute('aria-autocomplete', 'list');
+          input.setAttribute('aria-expanded', 'false');
+          input.setAttribute('aria-controls', listId);
+          input.setAttribute('aria-multiselectable', 'true');
+          renderEffect(() => {
+            input.className = mergeClasses('mkt-multi-select__input', props.classNames?.input);
+          });
+          renderEffect(() => {
+            const p = props.placeholder;
+            if (p) input.placeholder = p;
+            else input.removeAttribute('placeholder');
+          });
+          renderEffect(() => { input.disabled = !!props.disabled; });
+          if (!searchable) input.readOnly = true;
+          renderEffect(() => {
+            if (props.required) input.setAttribute('aria-required', 'true');
+            else input.removeAttribute('aria-required');
+          });
+          renderEffect(() => {
+            if (props.error) input.setAttribute('aria-invalid', 'true');
+            else input.removeAttribute('aria-invalid');
+          });
+
+          input.addEventListener('focus', () => {
+            if (asyncController) asyncController.request(input.value);
+            renderDropdown();
+          });
+          input.addEventListener('blur', () => setTimeout(close, 120));
+          input.addEventListener('input', () => {
+            activeIdx = -1;
+            if (asyncController) {
+              asyncController.request(input.value);
+              options = [];
+            }
+            renderDropdown();
+          });
+          input.addEventListener('keydown', (e) => {
+            if (dropdownEl.hidden && (e.key === 'ArrowDown' || e.key === 'Enter')) {
+              e.preventDefault();
+              if (asyncController) asyncController.request(input.value);
+              renderDropdown();
+              return;
+            }
+            if (e.key === 'ArrowDown') {
+              e.preventDefault();
+              if (!currentFiltered.length) return;
+              activeIdx = (activeIdx + 1) % currentFiltered.length;
+              renderDropdown();
+            } else if (e.key === 'ArrowUp') {
+              e.preventDefault();
+              if (!currentFiltered.length) return;
+              activeIdx = (activeIdx - 1 + currentFiltered.length) % currentFiltered.length;
+              renderDropdown();
+            } else if (e.key === 'Enter') {
+              if (activeIdx >= 0 && currentFiltered[activeIdx]) {
+                e.preventDefault();
+                toggleOption(currentFiltered[activeIdx]);
+              }
+            } else if (e.key === 'Escape') {
+              close();
+            } else if (e.key === 'Backspace' && !input.value && selected.size > 0) {
+              const last = Array.from(selected).pop();
+              if (last) removePill(last);
+            }
+          });
+
+          const ref = props.ref;
+          if (ref) {
+            if (typeof ref === 'function') ref(input as unknown as HTMLElement);
+            else (ref as { current: HTMLInputElement | null }).current = input;
+          }
+        });
+
+        if (clearable) {
+          adoptElement<HTMLButtonElement>('button', (clear) => {
+            clear.type = 'button';
+            clear.className = 'mkt-multi-select__clear';
+            clear.setAttribute('aria-label', labels.clear);
+            if (!clear.firstChild) clear.appendChild(createIcon(Close, { size: 10, strokeWidth: 1.5 }));
+            clear.addEventListener('mousedown', (e) => {
+              e.preventDefault();
+              selected.clear();
+              renderPills();
+              renderDropdown();
+              emit();
+            });
+          });
+        }
+      });
+
+      adoptElement<HTMLUListElement>('ul', (dropdown) => {
+        dropdownEl = dropdown;
+        dropdown.id = listId;
+        renderEffect(() => {
+          dropdown.className = mergeClasses('mkt-multi-select__dropdown', props.classNames?.dropdown);
+        });
+        dropdown.setAttribute('role', 'listbox');
+        dropdown.hidden = true;
+      });
+
       renderPills();
-      renderDropdown();
-      emit();
     });
-    control.appendChild(clear);
-  }
-
-  renderPills();
-
-  const ref = props.ref;
-  if (ref) {
-    if (typeof ref === 'function') ref(input as unknown as HTMLElement);
-    else (ref as { current: HTMLInputElement | null }).current = input;
-  }
 
   return InputWrapper({
     id,
@@ -331,6 +345,6 @@ export function MultiSelect(userProps: MultiSelectProps): HTMLDivElement {
     get required() { return props.required; },
     get class() { return props.class; },
     get classNames() { return props.classNames; },
-    children: wrapper,
+    children: buildWrapper,
   });
 }

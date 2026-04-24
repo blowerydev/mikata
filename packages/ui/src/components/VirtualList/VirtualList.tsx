@@ -1,5 +1,5 @@
 import { effect, renderEffect } from '@mikata/reactivity';
-import { _mergeProps } from '@mikata/runtime';
+import { _mergeProps, adoptElement } from '@mikata/runtime';
 import { mergeClasses } from '../../utils/class-merge';
 import { useComponentDefaults } from '../../theme/component-defaults';
 import { createVirtualizer } from './virtualizer';
@@ -17,8 +17,6 @@ export function VirtualList<T>(userProps: VirtualListProps<T>): HTMLElement {
     userProps as unknown as Record<string, unknown>,
   ) as unknown as VirtualListProps<T>;
 
-  // `data`, `itemSize`, `renderItem`, `overscan`, `orientation` are structural —
-  // virtualizer configuration is set once.
   const data = props.data;
   const itemSize = props.itemSize;
   const renderItem = props.renderItem;
@@ -26,86 +24,88 @@ export function VirtualList<T>(userProps: VirtualListProps<T>): HTMLElement {
   const orientation = props.orientation ?? 'vertical';
   const horizontal = orientation === 'horizontal';
 
-  const root = document.createElement('div');
-  renderEffect(() => {
-    root.className = mergeClasses('mkt-virtual-list', props.class, props.classNames?.root);
-  });
-  root.dataset.orientation = orientation;
-  renderEffect(() => {
-    const size = props.size;
-    if (size == null) {
-      if (horizontal) root.style.width = '';
-      else root.style.height = '';
-    } else if (horizontal) {
-      root.style.width = `${size}px`;
-    } else {
-      root.style.height = `${size}px`;
-    }
-  });
-
-  const inner = document.createElement('div');
-  renderEffect(() => {
-    inner.className = mergeClasses('mkt-virtual-list__inner', props.classNames?.inner);
-  });
-  root.appendChild(inner);
-
-  const virtualizer = createVirtualizer({
-    count: data.length,
-    itemSize,
-    overscan,
-    scrollElement: root,
-    orientation,
-  });
-
-  const nodeCache = new Map<number, HTMLElement>();
-
-  effect(() => {
-    const total = virtualizer.totalSize();
-    if (horizontal) { inner.style.width = `${total}px`; inner.style.height = '100%'; }
-    else { inner.style.height = `${total}px`; inner.style.width = '100%'; }
-  });
-
-  effect(() => {
-    const items = virtualizer.virtualItems();
-    const visibleIndexes = new Set(items.map((i) => i.index));
-
-    for (const [idx, el] of nodeCache) {
-      if (!visibleIndexes.has(idx)) {
-        el.remove();
-        nodeCache.delete(idx);
-      }
-    }
-
-    for (const item of items) {
-      let el = nodeCache.get(item.index);
-      if (!el) {
-        el = document.createElement('div');
-        const created = el;
-        renderEffect(() => {
-          created.className = mergeClasses('mkt-virtual-list__item', props.classNames?.item);
-        });
-        el.dataset.index = String(item.index);
-        const node = renderItem(data[item.index], item.index);
-        el.appendChild(node);
-        inner.appendChild(el);
-        nodeCache.set(item.index, el);
-      }
-      if (horizontal) {
-        el.style.transform = `translateX(${item.start}px)`;
-        el.style.width = `${item.size}px`;
+  return adoptElement<HTMLElement>('div', (root) => {
+    renderEffect(() => {
+      root.className = mergeClasses('mkt-virtual-list', props.class, props.classNames?.root);
+    });
+    root.dataset.orientation = orientation;
+    renderEffect(() => {
+      const size = props.size;
+      if (size == null) {
+        if (horizontal) root.style.width = '';
+        else root.style.height = '';
+      } else if (horizontal) {
+        root.style.width = `${size}px`;
       } else {
-        el.style.transform = `translateY(${item.start}px)`;
-        el.style.height = `${item.size}px`;
-        el.style.width = '100%';
+        root.style.height = `${size}px`;
       }
+    });
+
+    adoptElement<HTMLDivElement>('div', (inner) => {
+      renderEffect(() => {
+        inner.className = mergeClasses('mkt-virtual-list__inner', props.classNames?.inner);
+      });
+
+      const virtualizer = createVirtualizer({
+        count: data.length,
+        itemSize,
+        overscan,
+        scrollElement: root,
+        orientation,
+      });
+
+      // Virtualized <div> item nodes are dynamic client-only content —
+      // they depend on scroll position. Any SSR-rendered children get
+      // overwritten by the effect below as it populates/removes nodes.
+      const nodeCache = new Map<number, HTMLElement>();
+
+      effect(() => {
+        const total = virtualizer.totalSize();
+        if (horizontal) { inner.style.width = `${total}px`; inner.style.height = '100%'; }
+        else { inner.style.height = `${total}px`; inner.style.width = '100%'; }
+      });
+
+      effect(() => {
+        const items = virtualizer.virtualItems();
+        const visibleIndexes = new Set(items.map((i) => i.index));
+
+        for (const [idx, el] of nodeCache) {
+          if (!visibleIndexes.has(idx)) {
+            el.remove();
+            nodeCache.delete(idx);
+          }
+        }
+
+        for (const item of items) {
+          let el = nodeCache.get(item.index);
+          if (!el) {
+            el = document.createElement('div');
+            const created = el;
+            renderEffect(() => {
+              created.className = mergeClasses('mkt-virtual-list__item', props.classNames?.item);
+            });
+            el.dataset.index = String(item.index);
+            const node = renderItem(data[item.index], item.index);
+            el.appendChild(node);
+            inner.appendChild(el);
+            nodeCache.set(item.index, el);
+          }
+          if (horizontal) {
+            el.style.transform = `translateX(${item.start}px)`;
+            el.style.width = `${item.size}px`;
+          } else {
+            el.style.transform = `translateY(${item.start}px)`;
+            el.style.height = `${item.size}px`;
+            el.style.width = '100%';
+          }
+        }
+      });
+    });
+
+    const ref = props.ref;
+    if (ref) {
+      if (typeof ref === 'function') ref(root);
+      else (ref as { current: HTMLElement | null }).current = root;
     }
   });
-
-  const ref = props.ref;
-  if (ref) {
-    if (typeof ref === 'function') ref(root);
-    else (ref as { current: HTMLElement | null }).current = root;
-  }
-
-  return root;
 }

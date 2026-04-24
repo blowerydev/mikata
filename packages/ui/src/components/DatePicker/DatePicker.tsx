@@ -1,5 +1,5 @@
 import { signal, effect, renderEffect } from '@mikata/reactivity';
-import { _mergeProps } from '@mikata/runtime';
+import { _mergeProps, adoptElement } from '@mikata/runtime';
 import { createIcon, ChevronLeft, ChevronRight } from '@mikata/icons';
 import { mergeClasses } from '../../utils/class-merge';
 import { useComponentDefaults } from '../../theme/component-defaults';
@@ -128,106 +128,8 @@ export function DatePicker(userProps: DatePickerProps = {}): HTMLElement {
     return false;
   };
 
-  // --- DOM -------------------------------------------------------------
-  const root = document.createElement('div');
-  renderEffect(() => {
-    root.className = mergeClasses('mkt-calendar', props.class, props.classNames?.root);
-  });
-  renderEffect(() => { root.dataset.size = props.size ?? 'md'; });
-
-  const header = document.createElement('div');
-  renderEffect(() => {
-    header.className = mergeClasses('mkt-calendar__header', props.classNames?.header);
-  });
-
-  const prevBtn = document.createElement('button');
-  prevBtn.type = 'button';
-  renderEffect(() => {
-    prevBtn.className = mergeClasses('mkt-calendar__header-control', props.classNames?.headerControl);
-  });
-  prevBtn.appendChild(createIcon(ChevronLeft, { size: 16 }));
-
-  const label = document.createElement('button');
-  label.type = 'button';
-  renderEffect(() => {
-    label.className = mergeClasses('mkt-calendar__header-label', props.classNames?.headerLabel);
-  });
-
-  const nextBtn = document.createElement('button');
-  nextBtn.type = 'button';
-  renderEffect(() => {
-    nextBtn.className = mergeClasses('mkt-calendar__header-control', props.classNames?.headerControl);
-  });
-  nextBtn.appendChild(createIcon(ChevronRight, { size: 16 }));
-
-  effect(() => {
-    const rtl = direction() === 'rtl';
-    header.innerHTML = '';
-    if (rtl) { header.appendChild(nextBtn); header.appendChild(label); header.appendChild(prevBtn); }
-    else { header.appendChild(prevBtn); header.appendChild(label); header.appendChild(nextBtn); }
-  });
-
-  prevBtn.addEventListener('click', () => {
-    const l = level();
-    if (l === 'day') updateView(addMonths(viewDate(), -1));
-    else if (l === 'month') updateView(new Date(viewDate().getFullYear() - 1, viewDate().getMonth(), 1));
-    else updateView(new Date(viewDate().getFullYear() - 10, 0, 1));
-  });
-  nextBtn.addEventListener('click', () => {
-    const l = level();
-    if (l === 'day') updateView(addMonths(viewDate(), 1));
-    else if (l === 'month') updateView(new Date(viewDate().getFullYear() + 1, viewDate().getMonth(), 1));
-    else updateView(new Date(viewDate().getFullYear() + 10, 0, 1));
-  });
-
-  label.addEventListener('click', () => {
-    const next = canClimb(level());
-    if (next) changeLevel(next);
-  });
-
-  effect(() => {
-    const l = level();
-    const v = viewDate();
-    if (l === 'day') {
-      label.textContent = monthFormatter.format(v);
-      prevBtn.setAttribute('aria-label', 'Previous month');
-      nextBtn.setAttribute('aria-label', 'Next month');
-    } else if (l === 'month') {
-      label.textContent = String(v.getFullYear());
-      prevBtn.setAttribute('aria-label', 'Previous year');
-      nextBtn.setAttribute('aria-label', 'Next year');
-    } else {
-      const [ds, de] = getDecadeRange(v.getFullYear());
-      label.textContent = `${ds} – ${de}`;
-      prevBtn.setAttribute('aria-label', 'Previous decade');
-      nextBtn.setAttribute('aria-label', 'Next decade');
-    }
-    label.disabled = canClimb(l) === null;
-  });
-
-  // Weekday row (day level only)
-  const weekdayRow = document.createElement('div');
-  renderEffect(() => {
-    weekdayRow.className = mergeClasses('mkt-calendar__grid', props.classNames?.weekdayRow);
-  });
-
-  effect(() => {
-    const show = level() === 'day' && !hideWeekdays;
-    weekdayRow.style.display = show ? '' : 'none';
-    if (!show) return;
-    weekdayRow.innerHTML = '';
-    const classNamesNow = props.classNames;
-    for (const l of getWeekdayLabels(locale, fdow, 'short')) {
-      const el = document.createElement('span');
-      el.className = mergeClasses('mkt-calendar__weekday', classNamesNow?.weekday);
-      el.textContent = l;
-      weekdayRow.appendChild(el);
-    }
-  });
-
-  // Body - swaps based on level
-  const body = document.createElement('div');
-  body.setAttribute('role', 'grid');
+  // Body ref for keyboard nav querying + imperative rebuilds.
+  let bodyEl!: HTMLDivElement;
 
   // Keep button elements stable across selection/hover updates so a real-browser
   // mouseleave-on-removal doesn't race with the click when selecting the end
@@ -236,8 +138,8 @@ export function DatePicker(userProps: DatePickerProps = {}): HTMLElement {
 
   function renderDayGrid() {
     const classNamesNow = props.classNames;
-    body.className = mergeClasses('mkt-calendar__grid', classNamesNow?.monthRow);
-    body.innerHTML = '';
+    bodyEl.className = mergeClasses('mkt-calendar__grid', classNamesNow?.monthRow);
+    bodyEl.innerHTML = '';
     dayButtons = [];
     const matrix = getMonthMatrix(viewDate(), fdow);
     const today = new Date();
@@ -250,7 +152,7 @@ export function DatePicker(userProps: DatePickerProps = {}): HTMLElement {
           const ph = document.createElement('span');
           ph.className = 'mkt-calendar__day';
           ph.style.visibility = 'hidden';
-          body.appendChild(ph);
+          bodyEl.appendChild(ph);
           continue;
         }
         const btn = document.createElement('button');
@@ -267,7 +169,7 @@ export function DatePicker(userProps: DatePickerProps = {}): HTMLElement {
           btn.addEventListener('mouseenter', () => setHover(day));
           btn.addEventListener('mouseleave', () => setHover(null));
         }
-        body.appendChild(btn);
+        bodyEl.appendChild(btn);
         dayButtons.push({ day, btn });
       }
     }
@@ -296,8 +198,8 @@ export function DatePicker(userProps: DatePickerProps = {}): HTMLElement {
   }
 
   function renderMonthGrid() {
-    body.className = mergeClasses('mkt-month-picker__grid', props.classNames?.monthRow);
-    body.innerHTML = '';
+    bodyEl.className = mergeClasses('mkt-month-picker__grid', props.classNames?.monthRow);
+    bodyEl.innerHTML = '';
     const labels = getMonthLabels(locale, 'short');
     const y = viewDate().getFullYear();
     const minDate = props.minDate;
@@ -317,13 +219,13 @@ export function DatePicker(userProps: DatePickerProps = {}): HTMLElement {
         updateView(new Date(y, m, 1));
         changeLevel('day');
       });
-      body.appendChild(btn);
+      bodyEl.appendChild(btn);
     }
   }
 
   function renderYearGrid() {
-    body.className = mergeClasses('mkt-year-picker__grid', props.classNames?.monthRow);
-    body.innerHTML = '';
+    bodyEl.className = mergeClasses('mkt-year-picker__grid', props.classNames?.monthRow);
+    bodyEl.innerHTML = '';
     const [start] = getDecadeRange(viewDate().getFullYear());
     const minDate = props.minDate;
     const maxDate = props.maxDate;
@@ -342,67 +244,162 @@ export function DatePicker(userProps: DatePickerProps = {}): HTMLElement {
         updateView(new Date(y, viewDate().getMonth(), 1));
         changeLevel('month');
       });
-      body.appendChild(btn);
+      bodyEl.appendChild(btn);
     }
   }
 
-  // Structure: depends on level + viewDate only. Day buttons stay mounted
-  // across selection/hover changes so clicks don't race with DOM removal.
-  effect(() => {
-    const l = level();
-    viewDate();
-    if (l === 'day') renderDayGrid();
-    else if (l === 'month') renderMonthGrid();
-    else renderYearGrid();
-  });
-
-  // State overlay for the day level - toggles attributes on the stable button set.
-  effect(() => {
-    selected(); hover();
-    if (level() === 'day') applyDayState();
-  });
-
-  // Keyboard nav (day level only - month/year are arrowless for brevity).
-  body.addEventListener('keydown', (e: KeyboardEvent) => {
-    if (level() !== 'day') return;
-    const target = e.target as HTMLElement;
-    if (!target.classList.contains('mkt-calendar__day')) return;
-    const [y, m, d] = (target.dataset.date ?? '').split('-').map(Number);
-    if (Number.isNaN(y)) return;
-    const cur = new Date(y, m, d);
-    const rtl = direction() === 'rtl';
-    const keyMap: Record<string, number> = {
-      ArrowRight: rtl ? -1 : 1,
-      ArrowLeft: rtl ? 1 : -1,
-      ArrowUp: -7,
-      ArrowDown: 7,
-    };
-    let next: Date | null = null;
-    if (keyMap[e.key] !== undefined) next = addDays(cur, keyMap[e.key]);
-    else if (e.key === 'PageUp') next = addMonths(cur, e.shiftKey ? -12 : -1);
-    else if (e.key === 'PageDown') next = addMonths(cur, e.shiftKey ? 12 : 1);
-    else if (e.key === 'Home') next = addDays(cur, -((cur.getDay() - fdow + 7) % 7));
-    else if (e.key === 'End') next = addDays(cur, 6 - ((cur.getDay() - fdow + 7) % 7));
-    else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pickDay(cur); return; }
-    else return;
-    e.preventDefault();
-    next = clampDate(next!, props.minDate, props.maxDate);
-    if (!isSameMonth(next, viewDate())) updateView(next);
-    requestAnimationFrame(() => {
-      const selector = `.mkt-calendar__day[data-date="${next!.getFullYear()}-${next!.getMonth()}-${next!.getDate()}"]`;
-      (body.querySelector(selector) as HTMLElement | null)?.focus();
+  return adoptElement<HTMLElement>('div', (root) => {
+    renderEffect(() => {
+      root.className = mergeClasses('mkt-calendar', props.class, props.classNames?.root);
     });
+    renderEffect(() => { root.dataset.size = props.size ?? 'md'; });
+
+    adoptElement<HTMLDivElement>('div', (header) => {
+      renderEffect(() => {
+        header.className = mergeClasses('mkt-calendar__header', props.classNames?.header);
+      });
+
+      const prevBtn = document.createElement('button');
+      prevBtn.type = 'button';
+      renderEffect(() => {
+        prevBtn.className = mergeClasses('mkt-calendar__header-control', props.classNames?.headerControl);
+      });
+      prevBtn.appendChild(createIcon(ChevronLeft, { size: 16 }));
+
+      const label = document.createElement('button');
+      label.type = 'button';
+      renderEffect(() => {
+        label.className = mergeClasses('mkt-calendar__header-label', props.classNames?.headerLabel);
+      });
+
+      const nextBtn = document.createElement('button');
+      nextBtn.type = 'button';
+      renderEffect(() => {
+        nextBtn.className = mergeClasses('mkt-calendar__header-control', props.classNames?.headerControl);
+      });
+      nextBtn.appendChild(createIcon(ChevronRight, { size: 16 }));
+
+      effect(() => {
+        const rtl = direction() === 'rtl';
+        header.innerHTML = '';
+        if (rtl) { header.appendChild(nextBtn); header.appendChild(label); header.appendChild(prevBtn); }
+        else { header.appendChild(prevBtn); header.appendChild(label); header.appendChild(nextBtn); }
+      });
+
+      prevBtn.addEventListener('click', () => {
+        const l = level();
+        if (l === 'day') updateView(addMonths(viewDate(), -1));
+        else if (l === 'month') updateView(new Date(viewDate().getFullYear() - 1, viewDate().getMonth(), 1));
+        else updateView(new Date(viewDate().getFullYear() - 10, 0, 1));
+      });
+      nextBtn.addEventListener('click', () => {
+        const l = level();
+        if (l === 'day') updateView(addMonths(viewDate(), 1));
+        else if (l === 'month') updateView(new Date(viewDate().getFullYear() + 1, viewDate().getMonth(), 1));
+        else updateView(new Date(viewDate().getFullYear() + 10, 0, 1));
+      });
+
+      label.addEventListener('click', () => {
+        const next = canClimb(level());
+        if (next) changeLevel(next);
+      });
+
+      effect(() => {
+        const l = level();
+        const v = viewDate();
+        if (l === 'day') {
+          label.textContent = monthFormatter.format(v);
+          prevBtn.setAttribute('aria-label', 'Previous month');
+          nextBtn.setAttribute('aria-label', 'Next month');
+        } else if (l === 'month') {
+          label.textContent = String(v.getFullYear());
+          prevBtn.setAttribute('aria-label', 'Previous year');
+          nextBtn.setAttribute('aria-label', 'Next year');
+        } else {
+          const [ds, de] = getDecadeRange(v.getFullYear());
+          label.textContent = `${ds} - ${de}`;
+          prevBtn.setAttribute('aria-label', 'Previous decade');
+          nextBtn.setAttribute('aria-label', 'Next decade');
+        }
+        label.disabled = canClimb(l) === null;
+      });
+    });
+
+    adoptElement<HTMLDivElement>('div', (weekdayRow) => {
+      renderEffect(() => {
+        weekdayRow.className = mergeClasses('mkt-calendar__grid', props.classNames?.weekdayRow);
+      });
+
+      effect(() => {
+        const show = level() === 'day' && !hideWeekdays;
+        weekdayRow.style.display = show ? '' : 'none';
+        if (!show) return;
+        weekdayRow.innerHTML = '';
+        const classNamesNow = props.classNames;
+        for (const l of getWeekdayLabels(locale, fdow, 'short')) {
+          const el = document.createElement('span');
+          el.className = mergeClasses('mkt-calendar__weekday', classNamesNow?.weekday);
+          el.textContent = l;
+          weekdayRow.appendChild(el);
+        }
+      });
+    });
+
+    adoptElement<HTMLDivElement>('div', (body) => {
+      bodyEl = body;
+      body.setAttribute('role', 'grid');
+
+      // Structure: depends on level + viewDate only. Day buttons stay mounted
+      // across selection/hover changes so clicks don't race with DOM removal.
+      effect(() => {
+        const l = level();
+        viewDate();
+        if (l === 'day') renderDayGrid();
+        else if (l === 'month') renderMonthGrid();
+        else renderYearGrid();
+      });
+
+      effect(() => {
+        selected(); hover();
+        if (level() === 'day') applyDayState();
+      });
+
+      body.addEventListener('keydown', (e: KeyboardEvent) => {
+        if (level() !== 'day') return;
+        const target = e.target as HTMLElement;
+        if (!target.classList.contains('mkt-calendar__day')) return;
+        const [y, m, d] = (target.dataset.date ?? '').split('-').map(Number);
+        if (Number.isNaN(y)) return;
+        const cur = new Date(y, m, d);
+        const rtl = direction() === 'rtl';
+        const keyMap: Record<string, number> = {
+          ArrowRight: rtl ? -1 : 1,
+          ArrowLeft: rtl ? 1 : -1,
+          ArrowUp: -7,
+          ArrowDown: 7,
+        };
+        let next: Date | null = null;
+        if (keyMap[e.key] !== undefined) next = addDays(cur, keyMap[e.key]);
+        else if (e.key === 'PageUp') next = addMonths(cur, e.shiftKey ? -12 : -1);
+        else if (e.key === 'PageDown') next = addMonths(cur, e.shiftKey ? 12 : 1);
+        else if (e.key === 'Home') next = addDays(cur, -((cur.getDay() - fdow + 7) % 7));
+        else if (e.key === 'End') next = addDays(cur, 6 - ((cur.getDay() - fdow + 7) % 7));
+        else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pickDay(cur); return; }
+        else return;
+        e.preventDefault();
+        next = clampDate(next!, props.minDate, props.maxDate);
+        if (!isSameMonth(next, viewDate())) updateView(next);
+        requestAnimationFrame(() => {
+          const selector = `.mkt-calendar__day[data-date="${next!.getFullYear()}-${next!.getMonth()}-${next!.getDate()}"]`;
+          (body.querySelector(selector) as HTMLElement | null)?.focus();
+        });
+      });
+    });
+
+    const ref = props.ref;
+    if (ref) {
+      if (typeof ref === 'function') ref(root);
+      else (ref as { current: HTMLElement | null }).current = root;
+    }
   });
-
-  root.appendChild(header);
-  root.appendChild(weekdayRow);
-  root.appendChild(body);
-
-  const ref = props.ref;
-  if (ref) {
-    if (typeof ref === 'function') ref(root);
-    else (ref as { current: HTMLElement | null }).current = root;
-  }
-
-  return root;
 }
