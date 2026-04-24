@@ -1,5 +1,5 @@
 import { renderEffect } from '@mikata/reactivity';
-import { _mergeProps } from '@mikata/runtime';
+import { _mergeProps, adoptElement } from '@mikata/runtime';
 import { mergeClasses } from '../../utils/class-merge';
 import { useComponentDefaults } from '../../theme/component-defaults';
 import type { CardProps } from './Card.types';
@@ -11,58 +11,67 @@ export function Card(userProps: CardProps = {}): HTMLElement {
     userProps as unknown as Record<string, unknown>,
   ) as unknown as CardProps;
 
-  // `header`, `footer`, `children` are structural — decide which sub-elements
-  // exist.
+  // `header` / `footer` are immutable props read once at render; the
+  // subtree shape is fixed per instance, so SSR and client agree on
+  // which slot elements exist.
   const header = props.header;
   const footer = props.footer;
-  const children = props.children;
 
-  const el = document.createElement('div');
-  renderEffect(() => {
-    el.className = mergeClasses(
-      'mkt-card',
-      props.withBorder && 'mkt-card--bordered',
-      props.class,
-      props.classNames?.root,
-    );
-  });
-  renderEffect(() => { el.dataset.shadow = props.shadow ?? 'sm'; });
-  renderEffect(() => { el.dataset.padding = props.padding ?? 'md'; });
-  renderEffect(() => { el.dataset.radius = props.radius ?? 'sm'; });
-
-  if (header != null) {
-    const headerEl = document.createElement('div');
+  return adoptElement<HTMLElement>('div', (el) => {
     renderEffect(() => {
-      headerEl.className = mergeClasses('mkt-card__header', props.classNames?.header);
+      el.className = mergeClasses(
+        'mkt-card',
+        props.withBorder && 'mkt-card--bordered',
+        props.class,
+        props.classNames?.root,
+      );
     });
-    if (typeof header === 'string') headerEl.textContent = header;
-    else headerEl.appendChild(header);
-    el.appendChild(headerEl);
-  }
+    renderEffect(() => { el.dataset.shadow = props.shadow ?? 'sm'; });
+    renderEffect(() => { el.dataset.padding = props.padding ?? 'md'; });
+    renderEffect(() => { el.dataset.radius = props.radius ?? 'sm'; });
 
-  const body = document.createElement('div');
-  renderEffect(() => {
-    body.className = mergeClasses('mkt-card__body', props.classNames?.body);
+    if (header != null) {
+      adoptElement<HTMLDivElement>('div', (headerEl) => {
+        renderEffect(() => {
+          headerEl.className = mergeClasses('mkt-card__header', props.classNames?.header);
+        });
+        if (typeof header === 'string') {
+          if (headerEl.textContent !== header) headerEl.textContent = header;
+        } else if (header.parentNode !== headerEl) {
+          headerEl.appendChild(header);
+        }
+      });
+    }
+
+    adoptElement<HTMLDivElement>('div', (body) => {
+      renderEffect(() => {
+        body.className = mergeClasses('mkt-card__body', props.classNames?.body);
+      });
+      const children = props.children;
+      if (children instanceof Node) {
+        if (children.parentNode !== body) body.appendChild(children);
+      } else if (children != null && body.textContent !== String(children)) {
+        body.textContent = String(children);
+      }
+    });
+
+    if (footer != null) {
+      adoptElement<HTMLDivElement>('div', (footerEl) => {
+        renderEffect(() => {
+          footerEl.className = mergeClasses('mkt-card__footer', props.classNames?.footer);
+        });
+        if (typeof footer === 'string') {
+          if (footerEl.textContent !== footer) footerEl.textContent = footer;
+        } else if (footer.parentNode !== footerEl) {
+          footerEl.appendChild(footer);
+        }
+      });
+    }
+
+    const ref = props.ref;
+    if (ref) {
+      if (typeof ref === 'function') ref(el);
+      else (ref as { current: HTMLElement | null }).current = el;
+    }
   });
-  if (children instanceof Node) body.appendChild(children);
-  else if (children != null) body.textContent = String(children);
-  el.appendChild(body);
-
-  if (footer != null) {
-    const footerEl = document.createElement('div');
-    renderEffect(() => {
-      footerEl.className = mergeClasses('mkt-card__footer', props.classNames?.footer);
-    });
-    if (typeof footer === 'string') footerEl.textContent = footer;
-    else footerEl.appendChild(footer);
-    el.appendChild(footerEl);
-  }
-
-  const ref = props.ref;
-  if (ref) {
-    if (typeof ref === 'function') ref(el);
-    else (ref as { current: HTMLElement | null }).current = el;
-  }
-
-  return el;
 }

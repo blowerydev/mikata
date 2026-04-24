@@ -345,6 +345,129 @@ describe('Button hydrates without rebuilding its tree', () => {
     }
   });
 
+  // Lightweight coverage for the layout-primitive batch. Each test
+  // only verifies the root adopts (and nested subtree when present)
+  // rather than exhaustive prop behaviour - those are already covered
+  // by components.test.ts. Intent here is regression-proofing the
+  // adoptElement conversion against future refactors.
+  it('Box adopts its root element', async () => {
+    const { Box } = await import('../src/components/Box');
+    const build = () => Box({ class: 'custom' });
+    const { html } = await renderToString(build);
+    const container = mountSsr(html);
+    try {
+      const server = container.firstChild;
+      const dispose = hydrate(build, container);
+      try { expect(container.firstChild).toBe(server); } finally { dispose(); }
+    } finally { container.remove(); }
+  });
+
+  it('Paper + Card + Container + Center + Stack + Group adopt their roots', async () => {
+    // Bundling these together because the failure mode is identical:
+    // adoptElement either gets the SSR div or creates fresh. One
+    // assertion per component is enough to catch a miswired root.
+    const primitives = await Promise.all([
+      import('../src/components/Paper'),
+      import('../src/components/Card'),
+      import('../src/components/Container'),
+      import('../src/components/Center'),
+      import('../src/components/Stack'),
+      import('../src/components/Group'),
+    ]);
+    const cases = [
+      () => primitives[0].Paper({}),
+      () => primitives[1].Card({}),
+      () => primitives[2].Container({}),
+      () => primitives[3].Center({}),
+      () => primitives[4].Stack({}),
+      () => primitives[5].Group({}),
+    ];
+    for (const build of cases) {
+      const { html } = await renderToString(build);
+      const container = mountSsr(html);
+      try {
+        const server = container.firstChild;
+        const dispose = hydrate(build, container);
+        try { expect(container.firstChild).toBe(server); } finally { dispose(); }
+      } finally { container.remove(); }
+    }
+  });
+
+  it('Text / Title / Mark / Code / Kbd adopt their roots with text content intact', async () => {
+    const modules = await Promise.all([
+      import('../src/components/Text'),
+      import('../src/components/Title'),
+      import('../src/components/Mark'),
+      import('../src/components/Code'),
+      import('../src/components/Kbd'),
+    ]);
+    const cases: Array<[() => HTMLElement, string, string]> = [
+      [() => modules[0].Text({ children: 'hello' }), 'P', 'hello'],
+      [() => modules[1].Title({ order: 2, children: 'heading' }), 'H2', 'heading'],
+      [() => modules[2].Mark({ children: 'highlighted' }), 'MARK', 'highlighted'],
+      [() => modules[3].Code({ children: 'x = 1' }), 'CODE', 'x = 1'],
+      [() => modules[4].Kbd({ children: 'Ctrl' }), 'KBD', 'Ctrl'],
+    ];
+    for (const [build, tag, text] of cases) {
+      const { html } = await renderToString(build);
+      const container = mountSsr(html);
+      try {
+        const server = container.firstChild as HTMLElement;
+        expect(server.tagName).toBe(tag);
+        expect(server.textContent).toContain(text);
+        const dispose = hydrate(build, container);
+        try {
+          expect(container.firstChild).toBe(server);
+          expect(server.textContent).toContain(text);
+        } finally { dispose(); }
+      } finally { container.remove(); }
+    }
+  });
+
+  it('Divider with a label adopts the three-span structure', async () => {
+    const { Divider } = await import('../src/components/Divider');
+    const build = () => Divider({ label: 'OR' });
+    const { html } = await renderToString(build);
+    expect(html).toContain('mkt-divider__line');
+    expect(html).toContain('mkt-divider__label');
+
+    const container = mountSsr(html);
+    try {
+      const root = container.firstChild as HTMLElement;
+      const preSpans = Array.from(root.children);
+      expect(preSpans.length).toBe(3);
+
+      const dispose = hydrate(build, container);
+      try {
+        expect(container.firstChild).toBe(root);
+        const liveSpans = Array.from(root.children);
+        expect(liveSpans.length).toBe(3);
+        for (let i = 0; i < 3; i++) expect(liveSpans[i]).toBe(preSpans[i]);
+        const labelSpan = root.querySelector('.mkt-divider__label');
+        expect(labelSpan?.textContent).toBe('OR');
+      } finally { dispose(); }
+    } finally { container.remove(); }
+  });
+
+  it('Anchor adopts and keeps href through hydration', async () => {
+    const { Anchor } = await import('../src/components/Anchor');
+    const build = () => Anchor({ href: '/docs', children: 'Docs' });
+
+    const { html } = await renderToString(build);
+    expect(html).toContain('href="/docs"');
+
+    const container = mountSsr(html);
+    try {
+      const a = container.firstChild as HTMLAnchorElement;
+      const dispose = hydrate(build, container);
+      try {
+        expect(container.firstChild).toBe(a);
+        expect(a.getAttribute('href')).toBe('/docs');
+        expect(a.textContent).toBe('Docs');
+      } finally { dispose(); }
+    } finally { container.remove(); }
+  });
+
   it('Loader adopts its span + sr-only child without rebuilding', async () => {
     const { Loader } = await import('../src/components/Loader');
     const build = () => Loader({ size: 'md' });
