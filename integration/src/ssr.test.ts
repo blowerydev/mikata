@@ -71,6 +71,124 @@ describe('SSR: renderToString → hydrate round-trip', () => {
     }
   });
 
+  it('hydrates a show() branch and wires click handlers on the adopted node', async () => {
+    function makeToggle() {
+      const [flag, setFlag] = signal(true);
+      const clicks: string[] = [];
+      function View() {
+        const root = _template('<section></section>').cloneNode(true) as any;
+        _insert(root, () =>
+          show(
+            flag,
+            () => {
+              const p = _template('<p>visible</p>').cloneNode(true) as any;
+              _delegate(p, 'click', () => clicks.push('visible'));
+              return p;
+            },
+            () => {
+              const p = _template('<p>hidden</p>').cloneNode(true) as any;
+              _delegate(p, 'click', () => clicks.push('hidden'));
+              return p;
+            },
+          ),
+        );
+        return root;
+      }
+      return { View, flag, setFlag, clicks };
+    }
+
+    const server = makeToggle();
+    const { html } = await renderToString(() => _createComponent(server.View, {}));
+    expect(html).toContain('<p>visible</p>');
+
+    const host = document.createElement('div');
+    host.innerHTML = html;
+    document.body.appendChild(host);
+    const serverP = host.querySelector('p')!;
+
+    const client = makeToggle();
+    const dispose = hydrate(() => _createComponent(client.View, {}), host);
+    try {
+      const p = host.querySelector('p')!;
+      expect(p).toBe(serverP);
+      (p as HTMLElement).click();
+      expect(client.clicks).toEqual(['visible']);
+
+      // Flip branches post-hydration - should swap the adopted <p> for the
+      // fallback without leaving ghosts.
+      client.setFlag(false);
+      flushSync();
+      expect(host.textContent).toContain('hidden');
+      expect(host.textContent).not.toContain('visible');
+    } finally {
+      dispose();
+      host.remove();
+    }
+  });
+
+  it('hydrates show(keepAlive) and keeps adopted content wired after a toggle', async () => {
+    function makeKeepAlive() {
+      const [flag, setFlag] = signal(true);
+      const clicks: string[] = [];
+      function View() {
+        const root = _template('<section></section>').cloneNode(true) as any;
+        _insert(root, () =>
+          show(
+            flag,
+            () => {
+              const p = _template('<p>visible</p>').cloneNode(true) as any;
+              _delegate(p, 'click', () => clicks.push('visible'));
+              return p;
+            },
+            () => {
+              const p = _template('<p>hidden</p>').cloneNode(true) as any;
+              _delegate(p, 'click', () => clicks.push('hidden'));
+              return p;
+            },
+            { keepAlive: true },
+          ),
+        );
+        return root;
+      }
+      return { View, flag, setFlag, clicks };
+    }
+
+    const server = makeKeepAlive();
+    const { html } = await renderToString(() => _createComponent(server.View, {}));
+    // SSR emits the <div style="display:contents"> wrapper + inner <p>.
+    expect(html).toContain('visible');
+
+    const host = document.createElement('div');
+    host.innerHTML = html;
+    document.body.appendChild(host);
+    const serverP = host.querySelector('p')!;
+
+    const client = makeKeepAlive();
+    const dispose = hydrate(() => _createComponent(client.View, {}), host);
+    try {
+      const p = host.querySelector('p')!;
+      // Adopted the SSR <p>, not a rebuilt copy.
+      expect(p).toBe(serverP);
+      (p as HTMLElement).click();
+      expect(client.clicks).toEqual(['visible']);
+
+      // Toggle to fallback; the adopted wrapper is hidden, a fresh fallback
+      // wrapper mounts alongside it.
+      client.setFlag(false);
+      flushSync();
+      const visibleText = host.textContent ?? '';
+      expect(visibleText).toContain('hidden');
+
+      // Toggling back should re-show the adopted node (kept alive, not rebuilt).
+      client.setFlag(true);
+      flushSync();
+      expect(host.querySelector('p')).toBe(serverP);
+    } finally {
+      dispose();
+      host.remove();
+    }
+  });
+
   it('preserves show() branch markers in the wire HTML', async () => {
     const { html } = await renderToString(() => {
       const [flag] = signal(true);
@@ -86,6 +204,87 @@ describe('SSR: renderToString → hydrate round-trip', () => {
     });
     expect(html).toContain('visible');
     expect(html).not.toContain('hidden');
+  });
+
+  it('hydrates each() rows and wires click handlers to the SSR-rendered <li>s', async () => {
+    function makeList() {
+      const [items, setItems] = signal([
+        { id: 1, label: 'apple' },
+        { id: 2, label: 'banana' },
+        { id: 3, label: 'cherry' },
+      ]);
+      const clicks: number[] = [];
+      function List() {
+        const root = _template('<ul></ul>').cloneNode(true) as any;
+        _insert(root, () =>
+          each(
+            items,
+            (item) => {
+              const li = _template('<li> </li>').cloneNode(true) as any;
+              li.firstChild.data = item.label;
+              _delegate(li, 'click', () => clicks.push(item.id));
+              return li;
+            },
+            undefined,
+            { key: (item: any) => item.id },
+          ),
+        );
+        return root;
+      }
+      return { List, items, setItems, clicks };
+    }
+
+    const server = makeList();
+    const { html } = await renderToString(() => _createComponent(server.List, {}));
+    expect(html).toContain('<li>apple</li>');
+    expect(html).toContain('<li>banana</li>');
+    expect(html).toContain('<li>cherry</li>');
+
+    const host = document.createElement('div');
+    host.innerHTML = html;
+    document.body.appendChild(host);
+
+    const serverLis = Array.from(host.querySelectorAll('li'));
+    expect(serverLis).toHaveLength(3);
+
+    const client = makeList();
+    const dispose = hydrate(() => _createComponent(client.List, {}), host);
+    try {
+      const lis = Array.from(host.querySelectorAll('li'));
+      // Same DOM node identity - proves adoption rather than rebuild.
+      expect(lis[0]).toBe(serverLis[0]);
+      expect(lis[1]).toBe(serverLis[1]);
+      expect(lis[2]).toBe(serverLis[2]);
+      expect(lis.map((li) => li.textContent)).toEqual(['apple', 'banana', 'cherry']);
+
+      // Click handlers on the SSR-rendered <li>s must fire.
+      (lis[1] as HTMLElement).click();
+      expect(client.clicks).toEqual([2]);
+
+      // Reactive updates post-hydration still work through the marker anchor.
+      client.setItems([
+        { id: 1, label: 'apple' },
+        { id: 2, label: 'banana' },
+        { id: 3, label: 'cherry' },
+        { id: 4, label: 'date' },
+      ]);
+      flushSync();
+      const liTexts = Array.from(host.querySelectorAll('li')).map((li) => li.textContent);
+      expect(liTexts).toEqual(['apple', 'banana', 'cherry', 'date']);
+
+      // Removing an item reconciles without losing the remaining adopted nodes.
+      client.setItems([
+        { id: 2, label: 'banana' },
+        { id: 3, label: 'cherry' },
+        { id: 4, label: 'date' },
+      ]);
+      flushSync();
+      const afterRemove = Array.from(host.querySelectorAll('li')).map((li) => li.textContent);
+      expect(afterRemove).toEqual(['banana', 'cherry', 'date']);
+    } finally {
+      dispose();
+      host.remove();
+    }
   });
 
   it('serialises each() rows deterministically', async () => {

@@ -426,9 +426,26 @@ export function mikataJSXPlugin({ types: t }: { types: typeof BabelTypes }): Plu
         return true;
       }
     }
+    // Bare-identifier calls like `routeOutlet()`, `render()`, or any
+    // user helper — we can't prove the return is primitive, and
+    // stringifying a Node to `.data` produces "[object HTMLElement]"
+    // garbage. Route these through `_insert` (which has a text-to-text
+    // fast path so simple-primitive cases like `{count()}` still mutate
+    // `.data` in place, no DOM churn). Well-known coercion builtins
+    // stay on the bake path.
+    if (t.isCallExpression(expr) && t.isIdentifier(expr.callee)) {
+      if (!PRIMITIVE_CALL_IDENTIFIERS.has(expr.callee.name)) return true;
+    }
     // Direct calls to Mikata's node-returning helpers.
     return isNodeReturningCall(expr);
   }
+
+  // Identifier-call names the compiler treats as definitely primitive.
+  // Used to preserve the text-bake fast path for obvious string/number
+  // coercions without forcing users through `_insert`.
+  const PRIMITIVE_CALL_IDENTIFIERS = new Set([
+    'String', 'Number', 'Boolean', 'parseInt', 'parseFloat', 'isNaN', 'isFinite',
+  ]);
 
   // Array-prototype methods whose return value is another array. `slice`
   // / `concat` preserve element types; `reduce` and `reduceRight` bail

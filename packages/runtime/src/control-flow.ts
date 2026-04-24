@@ -11,6 +11,7 @@ import {
   type Scope,
 } from '@mikata/reactivity';
 import { _createComponent, disposeComponent } from './component';
+import { isHydrating, adoptNext, pushFrame, popFrame } from './adopt';
 
 declare const __DEV__: boolean;
 
@@ -97,15 +98,62 @@ function showKeepAlive<T>(
   render: (value: NonNullable<T>) => Node,
   fallback?: () => Node,
 ): Node {
-  const container = document.createDocumentFragment();
+  const hydrating = isHydrating();
   const marker = document.createComment('show:keepAlive');
-  container.appendChild(marker);
+  // During hydration items are already in the real parent via adoption;
+  // return the bare marker so `_insert`'s hydrate path (which doesn't
+  // re-insert) doesn't leave an orphan fragment around.
+  const container: Node = hydrating
+    ? marker
+    : (() => {
+        const frag = document.createDocumentFragment();
+        frag.appendChild(marker);
+        return frag;
+      })();
 
   let renderedWrapper: HTMLDivElement | null = null;
   let fallbackWrapper: HTMLDivElement | null = null;
+  let hydrated = false;
 
   renderEffect(() => {
     const value = when();
+
+    // One-shot hydration path: adopt the SSR-rendered wrapper that matches
+    // the current branch. Must run while the caller's `_insert` frame is
+    // still active so `adoptNext()` pops the wrapper and `render()`'s JSX
+    // picks up its children.
+    if (hydrating && !hydrated) {
+      hydrated = true;
+      const adopted = adoptNext();
+      const wrapper =
+        adopted && adopted.nodeType === 1 && (adopted as Element).tagName.toUpperCase() === 'DIV'
+          ? (adopted as HTMLDivElement)
+          : null;
+      if (wrapper) {
+        pushFrame(wrapper, 0);
+        try {
+          if (value) {
+            renderedWrapper = wrapper;
+            // Return value discarded: the adopted node is already wrapper's
+            // child. The call exists only to let render's JSX wire events.
+            render(value as NonNullable<T>);
+          } else if (fallback) {
+            fallbackWrapper = wrapper;
+            fallback();
+          }
+        } finally {
+          popFrame();
+        }
+        const realParent = wrapper.parentNode;
+        if (realParent) {
+          if (wrapper.nextSibling) realParent.insertBefore(marker, wrapper.nextSibling);
+          else realParent.appendChild(marker);
+        }
+        return;
+      }
+      // Wrapper missing — fall through to the fresh-build path below.
+    }
+
     const parent = marker.parentNode;
     if (!parent) return;
 
@@ -152,9 +200,22 @@ export function each<T>(
   fallback?: () => Node,
   options?: { key?: (item: T) => unknown }
 ): Node {
-  const container = document.createDocumentFragment();
+  // During hydration the caller's `_insert` has already pushed a frame
+  // for the real parent, so rendering each item inline lets its JSX
+  // `cloneNode()` calls pop the SSR-rendered children via `adoptNext()`.
+  // In that case we skip the fragment wrapper (items are already in the
+  // real DOM) and splice the marker in after them so subsequent reactive
+  // updates still have an anchor. Outside hydration we build into a
+  // fragment as before — the caller flattens it into the real parent.
+  const hydrating = isHydrating();
   const marker = document.createComment('each');
-  container.appendChild(marker);
+  const container: DocumentFragment | Comment = hydrating
+    ? marker
+    : (() => {
+        const frag = document.createDocumentFragment();
+        frag.appendChild(marker);
+        return frag;
+      })();
 
   type ItemEntry = {
     node: Node;
@@ -165,9 +226,48 @@ export function each<T>(
   let entries: ItemEntry[] = [];
   let fallbackEntry: { node: Node; scope: Scope } | null = null;
   const keyFn = options?.key ?? ((item: T) => item);
+  let hydrated = false;
 
   renderEffect(() => {
     const items = list();
+
+    // One-shot hydration path. Must run on the first effect invocation
+    // while the caller's adoption frame is still active — subsequent
+    // runs fire from signal changes long after `_insert` has popped.
+    if (hydrating && !hydrated) {
+      hydrated = true;
+      if (items.length === 0) {
+        // Fallback handling on an empty hydrated list falls through to
+        // the regular build path below. The marker has no parent yet;
+        // we'll get one the first time the fallback appears.
+      } else {
+        const fresh: ItemEntry[] = new Array(items.length);
+        for (let i = 0; i < items.length; i++) {
+          const item = items[i];
+          const idx = i;
+          let node: Node;
+          const scope = createScope(() => {
+            node = render(item, () => idx);
+          });
+          fresh[i] = { node: node!, scope, item };
+        }
+        entries = fresh;
+        // Place marker after the last adopted item so future reactive
+        // updates anchor against it. The adopted items are already in
+        // the real parent via cloneNode → adoptNext.
+        const hydrateParent = fresh[0].node.parentNode;
+        if (hydrateParent) {
+          const last = fresh[fresh.length - 1].node;
+          if (last.nextSibling) {
+            hydrateParent.insertBefore(marker, last.nextSibling);
+          } else {
+            hydrateParent.appendChild(marker);
+          }
+        }
+        return;
+      }
+    }
+
     const parent = marker.parentNode;
     if (!parent) return;
 

@@ -22,11 +22,7 @@ export default function Layout() {
         </div>
       </header>
       <Sidebar />
-      <main class="docs-content">
-        {routeOutlet()}
-        {/* sibling text forces the compiler to use _insert instead of .data */}
-        {''}
-      </main>
+      <main class="docs-content">{routeOutlet()}</main>
     </div>
   );
 }

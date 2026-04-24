@@ -77,9 +77,12 @@ describe('JSX transform', () => {
   it('bakes a text-node placeholder for only-child dynamic text', () => {
     // `<el>{expr}</el>` skips _insert / createTextNode / appendChild by
     // emitting a whitespace Text into the template and writing its `.data`.
-    const output = transform(`const el = <span>{count()}</span>;`);
+    // Uses a bare identifier here because call-expression returns are
+    // not statically known to be primitive — those go through `_insert`
+    // (with a text-node fast path for the common primitive case).
+    const output = transform(`const el = <span>{count}</span>;`);
     expect(output).toContain('<span> </span>');
-    expect(output).toContain('.data = count() ?? ""');
+    expect(output).toMatch(/\.data\s*=/);
     expect(output).not.toContain('_insert');
   });
 
@@ -244,10 +247,26 @@ describe('text-bake skip list', () => {
     ).toBe(false);
   });
 
-  it('bakes conditional expressions with only primitive branches', () => {
+  it('bakes conditional expressions with only literal-primitive branches', () => {
     expect(
-      bakesAsText(`const el = <p>{loading ? 'wait' : count()}</p>;`),
+      bakesAsText(`const el = <p>{loading ? 'wait' : 'ready'}</p>;`),
     ).toBe(true);
+  });
+
+  it('does not bake bare-identifier call expressions (return type unknown)', () => {
+    // `routeOutlet()`, `render()`, `useSomething()` — the compiler cannot
+    // prove the return is a primitive, and stringifying a Node to `.data`
+    // produces "[object HTMLElement]" garbage. Route these through
+    // `_insert` which has a text-to-text fast path for the common case
+    // where the return really is a primitive.
+    expect(bakesAsText(`const el = <div>{routeOutlet()}</div>;`)).toBe(false);
+    expect(bakesAsText(`const el = <p>{count()}</p>;`)).toBe(false);
+  });
+
+  it('bakes well-known primitive coercion calls', () => {
+    // Explicit coercions we can trust to return primitives.
+    expect(bakesAsText(`const el = <p>{String(count)}</p>;`)).toBe(true);
+    expect(bakesAsText(`const el = <p>{Number(input)}</p>;`)).toBe(true);
   });
 
   it('does not bake logical || with a node branch', () => {
@@ -280,13 +299,12 @@ describe('text-bake skip list', () => {
     ).toBe(false);
   });
 
-  it('still bakes plain primitive getters', () => {
+  it('still bakes bare signal getters and member reads', () => {
     // Sanity: the skip list shouldn't be so eager that it kills the
-    // common-case win on plain values / signal getters.
-    // Pure string literals go a step further — the compiler inlines
-    // them into the template HTML directly, so they don't even hit
-    // the bake path.
-    expect(bakesAsText(`const el = <p>{count()}</p>;`)).toBe(true);
+    // common-case win on plain values. Bare identifiers and member
+    // expressions stay on the bake path — the compiler inserts a
+    // runtime typeof check for identifiers to unwrap function-shaped
+    // values, and member reads don't trigger the non-primitive rule.
     expect(bakesAsText(`const el = <p>{count}</p>;`)).toBe(true);
     expect(bakesAsText(`const el = <p>{props.label}</p>;`)).toBe(true);
   });

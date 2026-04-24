@@ -29,10 +29,7 @@ export interface PlaygroundProps {
  * Live-editable widget preview. Each control becomes a signal; the
  * preview is a function-child accessor that re-evaluates when any read
  * signal changes, swapping the subtree in place via the runtime's
- * `_insert` reactive path. Iterations use function accessors instead
- * of `each()` because `each()` does not participate in the hydration
- * cursor (its items sit in a disconnected fragment, so click handlers
- * never reach the visible SSR-rendered DOM).
+ * `_insert` reactive path.
  *
  * Controls are rendered with real @mikata/ui inputs so the docs
  * exercise the same components they document.
@@ -60,10 +57,7 @@ export function Playground(props: PlaygroundProps) {
 
   return (
     <div class="playground">
-      <div class="playground-preview">
-        {() => props.render(resolved())}
-        {''}
-      </div>
+      <div class="playground-preview">{() => props.render(resolved())}</div>
       <div class="playground-controls">
         {() =>
           props.controls.map((control) => (

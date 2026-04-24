@@ -355,6 +355,25 @@ export function _insert(
           return;
         }
 
+        // Text-node fast path: single existing text node + single new
+        // text node → mutate `.data` in place. Keeps the per-update cost
+        // of `{signal()}`-style reactive text at one DOM write, matching
+        // the template text-bake path. Only applies outside the slot
+        // wrapper and when the existing node is still attached.
+        if (
+          !slot &&
+          currentNodes.length === 1 &&
+          (currentNodes[0] as Node).nodeType === 3 &&
+          (currentNodes[0] as Node).parentNode === parent &&
+          newNodes.length === 1 &&
+          (newNodes[0] as Node).nodeType === 3
+        ) {
+          const existing = currentNodes[0] as Text;
+          const next = newNodes[0] as Text;
+          if (existing.data !== next.data) existing.data = next.data;
+          return;
+        }
+
         // Clear the previous render's nodes before deciding the next
         // placement. Doing this before the wrapper branch keeps the
         // parent's child list in a known state — important because the
