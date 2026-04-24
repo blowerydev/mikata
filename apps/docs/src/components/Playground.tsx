@@ -21,8 +21,26 @@ export type PlaygroundControl =
       label?: string;
     };
 
-export interface PlaygroundProps {
-  controls: readonly PlaygroundControl[];
+// Per-control value type. The `select` branch infers the element type
+// of the `options` tuple, so a call-site array like
+// `options: ['filled', 'outline']` produces `'filled' | 'outline'` in
+// the render callback - not `string`.
+type ControlValue<C> =
+  C extends { type: 'select'; options: readonly (infer O)[] } ? O :
+  C extends { type: 'boolean' } ? boolean :
+  C extends { type: 'number' } ? number :
+  C extends { type: 'text' } ? string :
+  never;
+
+// Map the runtime `controls` tuple into a compile-time props shape keyed
+// by each control's `name`. Requires `const` inference at the call site
+// so `name` fields and `options` arrays stay literal.
+export type ControlsToProps<Cs extends readonly PlaygroundControl[]> = {
+  [C in Cs[number] as C['name']]: ControlValue<C>;
+};
+
+export interface PlaygroundProps<Cs extends readonly PlaygroundControl[]> {
+  controls: Cs;
   /**
    * Build the preview subtree from reactive-backed props. The object
    * passed in is a getter-per-key proxy built with `reactiveProps`, so
@@ -30,8 +48,12 @@ export interface PlaygroundProps {
    * `{ size }`. `render` is called exactly once; control changes flow
    * through the getters so downstream components update in place
    * instead of being torn down and rebuilt.
+   *
+   * Typed from `controls`: `props.size` etc. are narrowed to the literal
+   * values the matching control can produce, so no per-prop casts are
+   * needed at the call site.
    */
-  render: (props: Record<string, unknown>) => Node;
+  render: (props: ControlsToProps<Cs>) => Node;
 }
 
 /**
@@ -48,7 +70,9 @@ export interface PlaygroundProps {
  * Controls are rendered with real @mikata/ui inputs so the docs
  * exercise the same components they document.
  */
-export function Playground(props: PlaygroundProps) {
+export function Playground<const Cs extends readonly PlaygroundControl[]>(
+  props: PlaygroundProps<Cs>,
+) {
   const getters: Record<string, () => unknown> = {};
   const setters = new Map<string, (v: unknown) => void>();
   for (const control of props.controls) {
@@ -57,7 +81,7 @@ export function Playground(props: PlaygroundProps) {
     setters.set(control.name, setValue);
   }
 
-  const liveProps = reactiveProps(getters);
+  const liveProps = reactiveProps(getters) as ControlsToProps<Cs>;
 
   const set = (name: string, v: unknown): void => {
     setters.get(name)!(v);

@@ -12,7 +12,10 @@ const usage = await highlight(
   'tsx',
 );
 
-const controls: PlaygroundControl[] = [
+// `as const satisfies` preserves literal narrowing (so Playground's
+// render callback sees `variant: 'filled' | 'outline' | ...` instead of
+// `string`) while still enforcing the PlaygroundControl shape.
+const controls = [
   { name: 'size', type: 'select', options: ['xs', 'sm', 'md', 'lg', 'xl'], default: 'md' },
   {
     name: 'variant',
@@ -23,10 +26,7 @@ const controls: PlaygroundControl[] = [
   { name: 'label', type: 'text', default: 'Click me' },
   { name: 'disabled', type: 'boolean', default: false },
   { name: 'loading', type: 'boolean', default: false },
-];
-
-type ButtonVariant = 'filled' | 'outline' | 'light' | 'subtle' | 'transparent';
-type ButtonSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl';
+] as const satisfies readonly PlaygroundControl[];
 
 export default function ButtonPage() {
   useMeta({ title: 'Button - @mikata/ui' });
@@ -51,17 +51,17 @@ export default function ButtonPage() {
       <Playground
         controls={controls}
         render={(props) => (
-          // JSX, not `Button({...})`, so the compiler wraps each attribute
-          // in a getter. Button's internal `props.size` etc. resolve
-          // through those getters back to the reactive signals, and
+          // JSX, not `Button({...})`: the compiler wraps each attribute
+          // in a getter, so Button's internal `props.size` etc. resolve
+          // through those getters back to the reactive signals and
           // control changes update the button in place.
           <Button
-            variant={props.variant as ButtonVariant}
-            size={props.size as ButtonSize}
-            disabled={props.disabled as boolean}
-            loading={props.loading as boolean}
+            variant={props.variant}
+            size={props.size}
+            disabled={props.disabled}
+            loading={props.loading}
           >
-            {props.label as string}
+            {props.label}
           </Button>
         )}
       />
