@@ -14,8 +14,10 @@ export {
 // Public prop helpers. `mergeProps` is the user-facing alias of
 // `_mergeProps`; `reactiveProps` wraps a getter map into a props object
 // with getter descriptors, for programmatic prop construction outside
-// JSX (where the compiler handles getters automatically).
-export { mergeProps, reactiveProps } from './dom';
+// JSX (where the compiler handles getters automatically). `splitProps`
+// is the inverse of mergeProps - extracts a typed subset while keeping
+// getters live on both halves.
+export { mergeProps, reactiveProps, splitProps } from './dom';
 
 // Component model
 export {

@@ -41,6 +41,7 @@ export {
   _mergeProps,
   mergeProps,
   reactiveProps,
+  splitProps,
   disposeComponent,
   onMount,
   createRef,

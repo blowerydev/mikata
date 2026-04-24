@@ -82,9 +82,16 @@ export function _createElement(tag: string): HTMLElement {
  * there). This matches how JSX compilation handles parent/child wiring
  * — the user never writes `appendChild` manually.
  *
- * Tag mismatches at hydration time fall through to fresh elements
- * with a dev warning; the orphaned SSR node is left in the DOM but
- * not referenced.
+ * Tag mismatches at hydration time throw in dev with a diagnostic that
+ * names the expected tag, the node actually at the cursor, and the most
+ * common root cause (a component factory invoked outside a JSX slot,
+ * which silently consumes the wrong SSR node and desyncs every later
+ * adopt). In production the mismatch falls through to a fresh element
+ * so a single drifted node doesn't take the whole page down; the
+ * orphaned SSR node is left in place but unreferenced. Cursor
+ * exhaustion (no node at all) still falls through silently in both
+ * modes — that's the legitimate "client rendered more than server"
+ * path.
  */
 export function adoptElement<T extends HTMLElement = HTMLElement>(
   tag: string,
@@ -101,10 +108,16 @@ export function adoptElement<T extends HTMLElement = HTMLElement>(
       el = adopted as unknown as T;
     } else {
       if (__DEV__ && adopted) {
-        console.warn(
-          `[mikata] adoptElement("${tag}") skipped: cursor pointed at <${
-            (adopted as Element).tagName?.toLowerCase() ?? adopted.nodeType
-          }>. Component output drifted from SSR.`,
+        throw new Error(
+          `[mikata] adoptElement("${tag}") mismatch: hydration cursor ` +
+            `pointed at ${describeAdoptedNode(adopted)}, but this component ` +
+            `expected <${tag}>. This usually means a component factory was ` +
+            `invoked outside its JSX slot (e.g. \`const x = Button(props)\` ` +
+            `at module/function top level instead of \`<Button />\` or ` +
+            `\`{() => Button(props)}\` inside JSX), so the wrong SSR node ` +
+            `was consumed and every later adopt is desynced. Less commonly, ` +
+            `the client tree genuinely diverged from the server output at ` +
+            `this slot.`,
         );
       }
       el = document.createElement(tag) as unknown as T;
@@ -141,6 +154,23 @@ export function adoptElement<T extends HTMLElement = HTMLElement>(
 const setupStack: HTMLElement[] = [];
 function currentSetupParent(): HTMLElement | null {
   return setupStack.length ? setupStack[setupStack.length - 1]! : null;
+}
+
+// Short human-readable description of whatever the cursor landed on.
+// Used only by the dev-mode adoptElement mismatch error — the id/class
+// hints help locate the offending SSR node in the rendered HTML.
+function describeAdoptedNode(node: Node): string {
+  if (node.nodeType === 3) return 'a text node';
+  if (node.nodeType === 8) return 'a comment node';
+  if (node.nodeType !== 1) return `a node (type ${node.nodeType})`;
+  const el = node as Element;
+  const tag = el.tagName?.toLowerCase() ?? 'unknown';
+  const id = el.id ? `#${el.id}` : '';
+  const cls =
+    typeof el.className === 'string' && el.className.trim()
+      ? '.' + el.className.trim().split(/\s+/).join('.')
+      : '';
+  return `<${tag}${id}${cls}>`;
 }
 
 /**
@@ -556,6 +586,11 @@ export function _spread(
   });
 }
 
+type UnionToIntersection<U> =
+  (U extends unknown ? (x: U) => void : never) extends (x: infer I) => void
+    ? I
+    : never;
+
 /**
  * Merge multiple props objects into a new one, preserving getter
  * descriptors. Later sources win on key collisions.
@@ -569,6 +604,10 @@ export function _spread(
  * `Object.getOwnPropertyDescriptors` so a `get foo()` getter on any
  * source survives the merge and re-reads on access.
  *
+ * The result type is the intersection of the source types, so callers
+ * get typed output without a trailing `as` cast. Pair with `splitProps`
+ * for the inverse (extract a typed subset while keeping getters live).
+ *
  * Exported under two names:
  *   - `_mergeProps` is the compiler-emitted import - keep the underscore
  *     prefix in generated code so user code and compiler output never
@@ -577,18 +616,65 @@ export function _spread(
  *     components and app code (see `Button.tsx` for the canonical
  *     default-merging pattern).
  */
-export function _mergeProps(
-  ...sources: Record<string, unknown>[]
-): Record<string, unknown> {
-  const result: Record<string, unknown> = {};
+export function _mergeProps<Sources extends readonly object[]>(
+  ...sources: Sources
+): UnionToIntersection<Sources[number]> {
+  const result = {} as Record<string, unknown>;
   for (const source of sources) {
     const descriptors = Object.getOwnPropertyDescriptors(source);
     Object.defineProperties(result, descriptors);
   }
-  return result;
+  return result as UnionToIntersection<Sources[number]>;
 }
 
 export { _mergeProps as mergeProps };
+
+/**
+ * Extract a typed subset of a props object, returning `[picked, rest]`.
+ * Both halves preserve getter descriptors - reactivity survives the
+ * split on either side. The inverse of `mergeProps`.
+ *
+ * The canonical use is forwarding: pluck the keys a component handles
+ * itself, spread the remainder onto the underlying element. Because
+ * getters survive, downstream reads inside `renderEffect` still track
+ * the upstream signals, so the component updates in place when a
+ * forwarded prop changes.
+ *
+ * Example:
+ *   function MyButton(props: ButtonProps & { extra?: string }) {
+ *     const [local, rest] = splitProps(props, ['extra']);
+ *     // `rest` is typed ButtonProps, `local` is { extra?: string }
+ *     return <Button {...rest} data-extra={local.extra} />;
+ *   }
+ *
+ * Keys listed but absent on `source` are not defined on `picked`, so
+ * `mergeProps(defaults, picked)` doesn't get spuriously overridden by
+ * undefined slots.
+ */
+export function splitProps<
+  T extends object,
+  const K extends readonly (keyof T)[],
+>(
+  source: T,
+  keys: K,
+): [Pick<T, K[number]>, Omit<T, K[number]>] {
+  const picked = {} as Record<PropertyKey, unknown>;
+  const rest = {} as Record<PropertyKey, unknown>;
+  const pickSet = new Set<PropertyKey>(keys as readonly PropertyKey[]);
+  for (const name of Object.keys(source)) {
+    const descriptor = Object.getOwnPropertyDescriptor(source, name);
+    if (!descriptor) continue;
+    if (pickSet.has(name)) {
+      Object.defineProperty(picked, name, descriptor);
+    } else {
+      Object.defineProperty(rest, name, descriptor);
+    }
+  }
+  return [
+    picked as Pick<T, K[number]>,
+    rest as Omit<T, K[number]>,
+  ];
+}
 
 /**
  * Wrap a map of `{ key: () => value }` into a props-shaped object whose

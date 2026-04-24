@@ -350,7 +350,23 @@ function Button(userProps: ButtonProps = {}) {
 }
 ```
 
+The return type is the intersection of the source types, so the caller sees `defaults & userProps` without a trailing `as ButtonProps` cast.
+
 Equivalent to the compiler-internal `_mergeProps`; both names point at the same function. Compiler-emitted code uses `_mergeProps`, user code should use `mergeProps`.
+
+### splitProps(source, keys) → [picked, rest]
+
+The inverse of `mergeProps`. Partitions a props object into the named subset and the remainder, preserving getter descriptors on both halves so reactivity survives the split. Typed as `[Pick<T, K>, Omit<T, K>]`.
+
+```tsx
+function MyButton(props: ButtonProps & { extra?: string }) {
+  const [local, rest] = splitProps(props, ['extra']);
+  // rest: ButtonProps   local: { extra?: string }
+  return <Button {...rest} data-extra={local.extra} />;
+}
+```
+
+Keys listed in `keys` but absent on `source` are *not* defined on `picked`. This is intentional: it means `mergeProps(defaults, picked)` won't get overridden by undefined slots for keys the caller never set.
 
 ### reactiveProps(getters) → props
 
@@ -2436,7 +2452,7 @@ function CommandPalette() {
 ### vs SolidJS
 - Control flow uses functions (`show`, `each`, `switchMatch`), not components (`<Show>`, `<For>`, `<Switch>`/`<Match>`).
 - Same props convention as Solid: **never destructure**. The compiler emits getter descriptors for JSX attributes at component call sites, and destructuring (`const { size } = props`) snapshots the value and breaks reactivity. The `no-destructured-props` eslint rule enforces this.
-- `mergeProps` / `reactiveProps` are the escape hatches for programmatic prop construction (outside JSX), mirroring Solid's `mergeProps`.
+- `mergeProps` / `splitProps` / `reactiveProps` are the escape hatches for programmatic prop construction (outside JSX), mirroring Solid's equivalents.
 - `reactive()` provides deep proxy tracking (like Vue), not just store-level tracking.
 - `model()` for form bindings (Solid has no built-in equivalent).
 - `portal()` is a function, not a `<Portal>` component.
