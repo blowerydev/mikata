@@ -4,28 +4,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <!--mikata-head-->
-  <!-- Resolve + apply the user's color-scheme choice before CSS paints,
-       so the page doesn't flash from default-light to stored-dark while
-       the bundle loads. `installThemeVars()` in entry-client.tsx runs
-       this same resolution against live @mikata/ui token maps, so the
-       attribute value here matches what the JS effect will produce. -->
-  <script>
-    (function () {
-      try {
-        var stored = localStorage.getItem('mikata-docs-theme');
-        var resolved =
-          stored === 'light' || stored === 'dark'
-            ? stored
-            : matchMedia('(prefers-color-scheme: dark)').matches
-              ? 'dark'
-              : 'light';
-        document.documentElement.setAttribute('data-mkt-color-scheme', resolved);
-      } catch (_) {
-        document.documentElement.setAttribute('data-mkt-color-scheme', 'light');
-      }
-    })();
-  </script>
-  <link rel="stylesheet" href="/src/styles.css" />
 </head>
 <body>
   <div id="root"><!--ssr-outlet--></div>

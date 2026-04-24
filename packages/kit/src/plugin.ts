@@ -23,6 +23,11 @@ import { scanRoutes, isApiRouteSource, type RouteManifest } from './scan-routes'
 import { generateManifestModule } from './generate-manifest';
 import { createSsrMiddleware } from './middleware';
 import { prerender, type PrerenderOptions } from './prerender';
+import {
+  buildColorSchemeInitScript,
+  normalizeCssHref,
+  type ColorSchemeInitOptions,
+} from './html-setup';
 
 export interface MikataKitOptions {
   /**
@@ -77,6 +82,35 @@ export interface MikataKitOptions {
      */
     fallback?: 'error' | 'skip';
   };
+  /**
+   * Stylesheets to inject as render-blocking `<link rel="stylesheet">`
+   * tags into `<head>`. Prefer this over `import './styles.css'` from
+   * `entry-client.tsx`: Vite dev injects JS-imported CSS as a `<style>`
+   * tag AFTER module execution, which hits first paint unstyled. Link
+   * tags dodge the flash and behave identically in dev and prod.
+   *
+   * Paths are absolute-from-root (`/src/styles.css`) or bare
+   * (`src/styles.css`) - the plugin adds the leading `/`. Fully-qualified
+   * URLs (`https://...`) pass through untouched, so CDN stylesheets work
+   * the same way.
+   */
+  css?: string | readonly string[];
+  /**
+   * Inline `<head>` script that resolves color-scheme preference
+   * synchronously before CSS paints. Prevents the white flash users on
+   * system-dark would otherwise see between first paint and the moment
+   * `applyThemeToDocument` (or equivalent) runs from the JS bundle.
+   *
+   * Pass `true` for defaults (`localStorage.mikata-color-scheme`,
+   * falling back to `matchMedia('(prefers-color-scheme: dark)')`, then
+   * `'light'`, written to `data-mkt-color-scheme` on `<html>`), an
+   * options object to customize the keys, or omit / pass `false` to
+   * disable.
+   *
+   * The script must run before any stylesheet, so it's injected at the
+   * head-prepend slot - ahead of every CSS link in the template.
+   */
+  colorSchemeInit?: boolean | ColorSchemeInitOptions;
 }
 
 const VIRTUAL_ID = 'virtual:mikata-routes';
@@ -113,6 +147,12 @@ export default function mikataKit(options: MikataKitOptions = {}): Plugin {
   const prerenderOptions = normalizePrerenderOptions(options.prerender);
   const ssrEntryRel =
     (ssrOptions && ssrOptions.entry) ?? 'src/entry-server';
+  const cssEntries: readonly string[] = options.css === undefined
+    ? []
+    : Array.isArray(options.css)
+      ? (options.css as readonly string[])
+      : [options.css as string];
+  const colorSchemeInit = normalizeColorSchemeInit(options.colorSchemeInit);
 
   let server: ViteDevServer | undefined;
   let projectRoot = '';
@@ -219,6 +259,51 @@ export default function mikataKit(options: MikataKitOptions = {}): Plugin {
         routesDir: routesDirAbs,
         manifest,
       });
+    },
+
+    // Inject framework `<head>` infrastructure into index.html:
+    //   - inline color-scheme init script (if `colorSchemeInit` set), so
+    //     the theme attribute lands on `<html>` before CSS paints
+    //   - render-blocking CSS links (`css` option), so users can declare
+    //     stylesheets without the dev-mode FOUC that comes with
+    //     `import './styles.css'` from entry-client.tsx
+    //
+    // Both slots go at `head-prepend` - the script must precede any CSS
+    // link (see HTML parser ordering rules) and grouping the link tags
+    // alongside it means the injected block stays contiguous at the top
+    // of `<head>`, where render-blocking resources belong.
+    //
+    // `order: 'pre'` is load-bearing: the default hook phase runs AFTER
+    // Vite's internal HTML asset pipeline, which means an injected
+    // `<link href="/src/styles.css">` would ship to dist verbatim and
+    // 404 in production. Running pre lets Vite's vite:build-html plugin
+    // see our link and rewrite it to the hashed build output.
+    transformIndexHtml: {
+      order: 'pre' as const,
+      handler(html: string) {
+        if (!colorSchemeInit && cssEntries.length === 0) return;
+        const tags: Array<{
+          tag: string;
+          attrs?: Record<string, string>;
+          children?: string;
+          injectTo: 'head-prepend';
+        }> = [];
+        if (colorSchemeInit) {
+          tags.push({
+            tag: 'script',
+            children: buildColorSchemeInitScript(colorSchemeInit),
+            injectTo: 'head-prepend',
+          });
+        }
+        for (const href of cssEntries) {
+          tags.push({
+            tag: 'link',
+            attrs: { rel: 'stylesheet', href: normalizeCssHref(href) },
+            injectTo: 'head-prepend',
+          });
+        }
+        return { html, tags };
+      },
     },
 
     // Run the SSG pass after the SSR build finishes. Vite invokes the
@@ -340,6 +425,20 @@ function normalizePrerenderOptions(
 }
 
 /**
+ * Resolve the user's `colorSchemeInit` option into either `null` (skip
+ * the transform) or an options object ready to hand to the script builder.
+ * `true` is expanded to defaults at construction time so the plugin body
+ * never has to re-check for the boolean case.
+ */
+function normalizeColorSchemeInit(
+  raw: MikataKitOptions['colorSchemeInit'],
+): ColorSchemeInitOptions | null {
+  if (!raw) return null;
+  if (raw === true) return {};
+  return raw;
+}
+
+/**
  * Figure out the filename Vite wrote for the SSR entry. Prefers the
  * rollup input map (handles renames and multi-entry builds), falling
  * back to the `<entry-stem>.js` convention.
@@ -397,3 +496,4 @@ function toPosix(p: string): string {
 
 export { scanRoutes, generateManifestModule };
 export type { RouteManifest, RouteManifestEntry } from './scan-routes';
+export type { ColorSchemeInitOptions } from './html-setup';

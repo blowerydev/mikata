@@ -2,14 +2,12 @@ import { mount } from '@mikata/kit/client';
 import routes, { notFound } from 'virtual:mikata-routes';
 import { installThemeVars } from './theme-state';
 
-// @mikata/ui's stylesheet is pulled in via `@import` from `styles.css`
-// (which is linked from the HTML head) rather than imported here.
-// Importing CSS from a JS module means Vite dev injects it as a
-// `<style>` tag after the module executes — which happens after the
-// first paint — so the Playground briefly renders with bare native
-// controls before the imported styles arrive. The `@import` path
-// puts it behind the render-blocking `<link>` Vite already emits,
-// so first paint is fully styled.
+// Stylesheets are linked via mikataKit's `css` option (vite.config.ts),
+// so nothing is imported here - importing CSS from an entry module would
+// defer styles behind module execution and flash on first paint in dev.
+// The inline color-scheme script (also plugin-injected) has already set
+// the attribute on <html> by the time this runs; `installThemeVars`
+// takes over reactive updates.
 
 installThemeVars();
 

@@ -85,3 +85,88 @@ describe('mikataKit() Vite plugin', () => {
     expect(src).toContain('path: "/"');
   });
 });
+
+describe('mikataKit() transformIndexHtml', () => {
+  // The Vite `transformIndexHtml` hook on a plugin can be either a
+  // function or a `{ handler, order }` object. The tests call the hook
+  // directly - extract the callable from whichever shape the plugin uses.
+  function callTransform(plugin: ReturnType<typeof mikataKit>, html = '<html><head></head><body></body></html>'):
+    { html: string; tags: Array<{ tag: string; attrs?: Record<string, string>; children?: string; injectTo: string }> } | undefined {
+    const hook = plugin.transformIndexHtml as unknown;
+    if (!hook) return undefined;
+    const fn = typeof hook === 'function'
+      ? hook
+      : (hook as { handler: (...a: unknown[]) => unknown }).handler;
+    return fn(html, { path: '/', filename: 'index.html', server: undefined as never, originalUrl: '/' }) as ReturnType<typeof callTransform>;
+  }
+
+  it('emits no tags when neither css nor colorSchemeInit is set', () => {
+    const plugin = mikataKit();
+    const result = callTransform(plugin);
+    expect(result).toBeUndefined();
+  });
+
+  it('injects an inline script for colorSchemeInit: true', () => {
+    const plugin = mikataKit({ colorSchemeInit: true });
+    const result = callTransform(plugin)!;
+    expect(result.tags).toHaveLength(1);
+    expect(result.tags[0]!.tag).toBe('script');
+    expect(result.tags[0]!.injectTo).toBe('head-prepend');
+    // Defaults land in the emitted script.
+    expect(result.tags[0]!.children).toContain('"mikata-color-scheme"');
+    expect(result.tags[0]!.children).toContain('"data-mkt-color-scheme"');
+    expect(result.tags[0]!.children).toContain('prefers-color-scheme: dark');
+  });
+
+  it('honours custom storageKey, attribute, and fallback', () => {
+    const plugin = mikataKit({
+      colorSchemeInit: {
+        storageKey: 'app-theme',
+        attribute: 'data-theme',
+        fallback: 'dark',
+      },
+    });
+    const result = callTransform(plugin)!;
+    const body = result.tags[0]!.children!;
+    expect(body).toContain('"app-theme"');
+    expect(body).toContain('"data-theme"');
+    expect(body).toContain('"dark"');
+    // Defaults should be absent when overrides supplied.
+    expect(body).not.toContain('"mikata-color-scheme"');
+  });
+
+  it('emits link tags for each css entry', () => {
+    const plugin = mikataKit({ css: ['./src/styles.css', 'src/print.css'] });
+    const result = callTransform(plugin)!;
+    expect(result.tags).toHaveLength(2);
+    expect(result.tags[0]).toMatchObject({
+      tag: 'link',
+      attrs: { rel: 'stylesheet', href: '/src/styles.css' },
+      injectTo: 'head-prepend',
+    });
+    expect(result.tags[1]!.attrs!.href).toBe('/src/print.css');
+  });
+
+  it('accepts a single css string', () => {
+    const plugin = mikataKit({ css: '/app/main.css' });
+    const result = callTransform(plugin)!;
+    expect(result.tags).toHaveLength(1);
+    expect(result.tags[0]!.attrs!.href).toBe('/app/main.css');
+  });
+
+  it('passes fully-qualified URLs through unchanged', () => {
+    const plugin = mikataKit({ css: 'https://fonts.googleapis.com/x.css' });
+    const result = callTransform(plugin)!;
+    expect(result.tags[0]!.attrs!.href).toBe('https://fonts.googleapis.com/x.css');
+  });
+
+  it('orders the color-scheme script before css links so it runs first', () => {
+    const plugin = mikataKit({
+      colorSchemeInit: true,
+      css: ['./src/styles.css'],
+    });
+    const result = callTransform(plugin)!;
+    expect(result.tags[0]!.tag).toBe('script');
+    expect(result.tags[1]!.tag).toBe('link');
+  });
+});

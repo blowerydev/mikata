@@ -1,9 +1,9 @@
 /* @mikata/ui's full stylesheet (reset + tokens for light+dark + all
    component rules) comes first so every cascade below can override
-   what the library ships. Imported here (rather than from
-   entry-client.tsx) so the HTML's render-blocking `<link>` carries
-   it into the first paint. Importing from JS defers the styles
-   behind module execution, which in dev hits first paint unstyled. */
+   what the library ships. Pulled via CSS `@import` from a stylesheet
+   that mikataKit links as render-blocking (`css: '/src/styles.css'`
+   in vite.config.ts) - importing CSS from JS would defer the styles
+   behind module execution and flash on first paint in dev. */
 @import '@mikata/ui/styles.css';
 
 /* App-specific layout + typography on top of @mikata/ui's tokens.
