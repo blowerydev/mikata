@@ -1,5 +1,5 @@
 import { renderEffect } from '@mikata/reactivity';
-import { _mergeProps } from '@mikata/runtime';
+import { _mergeProps, adoptElement } from '@mikata/runtime';
 import { mergeClasses } from '../../utils/class-merge';
 import { useComponentDefaults } from '../../theme/component-defaults';
 import type { BadgeProps } from './Badge.types';
@@ -11,48 +11,41 @@ export function Badge(userProps: BadgeProps = {}): HTMLElement {
     userProps as Record<string, unknown>,
   ) as BadgeProps;
 
-  const el = document.createElement('span');
-  renderEffect(() => {
-    el.className = mergeClasses('mkt-badge', props.class);
-  });
-  renderEffect(() => { el.dataset.variant = props.variant ?? 'filled'; });
-  renderEffect(() => { el.dataset.size = props.size ?? 'md'; });
-  renderEffect(() => { el.dataset.color = props.color ?? 'primary'; });
+  return adoptElement<HTMLElement>('span', (el) => {
+    renderEffect(() => {
+      el.className = mergeClasses('mkt-badge', props.class);
+    });
+    renderEffect(() => { el.dataset.variant = props.variant ?? 'filled'; });
+    renderEffect(() => { el.dataset.size = props.size ?? 'md'; });
+    renderEffect(() => { el.dataset.color = props.color ?? 'primary'; });
 
-  // Dot indicator — shown only when variant is 'dot'.
-  const dot = document.createElement('span');
-  dot.className = 'mkt-badge__dot';
-  renderEffect(() => {
-    const on = props.variant === 'dot';
-    if (on && !dot.isConnected) el.insertBefore(dot, el.firstChild);
-    else if (!on && dot.isConnected) dot.remove();
-  });
+    // Dot + content slot are always in the tree so SSR/hydrate structure
+    // stays stable. The dot hides when variant !== 'dot', and the text
+    // slot's value tracks `props.children`.
+    adoptElement<HTMLSpanElement>('span', (dot) => {
+      dot.className = 'mkt-badge__dot';
+      renderEffect(() => {
+        dot.hidden = props.variant !== 'dot';
+      });
+    });
 
-  // Children: text or node. Put after the dot so DOM order stays stable.
-  const slot = document.createTextNode('');
-  el.appendChild(slot);
-  renderEffect(() => {
-    const c = props.children;
-    if (c == null) {
-      slot.nodeValue = '';
-      return;
+    // Content slot: prefer a dedicated span so swapping text/node
+    // children doesn't disturb the dot's position.
+    adoptElement<HTMLSpanElement>('span', (slot) => {
+      slot.className = 'mkt-badge__content';
+      renderEffect(() => {
+        const c = props.children;
+        slot.replaceChildren();
+        if (c == null) return;
+        if (typeof c === 'string') slot.textContent = c;
+        else slot.appendChild(c);
+      });
+    });
+
+    const ref = props.ref;
+    if (ref) {
+      if (typeof ref === 'function') ref(el);
+      else (ref as { current: HTMLElement | null }).current = el;
     }
-    if (typeof c === 'string') {
-      // Replace whatever follows the dot with a single text node.
-      while (slot.nextSibling) slot.nextSibling.remove();
-      slot.nodeValue = c;
-    } else {
-      slot.nodeValue = '';
-      while (slot.nextSibling) slot.nextSibling.remove();
-      el.appendChild(c);
-    }
   });
-
-  const ref = props.ref;
-  if (ref) {
-    if (typeof ref === 'function') ref(el);
-    else (ref as { current: HTMLElement | null }).current = el;
-  }
-
-  return el;
 }

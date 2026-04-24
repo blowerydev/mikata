@@ -1,7 +1,7 @@
 import { createIcon } from '@mikata/icons';
 import type { IconNode } from '@mikata/icons';
 import { renderEffect } from '@mikata/reactivity';
-import { _mergeProps } from '@mikata/runtime';
+import { _mergeProps, adoptElement } from '@mikata/runtime';
 import { mergeClasses } from '../../utils/class-merge';
 import type { AvatarProps, AvatarGroupProps } from './Avatar.types';
 import './Avatar.css';
@@ -21,82 +21,92 @@ function getInitials(name: string): string {
 export function Avatar(userProps: AvatarProps = {}): HTMLElement {
   const props = _mergeProps(userProps as unknown as Record<string, unknown>) as unknown as AvatarProps;
 
-  // `src`, `name` are structural — decide which child (img vs placeholder)
-  // exists.
+  // `src`, `name` are structural - `src` presence decides img vs
+  // placeholder child. SSR and client see the same initial `src`
+  // (props don't diverge across the boundary), so the structure is
+  // stable for adoption.
   const src = props.src;
   const name = props.name;
 
-  const el = document.createElement('div');
-  renderEffect(() => {
-    el.className = mergeClasses('mkt-avatar', props.class, props.classNames?.root);
-  });
-  renderEffect(() => { el.dataset.size = props.size ?? 'md'; });
-  renderEffect(() => { el.dataset.color = props.color ?? 'primary'; });
-  renderEffect(() => { el.dataset.variant = props.variant ?? 'light'; });
-  renderEffect(() => { el.dataset.radius = props.radius ?? 'full'; });
-  el.setAttribute('role', 'img');
-  renderEffect(() => {
-    el.setAttribute('aria-label', props.alt || props.name || 'Avatar');
-  });
-
-  const showPlaceholder = () => {
-    const placeholder = document.createElement('span');
+  return adoptElement<HTMLElement>('div', (el) => {
     renderEffect(() => {
-      placeholder.className = mergeClasses('mkt-avatar__placeholder', props.classNames?.placeholder);
+      el.className = mergeClasses('mkt-avatar', props.class, props.classNames?.root);
+    });
+    renderEffect(() => { el.dataset.size = props.size ?? 'md'; });
+    renderEffect(() => { el.dataset.color = props.color ?? 'primary'; });
+    renderEffect(() => { el.dataset.variant = props.variant ?? 'light'; });
+    renderEffect(() => { el.dataset.radius = props.radius ?? 'full'; });
+    el.setAttribute('role', 'img');
+    renderEffect(() => {
+      el.setAttribute('aria-label', props.alt || props.name || 'Avatar');
     });
 
-    if (name) {
-      placeholder.textContent = getInitials(name);
+    if (src) {
+      adoptElement<HTMLImageElement>('img', (img) => {
+        renderEffect(() => {
+          img.className = mergeClasses('mkt-avatar__image', props.classNames?.image);
+        });
+        img.setAttribute('src', src);
+        img.setAttribute('alt', props.alt || name || '');
+        img.addEventListener('error', () => {
+          // On image failure, swap to a placeholder. This rebuilds the
+          // subtree imperatively - the adoption invariant only needs
+          // to hold through hydration, and post-load behaviour can
+          // mutate the DOM freely.
+          img.remove();
+          const placeholder = document.createElement('span');
+          placeholder.className = mergeClasses(
+            'mkt-avatar__placeholder',
+            props.classNames?.placeholder,
+          );
+          if (name) {
+            placeholder.textContent = getInitials(name);
+          } else {
+            placeholder.appendChild(createIcon(UserSilhouette, { size: '60%' }));
+          }
+          el.appendChild(placeholder);
+        });
+      });
     } else {
-      placeholder.appendChild(createIcon(UserSilhouette, { size: '60%' }));
+      adoptElement<HTMLSpanElement>('span', (placeholder) => {
+        renderEffect(() => {
+          placeholder.className = mergeClasses(
+            'mkt-avatar__placeholder',
+            props.classNames?.placeholder,
+          );
+        });
+        if (!placeholder.firstChild) {
+          if (name) placeholder.textContent = getInitials(name);
+          else placeholder.appendChild(createIcon(UserSilhouette, { size: '60%' }));
+        }
+      });
     }
 
-    el.appendChild(placeholder);
-  };
-
-  if (src) {
-    const img = document.createElement('img');
-    renderEffect(() => {
-      img.className = mergeClasses('mkt-avatar__image', props.classNames?.image);
-    });
-    img.src = src;
-    img.alt = props.alt || name || '';
-    img.addEventListener('error', () => {
-      img.remove();
-      showPlaceholder();
-    });
-    el.appendChild(img);
-  } else {
-    showPlaceholder();
-  }
-
-  const ref = props.ref;
-  if (ref) {
-    if (typeof ref === 'function') ref(el);
-    else (ref as { current: HTMLElement | null }).current = el;
-  }
-
-  return el;
+    const ref = props.ref;
+    if (ref) {
+      if (typeof ref === 'function') ref(el);
+      else (ref as { current: HTMLElement | null }).current = el;
+    }
+  });
 }
 
 export function AvatarGroup(userProps: AvatarGroupProps): HTMLElement {
   const props = _mergeProps(userProps as unknown as Record<string, unknown>) as unknown as AvatarGroupProps;
 
-  const children = props.children;
+  return adoptElement<HTMLElement>('div', (el) => {
+    renderEffect(() => {
+      el.className = mergeClasses('mkt-avatar-group', props.class);
+    });
+    renderEffect(() => { el.dataset.spacing = props.spacing ?? 'sm'; });
 
-  const el = document.createElement('div');
-  renderEffect(() => {
-    el.className = mergeClasses('mkt-avatar-group', props.class);
+    for (const child of props.children) {
+      if (child.parentNode !== el) el.appendChild(child);
+    }
+
+    const ref = props.ref;
+    if (ref) {
+      if (typeof ref === 'function') ref(el);
+      else (ref as { current: HTMLElement | null }).current = el;
+    }
   });
-  renderEffect(() => { el.dataset.spacing = props.spacing ?? 'sm'; });
-
-  children.forEach((child) => el.appendChild(child));
-
-  const ref = props.ref;
-  if (ref) {
-    if (typeof ref === 'function') ref(el);
-    else (ref as { current: HTMLElement | null }).current = el;
-  }
-
-  return el;
 }
