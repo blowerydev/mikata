@@ -58,12 +58,6 @@ export function Playground(props: PlaygroundProps) {
   }
 
   const liveProps = reactiveProps(getters);
-  // Compute the preview subtree once - `liveProps` is getter-backed so
-  // prop changes re-run individual effects inside the component rather
-  // than swapping the whole node. Assigning to a `const` (as opposed to
-  // writing `{props.render(liveProps)}` inline) avoids the compiler's
-  // text-bake heuristic for bare call expressions at JSX-child position.
-  const preview = props.render(liveProps);
 
   const set = (name: string, v: unknown): void => {
     setters.get(name)!(v);
@@ -71,11 +65,18 @@ export function Playground(props: PlaygroundProps) {
 
   return (
     <div class="playground">
-      {/* Accessor form (`{() => preview}`) so the compiler routes this
-          through `_insert` as a Node slot rather than text-baking a bare
-          identifier into a text node. `preview` is a stable reference -
-          the accessor never re-runs. */}
-      <div class="playground-preview">{() => preview}</div>
+      {/* Accessor form for two reasons:
+          1. Routes through `_insert` (not text-bake) so the returned
+             Node is inserted as a child, not `.data`-assigned to a
+             text node.
+          2. Defers the `props.render(...)` call until the slot is
+             being populated, so Button's internal `adoptElement` adopts
+             from the correctly-scoped hydration cursor. Calling
+             `props.render(liveProps)` outside the JSX would consume
+             the wrong SSR node and desync every subsequent adopt.
+          The accessor has no reactive deps (`liveProps` is a stable
+          getter-backed object), so it runs once. */}
+      <div class="playground-preview">{() => props.render(liveProps)}</div>
       <div class="playground-controls">
         {() =>
           props.controls.map((control) => (
