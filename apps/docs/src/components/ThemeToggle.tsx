@@ -19,7 +19,7 @@ export function ThemeToggle() {
             type="button"
             role="radio"
             aria-checked={scheme() === opt.value ? 'true' : 'false'}
-            data-active={scheme() === opt.value ? '' : undefined}
+            data-active={scheme() === opt.value}
             onClick={() => setColorScheme(opt.value)}
           >
             {opt.label}
