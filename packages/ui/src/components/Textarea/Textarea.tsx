@@ -1,5 +1,5 @@
 import { renderEffect } from '@mikata/reactivity';
-import { _mergeProps } from '@mikata/runtime';
+import { _mergeProps, adoptElement } from '@mikata/runtime';
 import { mergeClasses } from '../../utils/class-merge';
 import { useComponentDefaults } from '../../theme/component-defaults';
 import { uniqueId } from '../../utils/unique-id';
@@ -14,80 +14,81 @@ export function Textarea(userProps: TextareaProps = {}): HTMLDivElement {
   ) as TextareaProps;
 
   const id = uniqueId('textarea');
-
-  // `autosize` is read once at setup — we wire the resize listener based on
-  // it. Toggling autosize reactively would mean wiring/unwiring listeners,
-  // which is more cost than the feature warrants.
   const autosize = !!props.autosize;
 
-  const textarea = document.createElement('textarea');
-  textarea.id = id;
-  renderEffect(() => {
-    textarea.className = mergeClasses(
-      'mkt-textarea__input',
-      autosize && 'mkt-textarea__input--autosize',
-      props.classNames?.input,
-    );
-  });
-  renderEffect(() => { textarea.dataset.size = props.size ?? 'md'; });
-  renderEffect(() => { textarea.rows = props.rows ?? 4; });
+  const buildChildren = () => adoptElement<HTMLTextAreaElement>('textarea', (textarea) => {
+    textarea.id = id;
+    renderEffect(() => {
+      textarea.className = mergeClasses(
+        'mkt-textarea__input',
+        autosize && 'mkt-textarea__input--autosize',
+        props.classNames?.input,
+      );
+    });
+    renderEffect(() => { textarea.dataset.size = props.size ?? 'md'; });
+    renderEffect(() => { textarea.rows = props.rows ?? 4; });
 
-  if (props.value != null) textarea.value = props.value;
-  else if (props.defaultValue != null) textarea.value = props.defaultValue;
-  renderEffect(() => {
-    const v = props.value;
-    if (v != null && textarea.value !== v) textarea.value = v;
-  });
+    const initial = props.value ?? props.defaultValue;
+    if (initial != null) {
+      // textarea's value lives in textContent for SSR purposes.
+      textarea.textContent = initial;
+      textarea.value = initial;
+    }
+    renderEffect(() => {
+      const v = props.value;
+      if (v != null && textarea.value !== v) textarea.value = v;
+    });
 
-  renderEffect(() => {
-    const p = props.placeholder;
-    if (p) textarea.placeholder = p;
-    else textarea.removeAttribute('placeholder');
-  });
-  renderEffect(() => { textarea.disabled = !!props.disabled; });
-  renderEffect(() => {
-    if (props.required) textarea.setAttribute('aria-required', 'true');
-    else textarea.removeAttribute('aria-required');
-  });
+    renderEffect(() => {
+      const p = props.placeholder;
+      if (p) textarea.setAttribute('placeholder', p);
+      else textarea.removeAttribute('placeholder');
+    });
+    renderEffect(() => { textarea.disabled = !!props.disabled; });
+    renderEffect(() => {
+      if (props.required) textarea.setAttribute('aria-required', 'true');
+      else textarea.removeAttribute('aria-required');
+    });
 
-  renderEffect(() => {
-    const parts: string[] = [];
-    if (props.description) parts.push(`${id}-description`);
-    if (hasError(props.error)) parts.push(`${id}-error`);
-    if (parts.length) textarea.setAttribute('aria-describedby', parts.join(' '));
-    else textarea.removeAttribute('aria-describedby');
-  });
-  renderEffect(() => {
-    if (hasError(props.error)) {
-      textarea.setAttribute('aria-errormessage', `${id}-error`);
-      textarea.setAttribute('aria-invalid', 'true');
-    } else {
-      textarea.removeAttribute('aria-errormessage');
-      textarea.removeAttribute('aria-invalid');
+    renderEffect(() => {
+      const parts: string[] = [];
+      if (props.description) parts.push(`${id}-description`);
+      if (hasError(props.error)) parts.push(`${id}-error`);
+      if (parts.length) textarea.setAttribute('aria-describedby', parts.join(' '));
+      else textarea.removeAttribute('aria-describedby');
+    });
+    renderEffect(() => {
+      if (hasError(props.error)) {
+        textarea.setAttribute('aria-errormessage', `${id}-error`);
+        textarea.setAttribute('aria-invalid', 'true');
+      } else {
+        textarea.removeAttribute('aria-errormessage');
+        textarea.removeAttribute('aria-invalid');
+      }
+    });
+
+    if (autosize) {
+      const adjustHeight = () => {
+        textarea.style.height = 'auto';
+        textarea.style.height = `${textarea.scrollHeight}px`;
+      };
+      textarea.addEventListener('input', adjustHeight);
+      requestAnimationFrame(adjustHeight);
+    }
+
+    const onInput = props.onInput;
+    if (onInput) textarea.addEventListener('input', onInput as EventListener);
+    const onChange = props.onChange;
+    if (onChange) textarea.addEventListener('change', onChange as EventListener);
+    const onBlur = props.onBlur;
+    if (onBlur) textarea.addEventListener('blur', onBlur as EventListener);
+
+    const ref = props.ref;
+    if (ref) {
+      if (typeof ref === 'function') ref(textarea as unknown as HTMLElement);
+      else (ref as { current: HTMLTextAreaElement | null }).current = textarea;
     }
   });
-
-  if (autosize) {
-    const adjustHeight = () => {
-      textarea.style.height = 'auto';
-      textarea.style.height = `${textarea.scrollHeight}px`;
-    };
-    textarea.addEventListener('input', adjustHeight);
-    requestAnimationFrame(adjustHeight);
-  }
-
-  const onInput = props.onInput;
-  if (onInput) textarea.addEventListener('input', onInput as EventListener);
-  const onChange = props.onChange;
-  if (onChange) textarea.addEventListener('change', onChange as EventListener);
-  const onBlur = props.onBlur;
-  if (onBlur) textarea.addEventListener('blur', onBlur as EventListener);
-
-  const ref = props.ref;
-  if (ref) {
-    if (typeof ref === 'function') ref(textarea as unknown as HTMLElement);
-    else (ref as { current: HTMLTextAreaElement | null }).current = textarea;
-  }
 
   return InputWrapper({
     id,
@@ -98,7 +99,7 @@ export function Textarea(userProps: TextareaProps = {}): HTMLDivElement {
     get size() { return props.size; },
     get class() { return props.class; },
     get classNames() { return props.classNames; },
-    children: textarea,
+    children: buildChildren,
   });
 }
 

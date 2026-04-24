@@ -1,6 +1,6 @@
 import { createIcon, Eye, EyeOff } from '@mikata/icons';
 import { renderEffect } from '@mikata/reactivity';
-import { _mergeProps } from '@mikata/runtime';
+import { _mergeProps, adoptElement } from '@mikata/runtime';
 import { mergeClasses } from '../../utils/class-merge';
 import { useComponentDefaults } from '../../theme/component-defaults';
 import { uniqueId } from '../../utils/unique-id';
@@ -17,88 +17,97 @@ export function PasswordInput(userProps: PasswordInputProps = {}): HTMLDivElemen
 
   const id = uniqueId('password-input');
   const labels = useUILabels();
+  let inputEl: HTMLInputElement | null = null;
+  let toggleBtnEl: HTMLButtonElement | null = null;
   let visible = false;
 
-  const input = document.createElement('input');
-  input.type = 'password';
-  input.id = id;
-  renderEffect(() => {
-    input.className = mergeClasses('mkt-password-input__input', props.classNames?.input);
-  });
-  renderEffect(() => { input.dataset.size = props.size ?? 'md'; });
-
-  if (props.value != null) input.value = props.value;
-  else if (props.defaultValue != null) input.value = props.defaultValue;
-  renderEffect(() => {
-    const v = props.value;
-    if (v != null && input.value !== v) input.value = v;
-  });
-
-  renderEffect(() => {
-    const p = props.placeholder;
-    if (p) input.placeholder = p;
-    else input.removeAttribute('placeholder');
-  });
-  renderEffect(() => { input.disabled = !!props.disabled; });
-  renderEffect(() => {
-    if (props.required) input.setAttribute('aria-required', 'true');
-    else input.removeAttribute('aria-required');
-  });
-
-  renderEffect(() => {
-    const parts: string[] = [];
-    if (props.description) parts.push(`${id}-description`);
-    if (hasError(props.error)) parts.push(`${id}-error`);
-    if (parts.length) input.setAttribute('aria-describedby', parts.join(' '));
-    else input.removeAttribute('aria-describedby');
-  });
-  renderEffect(() => {
-    if (hasError(props.error)) {
-      input.setAttribute('aria-invalid', 'true');
-      input.setAttribute('aria-errormessage', `${id}-error`);
-    } else {
-      input.removeAttribute('aria-invalid');
-      input.removeAttribute('aria-errormessage');
-    }
-  });
-
-  const onInput = props.onInput;
-  if (onInput) input.addEventListener('input', onInput as EventListener);
-  const onChange = props.onChange;
-  if (onChange) input.addEventListener('change', onChange as EventListener);
-  const onBlur = props.onBlur;
-  if (onBlur) input.addEventListener('blur', onBlur as EventListener);
-
-  const ref = props.ref;
-  if (ref) {
-    if (typeof ref === 'function') ref(input as unknown as HTMLElement);
-    else (ref as { current: HTMLInputElement | null }).current = input;
-  }
-
-  const toggleBtn = document.createElement('button');
-  toggleBtn.type = 'button';
-  toggleBtn.tabIndex = -1;
-  renderEffect(() => {
-    toggleBtn.className = mergeClasses('mkt-password-input__toggle', props.classNames?.toggleButton);
-  });
-  toggleBtn.setAttribute('aria-label', labels.showPassword);
-
   const updateIcon = () => {
-    toggleBtn.replaceChildren(createIcon(visible ? EyeOff : Eye, { size: 16 }));
+    if (!toggleBtnEl) return;
+    toggleBtnEl.replaceChildren(createIcon(visible ? EyeOff : Eye, { size: 16 }));
   };
-  updateIcon();
 
-  toggleBtn.addEventListener('click', () => {
-    visible = !visible;
-    input.type = visible ? 'text' : 'password';
-    toggleBtn.setAttribute('aria-label', visible ? labels.hidePassword : labels.showPassword);
-    updateIcon();
+  const buildChildren = () => adoptElement<HTMLDivElement>('div', (wrapper) => {
+    wrapper.className = 'mkt-password-input';
+
+    adoptElement<HTMLInputElement>('input', (input) => {
+      inputEl = input;
+      input.setAttribute('type', 'password');
+      input.id = id;
+      renderEffect(() => {
+        input.className = mergeClasses('mkt-password-input__input', props.classNames?.input);
+      });
+      renderEffect(() => { input.dataset.size = props.size ?? 'md'; });
+
+      const initial = props.value ?? props.defaultValue;
+      if (initial != null) {
+        input.setAttribute('value', initial);
+        input.value = initial;
+      }
+      renderEffect(() => {
+        const v = props.value;
+        if (v != null && input.value !== v) input.value = v;
+      });
+
+      renderEffect(() => {
+        const p = props.placeholder;
+        if (p) input.setAttribute('placeholder', p);
+        else input.removeAttribute('placeholder');
+      });
+      renderEffect(() => { input.disabled = !!props.disabled; });
+      renderEffect(() => {
+        if (props.required) input.setAttribute('aria-required', 'true');
+        else input.removeAttribute('aria-required');
+      });
+
+      renderEffect(() => {
+        const parts: string[] = [];
+        if (props.description) parts.push(`${id}-description`);
+        if (hasError(props.error)) parts.push(`${id}-error`);
+        if (parts.length) input.setAttribute('aria-describedby', parts.join(' '));
+        else input.removeAttribute('aria-describedby');
+      });
+      renderEffect(() => {
+        if (hasError(props.error)) {
+          input.setAttribute('aria-invalid', 'true');
+          input.setAttribute('aria-errormessage', `${id}-error`);
+        } else {
+          input.removeAttribute('aria-invalid');
+          input.removeAttribute('aria-errormessage');
+        }
+      });
+
+      const onInput = props.onInput;
+      if (onInput) input.addEventListener('input', onInput as EventListener);
+      const onChange = props.onChange;
+      if (onChange) input.addEventListener('change', onChange as EventListener);
+      const onBlur = props.onBlur;
+      if (onBlur) input.addEventListener('blur', onBlur as EventListener);
+
+      const ref = props.ref;
+      if (ref) {
+        if (typeof ref === 'function') ref(input as unknown as HTMLElement);
+        else (ref as { current: HTMLInputElement | null }).current = input;
+      }
+    });
+
+    adoptElement<HTMLButtonElement>('button', (toggleBtn) => {
+      toggleBtnEl = toggleBtn;
+      toggleBtn.setAttribute('type', 'button');
+      toggleBtn.tabIndex = -1;
+      renderEffect(() => {
+        toggleBtn.className = mergeClasses('mkt-password-input__toggle', props.classNames?.toggleButton);
+      });
+      toggleBtn.setAttribute('aria-label', labels.showPassword);
+      if (!toggleBtn.firstChild) updateIcon();
+
+      toggleBtn.addEventListener('click', () => {
+        visible = !visible;
+        if (inputEl) inputEl.setAttribute('type', visible ? 'text' : 'password');
+        toggleBtn.setAttribute('aria-label', visible ? labels.hidePassword : labels.showPassword);
+        updateIcon();
+      });
+    });
   });
-
-  const wrapper = document.createElement('div');
-  wrapper.className = 'mkt-password-input';
-  wrapper.appendChild(input);
-  wrapper.appendChild(toggleBtn);
 
   return InputWrapper({
     id,
@@ -109,7 +118,7 @@ export function PasswordInput(userProps: PasswordInputProps = {}): HTMLDivElemen
     get size() { return props.size; },
     get class() { return props.class; },
     get classNames() { return props.classNames; },
-    children: wrapper,
+    children: buildChildren,
   });
 }
 

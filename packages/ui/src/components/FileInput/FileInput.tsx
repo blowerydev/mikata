@@ -1,6 +1,6 @@
 import { createIcon, Close } from '@mikata/icons';
 import { renderEffect } from '@mikata/reactivity';
-import { _mergeProps } from '@mikata/runtime';
+import { _mergeProps, adoptElement } from '@mikata/runtime';
 import { mergeClasses } from '../../utils/class-merge';
 import { uniqueId } from '../../utils/unique-id';
 import { InputWrapper } from '../_internal/InputWrapper';
@@ -20,50 +20,16 @@ export function FileInput(userProps: FileInputProps = {}): HTMLDivElement {
   const props = _mergeProps(userProps as Record<string, unknown>) as FileInputProps;
 
   const id = uniqueId('file-input');
-
-  // `multiple` is read once — swapping single/multi at runtime changes the
-  // callback shape, so re-mount instead.
   const multiple = !!props.multiple;
-  // `valueComponent`, `leftSection` are read once — these are user-provided
-  // rendering functions/nodes that don't need to re-evaluate on prop changes.
   const valueComponent = props.valueComponent;
   const leftSection = props.leftSection;
 
-  const fileInput = document.createElement('input');
-  fileInput.type = 'file';
-  fileInput.className = 'mkt-file-input__native';
-  fileInput.id = `${id}-native`;
-  if (multiple) fileInput.multiple = true;
-  renderEffect(() => {
-    const a = props.accept;
-    if (a) fileInput.accept = a;
-    else fileInput.removeAttribute('accept');
-  });
-  renderEffect(() => {
-    const c = props.capture;
-    if (c) fileInput.setAttribute('capture', typeof c === 'string' ? c : '');
-    else fileInput.removeAttribute('capture');
-  });
-  renderEffect(() => { fileInput.disabled = !!props.disabled; });
-
-  const trigger = document.createElement('button');
-  trigger.type = 'button';
-  trigger.id = id;
-  renderEffect(() => {
-    trigger.className = mergeClasses('mkt-file-input__input', props.classNames?.input);
-  });
-  renderEffect(() => { trigger.dataset.size = props.size ?? 'md'; });
-  renderEffect(() => { trigger.disabled = !!props.disabled; });
-  renderEffect(() => {
-    if (props.required) trigger.setAttribute('aria-required', 'true');
-    else trigger.removeAttribute('aria-required');
-  });
-  renderEffect(() => {
-    if (props.error) trigger.setAttribute('aria-invalid', 'true');
-    else trigger.removeAttribute('aria-invalid');
-  });
+  let fileInputEl: HTMLInputElement | null = null;
+  let triggerEl: HTMLButtonElement | null = null;
 
   const renderValue = (files: File | File[] | null | undefined) => {
+    if (!triggerEl) return;
+    const trigger = triggerEl;
     trigger.replaceChildren();
 
     if (leftSection) {
@@ -95,7 +61,7 @@ export function FileInput(userProps: FileInputProps = {}): HTMLDivElement {
       clear.appendChild(createIcon(Close, { size: 12, strokeWidth: 1.5 }));
       clear.addEventListener('click', (e) => {
         e.stopPropagation();
-        fileInput.value = '';
+        if (fileInputEl) fileInputEl.value = '';
         renderValue(null);
         props.onChange?.(null);
       });
@@ -104,38 +70,78 @@ export function FileInput(userProps: FileInputProps = {}): HTMLDivElement {
   };
 
   let current: File | File[] | null | undefined = props.value;
-  renderValue(current);
 
-  trigger.addEventListener('click', () => {
-    if (!props.disabled) fileInput.click();
+  const buildChildren = () => adoptElement<HTMLDivElement>('div', (wrapper) => {
+    renderEffect(() => {
+      wrapper.className = mergeClasses(
+        'mkt-file-input',
+        leftSection && 'mkt-file-input--has-left',
+      );
+    });
+
+    adoptElement<HTMLInputElement>('input', (fileInput) => {
+      fileInputEl = fileInput;
+      fileInput.setAttribute('type', 'file');
+      fileInput.className = 'mkt-file-input__native';
+      fileInput.id = `${id}-native`;
+      if (multiple) fileInput.setAttribute('multiple', '');
+      renderEffect(() => {
+        const a = props.accept;
+        if (a) fileInput.setAttribute('accept', a);
+        else fileInput.removeAttribute('accept');
+      });
+      renderEffect(() => {
+        const c = props.capture;
+        if (c) fileInput.setAttribute('capture', typeof c === 'string' ? c : '');
+        else fileInput.removeAttribute('capture');
+      });
+      renderEffect(() => { fileInput.disabled = !!props.disabled; });
+
+      fileInput.addEventListener('change', () => {
+        const files = fileInput.files ? Array.from(fileInput.files) : [];
+        let out: File | File[] | null;
+        if (files.length === 0) out = null;
+        else if (multiple) out = files;
+        else out = files[0];
+        current = out;
+        renderValue(current);
+        props.onChange?.(out);
+      });
+    });
+
+    adoptElement<HTMLButtonElement>('button', (trigger) => {
+      triggerEl = trigger;
+      trigger.setAttribute('type', 'button');
+      trigger.id = id;
+      renderEffect(() => {
+        trigger.className = mergeClasses('mkt-file-input__input', props.classNames?.input);
+      });
+      renderEffect(() => { trigger.dataset.size = props.size ?? 'md'; });
+      renderEffect(() => { trigger.disabled = !!props.disabled; });
+      renderEffect(() => {
+        if (props.required) trigger.setAttribute('aria-required', 'true');
+        else trigger.removeAttribute('aria-required');
+      });
+      renderEffect(() => {
+        if (props.error) trigger.setAttribute('aria-invalid', 'true');
+        else trigger.removeAttribute('aria-invalid');
+      });
+
+      // Only build the initial display when the trigger is empty.
+      // On hydration the server already rendered the value/placeholder.
+      if (!trigger.firstChild) renderValue(current);
+
+      trigger.addEventListener('click', () => {
+        if (!props.disabled && fileInputEl) fileInputEl.click();
+      });
+
+      const ref = props.ref;
+      if (ref) {
+        if (typeof ref === 'function') ref(trigger);
+        else (ref as { current: HTMLElement | null }).current = trigger;
+      }
+    });
   });
-
-  fileInput.addEventListener('change', () => {
-    const files = fileInput.files ? Array.from(fileInput.files) : [];
-    let out: File | File[] | null;
-    if (files.length === 0) out = null;
-    else if (multiple) out = files;
-    else out = files[0];
-    current = out;
-    renderValue(current);
-    props.onChange?.(out);
-  });
-
-  const ref = props.ref;
-  if (ref) {
-    if (typeof ref === 'function') ref(trigger);
-    else (ref as { current: HTMLElement | null }).current = trigger;
-  }
-
-  const wrapper = document.createElement('div');
-  renderEffect(() => {
-    wrapper.className = mergeClasses(
-      'mkt-file-input',
-      leftSection && 'mkt-file-input--has-left',
-    );
-  });
-  wrapper.appendChild(fileInput);
-  wrapper.appendChild(trigger);
 
   return InputWrapper({
     id,
@@ -146,6 +152,6 @@ export function FileInput(userProps: FileInputProps = {}): HTMLDivElement {
     get size() { return props.size; },
     get class() { return props.class; },
     get classNames() { return props.classNames; },
-    children: wrapper,
+    children: buildChildren,
   });
 }
