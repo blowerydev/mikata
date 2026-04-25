@@ -45,12 +45,33 @@ export function SegmentedControl(userProps: SegmentedControlProps): HTMLElement 
     // the radio/label pairs; we need references to the labels to move
     // the indicator later. Rather than rebuild, walk the adopted
     // children and re-wire.
+    //
+    // Match inputs to labels by document order, not by id. The
+    // server-side `uniqueId` counter persists across requests / routes
+    // (a single Node process renders many pages back-to-back) while
+    // the client always starts at zero, so SSR ids like `segmented-3-0`
+    // don't line up with what a fresh client computes. Querying by
+    // class and pairing positionally sidesteps the mismatch entirely.
     const existing = root.querySelectorAll<HTMLLabelElement>('.mkt-segmented-control__label');
     if (existing.length === items.length) {
+      const inputs = root.querySelectorAll<HTMLInputElement>('.mkt-segmented-control__input');
       existing.forEach((label, i) => {
         labels.push(label);
-        const input = root.querySelector<HTMLInputElement>(`#${CSS.escape(`${id}-${i}`)}`);
+        const input = inputs[i];
         if (input) {
+          // Sync the SSR's `checked` to the client's activeValue. The
+          // server can't see localStorage / browser-only sources, so it
+          // marks `checked` on whatever the SSR-time default was. If the
+          // client value differs (e.g. stored theme is 'light' but SSR
+          // assumed 'auto'), the radio with the SSR-checked value is
+          // still flagged checked in the DOM - clicking its label is
+          // a no-op (the browser fires `change` only on transitions),
+          // so the user can never select that option as their first
+          // action without bouncing through another one first.
+          input.checked = items[i].value === activeValue;
+          // Same reason for `data-active` on the label.
+          if (items[i].value === activeValue) label.dataset.active = '';
+          else delete label.dataset.active;
           input.addEventListener('change', () => {
             if (items[i].disabled) return;
             activeValue = items[i].value;
@@ -107,26 +128,69 @@ export function SegmentedControl(userProps: SegmentedControlProps): HTMLElement 
       });
     }
 
-    function updateIndicator() {
+    function applyIndicator() {
       if (!indicatorEl) return;
       const activeIndex = items.findIndex((item) => item.value === activeValue);
       if (activeIndex < 0) return;
       const activeLabel = labels[activeIndex];
       if (!activeLabel) return;
-
-      requestAnimationFrame(() => {
-        if (!indicatorEl) return;
-        const parent = activeLabel.offsetParent as HTMLElement | null;
-        const isRtl = parent ? getComputedStyle(parent).direction === 'rtl' : false;
-        const startOffset = isRtl && parent
-          ? -(parent.clientWidth - activeLabel.offsetLeft - activeLabel.offsetWidth)
-          : activeLabel.offsetLeft;
-        indicatorEl.style.width = `${activeLabel.offsetWidth}px`;
-        indicatorEl.style.transform = `translateX(${startOffset}px)`;
-      });
+      // `getBoundingClientRect()` gives sub-pixel-accurate dimensions and
+      // works on labels whose layout box exists but offsetWidth is 0 (some
+      // inline-flex configurations on Chromium hand back 0 for offsetWidth
+      // for a frame or two after first paint while CSS containment
+      // resolves). The bounding rect reflects the actual painted box.
+      const rect = activeLabel.getBoundingClientRect();
+      if (rect.width === 0) return;
+      const parent = activeLabel.offsetParent as HTMLElement | null;
+      const isRtl = parent ? getComputedStyle(parent).direction === 'rtl' : false;
+      const startOffset = isRtl && parent
+        ? -(parent.clientWidth - activeLabel.offsetLeft - rect.width)
+        : activeLabel.offsetLeft;
+      indicatorEl.style.width = `${rect.width}px`;
+      indicatorEl.style.transform = `translateX(${startOffset}px)`;
     }
 
-    requestAnimationFrame(updateIndicator);
+    function updateIndicator() {
+      // Inner rAF lets layout settle after activeValue / class changes so
+      // offsetLeft / offsetWidth read the post-update values.
+      requestAnimationFrame(applyIndicator);
+    }
+
+    // Initial measurement strategy: try synchronously, then on rAF, then
+    // again on every label resize. `applyIndicator` no-ops when width is
+    // still 0, so each attempt is a cheap miss until the layout has a
+    // real box. ResizeObserver fires once per observed element on the
+    // microtask after `observe()`, which catches the common case where
+    // the rAF fires before SVGs / fonts have laid out. The observer also
+    // continues firing for window resize / RTL flips / theme zoom.
+    //
+    // Skip entirely during SSR - the dom-shim's SElement has no
+    // `getBoundingClientRect` / `offsetParent`, and there's nothing to
+    // measure on the server anyway. The post-hydration rAF handles the
+    // first real measurement on the client.
+    if (typeof window !== 'undefined') {
+      applyIndicator();
+      requestAnimationFrame(applyIndicator);
+      if (typeof ResizeObserver !== 'undefined') {
+        const ro = new ResizeObserver(() => applyIndicator());
+        labels.forEach((l) => ro.observe(l));
+      } else {
+        // Fallback for ancient browsers: a couple of timer-based
+        // retries cover the same window without observing.
+        setTimeout(applyIndicator, 50);
+        setTimeout(applyIndicator, 200);
+      }
+      // Re-measure once everything (CSS, web fonts, late-loading icon
+      // SVGs) has finished. In dev, modules can execute before linked
+      // stylesheets parse - the first rAF then reads pre-CSS layout
+      // (no `position: relative` on the wrapper, so `offsetLeft`
+      // resolves against the document body and pushes the pill off
+      // screen). `load` fires after all resources are in. `fonts.ready`
+      // covers the additional font-metrics-changed-the-pill-size path.
+      window.addEventListener('load', applyIndicator, { once: true });
+      const fonts = (document as Document & { fonts?: { ready?: Promise<unknown> } }).fonts;
+      if (fonts?.ready) fonts.ready.then(applyIndicator);
+    }
 
     const ref = props.ref;
     if (ref) {

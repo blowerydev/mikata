@@ -162,8 +162,51 @@ a:hover {
   outline-offset: 2px;
 }
 
-/* Theme toggle styles ship with @mikata/ui's SegmentedControl - the
-   `.mkt-segmented-control*` rules. No app-level overrides needed. */
+/* Theme toggle: pure CSS, no measurement. Three icon buttons in an
+   inline-flex pill; the active one gets a contrasting background via
+   [data-active]. Renders correctly from the very first paint - no JS
+   `getBoundingClientRect` + `style.transform` race against the dev-mode
+   stylesheet load order. See `ThemeToggle.tsx` for the rationale. */
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  background-color: var(--mkt-color-gray-1, #f1f3f5);
+  border-radius: var(--mkt-radius-sm);
+}
+[data-mkt-color-scheme="dark"] .theme-toggle {
+  background-color: rgba(255, 255, 255, 0.07);
+}
+.theme-toggle__option {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 8px;
+  border: 0;
+  background: transparent;
+  border-radius: var(--mkt-radius-xs);
+  color: var(--mkt-color-gray-6);
+  cursor: pointer;
+  transition: color var(--mkt-transition-duration) var(--mkt-transition-timing),
+              background-color var(--mkt-transition-duration) var(--mkt-transition-timing);
+}
+.theme-toggle__option:hover {
+  color: var(--mkt-color-text);
+}
+.theme-toggle__option[data-active] {
+  color: var(--mkt-color-text);
+  background-color: var(--mkt-color-bg);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+[data-mkt-color-scheme="dark"] .theme-toggle__option[data-active] {
+  background-color: rgba(255, 255, 255, 0.12);
+  box-shadow: none;
+}
+.theme-toggle__option:focus-visible {
+  outline: 2px solid var(--mkt-color-focus-ring);
+  outline-offset: 2px;
+}
 
 /* ---------- Sidebar ---------- */
 

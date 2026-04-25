@@ -298,6 +298,14 @@ export class SElement extends SNode {
   // reflect to the attribute so SSR carries the initial value.
   get value(): string { return this.getAttribute('value') ?? ''; }
   set value(v: string) { this.setAttribute('value', String(v)); }
+  // `id` and `htmlFor` reflect to attributes in the real DOM. Components
+  // that imperatively set them (`input.id = ...`, `label.htmlFor = ...`)
+  // need the writes to land in the SSR markup so label/input pairing
+  // survives hydration.
+  get id(): string { return this.getAttribute('id') ?? ''; }
+  set id(v: string) { this.setAttribute('id', String(v)); }
+  get htmlFor(): string { return this.getAttribute('for') ?? ''; }
+  set htmlFor(v: string) { this.setAttribute('for', String(v)); }
 
   // ---- className / style / textContent / innerHTML ----
 

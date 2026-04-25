@@ -634,6 +634,24 @@ describe('adoptElement: imperative components hydrate cleanly', () => {
       dispose();
     }
   });
+
+  it('throws in dev when the cursor points at a wrong-tag node', () => {
+    // The classic "component called outside its JSX slot" footprint:
+    // the server emitted a <div class="playground">, but the client
+    // asks adoptElement for a <button> at the same cursor position.
+    // Without the dev-mode assert, adoptElement would silently fall
+    // back to a fresh <button>, consume the <div> off the cursor, and
+    // the crash would surface frames away in an unrelated component.
+    const container = document.createElement('div');
+    container.innerHTML = '<div class="playground">contents</div>';
+
+    const buildWrongTag = () =>
+      adoptElement<HTMLButtonElement>('button', () => {});
+
+    expect(() => hydrate(buildWrongTag, container)).toThrow(
+      /adoptElement\("button"\) mismatch.*<div\.playground>/s,
+    );
+  });
 });
 
 describe('renderToString({ verifyHydration: true })', () => {

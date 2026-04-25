@@ -1,6 +1,8 @@
 import { signal } from '@mikata/reactivity';
 import { applyThemeToDocument, type ColorScheme } from '@mikata/ui';
 
+export type { ColorScheme };
+
 const STORAGE_KEY = 'mikata-docs-theme';
 
 function readStored(): ColorScheme {

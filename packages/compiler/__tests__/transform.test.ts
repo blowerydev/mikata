@@ -111,16 +111,18 @@ describe('JSX transform', () => {
     expect(output).not.toContain('_setProp');
   });
 
-  it('emits anchor markers only for non-tail dynamic children', () => {
+  it('emits anchor markers for dynamic children with siblings', () => {
     const output = transform(
       `const el = <p>Count: {count()} | Doubled: {doubled()}</p>;`
     );
-    // First dynamic slot has a following sibling → comment marker in template
-    // and _insert takes a marker argument.
+    // Both dynamic slots have sibling content (static text and each other),
+    // so each gets a `<!>` marker in the template HTML and a marker arg in
+    // its `_insert(...)` call. The marker-less optimisation only fires for
+    // sole-child dynamics where the hydration cursor at parent.childNodes[0]
+    // naturally lands on the SSR slot.
     expect(output).toContain('<!>');
     expect(output).toMatch(/_insert\([^,]+,\s*\(\)\s*=>\s*count\(\),\s*_el/);
-    // Last dynamic slot needs no marker — _insert takes only two args.
-    expect(output).toMatch(/_insert\([^,]+,\s*\(\)\s*=>\s*doubled\(\)\)/);
+    expect(output).toMatch(/_insert\([^,]+,\s*\(\)\s*=>\s*doubled\(\),\s*_el/);
   });
 
   it('preserves inline whitespace in JSX text', () => {

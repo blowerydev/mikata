@@ -477,16 +477,19 @@ export function mikataJSXPlugin({ types: t }: { types: typeof BabelTypes }): Plu
     if (plan.kind === 'dynamic') {
       // Text-bake: bake a space placeholder the walker will mutate via `.data`.
       if (plan.bakeText) return ' ';
-      // Tail-dynamic optimisation: if this is the last child of its parent,
+      // Tail-dynamic optimisation: if this is the only child of its parent,
       // skip the comment marker and let the walker emit `_insert` with no
       // marker (appendChild semantics). Saves one comment node per slot.
-      if (parent && indexInParent === parent.children.length - 1) {
+      // Only safe as the sole child - with preceding static siblings, the
+      // hydration cursor (which `markerIndex(parent, undefined) → 0`)
+      // would adopt the first static child instead of the SSR slot.
+      if (parent && parent.children.length === 1) {
         return '';
       }
       return '<!>';
     }
     if (plan.kind === 'node') {
-      if (parent && indexInParent === parent.children.length - 1) {
+      if (parent && parent.children.length === 1) {
         return '';
       }
       return '<!>';
@@ -514,7 +517,13 @@ export function mikataJSXPlugin({ types: t }: { types: typeof BabelTypes }): Plu
   }
 
   function isTailDynamic(plan: ElementPlan, i: number): boolean {
-    if (i !== plan.children.length - 1) return false;
+    // Only safe to skip the marker when the dynamic is the sole child.
+    // With preceding static siblings, hydration's marker-less cursor
+    // starts at parent.childNodes[0] (the static sibling) and adopts
+    // the wrong slot. Keeping this in sync with `emitTemplateHTML`'s
+    // tail check is critical - if the template emits a `<!>` here but
+    // the walker thinks it's tail, the marker becomes orphaned.
+    if (plan.children.length !== 1 || i !== 0) return false;
     const c = plan.children[i];
     return c.kind === 'dynamic' || c.kind === 'node';
   }
