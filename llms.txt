@@ -1844,6 +1844,8 @@ Button({ leftIcon: createIcon(Bell, { size: 16 }), children: 'Notifications' });
 
 `@mikata/icons` has zero runtime deps; `lucide` and `@tabler/icons` are declared as optional peer deps so consumers install whichever they want.
 
+**Why we don't re-export all of Lucide through `@mikata/icons`:** tree-shaking eliminates unused icon *bytes* but not the underlying dependency. Re-exporting would make Lucide a hard dep of every `@mikata/icons` consumer (including `@mikata/ui`), forcing the full ~2MB Lucide source into `node_modules` for apps that only ever use the built-ins. The built-in set covers what `@mikata/ui` itself needs internally plus a handful of common-needs glyphs; for anything else, install Lucide directly and pass its tuples to `createIcon`. The import is the same shape either way (`import { Bell } from 'lucide'` vs the hypothetical `from '@mikata/icons'`), but only the direct form lets consumers opt out of the dep.
+
 ### IconNode shape
 
 ```ts
