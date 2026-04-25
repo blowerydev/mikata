@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { signal } from '../src/signal';
 import { effect } from '../src/effect';
 import { createScope, onCleanup } from '../src/scope';
-import { resetLeakReports } from '../src/leak-detector';
+import { resetLeakReports, suppressLeakTracking } from '../src/leak-detector';
 
 // @ts-expect-error - define __DEV__ for tests
 globalThis.__DEV__ = true;
@@ -126,5 +126,42 @@ describe('leak-detector', () => {
       String(c[0]).includes('Possible subscription leak'),
     );
     expect(warnings.length).toBe(0);
+  });
+
+  it('does not warn for subscriptions made inside suppressLeakTracking', () => {
+    const el = document.createElement('div');
+    createScope(() => {
+      effect(() => {
+        suppressLeakTracking(() => {
+          el.addEventListener('click', () => {});
+          setTimeout(() => {}, 10);
+          setInterval(() => {}, 10);
+        });
+      });
+    });
+
+    const warnings = warnSpy.mock.calls.filter((c) =>
+      String(c[0]).includes('Possible subscription leak'),
+    );
+    expect(warnings.length).toBe(0);
+  });
+
+  it('still warns for unsuppressed subscriptions when others are suppressed', () => {
+    const el = document.createElement('div');
+    createScope(() => {
+      effect(() => {
+        suppressLeakTracking(() => {
+          el.addEventListener('click', () => {});
+        });
+        // This one is not suppressed - should still trip the detector.
+        el.addEventListener('keydown', () => {});
+      });
+    });
+
+    const warnings = warnSpy.mock.calls.filter((c) =>
+      String(c[0]).includes('Possible subscription leak'),
+    );
+    expect(warnings.length).toBe(1);
+    expect(String(warnings[0][0])).toContain('1× addEventListener');
   });
 });

@@ -29,6 +29,15 @@ let patched = false;
 let reported = new WeakSet<object>();
 
 /**
+ * Reentrant counter for `suppressLeakTracking`. While > 0, the patched
+ * subscription primitives skip incrementing the active frame's counters
+ * so framework-internal calls (e.g. `_spread` swapping event handlers,
+ * `_delegate` registering the page-wide document listener) don't get
+ * blamed as leaks. The suppression is a no-op outside `__DEV__`.
+ */
+let suppressionDepth = 0;
+
+/**
  * Warnings are deduplicated per effect node so a repeatedly-firing effect
  * only warns once. The node object is used as the weakmap key (passed
  * through `beginLeakFrame`).
@@ -45,7 +54,7 @@ function installPatches(): void {
     const origAdd = EventTarget.prototype.addEventListener;
     EventTarget.prototype.addEventListener = function (this: EventTarget, ...args: Parameters<EventTarget['addEventListener']>): void {
       const top = frameStack[frameStack.length - 1];
-      if (top) top.addListenerCount++;
+      if (top && suppressionDepth === 0) top.addListenerCount++;
       return origAdd.apply(this, args);
     } as EventTarget['addEventListener'];
   }
@@ -56,18 +65,41 @@ function installPatches(): void {
   };
 
   const origSetInterval = g.setInterval;
-  g.setInterval = function (...args: Parameters<typeof setInterval>): ReturnType<typeof setInterval> {
+  g.setInterval = function (this: unknown, ...args: Parameters<typeof setInterval>): ReturnType<typeof setInterval> {
     const top = frameStack[frameStack.length - 1];
-    if (top) top.setIntervalCount++;
-    return origSetInterval.apply(this as unknown as typeof globalThis, args);
+    if (top && suppressionDepth === 0) top.setIntervalCount++;
+    return origSetInterval.apply(this as typeof globalThis, args);
   } as typeof setInterval;
 
   const origSetTimeout = g.setTimeout;
-  g.setTimeout = function (...args: Parameters<typeof setTimeout>): ReturnType<typeof setTimeout> {
+  g.setTimeout = function (this: unknown, ...args: Parameters<typeof setTimeout>): ReturnType<typeof setTimeout> {
     const top = frameStack[frameStack.length - 1];
-    if (top) top.setTimeoutCount++;
-    return origSetTimeout.apply(this as unknown as typeof globalThis, args);
+    if (top && suppressionDepth === 0) top.setTimeoutCount++;
+    return origSetTimeout.apply(this as typeof globalThis, args);
   } as typeof setTimeout;
+}
+
+/**
+ * Run `fn` with leak-detector counting suspended for any
+ * `addEventListener` / `setInterval` / `setTimeout` calls it makes.
+ *
+ * Use for framework-internal subscriptions that the runtime knows are
+ * tied to element lifecycle (so they GC with the element) or to a
+ * matching `removeEventListener` / `clear*` call elsewhere - in other
+ * words, things the user can't possibly clean up because they don't
+ * own the call site. Do NOT use to silence warnings on subscriptions
+ * the user *should* be cleaning up.
+ *
+ * No-op outside `__DEV__`.
+ */
+export function suppressLeakTracking<T>(fn: () => T): T {
+  if (typeof __DEV__ !== 'undefined' && !__DEV__) return fn();
+  suppressionDepth++;
+  try {
+    return fn();
+  } finally {
+    suppressionDepth--;
+  }
 }
 
 /**

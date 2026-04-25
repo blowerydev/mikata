@@ -2,7 +2,7 @@
  * Link component - declarative navigation with active state.
  */
 
-import { computed, renderEffect } from '@mikata/reactivity';
+import { computed, renderEffect, suppressLeakTracking } from '@mikata/reactivity';
 import { inject, _insert } from '@mikata/runtime';
 import { RouterContext } from './outlet';
 import type { NavigateTarget } from './types';
@@ -130,23 +130,28 @@ export function Link(props: LinkProps): Node {
     }
   });
 
-  // Click handler - intercept navigation
-  el.addEventListener('click', (e: MouseEvent) => {
-    // Allow normal behavior for modified clicks
-    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
-    e.preventDefault();
-    router.navigate(to, { replace });
-  });
+  // Click handler - intercept navigation. Listener is bound to the
+  // `<a>` we're about to return, so it GCs with the element when the
+  // link is removed from the DOM. `suppressLeakTracking` keeps the
+  // dev-mode detector from blaming this on a containing renderEffect
+  // (a parent `_insert` accessor frame, for instance).
+  suppressLeakTracking(() => {
+    el.addEventListener('click', (e: MouseEvent) => {
+      // Allow normal behavior for modified clicks
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+      e.preventDefault();
+      router.navigate(to, { replace });
+    });
 
-  // Preloading
-  if (preload === true || preload === 'hover') {
-    el.addEventListener('mouseenter', () => {
-      // If the target route is lazy, trigger preload
-      const target = href().split('?')[0].split('#')[0];
-      // The lazy component's preload is handled by the lazy() wrapper
-      // We could prefetch here in the future
-    }, { once: true });
-  }
+    if (preload === true || preload === 'hover') {
+      el.addEventListener('mouseenter', () => {
+        // If the target route is lazy, trigger preload
+        const target = href().split('?')[0].split('#')[0];
+        // The lazy component's preload is handled by the lazy() wrapper
+        // We could prefetch here in the future
+      }, { once: true });
+    }
+  });
 
   // Forward additional attributes
   for (const [key, value] of Object.entries(rest)) {

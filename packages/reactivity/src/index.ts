@@ -6,6 +6,7 @@ export { untrack, batch, on } from './utils';
 export { createScope, onCleanup, getCurrentScope, setCurrentScope } from './scope';
 export { createSelector } from './selector';
 export { flushSync } from './scheduler';
+export { suppressLeakTracking } from './leak-detector';
 export type { Signal, ReadSignal, WriteSignal } from './signal';
 export type { Scope } from './scope';
 export type { ReactiveNode } from './tracking';

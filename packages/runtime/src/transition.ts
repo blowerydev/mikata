@@ -19,6 +19,7 @@
 import {
   renderEffect,
   createScope,
+  suppressLeakTracking,
   type Scope,
 } from '@mikata/reactivity';
 
@@ -132,9 +133,15 @@ function whenTransitionEnds(
     const onEnd = (e: Event) => {
       if (e.target === el) done();
     };
-    el.addEventListener('transitionend', onEnd);
-    el.addEventListener('animationend', onEnd);
-    setTimeout(done, fallbackMs);
+    // `done()` always runs (either from one of the events or from the
+    // fallback timer) and removes both listeners, so the subscriptions
+    // are guaranteed to be torn down even though the leak detector
+    // can't see the link to a containing effect.
+    suppressLeakTracking(() => {
+      el.addEventListener('transitionend', onEnd);
+      el.addEventListener('animationend', onEnd);
+      setTimeout(done, fallbackMs);
+    });
   });
 }
 

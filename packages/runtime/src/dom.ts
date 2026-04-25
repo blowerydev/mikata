@@ -3,7 +3,7 @@
  * These are the runtime functions that the compiler emits calls to.
  */
 
-import { renderEffect } from '@mikata/reactivity';
+import { renderEffect, suppressLeakTracking } from '@mikata/reactivity';
 import { isSSR } from './env';
 import { isHydrating, adoptNext, pushFrame, popFrame } from './adopt';
 
@@ -253,7 +253,12 @@ export function _delegate(
   (el as any)[`$$${eventName}`] = handler;
   if (!DELEGATED_EVENTS.has(eventName)) {
     DELEGATED_EVENTS.add(eventName);
-    document.addEventListener(eventName, delegatedEventHandler);
+    // Page-lifetime listener registered once per event type. Suppressed
+    // from leak counting because it has no per-component cleanup point;
+    // the document outlives every effect that triggers this branch.
+    suppressLeakTracking(() =>
+      document.addEventListener(eventName, delegatedEventHandler),
+    );
   }
 }
 
@@ -558,31 +563,37 @@ export function _spread(
     const props = accessor();
     const seenEvents = new Set<string>();
 
-    for (const [key, value] of Object.entries(props)) {
-      if (/^on[A-Z]/.test(key)) {
-        const eventName = key.slice(2).toLowerCase();
-        seenEvents.add(eventName);
-        const prev = attached.get(eventName);
-        if (prev === value) continue;
-        if (prev) el.removeEventListener(eventName, prev);
-        if (typeof value === 'function') {
-          el.addEventListener(eventName, value as EventListener);
-          attached.set(eventName, value as EventListener);
+    // Listener swapping is paired (remove-prev + add-next) inside the
+    // same renderEffect run, and the orphan sweep below removes any
+    // handler that drops out of `props`. Suppressed from leak counting
+    // because the runtime guarantees the matching teardown.
+    suppressLeakTracking(() => {
+      for (const [key, value] of Object.entries(props)) {
+        if (/^on[A-Z]/.test(key)) {
+          const eventName = key.slice(2).toLowerCase();
+          seenEvents.add(eventName);
+          const prev = attached.get(eventName);
+          if (prev === value) continue;
+          if (prev) el.removeEventListener(eventName, prev);
+          if (typeof value === 'function') {
+            el.addEventListener(eventName, value as EventListener);
+            attached.set(eventName, value as EventListener);
+          } else {
+            attached.delete(eventName);
+          }
         } else {
+          _setProp(el, key, value);
+        }
+      }
+
+      // Any handler registered last run but omitted this run must be removed.
+      for (const [eventName, handler] of attached) {
+        if (!seenEvents.has(eventName)) {
+          el.removeEventListener(eventName, handler);
           attached.delete(eventName);
         }
-      } else {
-        _setProp(el, key, value);
       }
-    }
-
-    // Any handler registered last run but omitted this run must be removed.
-    for (const [eventName, handler] of attached) {
-      if (!seenEvents.has(eventName)) {
-        el.removeEventListener(eventName, handler);
-        attached.delete(eventName);
-      }
-    }
+    });
   });
 }
 
