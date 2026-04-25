@@ -147,6 +147,21 @@ a:hover {
   background: var(--mkt-color-bg-subtle);
 }
 
+/* Icon-only variant: square hit-target so the visual weight matches
+   the icon-only theme toggle next to it. */
+.topbar-link-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.85rem;
+  height: 1.85rem;
+  padding: 0;
+}
+.topbar-link-icon:focus-visible {
+  outline: 2px solid var(--mkt-color-focus-ring);
+  outline-offset: 2px;
+}
+
 /* Theme toggle (segmented control). Styling tracks the rest of the
    surface - tight, 3-way button group that lives in the topbar. */
 .theme-toggle {
@@ -158,15 +173,17 @@ a:hover {
   background: var(--mkt-color-bg-subtle);
 }
 .theme-toggle button {
-  padding: 0.2rem 0.6rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  padding: 0;
   border: 0;
   background: transparent;
   color: var(--mkt-color-text-dimmed);
   cursor: pointer;
-  font-size: 0.78rem;
   border-radius: 999px;
-  font-family: inherit;
-  letter-spacing: 0.01em;
   transition: color 0.1s ease, background 0.1s ease;
 }
 .theme-toggle button:hover {

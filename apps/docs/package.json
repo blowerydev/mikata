@@ -13,6 +13,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@mikata/icons": "workspace:*",
     "@mikata/kit": "workspace:*",
     "@mikata/reactivity": "workspace:*",
     "@mikata/router": "workspace:*",

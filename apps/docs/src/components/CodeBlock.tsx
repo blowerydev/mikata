@@ -1,6 +1,7 @@
 import { codeToHtml } from 'shiki';
 import { signal } from '@mikata/reactivity';
 import { RawHTML } from '@mikata/runtime';
+import { createIcon, Copy, Check } from '@mikata/icons';
 
 export interface CodeBlockProps {
   /** Pre-highlighted HTML produced by `highlight(...)`. */
@@ -48,7 +49,7 @@ export function CodeBlock(props: CodeBlockProps) {
         data-copied={copied() ? 'true' : 'false'}
         onClick={onCopy}
       >
-        {() => (copied() ? <CheckIcon /> : <CopyIcon />)}
+        {() => createIcon(copied() ? Check : Copy, { size: 14 })}
       </button>
       <RawHTML class="codeblock" html={props.html} />
     </div>
@@ -69,41 +70,4 @@ export async function highlight(code: string, lang: string = 'tsx'): Promise<str
     },
     defaultColor: false,
   });
-}
-
-function CopyIcon() {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="2"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-      aria-hidden="true"
-    >
-      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-    </svg>
-  );
-}
-
-function CheckIcon() {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="2.5"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-      aria-hidden="true"
-    >
-      <polyline points="20 6 9 17 4 12" />
-    </svg>
-  );
 }

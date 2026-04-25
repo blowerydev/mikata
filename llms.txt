@@ -1829,7 +1829,7 @@ import { createIcon, Close, Check, ChevronDown, Eye, EyeOff, Search, Info, Warni
 actionIcon.appendChild(createIcon(Trash, { size: 16 }));
 ```
 
-Full list: `Close, Check, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Eye, EyeOff, Star, Search, Info, Warning, ErrorCircle, CheckCircle, Plus, Minus, Edit, Trash, User, Home, Settings, Menu, ExternalLink, DotsVertical, Refresh`.
+Full list: `Close, Check, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Eye, EyeOff, Star, Search, Info, Warning, ErrorCircle, CheckCircle, Plus, Minus, Edit, Trash, User, Home, Settings, Menu, ExternalLink, DotsVertical, Refresh, Sun, Moon, Monitor, Copy, Github`.
 
 ### Lucide / Tabler interop
 

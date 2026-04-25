@@ -1,4 +1,5 @@
 import { Link, routeOutlet } from '@mikata/router';
+import { createIcon, Github } from '@mikata/icons';
 import { Sidebar } from '../components/Sidebar';
 import { ThemeToggle } from '../components/ThemeToggle';
 
@@ -15,9 +16,11 @@ export default function Layout() {
             href="https://github.com/blowerydev/mikata"
             target="_blank"
             rel="noreferrer"
-            class="topbar-link"
+            class="topbar-link topbar-link-icon"
+            aria-label="GitHub repository"
+            title="GitHub repository"
           >
-            GitHub
+            {createIcon(Github, { size: 18 })}
           </a>
         </div>
       </header>
