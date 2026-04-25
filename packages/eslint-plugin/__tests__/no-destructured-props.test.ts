@@ -30,6 +30,14 @@ describe('no-destructured-props', () => {
           code: `function Button({ label } = {}) { return label; }`,
           errors: [{ messageId: 'destructured' }],
         },
+        {
+          code: `export default ({ label }) => label;`,
+          errors: [{ messageId: 'destructured' }],
+        },
+        {
+          code: `export default function ({ label }) { return label; }`,
+          errors: [{ messageId: 'destructured' }],
+        },
       ],
     });
   });

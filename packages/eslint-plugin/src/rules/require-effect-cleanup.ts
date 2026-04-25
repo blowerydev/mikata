@@ -1,6 +1,11 @@
 import type { Rule } from 'eslint';
 import type { Node, CallExpression, ReturnStatement } from 'estree';
-import { getCalleeName, getFunctionName, isFunctionNode, isPascalCase } from '../utils';
+import {
+  getCalleeName,
+  getFunctionName,
+  isComponentLikeFunction,
+  isFunctionNode,
+} from '../utils';
 
 const EFFECT_WRAPPERS = new Set(['effect', 'renderEffect', 'onMount']);
 
@@ -42,11 +47,11 @@ export const requireEffectCleanup: Rule.RuleModule = {
   create(context) {
     function collectSubs(body: Node): {
       subs: { node: Node; name: string }[];
-      hasReturn: boolean;
+      hasCleanupReturn: boolean;
       hasOnCleanup: boolean;
     } {
       const subs: { node: Node; name: string }[] = [];
-      let hasReturn = false;
+      let hasCleanupReturn = false;
       let hasOnCleanup = false;
 
       // Walk the body without crossing nested function boundaries - a
@@ -74,7 +79,7 @@ export const requireEffectCleanup: Rule.RuleModule = {
 
         if (n.type === 'ReturnStatement') {
           const ret = n as ReturnStatement;
-          if (ret.argument) hasReturn = true;
+          if (ret.argument && isFunctionNode(ret.argument)) hasCleanupReturn = true;
         }
 
         for (const key of Object.keys(n) as Array<keyof typeof n>) {
@@ -94,13 +99,13 @@ export const requireEffectCleanup: Rule.RuleModule = {
       }
 
       visit(body);
-      return { subs, hasReturn, hasOnCleanup };
+      return { subs, hasCleanupReturn, hasOnCleanup };
     }
 
     function checkComponent(node: Node): void {
       if (!isFunctionNode(node)) return;
       const name = getFunctionName(node);
-      if (!isPascalCase(name)) return;
+      if (!isComponentLikeFunction(node, name)) return;
       // Don't re-flag effect callback bodies that happen to be named PascalCase.
       if (!node.body || node.body.type !== 'BlockStatement') return;
 
@@ -114,7 +119,7 @@ export const requireEffectCleanup: Rule.RuleModule = {
         context.report({
           node: sub.node,
           messageId: 'missingComponentCleanup',
-          data: { name: sub.name, name2: name ?? '<anonymous>' },
+          data: { name: sub.name, name2: name ?? 'default' },
         });
       }
     }
@@ -133,10 +138,10 @@ export const requireEffectCleanup: Rule.RuleModule = {
         // has no statements to subscribe from.
         if (!fn.body || fn.body.type !== 'BlockStatement') return;
 
-        const { subs, hasReturn, hasOnCleanup } = collectSubs(fn.body);
+        const { subs, hasCleanupReturn, hasOnCleanup } = collectSubs(fn.body);
 
         if (subs.length === 0) return;
-        if (hasReturn || hasOnCleanup) return;
+        if (hasCleanupReturn || hasOnCleanup) return;
 
         for (const sub of subs) {
           context.report({

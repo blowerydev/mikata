@@ -45,6 +45,16 @@ describe('no-signal-write-in-computed', () => {
             });
           `,
         },
+        // Shadowed parameter is not the outer signal setter.
+        {
+          code: `
+            const [count, setCount] = signal(0);
+            computed((setCount) => {
+              setCount(1);
+              return count();
+            });
+          `,
+        },
       ],
       invalid: [
         {

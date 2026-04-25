@@ -1,6 +1,6 @@
 import type { Rule } from 'eslint';
 import type { Node } from 'estree';
-import { getFunctionName, isFunctionNode, isPascalCase } from '../utils';
+import { getFunctionName, isComponentLikeFunction, isFunctionNode } from '../utils';
 
 /**
  * Component setup must be synchronous. Once you `await`, the reactive scope
@@ -27,11 +27,11 @@ export const noAsyncComponent: Rule.RuleModule = {
       if (!isFunctionNode(node)) return;
       if (!node.async) return;
       const name = getFunctionName(node);
-      if (!isPascalCase(name)) return;
+      if (!isComponentLikeFunction(node, name)) return;
       context.report({
         node,
         messageId: 'async',
-        data: { name: name ?? '<anonymous>' },
+        data: { name: name ?? 'default' },
       });
     }
     return {

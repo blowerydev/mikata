@@ -44,6 +44,16 @@ describe('no-signal-assignment', () => {
             const save = setCount;
           `,
         },
+        // Shadowed parameter is not the outer signal getter.
+        {
+          code: `
+            const [count, setCount] = signal(0);
+            function update(count) {
+              count = 5;
+              count++;
+            }
+          `,
+        },
       ],
       invalid: [
         // Destructured signal getter reassignment

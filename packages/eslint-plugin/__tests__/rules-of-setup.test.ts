@@ -66,6 +66,19 @@ describe('rules-of-setup', () => {
           code: `function setup() { onCleanup(() => {}); } setup();`,
           errors: [{ messageId: 'insideHelper' }],
         },
+        // Additional scoped APIs exported by Mikata packages.
+        {
+          code: `useLoaderData();`,
+          errors: [{ messageId: 'atTopLevel' }],
+        },
+        {
+          code: `useEventListener(window, 'resize', handler);`,
+          errors: [{ messageId: 'atTopLevel' }],
+        },
+        {
+          code: `provideActionData(data);`,
+          errors: [{ messageId: 'atTopLevel' }],
+        },
       ],
     });
   });

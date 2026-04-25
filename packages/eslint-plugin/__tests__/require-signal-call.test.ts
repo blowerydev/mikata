@@ -63,6 +63,15 @@ describe('require-signal-call', () => {
             const x = <button onClick={() => setCount(1)}>{count()}</button>;
           `,
         },
+        // Shadowed parameter is not the outer signal getter.
+        {
+          code: `
+            const [count, setCount] = signal(0);
+            function Row(count) {
+              return <div>{count}</div>;
+            }
+          `,
+        },
       ],
       invalid: [
         // Bare signal in JSX children

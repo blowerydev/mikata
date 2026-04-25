@@ -1,6 +1,6 @@
 import type { Rule } from 'eslint';
 import type { Node } from 'estree';
-import { getFunctionName, isFunctionNode, isPascalCase } from '../utils';
+import { getFunctionName, isComponentLikeFunction, isFunctionNode } from '../utils';
 
 /**
  * Props in Mikata are getter-backed objects: destructuring them in the parameter
@@ -34,14 +34,14 @@ export const noDestructuredProps: Rule.RuleModule = {
     function check(node: Node) {
       if (!isFunctionNode(node)) return;
       const name = getFunctionName(node);
-      if (!isPascalCase(name)) return;
+      if (!isComponentLikeFunction(node, name)) return;
       const first = node.params[0];
       if (!first) return;
       if (first.type === 'ObjectPattern') {
         context.report({
           node: first,
           messageId: 'destructured',
-          data: { name: name ?? '<anonymous>' },
+          data: { name: name ?? 'default' },
         });
       } else if (
         first.type === 'AssignmentPattern' &&
@@ -50,7 +50,7 @@ export const noDestructuredProps: Rule.RuleModule = {
         context.report({
           node: first.left,
           messageId: 'destructured',
-          data: { name: name ?? '<anonymous>' },
+          data: { name: name ?? 'default' },
         });
       }
     }

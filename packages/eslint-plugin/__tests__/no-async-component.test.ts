@@ -23,6 +23,14 @@ describe('no-async-component', () => {
           code: `const App = async () => null;`,
           errors: [{ messageId: 'async' }],
         },
+        {
+          code: `export default async () => null;`,
+          errors: [{ messageId: 'async' }],
+        },
+        {
+          code: `export default async function () { return null; }`,
+          errors: [{ messageId: 'async' }],
+        },
       ],
     });
   });

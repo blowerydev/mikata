@@ -1,5 +1,5 @@
 import type { Rule } from 'eslint';
-import type { Node, VariableDeclarator } from 'estree';
+import type { Node, Pattern, VariableDeclarator } from 'estree';
 
 /**
  * Factories that return a signal-like getter function. The rule tracks
@@ -52,10 +52,49 @@ export const requireSignalCall: Rule.RuleModule = {
   },
 
   create(context) {
-    const signalNames = new Set<string>();
+    const scopes: Array<Map<string, boolean>> = [];
 
-    function recordSignal(name: string): void {
-      signalNames.add(name);
+    function enterScope(): void {
+      scopes.push(new Map());
+    }
+
+    function exitScope(): void {
+      scopes.pop();
+    }
+
+    function currentScope(): Map<string, boolean> {
+      return scopes[scopes.length - 1];
+    }
+
+    function declare(name: string, isSignal: boolean): void {
+      currentScope().set(name, isSignal);
+    }
+
+    function declarePattern(pattern: Pattern, isSignal: boolean): void {
+      if (pattern.type === 'Identifier') {
+        declare(pattern.name, isSignal);
+      } else if (pattern.type === 'ArrayPattern') {
+        for (const element of pattern.elements) {
+          if (element) declarePattern(element, false);
+        }
+      } else if (pattern.type === 'ObjectPattern') {
+        for (const prop of pattern.properties) {
+          if (prop.type === 'Property') declarePattern(prop.value as Pattern, false);
+          if (prop.type === 'RestElement') declarePattern(prop.argument, false);
+        }
+      } else if (pattern.type === 'AssignmentPattern') {
+        declarePattern(pattern.left, isSignal);
+      } else if (pattern.type === 'RestElement') {
+        declarePattern(pattern.argument, isSignal);
+      }
+    }
+
+    function isSignal(name: string): boolean {
+      for (let i = scopes.length - 1; i >= 0; i--) {
+        const value = scopes[i].get(name);
+        if (value !== undefined) return value;
+      }
+      return false;
     }
 
     function report(node: Node, name: string): void {
@@ -63,20 +102,45 @@ export const requireSignalCall: Rule.RuleModule = {
     }
 
     return {
+      Program: enterScope,
+      'Program:exit': exitScope,
+
+      FunctionDeclaration(node) {
+        enterScope();
+        for (const param of node.params) declarePattern(param, false);
+      },
+      'FunctionDeclaration:exit': exitScope,
+      FunctionExpression(node) {
+        enterScope();
+        for (const param of node.params) declarePattern(param, false);
+      },
+      'FunctionExpression:exit': exitScope,
+      ArrowFunctionExpression(node) {
+        enterScope();
+        for (const param of node.params) declarePattern(param, false);
+      },
+      'ArrowFunctionExpression:exit': exitScope,
+
       VariableDeclarator(node: VariableDeclarator) {
         const init = node.init;
-        if (!init || init.type !== 'CallExpression') return;
-        const callee = init.callee;
-        if (callee.type !== 'Identifier') return;
-        if (!SIGNAL_CREATORS.has(callee.name)) return;
+        let isSignalCreator = false;
+        if (init && init.type === 'CallExpression') {
+          const callee = init.callee;
+          isSignalCreator = callee.type === 'Identifier' && SIGNAL_CREATORS.has(callee.name);
+        }
 
-        if (node.id.type === 'Identifier') {
+        if (isSignalCreator && node.id.type === 'Identifier') {
           // const x = computed(...) / createDerivedSignal(...)
-          recordSignal(node.id.name);
-        } else if (node.id.type === 'ArrayPattern') {
+          declare(node.id.name, true);
+        } else if (isSignalCreator && node.id.type === 'ArrayPattern') {
           // const [x, setX] = signal(...)
           const first = node.id.elements[0];
-          if (first && first.type === 'Identifier') recordSignal(first.name);
+          if (first && first.type === 'Identifier') declare(first.name, true);
+          for (const element of node.id.elements.slice(1)) {
+            if (element) declarePattern(element, false);
+          }
+        } else {
+          declarePattern(node.id, false);
         }
       },
 
@@ -87,7 +151,7 @@ export const requireSignalCall: Rule.RuleModule = {
         const expr = node.expression;
         if (!expr || expr.type !== 'Identifier') return;
         const name = (expr as { name: string }).name;
-        if (!signalNames.has(name)) return;
+        if (!isSignal(name)) return;
 
         const parent = node.parent;
         if (parent && parent.type === ('JSXAttribute' as unknown as Node['type'])) {
@@ -103,7 +167,7 @@ export const requireSignalCall: Rule.RuleModule = {
       // `${count}` in template literals
       TemplateLiteral(node) {
         for (const expr of node.expressions) {
-          if (expr.type === 'Identifier' && signalNames.has(expr.name)) {
+          if (expr.type === 'Identifier' && isSignal(expr.name)) {
             report(expr, expr.name);
           }
         }

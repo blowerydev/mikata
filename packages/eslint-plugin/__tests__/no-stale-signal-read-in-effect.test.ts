@@ -71,6 +71,28 @@ describe('no-stale-signal-read-in-effect', () => {
             });
           `,
         },
+        // Shadowed parameter is not the stale outer capture.
+        {
+          code: `
+            const [schemaLoading] = signal(true);
+            const loading = schemaLoading();
+            function run(loading) {
+              effect(() => {
+                console.log(loading);
+              });
+            }
+          `,
+        },
+        // Callback-local names are not stale outer captures.
+        {
+          code: `
+            const [schemaLoading] = signal(true);
+            const loading = schemaLoading();
+            effect((loading) => {
+              console.log(loading);
+            });
+          `,
+        },
       ],
       invalid: [
         // Classic stale capture.

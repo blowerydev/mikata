@@ -20,6 +20,18 @@ describe('require-effect-cleanup', () => {
             });
           `,
         },
+        // Returning a named cleanup helper counts as teardown.
+        {
+          code: `
+            effect(() => {
+              function cleanup() {
+                window.removeEventListener('resize', handler);
+              }
+              window.addEventListener('resize', handler);
+              return cleanup;
+            });
+          `,
+        },
         // onCleanup() inside the body counts as teardown
         {
           code: `
@@ -152,6 +164,26 @@ describe('require-effect-cleanup', () => {
               setInterval(tick, 1000);
               return null;
             }
+          `,
+          errors: [{ messageId: 'missingComponentCleanup' }],
+        },
+        // Non-function returns do not count as teardown.
+        {
+          code: `
+            effect(() => {
+              window.addEventListener('resize', handler);
+              return true;
+            });
+          `,
+          errors: [{ messageId: 'missingCleanup' }],
+        },
+        // Anonymous default-export route components are still components.
+        {
+          code: `
+            export default () => {
+              window.addEventListener('resize', handler);
+              return null;
+            };
           `,
           errors: [{ messageId: 'missingComponentCleanup' }],
         },
