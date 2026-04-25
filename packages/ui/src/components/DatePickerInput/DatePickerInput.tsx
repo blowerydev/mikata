@@ -4,6 +4,8 @@ import { mergeClasses } from '../../utils/class-merge';
 import { onClickOutside } from '../../utils/on-click-outside';
 import { useComponentDefaults } from '../../theme/component-defaults';
 import { uniqueId } from '../../utils/unique-id';
+import { useUILabels } from '../../utils/use-i18n-optional';
+import { createIcon, Close } from '../../internal/icons';
 import { InputWrapper } from '../_internal/InputWrapper';
 import { DatePicker } from '../DatePicker';
 import { MonthPicker } from '../MonthPicker';
@@ -54,12 +56,17 @@ export function DatePickerInput(userProps: DatePickerInputProps = {}): HTMLDivEl
   const firstDayOfWeek = props.firstDayOfWeek;
   const closeOnChange = props.closeOnChange ?? true;
   const onChange = props.onChange;
+  const labels = useUILabels();
 
   const id = uniqueId('date-picker-input');
   const [selected, setSelected] = signal<Date | Date[] | [Date | null, Date | null] | null>(
     value !== undefined ? value : defaultValue,
   );
   const [open, setOpen] = signal(false);
+
+  effect(() => {
+    if (props.value !== undefined) setSelected(props.value);
+  });
 
   const buildContainer = () =>
     adoptElement<HTMLDivElement>('div', (container) => {
@@ -92,6 +99,27 @@ export function DatePickerInput(userProps: DatePickerInputProps = {}): HTMLDivEl
           trigger.setAttribute('aria-expanded', String(open()));
         });
       });
+
+      if (props.clearable) {
+        adoptElement<HTMLButtonElement>('button', (clear) => {
+          clear.type = 'button';
+          renderEffect(() => {
+            clear.className = mergeClasses('mkt-picker-input__clear', props.classNames?.clear);
+          });
+          clear.setAttribute('aria-label', labels.clear);
+          if (!clear.firstChild) clear.appendChild(createIcon(Close, { size: 12, strokeWidth: 1.5 }));
+          renderEffect(() => { clear.disabled = !!props.disabled; });
+          renderEffect(() => { clear.hidden = selected() == null; });
+          clear.addEventListener('mousedown', (e) => e.preventDefault());
+          clear.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (props.disabled) return;
+            setSelected(null);
+            onChange?.(null);
+            setOpen(false);
+          });
+        });
+      }
 
       adoptElement<HTMLDivElement>('div', (dropdown) => {
         renderEffect(() => {
@@ -157,10 +185,15 @@ export function MonthPickerInput(userProps: MonthPickerInputProps = {}): HTMLDiv
   const locale = props.locale ?? (typeof navigator !== 'undefined' ? navigator.language : 'en-US');
   const closeOnChange = props.closeOnChange ?? true;
   const onChange = props.onChange;
+  const labels = useUILabels();
 
   const id = uniqueId('month-picker-input');
   const [selected, setSelected] = signal<Date | null>(value !== undefined ? value : defaultValue);
   const [open, setOpen] = signal(false);
+
+  effect(() => {
+    if (props.value !== undefined) setSelected(props.value);
+  });
 
   const buildContainer = () =>
     adoptElement<HTMLDivElement>('div', (container) => {
@@ -193,6 +226,27 @@ export function MonthPickerInput(userProps: MonthPickerInputProps = {}): HTMLDiv
           trigger.setAttribute('aria-expanded', String(open()));
         });
       });
+
+      if (props.clearable) {
+        adoptElement<HTMLButtonElement>('button', (clear) => {
+          clear.type = 'button';
+          renderEffect(() => {
+            clear.className = mergeClasses('mkt-picker-input__clear', props.classNames?.clear);
+          });
+          clear.setAttribute('aria-label', labels.clear);
+          if (!clear.firstChild) clear.appendChild(createIcon(Close, { size: 12, strokeWidth: 1.5 }));
+          renderEffect(() => { clear.disabled = !!props.disabled; });
+          renderEffect(() => { clear.hidden = selected() == null; });
+          clear.addEventListener('mousedown', (e) => e.preventDefault());
+          clear.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (props.disabled) return;
+            setSelected(null);
+            onChange?.(null);
+            setOpen(false);
+          });
+        });
+      }
 
       adoptElement<HTMLDivElement>('div', (dropdown) => {
         renderEffect(() => {
@@ -254,11 +308,16 @@ export function YearPickerInput(userProps: YearPickerInputProps = {}): HTMLDivEl
   const defaultValue = props.defaultValue ?? null;
   const closeOnChange = props.closeOnChange ?? true;
   const onChange = props.onChange;
+  const labels = useUILabels();
 
   const id = uniqueId('year-picker-input');
   const [selected, setSelected] = signal<Date | null>(value !== undefined ? value : defaultValue);
   const [open, setOpen] = signal(false);
   const locale = typeof navigator !== 'undefined' ? navigator.language : 'en-US';
+
+  effect(() => {
+    if (props.value !== undefined) setSelected(props.value);
+  });
 
   const buildContainer = () =>
     adoptElement<HTMLDivElement>('div', (container) => {
@@ -291,6 +350,27 @@ export function YearPickerInput(userProps: YearPickerInputProps = {}): HTMLDivEl
           trigger.setAttribute('aria-expanded', String(open()));
         });
       });
+
+      if (props.clearable) {
+        adoptElement<HTMLButtonElement>('button', (clear) => {
+          clear.type = 'button';
+          renderEffect(() => {
+            clear.className = mergeClasses('mkt-picker-input__clear', props.classNames?.clear);
+          });
+          clear.setAttribute('aria-label', labels.clear);
+          if (!clear.firstChild) clear.appendChild(createIcon(Close, { size: 12, strokeWidth: 1.5 }));
+          renderEffect(() => { clear.disabled = !!props.disabled; });
+          renderEffect(() => { clear.hidden = selected() == null; });
+          clear.addEventListener('mousedown', (e) => e.preventDefault());
+          clear.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (props.disabled) return;
+            setSelected(null);
+            onChange?.(null);
+            setOpen(false);
+          });
+        });
+      }
 
       adoptElement<HTMLDivElement>('div', (dropdown) => {
         renderEffect(() => {

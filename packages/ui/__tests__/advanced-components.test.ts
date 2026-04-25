@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createScope } from '@mikata/reactivity';
+import { createScope, flushSync, signal } from '@mikata/reactivity';
 import { _resetIdCounter } from '../src/utils/unique-id';
 
 import { Modal } from '../src/components/Modal';
@@ -111,6 +111,20 @@ describe('Modal', () => {
       const dialog = document.body.querySelector('[role="dialog"]') as HTMLElement;
       expect(dialog.dataset.centered).toBe('');
     });
+  });
+
+  it('keeps body scroll locked when one stacked overlay disposes', () => {
+    const modalScope = createScope(() => {
+      Modal({ children: document.createElement('div'), onClose: () => {} });
+    });
+    const drawerScope = createScope(() => {
+      Drawer({ children: document.createElement('div'), onClose: () => {} });
+    });
+
+    expect(document.body.style.overflow).toBe('hidden');
+    modalScope.dispose();
+    expect(document.body.style.overflow).toBe('hidden');
+    drawerScope.dispose();
   });
 });
 
@@ -225,6 +239,19 @@ describe('Tooltip', () => {
     expect(el.querySelector('.mkt-tooltip')).toBeTruthy();
     el.dispatchEvent(new Event('mouseleave'));
     expect(el.querySelector('.mkt-tooltip')).toBeFalsy();
+    vi.useRealTimers();
+  });
+
+  it('does not schedule duplicate tooltips before the delay resolves', () => {
+    vi.useFakeTimers();
+    const child = document.createElement('button');
+    const el = Tooltip({ label: 'Hint', children: child, delay: 100 });
+
+    el.dispatchEvent(new Event('mouseenter'));
+    el.dispatchEvent(new Event('focusin'));
+    vi.advanceTimersByTime(150);
+
+    expect(el.querySelectorAll('.mkt-tooltip').length).toBe(1);
     vi.useRealTimers();
   });
 });
@@ -681,6 +708,23 @@ describe('Select', () => {
     expect(onError).toHaveBeenCalledTimes(1);
     expect((onError.mock.calls[0]![0] as Error).message).toBe('boom');
     errSpy.mockRestore();
+  });
+
+  it('syncs controlled value updates to the native select', () => {
+    const [value, setValue] = signal('a');
+    const el = Select({
+      data: [
+        { value: 'a', label: 'Apple' },
+        { value: 'b', label: 'Banana' },
+      ],
+      get value() { return value(); },
+    });
+    const select = el.querySelector('select') as HTMLSelectElement;
+
+    expect(select.value).toBe('a');
+    setValue('b');
+    flushSync();
+    expect(select.value).toBe('b');
   });
 });
 

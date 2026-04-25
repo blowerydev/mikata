@@ -1,14 +1,22 @@
 import { onCleanup } from '@mikata/reactivity';
 
+let lockCount = 0;
+let originalOverflow = '';
+
 /**
  * Lock body scroll while this scope is active.
  * Restores original overflow on cleanup.
  */
 export function onScrollLock(): void {
-  const original = document.body.style.overflow;
+  if (lockCount === 0) originalOverflow = document.body.style.overflow;
+  lockCount++;
   document.body.style.overflow = 'hidden';
   onCleanup(() => {
-    document.body.style.overflow = original;
+    lockCount = Math.max(0, lockCount - 1);
+    if (lockCount === 0) {
+      document.body.style.overflow = originalOverflow;
+      originalOverflow = '';
+    }
   });
 }
 

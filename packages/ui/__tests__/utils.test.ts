@@ -2,6 +2,8 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { mergeClasses } from '../src/utils/class-merge';
 import { uniqueId, _resetIdCounter } from '../src/utils/unique-id';
 import { createDisclosure } from '../src/utils/create-disclosure';
+import { onScrollLock } from '../src/utils/on-scroll-lock';
+import { createScope } from '@mikata/reactivity';
 
 describe('mergeClasses', () => {
   it('joins multiple class names', () => {
@@ -80,5 +82,22 @@ describe('createDisclosure', () => {
     expect(opened()).toBe(true);
     toggle();
     expect(opened()).toBe(false);
+  });
+});
+
+describe('onScrollLock', () => {
+  beforeEach(() => {
+    document.body.style.overflow = '';
+  });
+
+  it('restores body overflow only after the last lock is disposed', () => {
+    const first = createScope(() => onScrollLock());
+    const second = createScope(() => onScrollLock());
+
+    expect(document.body.style.overflow).toBe('hidden');
+    first.dispose();
+    expect(document.body.style.overflow).toBe('hidden');
+    second.dispose();
+    expect(document.body.style.overflow).toBe('');
   });
 });

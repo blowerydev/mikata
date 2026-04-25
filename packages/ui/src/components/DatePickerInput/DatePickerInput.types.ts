@@ -1,6 +1,6 @@
 import type { MikataSize, MikataBaseProps, ClassNamesInput } from '../../types';
 
-export type PickerInputParts = 'root' | 'trigger' | 'dropdown' | 'placeholder';
+export type PickerInputParts = 'root' | 'trigger' | 'dropdown' | 'placeholder' | 'clear';
 
 interface BasePickerInputProps extends MikataBaseProps {
   label?: string | Node;

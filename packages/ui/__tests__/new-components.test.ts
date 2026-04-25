@@ -634,4 +634,24 @@ describe('MultiSelect keyed reconciliation', () => {
 
     expect(appleAfter).toBe(appleBefore);
   });
+
+  it('does not clear selected values while disabled', () => {
+    const onChange = vi.fn();
+    const el = MultiSelect({
+      data: [
+        { value: 'a', label: 'Apple' },
+        { value: 'b', label: 'Banana' },
+      ],
+      defaultValue: ['a'],
+      clearable: true,
+      disabled: true,
+      onChange,
+    });
+    const clear = el.querySelector('.mkt-multi-select__clear') as HTMLButtonElement;
+
+    expect(clear.disabled).toBe(true);
+    clear.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+    expect(el.querySelectorAll('.mkt-multi-select__pill').length).toBe(1);
+    expect(onChange).not.toHaveBeenCalled();
+  });
 });

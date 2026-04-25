@@ -23,9 +23,10 @@ export function Tooltip(userProps: TooltipProps): HTMLSpanElement {
     if (children.parentNode !== wrapper) wrapper.appendChild(children);
 
     function show(): void {
-      if (props.disabled || tooltipEl) return;
+      if (props.disabled || tooltipEl || timer) return;
 
       timer = setTimeout(() => {
+        timer = null;
         tooltipEl = document.createElement('div');
         tooltipEl.className = 'mkt-tooltip';
         tooltipEl.id = tooltipId;

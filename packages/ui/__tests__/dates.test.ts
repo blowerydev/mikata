@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { createScope, flushSync } from '@mikata/reactivity';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { createScope, flushSync, signal } from '@mikata/reactivity';
 import { _resetIdCounter } from '../src/utils/unique-id';
 import {
   startOfMonth, endOfMonth, addDays, addMonths, addYears,
@@ -12,7 +12,7 @@ import { DatePicker } from '../src/components/DatePicker';
 import { MonthPicker } from '../src/components/MonthPicker';
 import { YearPicker } from '../src/components/YearPicker';
 import { DateInput } from '../src/components/DateInput';
-import { DatePickerInput } from '../src/components/DatePickerInput';
+import { DatePickerInput, MonthPickerInput, YearPickerInput } from '../src/components/DatePickerInput';
 import { TimeInput } from '../src/components/TimeInput';
 
 beforeEach(() => {
@@ -251,6 +251,73 @@ describe('DatePickerInput', () => {
       trigger.click();
       flushSync();
       expect(dropdown.hidden).toBe(false);
+    });
+  });
+
+  it('syncs controlled date picker input value changes', () => {
+    createScope(() => {
+      const [value, setValue] = signal<Date | null>(new Date(2026, 0, 1));
+      const el = DatePickerInput({
+        locale: 'en-US',
+        get value() { return value(); },
+      });
+      document.body.appendChild(el);
+      const trigger = el.querySelector('.mkt-picker-input__trigger') as HTMLButtonElement;
+
+      flushSync();
+      expect(trigger.textContent).toContain('1');
+      setValue(new Date(2026, 1, 2));
+      flushSync();
+      expect(trigger.textContent).toContain('2');
+    });
+  });
+
+  it('clears picker inputs when clearable', () => {
+    createScope(() => {
+      const onChange = vi.fn();
+      const el = DatePickerInput({
+        defaultValue: new Date(2026, 0, 1),
+        clearable: true,
+        onChange,
+      });
+      document.body.appendChild(el);
+      const clear = el.querySelector('.mkt-picker-input__clear') as HTMLButtonElement;
+
+      expect(clear.hidden).toBe(false);
+      clear.click();
+      flushSync();
+      expect(onChange).toHaveBeenCalledWith(null);
+      expect(clear.hidden).toBe(true);
+    });
+  });
+
+  it('syncs controlled month and year picker input value changes', () => {
+    createScope(() => {
+      const [month, setMonth] = signal<Date | null>(new Date(2026, 0, 1));
+      const monthEl = MonthPickerInput({
+        locale: 'en-US',
+        get value() { return month(); },
+      });
+      document.body.appendChild(monthEl);
+      const monthTrigger = monthEl.querySelector('.mkt-picker-input__trigger') as HTMLButtonElement;
+
+      const [year, setYear] = signal<Date | null>(new Date(2026, 0, 1));
+      const yearEl = YearPickerInput({
+        get value() { return year(); },
+      });
+      document.body.appendChild(yearEl);
+      const yearTrigger = yearEl.querySelector('.mkt-picker-input__trigger') as HTMLButtonElement;
+
+      flushSync();
+      expect(monthTrigger.textContent).toContain('January');
+      expect(yearTrigger.textContent).toContain('2026');
+
+      setMonth(new Date(2026, 1, 1));
+      setYear(new Date(2027, 0, 1));
+      flushSync();
+
+      expect(monthTrigger.textContent).toContain('February');
+      expect(yearTrigger.textContent).toContain('2027');
     });
   });
 });

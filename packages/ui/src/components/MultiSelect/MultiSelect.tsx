@@ -312,9 +312,11 @@ export function MultiSelect(userProps: MultiSelectProps): HTMLDivElement {
             clear.type = 'button';
             clear.className = 'mkt-multi-select__clear';
             clear.setAttribute('aria-label', labels.clear);
+            renderEffect(() => { clear.disabled = !!props.disabled; });
             if (!clear.firstChild) clear.appendChild(createIcon(Close, { size: 10, strokeWidth: 1.5 }));
             clear.addEventListener('mousedown', (e) => {
               e.preventDefault();
+              if (props.disabled) return;
               selected.clear();
               renderPills();
               renderDropdown();

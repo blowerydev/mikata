@@ -143,6 +143,13 @@ export function Select(userProps: SelectProps): HTMLDivElement {
         if (selectedValue != null) select.value = selectedValue;
       }
 
+      renderEffect(() => {
+        const controlled = props.value;
+        if (controlled !== undefined && select.value !== controlled) {
+          select.value = controlled;
+        }
+      });
+
       const onChange = props.onChange;
       if (onChange) select.addEventListener('change', onChange as EventListener);
 

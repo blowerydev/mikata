@@ -36,6 +36,35 @@
 
 .mkt-picker-input__placeholder { color: var(--mkt-color-text-dimmed); }
 
+.mkt-picker-input__clear {
+  position: absolute;
+  inset-inline-end: var(--mkt-space-2);
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--mkt-radius-xs);
+  background: transparent;
+  color: var(--mkt-color-text-dimmed);
+  cursor: pointer;
+}
+
+.mkt-picker-input__clear:hover {
+  color: var(--mkt-color-text);
+  background: var(--mkt-color-bg-hover);
+}
+
+.mkt-picker-input__clear:disabled {
+  cursor: not-allowed;
+}
+
+.mkt-picker-input__clear[hidden] { display: none; }
+
 .mkt-picker-input__dropdown {
   position: absolute;
   z-index: var(--mkt-z-popover);

@@ -105,6 +105,10 @@
   background: var(--mkt-color-bg-hover);
 }
 
+.mkt-multi-select__clear:disabled {
+  cursor: not-allowed;
+}
+
 .mkt-multi-select__dropdown {
   position: absolute;
   top: 100%;
