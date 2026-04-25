@@ -29,11 +29,15 @@ import { hydrate, render, lazy, type HydrateDeferStrategy } from '@mikata/runtim
 import { effect } from '@mikata/reactivity';
 import {
   createRouter,
+  createBrowserHistory,
+  createHashHistory,
+  createMemoryHistory,
   provideRouter,
   routeOutlet,
   type RouteDefinition,
   type Router,
   type RouterOptions,
+  type HistoryAdapter,
 } from '@mikata/router';
 
 // Narrow local alias for the mutable shape `routeOutlet` reads. Avoids
@@ -189,9 +193,12 @@ export function mount(
     ? (): Node => notFoundComponent({})
     : undefined;
 
+  const history = resolveHistory(routerOptions.history, routerOptions.base);
+
   const router = createRouter({
     routes: wrappedRoutes,
     ...routerOptions,
+    history,
     ...(routerNotFound ? { notFound: routerNotFound } : {}),
   });
 
@@ -309,7 +316,7 @@ export function mount(
   // The seeded loader data (from SSR) means the first pass has nothing
   // to fetch; navigation to a new URL re-runs load() for every matched
   // route that has one.
-  const loaderDispose = runLoadersOnNav(router, loaders, loaderStore);
+  const loaderDispose = runLoadersOnNav(router, history, loaders, loaderStore);
 
   // Drop action results whenever the user navigates away from the route
   // that produced them. Without this a stale `useActionData()` would
@@ -382,6 +389,18 @@ function joinPaths(parent: string, child: string): string {
   return base + segment;
 }
 
+function resolveHistory(
+  history: RouterOptions['history'],
+  base: string | undefined,
+): HistoryAdapter {
+  if (typeof history === 'object' && history !== null) {
+    return history;
+  }
+  if (history === 'hash') return createHashHistory();
+  if (history === 'memory') return createMemoryHistory();
+  return createBrowserHistory(base ?? '');
+}
+
 // ---------------------------------------------------------------------------
 // internal: loader re-run on navigation
 // ---------------------------------------------------------------------------
@@ -399,6 +418,7 @@ function joinPaths(parent: string, child: string): string {
  */
 function runLoadersOnNav(
   router: Router,
+  history: HistoryAdapter,
   loaders: Map<string, Loader>,
   store: LoaderStore,
 ): () => void {
@@ -417,19 +437,14 @@ function runLoadersOnNav(
     // read-phase so any setData inside the load chain doesn't disturb
     // the in-progress reactive pass.
     queueMicrotask(() => {
-      // Build the full URL from window.location so loaders see the
-      // same shape they get on the server (pathname + search + hash).
-      // current.path is pathname-only; using it would strip query and
-      // hash, so loaders that key off `?cursor=…` would silently rerun
-      // with the wrong inputs after a query-only navigation.
-      // searchParams on the route is schema-filtered and can't be used
-      // to rebuild the raw query string without losing extra keys.
+      // Derive the raw URL from the active history adapter, not from
+      // window.location. mount() supports memory/hash/custom histories,
+      // and those can diverge from the browser URL while still being
+      // the canonical navigation source for the router.
       const fullUrl =
-        typeof window !== 'undefined' && window.location
-          ? window.location.pathname +
-            window.location.search +
-            window.location.hash
-          : current.path;
+        history.location.pathname +
+        history.location.search +
+        history.location.hash;
       for (const match of current.matches) {
         const fullPath = match.route.fullPath;
         const loader = loaders.get(fullPath);

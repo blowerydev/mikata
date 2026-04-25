@@ -122,4 +122,43 @@ describe('client-side load() re-runs', () => {
     container.remove();
     resetGlobal(undefined);
   });
+
+  it('passes the active memory-history URL to loaders and re-runs on query-only navigation', async () => {
+    const seenUrls: string[] = [];
+    const routes = [
+      {
+        path: '/users/:id',
+        lazy: async () => ({
+          default: () => _createComponent(IdConsumer, {}),
+          load: async ({ params, url }: LoadContext) => {
+            seenUrls.push(url);
+            return { id: `${params.id}:${url}` };
+          },
+        }),
+      },
+    ];
+
+    resetGlobal({});
+
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const { router, dispose } = mount(routes, container, { history: 'memory' });
+
+    await router.navigate('/users/1?cursor=a#bio');
+    await waitUntil(() => container.textContent?.includes('/users/1?cursor=a#bio') ?? false);
+    expect(seenUrls.at(-1)).toBe('/users/1?cursor=a#bio');
+    expect(container.textContent).toContain('1:/users/1?cursor=a#bio');
+
+    await router.navigate('/users/1?cursor=b#bio');
+    await waitUntil(() => container.textContent?.includes('/users/1?cursor=b#bio') ?? false);
+    expect(seenUrls.slice(-2)).toEqual([
+      '/users/1?cursor=a#bio',
+      '/users/1?cursor=b#bio',
+    ]);
+    expect(container.textContent).toContain('1:/users/1?cursor=b#bio');
+
+    dispose();
+    container.remove();
+    resetGlobal(undefined);
+  });
 });
