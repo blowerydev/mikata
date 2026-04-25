@@ -59,6 +59,43 @@ export function isHookName(name: string | null): boolean {
 }
 
 /**
+ * `export default function() {...}` and `export default () => ...` are the
+ * common shape for route / page components in JSX projects. They have no
+ * local name, so `getFunctionName` returns null and `isPascalCase` says
+ * "no". Both rules need to treat them as components anyway - flagging the
+ * default export of a route file as a non-component helper is wrong, and
+ * skipping imperative-DOM checks inside one is also wrong.
+ */
+export function isAnonymousDefaultExport(fn: FunctionNode): boolean {
+  const parent = (fn as Node & { parent?: Node }).parent;
+  if (!parent) return false;
+  if (parent.type !== 'ExportDefaultDeclaration') return false;
+  // A FunctionDeclaration with an id (export default function Foo() {})
+  // already has a real name and goes through the normal PascalCase
+  // path; only flag the truly-anonymous form here.
+  if (
+    (fn.type === 'FunctionDeclaration' || fn.type === 'FunctionExpression') &&
+    fn.id
+  ) {
+    return false;
+  }
+  return true;
+}
+
+/**
+ * True when a function node is recognized as a component-like setup site:
+ * either PascalCase-named, or an anonymous default export. Hook-named
+ * functions are NOT included here - they're treated separately by rules
+ * that need to allow useX() helpers.
+ */
+export function isComponentLikeFunction(
+  fn: FunctionNode,
+  name: string | null,
+): boolean {
+  return isPascalCase(name) || isAnonymousDefaultExport(fn);
+}
+
+/**
  * Get the direct CallExpression ancestor whose argument is this function literal,
  * if any. Returns null if this function is not immediately a call argument.
  */

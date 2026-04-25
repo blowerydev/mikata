@@ -190,7 +190,6 @@ export function fireEvent(
   eventInit?: AnyEventInit
 ): void {
   const event = createEvent(eventName, eventInit);
-  applyEventProperties(event, eventInit);
   element.dispatchEvent(event);
 }
 
@@ -207,26 +206,17 @@ function createEvent(
   if (eventName.startsWith('key')) {
     return new KeyboardEvent(eventName, { bubbles, cancelable, ...init });
   }
-  if (eventName === 'input' || eventName === 'change' || eventName === 'beforeinput') {
+  // Browsers dispatch InputEvent for `input` and `beforeinput` only.
+  // `change` is a plain Event - bundling it with InputEvent would let
+  // tests pass against an event shape that can't actually occur in a
+  // real page (and surfaces fake `inputType`/`data` properties).
+  if (eventName === 'input' || eventName === 'beforeinput') {
     return new InputEvent(eventName, { bubbles, cancelable, ...init });
   }
   if (eventName.startsWith('focus') || eventName === 'blur') {
     return new FocusEvent(eventName, { bubbles, cancelable, ...init });
   }
   return new Event(eventName, { bubbles, cancelable, ...init });
-}
-
-function applyEventProperties(
-  event: Event,
-  init?: AnyEventInit
-): void {
-  if (!init) return;
-  if (init.target && typeof init.target === 'object') {
-    Object.defineProperty(event, 'target', {
-      value: init.target,
-      writable: false,
-    });
-  }
 }
 
 // Convenience methods for common events
@@ -262,11 +252,29 @@ fireEvent.keyUp = (element: Element, init?: KeyboardEventInit) =>
 fireEvent.keyPress = (element: Element, init?: KeyboardEventInit) =>
   fireEvent(element, 'keypress', init);
 
-fireEvent.focus = (element: Element, init?: FocusEventInit) =>
-  fireEvent(element, 'focus', init);
+// Real browsers move document.activeElement when an element gains focus,
+// then dispatch the FocusEvent. Tests that call fireEvent.focus(input)
+// expect to be able to assert document.activeElement === input
+// afterwards - calling .focus() / .blur() does both steps in the right
+// order. Element.focus() itself dispatches a FocusEvent, so we don't
+// fire a second one here unless the element has no .focus() method.
+fireEvent.focus = (element: Element, init?: FocusEventInit) => {
+  const focusable = element as HTMLElement & { focus?: () => void };
+  if (typeof focusable.focus === 'function') {
+    focusable.focus();
+  } else {
+    fireEvent(element, 'focus', init);
+  }
+};
 
-fireEvent.blur = (element: Element, init?: FocusEventInit) =>
-  fireEvent(element, 'blur', init);
+fireEvent.blur = (element: Element, init?: FocusEventInit) => {
+  const focusable = element as HTMLElement & { blur?: () => void };
+  if (typeof focusable.blur === 'function') {
+    focusable.blur();
+  } else {
+    fireEvent(element, 'blur', init);
+  }
+};
 
 fireEvent.submit = (element: Element, init?: EventInit) =>
   fireEvent(element, 'submit', init);

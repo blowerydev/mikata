@@ -6,7 +6,7 @@ import {
   getFunctionName,
   isFunctionNode,
   isHookName,
-  isPascalCase,
+  isComponentLikeFunction,
 } from '../utils';
 
 /**
@@ -118,7 +118,13 @@ export const rulesOfSetup: Rule.RuleModule = {
               }
             }
             const fnName = getFunctionName(anc);
-            if (isPascalCase(fnName) || isHookName(fnName)) {
+            // Anonymous default exports are routinely the component
+            // export of a route file; treat them like PascalCase so we
+            // don't false-flag scope-required calls inside them.
+            if (
+              isComponentLikeFunction(anc, fnName) ||
+              isHookName(fnName)
+            ) {
               return;
             }
             if (innerHelperName === null) {

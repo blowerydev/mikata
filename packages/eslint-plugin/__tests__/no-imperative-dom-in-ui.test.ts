@@ -136,6 +136,26 @@ describe('no-imperative-dom-in-ui', () => {
           `,
           errors: [{ messageId: 'imperativeRoot' }, { messageId: 'imperativeRoot' }],
         },
+        // Anonymous default-export arrow component (route file shape)
+        {
+          code: `
+            export default () => {
+              const root = document.createElement('div');
+              return root;
+            };
+          `,
+          errors: [{ messageId: 'imperativeRoot' }],
+        },
+        // Anonymous default-export function expression
+        {
+          code: `
+            export default function () {
+              const root = document.createElement('div');
+              return root;
+            }
+          `,
+          errors: [{ messageId: 'imperativeRoot' }],
+        },
       ],
     });
   });

@@ -550,6 +550,27 @@ describe('NumberInput', () => {
     const el = NumberInput({ label: 'X', error: 'bad' });
     expect(el.querySelector('input')!.getAttribute('aria-invalid')).toBe('true');
   });
+
+  it('stepper buttons dispatch native input + change events for parity with typing', () => {
+    // Consumers wired to native form semantics (e.g. validators reading
+    // `input.addEventListener('input', ...)` directly) need to observe
+    // stepper-driven changes the same way they observe typed edits.
+    const inputEvents: Event[] = [];
+    const changeEvents: Event[] = [];
+    const el = NumberInput({ label: 'X', step: 1, defaultValue: 5 });
+    const input = el.querySelector('input')!;
+    input.addEventListener('input', (e) => inputEvents.push(e));
+    input.addEventListener('change', (e) => changeEvents.push(e));
+
+    const [upBtn] = el.querySelectorAll('.mkt-number-input__control');
+    (upBtn as HTMLButtonElement).click();
+
+    expect(input.value).toBe('6');
+    expect(inputEvents).toHaveLength(1);
+    expect(changeEvents).toHaveLength(1);
+    expect(inputEvents[0]!.bubbles).toBe(true);
+    expect(changeEvents[0]!.bubbles).toBe(true);
+  });
 });
 
 // ─── Paper ──────────────────────────────────────────────────

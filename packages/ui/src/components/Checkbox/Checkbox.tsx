@@ -46,8 +46,26 @@ export function Checkbox(userProps: CheckboxProps = {}): HTMLLabelElement {
       });
       renderEffect(() => { input.disabled = !!props.disabled; });
       renderEffect(() => {
-        if (hasError(props.error)) input.setAttribute('aria-invalid', 'true');
-        else input.removeAttribute('aria-invalid');
+        if (hasError(props.error)) {
+          input.setAttribute('aria-invalid', 'true');
+          input.setAttribute('aria-errormessage', `${id}-error`);
+        } else {
+          input.removeAttribute('aria-invalid');
+          input.removeAttribute('aria-errormessage');
+        }
+      });
+      // Wire description and error nodes to the input via aria-describedby
+      // so screen readers announce them when focus enters the control.
+      // Both IDs are listed when both fields are present; absent fields
+      // are dropped so the attribute never points at hidden nodes.
+      renderEffect(() => {
+        const parts: string[] = [];
+        if (props.description != null && props.description !== '') {
+          parts.push(`${id}-description`);
+        }
+        if (hasError(props.error)) parts.push(`${id}-error`);
+        if (parts.length) input.setAttribute('aria-describedby', parts.join(' '));
+        else input.removeAttribute('aria-describedby');
       });
       const onChange = props.onChange;
       if (onChange) input.addEventListener('change', onChange as EventListener);
@@ -97,6 +115,7 @@ export function Checkbox(userProps: CheckboxProps = {}): HTMLLabelElement {
 
       adoptElement<HTMLParagraphElement>('p', (descEl) => {
         descEl.className = 'mkt-checkbox__description';
+        descEl.id = `${id}-description`;
         renderEffect(() => {
           const d = props.description;
           descEl.replaceChildren();
@@ -108,6 +127,7 @@ export function Checkbox(userProps: CheckboxProps = {}): HTMLLabelElement {
 
       adoptElement<HTMLParagraphElement>('p', (errorEl) => {
         errorEl.className = 'mkt-checkbox__error';
+        errorEl.id = `${id}-error`;
         errorEl.setAttribute('role', 'alert');
         renderEffect(() => {
           const raw = props.error;

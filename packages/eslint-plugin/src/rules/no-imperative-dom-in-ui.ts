@@ -1,6 +1,12 @@
 import type { Rule } from 'eslint';
 import type { CallExpression } from 'estree';
-import { ancestors, getFunctionName, isFunctionNode, isPascalCase, type FunctionNode } from '../utils';
+import {
+  ancestors,
+  getFunctionName,
+  isFunctionNode,
+  isComponentLikeFunction,
+  type FunctionNode,
+} from '../utils';
 
 const IMPERATIVE_DOM_METHODS = new Set(['createElement', 'createElementNS']);
 
@@ -85,14 +91,17 @@ export const noImperativeDomInUi: Rule.RuleModule = {
         if (!closestFn) return;
 
         const name = getFunctionName(closestFn);
-        if (!isPascalCase(name)) return;
+        // PascalCase-named OR anonymous default export. Without the
+        // default-export branch, `export default () => { ... }` route
+        // files - common in apps - silently skipped this rule.
+        if (!isComponentLikeFunction(closestFn, name)) return;
 
         context.report({
           node,
           messageId: 'imperativeRoot',
           data: {
             method: callee.property.name,
-            name: name ?? '<anonymous>',
+            name: name ?? 'default',
           },
         });
       },

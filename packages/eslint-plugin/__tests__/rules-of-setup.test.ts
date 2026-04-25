@@ -28,6 +28,12 @@ describe('rules-of-setup', () => {
         { code: `function App() { function setup() { onCleanup(() => {}); } setup(); }` },
         // Not a scope-required name - should be ignored entirely
         { code: `effect(() => { console.log('fine'); });` },
+        // Anonymous default-export arrow component (route file shape) -
+        // before the fix this was reported as `insideHelper` with
+        // helper name `<anonymous>`, a false positive.
+        { code: `export default () => { onCleanup(() => {}); };` },
+        // Anonymous default-export function expression
+        { code: `export default function () { provide(Ctx, v); };` },
       ],
       invalid: [
         // Inside effect()

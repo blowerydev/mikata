@@ -19,14 +19,28 @@ export function NumberInput(userProps: NumberInputProps = {}): HTMLDivElement {
   // below via `adoptElement`; we capture the reference from there.
   let inputEl: HTMLInputElement | null = null;
 
-  const clampAndNotify = (val: number) => {
-    if (!inputEl) return;
+  const clampValue = (val: number): number => {
     const mn = props.min;
     const mx = props.max;
     if (mn != null && val < mn) val = mn;
     if (mx != null && val > mx) val = mx;
-    inputEl.value = String(val);
-    props.onValueChange?.(val);
+    return val;
+  };
+
+  // Stepper buttons mutate the input and dispatch native input + change
+  // events so consumers wired to `onInput` / `onChange` (or anything
+  // observing the underlying field at the DOM level) see the same event
+  // flow as a typed edit. The native `change` listener installed below
+  // is what actually invokes `onValueChange` - we intentionally route
+  // through the same path for both stepper and typed paths so the two
+  // can never diverge.
+  const stepBy = (delta: number) => {
+    if (!inputEl) return;
+    const current = parseFloat(inputEl.value ?? '0') || 0;
+    const next = clampValue(current + delta);
+    inputEl.value = String(next);
+    inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+    inputEl.dispatchEvent(new Event('change', { bubbles: true }));
   };
 
   const buildChildren = () => adoptElement<HTMLDivElement>('div', (w) => {
@@ -99,7 +113,10 @@ export function NumberInput(userProps: NumberInputProps = {}): HTMLDivElement {
 
       input.addEventListener('change', () => {
         const num = parseFloat(input.value);
-        if (!isNaN(num)) clampAndNotify(num);
+        if (isNaN(num)) return;
+        const clamped = clampValue(num);
+        if (String(clamped) !== input.value) input.value = String(clamped);
+        props.onValueChange?.(clamped);
       });
 
       const ref = props.ref;
@@ -125,8 +142,7 @@ export function NumberInput(userProps: NumberInputProps = {}): HTMLDivElement {
         });
         renderEffect(() => { upBtn.disabled = !!props.disabled; });
         upBtn.addEventListener('click', () => {
-          const current = parseFloat(inputEl?.value ?? '0') || 0;
-          clampAndNotify(current + (props.step ?? 1));
+          stepBy(props.step ?? 1);
         });
       });
 
@@ -140,8 +156,7 @@ export function NumberInput(userProps: NumberInputProps = {}): HTMLDivElement {
         });
         renderEffect(() => { downBtn.disabled = !!props.disabled; });
         downBtn.addEventListener('click', () => {
-          const current = parseFloat(inputEl?.value ?? '0') || 0;
-          clampAndNotify(current - (props.step ?? 1));
+          stepBy(-(props.step ?? 1));
         });
       });
     });

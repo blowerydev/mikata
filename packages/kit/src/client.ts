@@ -417,13 +417,27 @@ function runLoadersOnNav(
     // read-phase so any setData inside the load chain doesn't disturb
     // the in-progress reactive pass.
     queueMicrotask(() => {
+      // Build the full URL from window.location so loaders see the
+      // same shape they get on the server (pathname + search + hash).
+      // current.path is pathname-only; using it would strip query and
+      // hash, so loaders that key off `?cursor=…` would silently rerun
+      // with the wrong inputs after a query-only navigation.
+      // searchParams on the route is schema-filtered and can't be used
+      // to rebuild the raw query string without losing extra keys.
+      const fullUrl =
+        typeof window !== 'undefined' && window.location
+          ? window.location.pathname +
+            window.location.search +
+            window.location.hash
+          : current.path;
       for (const match of current.matches) {
         const fullPath = match.route.fullPath;
         const loader = loaders.get(fullPath);
         if (!loader) continue;
         // Key includes params + raw URL so distinct /users/1 → /users/2
-        // navigations count as different invocations.
-        const key = current.path + '?' + JSON.stringify(match.params);
+        // and ?cursor=A → ?cursor=B navigations both count as
+        // different invocations.
+        const key = fullUrl + '?' + JSON.stringify(match.params);
         if (lastKeyed.get(fullPath) === key) continue;
         lastKeyed.set(fullPath, key);
 
@@ -433,7 +447,7 @@ function runLoadersOnNav(
         Promise.resolve(
           loader({
             params: match.params,
-            url: current.path,
+            url: fullUrl,
             cookies: createBrowserCookies(),
           }),
         )
