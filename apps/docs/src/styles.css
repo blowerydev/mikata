@@ -162,38 +162,8 @@ a:hover {
   outline-offset: 2px;
 }
 
-/* Theme toggle (segmented control). Styling tracks the rest of the
-   surface - tight, 3-way button group that lives in the topbar. */
-.theme-toggle {
-  display: inline-flex;
-  padding: 2px;
-  gap: 2px;
-  border: 1px solid var(--mkt-color-border);
-  border-radius: 999px;
-  background: var(--mkt-color-bg-subtle);
-}
-.theme-toggle button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.6rem;
-  height: 1.6rem;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--mkt-color-text-dimmed);
-  cursor: pointer;
-  border-radius: 999px;
-  transition: color 0.1s ease, background 0.1s ease;
-}
-.theme-toggle button:hover {
-  color: var(--mkt-color-text);
-}
-.theme-toggle button[data-active] {
-  background: var(--mkt-color-bg);
-  color: var(--mkt-color-text);
-  box-shadow: var(--mkt-shadow-sm);
-}
+/* Theme toggle styles ship with @mikata/ui's SegmentedControl - the
+   `.mkt-segmented-control*` rules. No app-level overrides needed. */
 
 /* ---------- Sidebar ---------- */
 

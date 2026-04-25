@@ -418,6 +418,17 @@ export class SElement extends SNode {
     return null;
   }
 
+  /**
+   * Components that fork "adopted from SSR vs build fresh" via a
+   * `root.querySelectorAll('.child')` length check land here on the
+   * server (where there's no SSR cursor yet — we ARE the SSR pass).
+   * Returning an empty NodeList-like array sends them through the
+   * fresh-build branch, which is the right choice during SSR.
+   */
+  querySelectorAll(): SElement[] {
+    return [];
+  }
+
   /** Reflow-forcing read in transition.ts — return a stable sentinel. */
   get offsetHeight(): number {
     return 0;
