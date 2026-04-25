@@ -33,6 +33,21 @@ const ARRAY_MUTATING_METHODS = new Set([
   'copyWithin',
 ]);
 
+// Reordering mutators move values between arbitrary slots, so we must
+// re-fire every existing index subscriber - tracking the affected range
+// per-method would be more surgical but the safer default is to invalidate
+// all indices that existed before or after the call. push/pop only touch
+// the end and are handled below by length + the single end index.
+const ARRAY_REORDERING_METHODS = new Set([
+  'shift',
+  'unshift',
+  'splice',
+  'sort',
+  'reverse',
+  'fill',
+  'copyWithin',
+]);
+
 function triggerProperty(target: object, key: PropertyKey): void {
   const deps = getPropertySubscribers(target, key);
   if (deps) {
@@ -67,11 +82,41 @@ function createProxy<T extends object>(target: T): T {
 
       // For arrays, intercept mutating methods to batch their effects
       if (isArray && typeof value === 'function' && ARRAY_MUTATING_METHODS.has(key as string)) {
-        return function (this: any, ...args: any[]) {
+        return function (this: unknown, ...args: unknown[]) {
+          const arr = target as unknown as unknown[];
+          const oldLength = arr.length;
+          const methodName = key as string;
           const result = (value as Function).apply(target, args);
-          // Trigger length and the array itself
+          const newLength = arr.length;
+
+          // Notify length, the method itself, and iteration consumers
+          // (Object.keys / spread / for..of) when any structural change
+          // occurred. Methods like sort/reverse keep length stable but
+          // still alter iteration order, so always fire iteration on
+          // mutators - it's a single notification per call.
           triggerProperty(target, 'length');
-          triggerProperty(target, key);
+          triggerProperty(target, methodName);
+          triggerProperty(target, Symbol.iterator);
+
+          if (ARRAY_REORDERING_METHODS.has(methodName)) {
+            // Conservatively fire every index that existed before or
+            // after the mutation. Subscribers to a specific index that
+            // didn't actually change value still re-run, but their
+            // _sourceVersions snapshot makes the effect a no-op.
+            const max = oldLength > newLength ? oldLength : newLength;
+            for (let i = 0; i < max; i++) {
+              triggerProperty(target, String(i));
+            }
+          } else if (methodName === 'push') {
+            // push appends one or more items at the tail; only the
+            // new indices need invalidating.
+            for (let i = oldLength; i < newLength; i++) {
+              triggerProperty(target, String(i));
+            }
+          } else if (methodName === 'pop') {
+            // pop drops the final index, if any.
+            if (oldLength > 0) triggerProperty(target, String(oldLength - 1));
+          }
           return result;
         };
       }
@@ -95,6 +140,7 @@ function createProxy<T extends object>(target: T): T {
         );
       }
 
+      const hadKey = Object.prototype.hasOwnProperty.call(target, key);
       const oldValue = Reflect.get(target, key, receiver);
 
       // Unwrap reactive values before storing
@@ -113,14 +159,23 @@ function createProxy<T extends object>(target: T): T {
         }
       }
 
+      // A brand-new key changes the iteration shape (Object.keys, spread,
+      // for..in). Fire even if the value matches an old undefined slot,
+      // since iteration sees the key, not the value.
+      if (!hadKey) {
+        triggerProperty(target, Symbol.iterator);
+      }
+
       return result;
     },
 
     deleteProperty(target, key) {
-      const hadKey = key in target;
+      const hadKey = Object.prototype.hasOwnProperty.call(target, key);
       const result = Reflect.deleteProperty(target, key);
       if (hadKey) {
         triggerProperty(target, key);
+        // Removing a key changes iteration shape too.
+        triggerProperty(target, Symbol.iterator);
       }
       return result;
     },

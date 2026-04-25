@@ -27,6 +27,13 @@ export interface ReactiveNode {
   _revalidate?(): boolean;
   /** Whether this node has reactive proxy property deps (not in _sources) */
   _hasPropertyDeps?: boolean;
+  /**
+   * Scheduling priority. Render effects ('render') flush before user
+   * effects ('user') in the same tick. Plain signals/computeds don't
+   * carry a priority - it only matters at the leaf (the effect) where
+   * scheduleDirty is called.
+   */
+  _priority?: 'render' | 'user';
   /** Clean up this node */
   _dispose(): void;
 }

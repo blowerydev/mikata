@@ -59,6 +59,7 @@ function createEffectNode(
     _cleanup: undefined,
     _fn: fn,
     _isRender: isRender,
+    _priority: isRender ? 'render' : 'user',
     _owner: owner,
 
     _run() {

@@ -28,6 +28,12 @@ const PRIORITY_ORDER: Record<EffectPriority, number> = {
 /**
  * Schedule a dirty node for re-execution.
  * If not currently batching or flushing, queues a microtask to flush.
+ *
+ * The node's own `_priority` (set when the effect was created) wins over
+ * any passed priority - that's how renderEffect's `before-paint`
+ * guarantee survives propagation through computeds and selectors, where
+ * the intermediate caller doesn't know whether the leaf is a render or
+ * user effect.
  */
 export function scheduleDirty(
   node: ReactiveNode,
@@ -36,7 +42,7 @@ export function scheduleDirty(
   if (!node._run) return; // Only schedule nodes with a run function (effects)
 
   node._dirty = true;
-  pendingEffects.push({ node, priority });
+  pendingEffects.push({ node, priority: node._priority ?? priority });
 
   if (!isFlushing && batchDepth === 0) {
     queueMicrotask(flush);

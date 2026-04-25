@@ -1,10 +1,11 @@
 import { describe, it, expect, vi } from 'vitest';
 import { signal } from '../src/signal';
-import { effect } from '../src/effect';
+import { effect, renderEffect } from '../src/effect';
 import { computed } from '../src/computed';
 import { untrack, batch } from '../src/utils';
 import { flushSync } from '../src/scheduler';
 import { createScope, onCleanup } from '../src/scope';
+import { reactive } from '../src/reactive';
 
 describe('effect', () => {
   it('runs immediately on creation', () => {
@@ -149,6 +150,94 @@ describe('effect', () => {
 
     // Effect should only run once for both writes
     expect(fn).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('renderEffect priority', () => {
+  it('renderEffect flushes before user effect on signal change', () => {
+    const [count, setCount] = signal(0);
+    const order: string[] = [];
+
+    // Create user effect FIRST, render effect SECOND - if priority is
+    // ignored we'd see ['user', 'render'] (insertion order). Priority
+    // ordering must give us ['render', 'user'].
+    effect(() => {
+      count();
+      if (count() > 0) order.push('user');
+    });
+    renderEffect(() => {
+      count();
+      if (count() > 0) order.push('render');
+    });
+
+    setCount(1);
+    flushSync();
+    expect(order).toEqual(['render', 'user']);
+  });
+
+  it('renderEffect priority survives propagation through a computed', () => {
+    const [n, setN] = signal(0);
+    const doubled = computed(() => n() * 2);
+    const order: string[] = [];
+
+    effect(() => {
+      doubled();
+      if (n() > 0) order.push('user');
+    });
+    renderEffect(() => {
+      doubled();
+      if (n() > 0) order.push('render');
+    });
+
+    setN(1);
+    flushSync();
+    expect(order).toEqual(['render', 'user']);
+  });
+
+  it('renderEffect priority applies when triggered through a reactive proxy', () => {
+    const state = reactive({ count: 0 });
+    const order: string[] = [];
+
+    effect(() => {
+      state.count;
+      if (state.count > 0) order.push('user');
+    });
+    renderEffect(() => {
+      state.count;
+      if (state.count > 0) order.push('render');
+    });
+
+    state.count = 1;
+    flushSync();
+    expect(order).toEqual(['render', 'user']);
+  });
+
+  it('multiple render effects all flush before any user effect', () => {
+    const [n, setN] = signal(0);
+    const order: string[] = [];
+
+    effect(() => {
+      n();
+      if (n() > 0) order.push('user-1');
+    });
+    renderEffect(() => {
+      n();
+      if (n() > 0) order.push('render-1');
+    });
+    effect(() => {
+      n();
+      if (n() > 0) order.push('user-2');
+    });
+    renderEffect(() => {
+      n();
+      if (n() > 0) order.push('render-2');
+    });
+
+    setN(1);
+    flushSync();
+    // Render effects run as a group before user effects; insertion
+    // order is preserved within each group.
+    expect(order).toEqual(['render-1', 'render-2', 'user-1', 'user-2']);
   });
 });
 
