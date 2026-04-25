@@ -49,6 +49,7 @@ export {
   each,
   switchMatch,
   Dynamic,
+  RawHTML,
   portal,
   model,
   createContext,

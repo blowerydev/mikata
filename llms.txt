@@ -335,6 +335,24 @@ const Current = computed(() => kind() === 'button' ? Button : Link);
 
 Pass `component={null}` or `component={undefined}` to render nothing. Every prop except `component` is forwarded via getter, so the inner component sees live values even though the props bag is built once.
 
+### RawHTML({ html, class? }) → HTMLDivElement
+
+Sanctioned wrapper for inserting a pre-built HTML string as a div's contents. Use for syntax-highlighted code, MDX render output, sanitised CMS payloads - any source where the HTML is already trustworthy.
+
+```tsx
+import { RawHTML } from '@mikata/runtime';
+
+const html = await highlight('const x = 1;', 'tsx');
+
+<RawHTML class="codeblock" html={html} />
+```
+
+`html` is reactive: a signal-backed value re-writes the container's `innerHTML` in place when it changes. Hydration-aware - on a server-rendered page the wrapping div is adopted, not re-created.
+
+Internally this is just `innerHTML={html}` on a `<div>`, which is also a recognised JSX prop sink (the runtime's `_setProp` routes `innerHTML` through a dev-mode XSS heuristic that warns on `<script>`, inline `onevent` attributes, and `javascript:` URLs). `RawHTML` exists so call sites are greppable and the intent is named - both forms inherit the same dev warning.
+
+**Don't** pass user input here. The dev warning is a tripwire, not a sanitiser; sanitise upstream (DOMPurify or equivalent) when the source is anything other than your own build output.
+
 ### mergeProps(...sources) → props
 
 Merge multiple props objects into one, preserving getter descriptors (later sources win on key collisions). Use this instead of object-spread (`{ ...defaults, ...props }`), which snapshots each value and breaks reactivity.

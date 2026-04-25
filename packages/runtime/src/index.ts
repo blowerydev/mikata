@@ -32,6 +32,11 @@ export type { Ref } from './component';
 // Control flow
 export { show, each, switchMatch, Dynamic } from './control-flow';
 
+// Raw HTML insertion (sanctioned wrapper for the innerHTML JSX prop -
+// pre-highlighted code, MDX output, sanitised CMS payloads).
+export { RawHTML } from './raw-html';
+export type { RawHTMLProps } from './raw-html';
+
 // Prop helpers
 export { createDerivedSignal } from './derived';
 

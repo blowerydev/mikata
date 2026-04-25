@@ -1,4 +1,5 @@
 import { codeToHtml } from 'shiki';
+import { RawHTML } from '@mikata/runtime';
 
 export interface CodeBlockProps {
   /** Pre-highlighted HTML produced by `highlight(...)`. */
@@ -11,9 +12,14 @@ export interface CodeBlockProps {
  * loads them via dynamic `import()`) and pass the resulting HTML here.
  * On hydration the already-highlighted markup is adopted - no Shiki
  * runtime shipped to the browser.
+ *
+ * Uses `<RawHTML>` rather than a bare `<div innerHTML={...}/>` so the
+ * "this is a sanctioned innerHTML sink" intent is greppable. The
+ * underlying behavior is identical - `<RawHTML>` is the documented
+ * wrapper for pre-built / pre-sanitised HTML strings.
  */
 export function CodeBlock(props: CodeBlockProps) {
-  return <div class="codeblock" innerHTML={props.html} />;
+  return <RawHTML class="codeblock" html={props.html} />;
 }
 
 /**
