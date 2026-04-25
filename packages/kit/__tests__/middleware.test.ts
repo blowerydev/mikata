@@ -148,12 +148,18 @@ describe('createSsrMiddleware', () => {
     expect(server.ssrLoadModule).not.toHaveBeenCalled();
   });
 
-  it('skips HEAD requests', async () => {
+  it('hands HEAD page requests off to next() (no SSR body)', async () => {
+    // HEAD must never produce an SSR body (RFC 7231). When no API
+    // route matches, we hand back to Vite so static assets and HMR
+    // endpoints continue to respond correctly.
     const root = await mkProject({
       'index.html': '<!--ssr-outlet-->',
       'src/entry-server.ts': 'export const render = () => ({});',
     });
-    const server = makeServer();
+    const render = vi.fn(() => ({ html: '<p>page</p>' }));
+    const server = makeServer({
+      ssrLoadModule: vi.fn(async () => ({ render })),
+    });
     const mw = createSsrMiddleware(server as any, { projectRoot: root });
     const next = vi.fn();
 
@@ -162,7 +168,46 @@ describe('createSsrMiddleware', () => {
     await mw(req, makeRes(), next);
 
     expect(next).toHaveBeenCalledTimes(1);
-    expect(server.ssrLoadModule).not.toHaveBeenCalled();
+    expect(render).not.toHaveBeenCalled();
+  });
+
+  it('dispatches HEAD to API routes that export a HEAD handler', async () => {
+    // Production adapters route HEAD into API dispatch; dev must do
+    // the same so health checks behave identically across environments.
+    const root = await mkProject({
+      'index.html': '<!--ssr-outlet-->',
+      'src/entry-server.ts': 'export const render = () => ({});',
+    });
+    const render = vi.fn(() => ({ html: '' }));
+    const server = makeServer({
+      ssrLoadModule: vi.fn(async () => ({
+        render,
+        apiRoutes: [
+          {
+            path: '/api/health',
+            lazy: async () => ({
+              HEAD: () =>
+                new Response(null, {
+                  status: 200,
+                  headers: { 'X-Health': 'ok' },
+                }),
+            }),
+          },
+        ],
+      })),
+    });
+    const mw = createSsrMiddleware(server as any, { projectRoot: root });
+    const res = makeRes();
+    const next = vi.fn();
+
+    const req = makeReq('/api/health');
+    req.method = 'HEAD';
+    await mw(req, res, next);
+
+    expect(render).not.toHaveBeenCalled();
+    expect(next).not.toHaveBeenCalled();
+    expect(res.statusCode).toBe(200);
+    expect(res._headers['x-health']).toBe('ok');
   });
 
   it('hands POST requests to render() with a built Request object', async () => {

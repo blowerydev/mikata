@@ -32,6 +32,14 @@ export interface SelectProps extends MikataBaseProps {
   size?: MikataSize;
   /** Text shown in the placeholder slot while an async load is in flight. */
   loadingLabel?: string;
+  /**
+   * Text shown in the placeholder slot if the async loader rejects.
+   * Defaults to "Failed to load". The select is re-enabled so the
+   * user can interact (e.g. trigger a remount via parent state).
+   */
+  errorLabel?: string;
+  /** Called when the async loader rejects. Use to log or trigger retry. */
+  onError?: (err: unknown) => void;
   onChange?: (e: Event & { currentTarget: HTMLSelectElement }) => void;
   classNames?: ClassNamesInput<SelectParts>;
 }

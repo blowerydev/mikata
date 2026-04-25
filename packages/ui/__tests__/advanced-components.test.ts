@@ -652,6 +652,36 @@ describe('Select', () => {
       expect(select.children[0].textContent).toBe('Loading tags');
     });
   });
+
+  it('recovers when async fetcher rejects (re-enables, swaps placeholder)', async () => {
+    const onError = vi.fn();
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    let select: HTMLSelectElement;
+    createScope(() => {
+      const el = Select({
+        data: () => Promise.reject(new Error('boom')),
+        loadingLabel: 'Loading…',
+        errorLabel: 'Could not load',
+        onError,
+      });
+      select = el.querySelector('select') as HTMLSelectElement;
+    });
+    expect(select!.dataset.loading).toBe('');
+    expect(select!.disabled).toBe(true);
+
+    // Two microtask hops: one for the awaited Promise.reject in the
+    // fetcher's `.then` chain, one for the onRejected handler body.
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(select!.dataset.loading).toBeUndefined();
+    expect(select!.dataset.error).toBe('');
+    expect(select!.disabled).toBe(false);
+    expect(select!.children[0]!.textContent).toBe('Could not load');
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect((onError.mock.calls[0]![0] as Error).message).toBe('boom');
+    errSpy.mockRestore();
+  });
 });
 
 // ─── TagsInput ─────────────────────────────────────────────

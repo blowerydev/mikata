@@ -26,6 +26,40 @@ const OPTIONS: Array<{ value: ColorScheme; label: string; icon: () => SVGSVGElem
 
 export function ThemeToggle() {
   const scheme = colorSchemeSignal();
+  const buttons: HTMLButtonElement[] = [];
+
+  // Standard W3C ARIA radio-group keyboard model: arrow keys move
+  // BOTH focus and selection, Home/End jump to the ends, Space/Enter
+  // re-select. Without this, only one option is tabbable (roving
+  // tabindex below) and there's no way to reach the others by keyboard.
+  function onKeyDown(this: HTMLButtonElement, e: KeyboardEvent): void {
+    const idx = buttons.indexOf(this);
+    if (idx < 0) return;
+    let target = -1;
+    switch (e.key) {
+      case 'ArrowRight':
+      case 'ArrowDown':
+        target = (idx + 1) % buttons.length;
+        break;
+      case 'ArrowLeft':
+      case 'ArrowUp':
+        target = (idx - 1 + buttons.length) % buttons.length;
+        break;
+      case 'Home':
+        target = 0;
+        break;
+      case 'End':
+        target = buttons.length - 1;
+        break;
+      default:
+        return;
+    }
+    e.preventDefault();
+    const opt = OPTIONS[target]!;
+    setColorScheme(opt.value);
+    buttons[target]!.focus();
+  }
+
   return (
     <div class="theme-toggle" role="radiogroup" aria-label="Color theme">
       {OPTIONS.map((opt) => {
@@ -37,10 +71,12 @@ export function ThemeToggle() {
             aria-label={opt.label}
             title={opt.label}
             onClick={() => setColorScheme(opt.value)}
+            onKeyDown={onKeyDown}
           >
             {() => opt.icon()}
           </button>
         ) as HTMLButtonElement;
+        buttons.push(button);
         // `data-active` + `aria-checked` keep CSS and accessibility in
         // sync. Reactive so click-to-change updates the visual state
         // without any DOM measurement or sliding-indicator math.

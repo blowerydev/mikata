@@ -134,11 +134,13 @@ export function createSsrMiddleware(
   return async function mikataSsrMiddleware(req, res, next) {
     if (!req.url) return next();
     const method = req.method ?? 'GET';
-    // HEAD isn't interesting for SSR — let Vite's later middleware
-    // return the expected metadata. GET serves pages; POST/PUT/PATCH/
-    // DELETE drive action flows.
-    if (method === 'HEAD') return next();
-    const isMutation = method !== 'GET';
+    const isHead = method === 'HEAD';
+    // Treat HEAD like GET for read-side request shape, but bypass page
+    // SSR (HEAD responses MUST NOT carry a body). HEAD still flows
+    // through API dispatch below so registered HEAD handlers - and
+    // health checks against them - work in dev the same way they do
+    // in production.
+    const isMutation = method !== 'GET' && !isHead;
     // Accept: "*/*", "text/html" etc. — but an HMR ping or a JS import
     // comes through with application/javascript preferences; skip those.
     // Form submits set Accept: application/json — let those through too.
@@ -196,6 +198,11 @@ export function createSsrMiddleware(
           return;
         }
       }
+
+      // HEAD doesn't get an SSR body (HEAD responses must be empty per
+      // RFC 7231). If no API route matched, hand back to Vite so static
+      // assets and HMR endpoints still respond correctly.
+      if (isHead) return next();
 
       const isEnhancedSubmit =
         request !== undefined && req.headers[FORM_SUBMIT_HEADER] !== undefined;

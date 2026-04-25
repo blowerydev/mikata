@@ -19,6 +19,7 @@ export function Select(userProps: SelectProps): HTMLDivElement {
   const data = props.data;
   const isAsync = typeof data === 'function';
   const loadingLabel = props.loadingLabel ?? 'Loading…';
+  const errorLabel = props.errorLabel ?? 'Failed to load';
 
   // Factory form so the `adoptElement` call inside runs within
   // InputWrapper's setup - the wrapper's label/description slots push
@@ -124,6 +125,16 @@ export function Select(userProps: SelectProps): HTMLDivElement {
           (err) => {
             if (controller.signal.aborted) return;
             if (typeof console !== 'undefined') console.error('[mikata/Select] fetcher rejected:', err);
+            // Replace the loading placeholder with an error placeholder
+            // and re-enable the control so the user isn't stuck. Mark
+            // the option-set as errored via `data-error` so callers /
+            // CSS can show retry affordance if desired.
+            select.textContent = '';
+            appendPlaceholder(errorLabel, true);
+            select.dataset.error = '';
+            delete select.dataset.loading;
+            if (!props.disabled) select.disabled = false;
+            props.onError?.(err);
           },
         );
       } else if (!alreadyHasOptions) {
