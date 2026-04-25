@@ -808,18 +808,19 @@ export function mikataJSXPlugin({ types: t }: { types: typeof BabelTypes }): Plu
         : t.stringLiteral(propName);
 
       if (isPotentiallyReactive(value, scope)) {
-        if (isValidIdentifier) {
-          propsProperties.push(
-            t.objectMethod(
-              'get',
-              t.identifier(propName),
-              [],
-              t.blockStatement([t.returnStatement(value)])
-            ) as any
-          );
-        } else {
-          propsProperties.push(t.objectProperty(keyNode, value));
-        }
+        // Both identifier and string-literal keys can host a getter.
+        // Without this, dashed names like `aria-label` and `data-id`
+        // were emitted as eager properties that snapshot the value at
+        // setup time - subsequent signal updates never reached the
+        // component's prop reads.
+        propsProperties.push(
+          t.objectMethod(
+            'get',
+            keyNode,
+            [],
+            t.blockStatement([t.returnStatement(value)])
+          ) as any
+        );
       } else {
         propsProperties.push(t.objectProperty(keyNode, value));
       }

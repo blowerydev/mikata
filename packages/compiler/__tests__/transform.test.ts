@@ -61,6 +61,33 @@ describe('JSX transform', () => {
     expect(output).toContain('get count');
   });
 
+  it('creates string-literal getters for dashed reactive component props', () => {
+    // Without the dashed-key getter, `aria-label={signal()}` snapshots
+    // the value once at setup time and never sees subsequent updates.
+    const output = transform(
+      `const el = <Field aria-label={label()} data-id={id()} />;`,
+    );
+    expect(output).toContain('_createComponent');
+    // Babel emits string-literal getters as `get "aria-label"() { ... }`
+    expect(output).toMatch(/get\s+"aria-label"\s*\(\s*\)/);
+    expect(output).toMatch(/get\s+"data-id"\s*\(\s*\)/);
+    // The getter body still references the reactive call expression.
+    expect(output).toContain('label()');
+    expect(output).toContain('id()');
+  });
+
+  it('mixes identifier and dashed reactive props on the same component', () => {
+    const output = transform(
+      `const el = <Field count={count()} aria-label={label()} static="x" />;`,
+    );
+    // Identifier prop: bare-identifier getter.
+    expect(output).toMatch(/get\s+count\s*\(\s*\)/);
+    // Dashed prop: string-literal getter.
+    expect(output).toMatch(/get\s+"aria-label"\s*\(\s*\)/);
+    // Non-reactive static value stays an eager property.
+    expect(output).toContain('static: "x"');
+  });
+
   it('adds runtime imports', () => {
     const output = transform(`const el = <div>Hello</div>;`);
     expect(output).toContain(`from "@mikata/runtime"`);
