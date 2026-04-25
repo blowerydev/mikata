@@ -1078,8 +1078,8 @@ Low-level helpers exported for custom embedding. `escapeStateScript` escapes `<`
 File-based routing + Vite plugin + dev-mode SSR middleware on top of `@mikata/router` and `@mikata/server`. Import paths are split into sub-entries so the Vite config loader never pulls in DOM or server code:
 
 - `@mikata/kit` — Node-safe: the plugin, scanner, manifest generator
-- `@mikata/kit/client` — `mount(routes, container)` for the client entry
-- `@mikata/kit/server` — `renderRoute(routes, { url })` for the server entry
+- `@mikata/kit/client` — `mount(manifest, container)` for the client entry
+- `@mikata/kit/server` — `renderRoute(manifest, { url })` for the server entry
 - `@mikata/kit/loader` — `load()` API: `useLoaderData`, `provideLoaderData`, `LoadContext`
 - `@mikata/kit/action` — `action()` API + `redirect()` helper for form submits
 - `@mikata/kit/form` — enhanced `<Form>` component (progressive-enhancement submit)
@@ -1120,24 +1120,27 @@ Options:
 - `prerender`: `true` | `{ outDir?, clientDir?, paths?, baseUrl?, notFoundHtml?, fallback? }`. Enables SSG — the plugin hooks the SSR build's `closeBundle`, imports the built entry, and writes a static site to `outDir` (default `dist/static`). See the `@mikata/kit/prerender` section below.
 
 The plugin:
-- resolves `virtual:mikata-routes` to a manifest of lazy imports
-- HMRs the manifest when files are added / renamed / deleted
+- resolves `virtual:mikata-routes` to a manifest of lazy imports plus a `base` constant pulled from Vite's resolved `base` config (so `mount` and `renderRoute` don't need it spelled out at every call site)
+- resolves `virtual:mikata-nav` to a flat sidebar / nav array generated from per-route `export const nav = ...` literals (see *Nav scanner* below)
+- HMRs both virtual modules when files are added / renamed / deleted
 - sets `appType: 'custom'` and installs a Connect middleware that reads `index.html`, transforms it via `server.transformIndexHtml`, loads the server entry via `server.ssrLoadModule`, calls `mod.render({ url, req })`, and splices the result at `<!--ssr-outlet-->`
 - on a render error, calls `server.ssrFixStacktrace(err)` and pushes `{ type: 'error', err }` via `server.ws.send(...)` so the Vite HMR overlay surfaces the crash on any connected page; simultaneously returns a 500 HTML shell that embeds `/@vite/client` (so a fresh load also gets the overlay) and the HTML-escaped error message
 
 Asset URLs (anything with an extension) and non-GET / non-HTML requests bypass the SSR middleware.
 
-### renderRoute(routes, { url }) → Promise<{ html, stateScript, state, status }>
+### renderRoute(manifest, { url }) → Promise<{ html, stateScript, state, status }>
 
 ```ts
 // src/entry-server.tsx
 import { renderRoute } from '@mikata/kit/server';
-import routes from 'virtual:mikata-routes';
+import * as manifest from 'virtual:mikata-routes';
 
 export async function render(ctx: { url: string; req?: unknown }) {
-  return renderRoute(routes, { url: ctx.url });
+  return renderRoute(manifest, { url: ctx.url });
 }
 ```
+
+The first argument is the whole manifest namespace (or just `routes` in the legacy form — see below). When you pass the namespace, `renderRoute` pulls `notFound` and `base` out of it automatically; you only spell out the per-request fields (`url`, `request`, `cookieHeader`).
 
 Returns everything `renderToString` does plus a `status` field:
 - `200` when every matched route's `load()` (if any) resolved cleanly.
@@ -1146,37 +1149,64 @@ Returns everything `renderToString` does plus a `status` field:
 
 The middleware/adapter pick this up and set the HTTP status on the response.
 
-A top-level `src/routes/404.tsx` becomes the named `notFound` export on `virtual:mikata-routes`; pass it through both entry points so unmatched URLs render your page instead of a blank outlet:
+A top-level `src/routes/404.tsx` becomes the named `notFound` export on `virtual:mikata-routes`. When you pass the manifest namespace to `mount` / `renderRoute`, both helpers pick it up automatically — no need to thread it through:
 
 ```tsx
 // src/entry-server.tsx
 import { renderRoute } from '@mikata/kit/server';
-import routes, { notFound } from 'virtual:mikata-routes';
+import * as manifest from 'virtual:mikata-routes';
 export async function render(ctx: { url: string }) {
-  return renderRoute(routes, { url: ctx.url, notFound });
+  return renderRoute(manifest, { url: ctx.url });
 }
 ```
 
 ```tsx
 // src/entry-client.tsx
 import { mount } from '@mikata/kit/client';
-import routes, { notFound } from 'virtual:mikata-routes';
-mount(routes, document.getElementById('root')!, { notFound });
+import * as manifest from 'virtual:mikata-routes';
+mount(manifest, document.getElementById('root')!);
 ```
 
 Nested `404.tsx` files (e.g. `routes/foo/404.tsx`) stay on the normal route map — only the top-level file is special-cased.
 
-### mount(routes, container) — client entry
+### mount(manifest, container) — client entry
 
 ```tsx
 // src/entry-client.tsx
 import { mount } from '@mikata/kit/client';
-import routes from 'virtual:mikata-routes';
+import * as manifest from 'virtual:mikata-routes';
 
-mount(routes, document.getElementById('root')!);
+mount(manifest, document.getElementById('root')!);
 ```
 
 Internally calls `hydrate()` so the server-rendered DOM is adopted rather than re-created. On mount, any `window.__MIKATA_LOADER_DATA__` set by the server is handed to `provideLoaderData()` so `useLoaderData()` returns the seeded values during hydration.
+
+Both `mount` and `renderRoute` accept either form of first argument:
+- **manifest namespace** (`import * as manifest from 'virtual:mikata-routes'`) — `routes`, `notFound`, and `base` are read off the namespace, so the call site is just `mount(manifest, container)` / `renderRoute(manifest, { url })`. This is the recommended form.
+- **routes array** (`import routes from 'virtual:mikata-routes'`) — back-compat. You'll need to pass `notFound` and `base` in the options object yourself.
+
+### Nav scanner (`virtual:mikata-nav`)
+
+For sidebars / top-nav menus, the plugin scans each route file for an `export const nav = ...` literal and emits a flat manifest at build time. Adding a route page = editing one file; the nav manifest stays in sync.
+
+```tsx
+// src/routes/ui/button.tsx
+export const nav = { title: 'Button', section: 'UI', order: 2 };
+```
+
+Dynamic routes (`[slug].tsx`) export an array — one entry per concrete URL, each carrying its own `path`:
+
+```tsx
+// src/routes/reference/[package].tsx
+export const nav = [
+  { path: '/reference/runtime', title: '@mikata/runtime', section: 'Reference', order: 1 },
+  { path: '/reference/router',  title: '@mikata/router',  section: 'Reference', order: 2 },
+];
+```
+
+Consumed via `import { nav } from 'virtual:mikata-nav'` — the array is in scanner source order; group by `section` and sort within each group by `order`. A separate ordered list of section names (e.g. `src/sections.ts`) controls section order; `nav` doesn't carry that.
+
+Constraint: the `nav` value must be a self-contained literal (object or array of objects). The scanner evaluates it via `new Function('return (...)')` at build time, so module-scope references (other imports, helper functions) won't resolve. The failure mode is a clean omission — the route just doesn't appear in the nav.
 
 ### Route loaders (`@mikata/kit/loader`)
 

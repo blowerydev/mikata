@@ -5,8 +5,14 @@
  * app can do:
  *
  *   import { mount } from '@mikata/kit/client';
- *   import routes from 'virtual:mikata-routes';
- *   mount(routes, document.getElementById('root')!);
+ *   import * as manifest from 'virtual:mikata-routes';
+ *   mount(manifest, document.getElementById('root')!);
+ *
+ * The first argument may be either the whole `virtual:mikata-routes`
+ * namespace (recommended) or a bare `RouteDefinition[]` (back-compat).
+ * In manifest form, `notFound` and `base` are pulled off the namespace
+ * automatically so the call site stays symmetric with `renderRoute()`
+ * and avoids a manual `import.meta.env.BASE_URL` read.
  *
  * The virtual manifest supplies dynamic-import-backed route definitions,
  * which the router loads lazily on navigation. On first render, the
@@ -68,6 +74,42 @@ export type NotFoundModuleLoader = () => Promise<{
   default: (props: Record<string, unknown>) => Node | null;
 }>;
 
+/**
+ * Shape of the `virtual:mikata-routes` module namespace. Accepted as
+ * the first argument of `mount()` and `renderRoute()` so call sites
+ * can pass `import * as manifest from 'virtual:mikata-routes'` and
+ * skip threading `notFound` / `base` through the options object.
+ *
+ * The narrower `routes`-array form is still accepted (back-compat) by
+ * detecting `Array.isArray(arg)` at the call site.
+ */
+export interface RouteManifestModule {
+  routes: readonly RouteDefinition[];
+  notFound?: NotFoundModuleLoader;
+  base?: string;
+}
+
+/**
+ * Normalise either form of the first argument to `mount()` /
+ * `renderRoute()` into a uniform `{ routes, notFound, base }` shape.
+ * Centralised so both helpers narrow the union the same way - inline
+ * `Array.isArray()` ternaries don't narrow generic union types in
+ * strict mode.
+ */
+export function resolveManifestArgument(
+  arg: readonly RouteDefinition[] | RouteManifestModule,
+): {
+  routes: readonly RouteDefinition[];
+  notFound: NotFoundModuleLoader | undefined;
+  base: string | undefined;
+} {
+  if (Array.isArray(arg)) {
+    return { routes: arg, notFound: undefined, base: undefined };
+  }
+  const m = arg as RouteManifestModule;
+  return { routes: m.routes, notFound: m.notFound, base: m.base };
+}
+
 export interface MountOptions extends Omit<RouterOptions, 'routes' | 'notFound'> {
   /**
    * Skip hydration and do a full client render instead. Useful when the
@@ -79,7 +121,8 @@ export interface MountOptions extends Omit<RouterOptions, 'routes' | 'notFound'>
    * 404 component loader from the virtual manifest (i.e.
    * `import { notFound } from 'virtual:mikata-routes'`). When present,
    * it's wrapped with `lazy()` and passed to the router so any
-   * unmatched URL renders it instead of a blank page.
+   * unmatched URL renders it instead of a blank page. Pulled
+   * automatically when the first argument is the manifest namespace.
    */
   notFound?: NotFoundModuleLoader;
 }
@@ -98,11 +141,26 @@ export interface MountResult {
 }
 
 export function mount(
-  routes: readonly RouteDefinition[],
+  manifest: readonly RouteDefinition[] | RouteManifestModule,
   container: HTMLElement,
   options: MountOptions = {},
 ): MountResult {
-  const { hydrate: shouldHydrate, notFound: notFoundLoader, ...routerOptions } = options;
+  // Accept either the legacy `routes`-array first argument or the new
+  // manifest-namespace form. In manifest form, `notFound` and `base`
+  // default from the namespace; explicit `options` always wins so a
+  // caller can override either field locally.
+  const resolved = resolveManifestArgument(manifest);
+  const routes = resolved.routes;
+  const manifestNotFound = resolved.notFound;
+  const manifestBase = resolved.base;
+
+  const { hydrate: shouldHydrate, notFound: notFoundOverride, ...rest } =
+    options;
+  const notFoundLoader = notFoundOverride ?? manifestNotFound;
+  const routerOptions = {
+    ...rest,
+    base: rest.base ?? manifestBase,
+  };
 
   // Wrap each lazy route so we can intercept the resolved module and
   // capture any `load` / `action` export into side maps. The router

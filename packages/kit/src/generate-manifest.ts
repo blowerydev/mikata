@@ -19,6 +19,14 @@ export interface GenerateManifestOptions {
    * Manifest produced by `scanRoutes()`.
    */
   manifest: RouteManifest;
+  /**
+   * Vite's resolved `base` config (`config.base`). Emitted as a named
+   * `base` export on the virtual module so consumers (`mount`,
+   * `renderRoute`) can read it instead of re-deriving from
+   * `import.meta.env.BASE_URL` at every call site. Trailing slash is
+   * stripped to match the form the router expects.
+   */
+  base?: string;
 }
 
 /**
@@ -28,7 +36,7 @@ export interface GenerateManifestOptions {
  *   - default export === `routes`.
  */
 export function generateManifestModule(opts: GenerateManifestOptions): string {
-  const { routesDir, manifest } = opts;
+  const { routesDir, manifest, base } = opts;
 
   const layoutById = new Map<string, RouteManifestLayout>();
   for (const layout of manifest.layouts) layoutById.set(layout.id, layout);
@@ -125,12 +133,23 @@ export function generateManifestModule(opts: GenerateManifestOptions): string {
   });
   const apiRoutesExport = `export const apiRoutes = [${apiEntries.join(', ')}];\n`;
 
+  // Emit a `base` constant when one was supplied. Stripping the trailing
+  // slash matches the form `@mikata/router` uses internally and the form
+  // every existing call site was producing manually with
+  // `import.meta.env.BASE_URL.replace(/\/$/, '')`.
+  let baseExport = '';
+  if (typeof base === 'string') {
+    const normalized = base.replace(/\/+$/, '');
+    baseExport = `export const base = ${JSON.stringify(normalized)};\n`;
+  }
+
   return (
     imports.join('\n') +
     (imports.length ? '\n\n' : '') +
     `export const routes = [${topLevel}];\n` +
     apiRoutesExport +
     notFoundExport +
+    baseExport +
     'export default routes;\n'
   );
 }

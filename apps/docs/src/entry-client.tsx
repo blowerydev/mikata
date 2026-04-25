@@ -1,5 +1,5 @@
 import { mount } from '@mikata/kit/client';
-import routes, { notFound } from 'virtual:mikata-routes';
+import * as manifest from 'virtual:mikata-routes';
 import { installThemeVars } from './theme-state';
 
 // Stylesheets are linked via mikataKit's `css` option (vite.config.ts),
@@ -11,10 +11,8 @@ import { installThemeVars } from './theme-state';
 
 installThemeVars();
 
-const base = import.meta.env.BASE_URL.replace(/\/$/, '');
-
 // `mount` internally preloads every `lazy()` on the initial match chain
-// (plus the 404 component) before calling `hydrate()`. No manual
-// pre-resolution needed — the old boilerplate here existed only to
-// sidestep a hydration bug that now lives in kit itself.
-mount(routes, document.getElementById('root')!, { notFound, base });
+// (plus the 404 component) before calling `hydrate()`. Passing the
+// manifest namespace lets it read `notFound` and `base` directly - no
+// per-entry plumbing of `import.meta.env.BASE_URL` or named imports.
+mount(manifest, document.getElementById('root')!);

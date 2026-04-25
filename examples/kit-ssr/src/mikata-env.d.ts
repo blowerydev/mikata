@@ -5,7 +5,8 @@ declare module 'virtual:mikata-routes' {
   export default routes;
   export { routes };
   export const notFound:
-    | (() => Promise<{ default: (props: Record<string, unknown>) => unknown }>)
+    | (() => Promise<{ default: (props: Record<string, unknown>) => Node | null }>)
     | undefined;
   export const apiRoutes: readonly ApiRouteDefinition[];
+  export const base: string | undefined;
 }

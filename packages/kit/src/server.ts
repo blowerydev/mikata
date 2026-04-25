@@ -50,11 +50,13 @@ import { createCookies } from './cookies';
 import { provideCsrfToken, CSRF_GLOBAL } from './csrf';
 import { ensureCsrfToken, verifyCsrfFromRequest } from './csrf-server';
 
-// Canonical `NotFoundModuleLoader` lives on `./client` so the two
+// Canonical `NotFoundModuleLoader` (and `RouteManifestModule`) live on
+// `./client` so the two
 // entries stay in lock-step. Re-exported here because server consumers
 // don't otherwise import from the client module.
-import type { NotFoundModuleLoader } from './client';
-export type { NotFoundModuleLoader };
+import type { NotFoundModuleLoader, RouteManifestModule } from './client';
+import { resolveManifestArgument } from './client';
+export type { NotFoundModuleLoader, RouteManifestModule };
 
 import { _getVerifyHydration } from './verify-flag';
 // Re-export for backwards compatibility — call sites that want to flip
@@ -163,9 +165,21 @@ export interface RenderRouteResult extends RenderToStringResult {
  * that route and loaders run against the post-action state.
  */
 export async function renderRoute(
-  routes: readonly RouteDefinition[],
+  manifest: readonly RouteDefinition[] | RouteManifestModule,
   options: RenderRouteOptions,
 ): Promise<RenderRouteResult> {
+  // Accept either the legacy `routes`-array first argument or the
+  // manifest-namespace form (recommended). In manifest form, `notFound`
+  // and `base` default from the namespace so the call site stays
+  // symmetric with `mount()`. Explicit `options` win on both fields.
+  const resolved = resolveManifestArgument(manifest);
+  const routes = resolved.routes;
+  if (options.notFound === undefined && resolved.notFound !== undefined) {
+    options = { ...options, notFound: resolved.notFound };
+  }
+  if (options.base === undefined && resolved.base !== undefined) {
+    options = { ...options, base: resolved.base };
+  }
   // The compiler hoists `_template()` calls to module scope, so
   // dynamic-importing a lazy route eagerly touches `document`. Install
   // the SSR shim before resolving lazy imports so those top-level

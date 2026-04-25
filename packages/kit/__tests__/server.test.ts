@@ -709,4 +709,48 @@ describe('renderRoute', () => {
     expect(html).toContain('child hi');
     expect(html).not.toContain('[object Object]');
   });
+
+  it('accepts the manifest-namespace form and pulls notFound off it', async () => {
+    const Home = staticNode('<h1>home <!>!</h1>', 'ok');
+    const NotFound = staticNode('<p>missing <!>!</p>', 'page');
+    const manifest = {
+      routes: [{ path: '/', component: () => _createComponent(Home, {}) }],
+      notFound: async () => ({
+        default: () =>
+          _createComponent(NotFound, {}) as unknown as Node | null,
+      }),
+      base: '/app',
+    };
+
+    const { html: hit } = await renderRoute(manifest, { url: '/' });
+    expect(hit).toContain('home ok');
+
+    const { html: miss, status } = await renderRoute(manifest, {
+      url: '/nope',
+    });
+    expect(miss).toContain('missing page');
+    expect(status).toBe(404);
+  });
+
+  it('options.notFound overrides manifest-supplied notFound', async () => {
+    const Home = staticNode('<h1>home <!>!</h1>', 'ok');
+    const FromManifest = staticNode('<p>manifest <!>!</p>', '404');
+    const FromOptions = staticNode('<p>options <!>!</p>', '404');
+    const manifest = {
+      routes: [{ path: '/', component: () => _createComponent(Home, {}) }],
+      notFound: async () => ({
+        default: () =>
+          _createComponent(FromManifest, {}) as unknown as Node | null,
+      }),
+    };
+    const { html } = await renderRoute(manifest, {
+      url: '/nope',
+      notFound: async () => ({
+        default: () =>
+          _createComponent(FromOptions, {}) as unknown as Node | null,
+      }),
+    });
+    expect(html).toContain('options 404');
+    expect(html).not.toContain('manifest 404');
+  });
 });

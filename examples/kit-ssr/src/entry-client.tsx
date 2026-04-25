@@ -1,4 +1,4 @@
 import { mount } from '@mikata/kit/client';
-import routes, { notFound } from 'virtual:mikata-routes';
+import * as manifest from 'virtual:mikata-routes';
 
-mount(routes, document.getElementById('root')!, { notFound });
+mount(manifest, document.getElementById('root')!);

@@ -282,6 +282,7 @@ export default function mikataKit(options: MikataKitOptions = {}): Plugin {
         return generateManifestModule({
           routesDir: routesDirAbs,
           manifest,
+          base: resolvedConfig?.base,
         });
       }
       if (id === RESOLVED_VIRTUAL_NAV_ID) {
