@@ -58,13 +58,10 @@ function flush(): void {
   isFlushing = true;
 
   try {
-    // Sort by priority
-    pendingEffects.sort(
-      (a, b) => PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority]
-    );
-
     // Process all pending effects
-    // New effects may be added during processing (they'll be appended)
+    // New effects may be added during processing. Re-select the next
+    // highest-priority item on every loop so transitive render effects
+    // queued mid-flush still run before any pending user effects.
     let guard = 0;
     while (pendingEffects.length > 0) {
       if (++guard > 1000) {
@@ -83,7 +80,7 @@ function flush(): void {
         );
       }
 
-      const { node } = pendingEffects.shift()!;
+      const { node } = takeNextScheduledEffect();
       if (node._dirty) {
         node._dirty = false;
         node._run?.();
@@ -120,4 +117,19 @@ export function batch(fn: () => void): void {
  */
 export function flushSync(): void {
   flush();
+}
+
+function takeNextScheduledEffect(): ScheduledEffect {
+  let bestIdx = 0;
+  let bestPriority = PRIORITY_ORDER[pendingEffects[0]!.priority];
+
+  for (let i = 1; i < pendingEffects.length; i++) {
+    const priority = PRIORITY_ORDER[pendingEffects[i]!.priority];
+    if (priority < bestPriority) {
+      bestIdx = i;
+      bestPriority = priority;
+    }
+  }
+
+  return pendingEffects.splice(bestIdx, 1)[0]!;
 }

@@ -239,6 +239,32 @@ describe('renderEffect priority', () => {
     // order is preserved within each group.
     expect(order).toEqual(['render-1', 'render-2', 'user-1', 'user-2']);
   });
+
+  it('transitively queued render effects still flush before pending user effects', () => {
+    const [a, setA] = signal(0);
+    const [b, setB] = signal(0);
+    const order: string[] = [];
+
+    renderEffect(() => {
+      if (a() > 0) {
+        order.push('render-a');
+        // Queue another render effect mid-flush.
+        if (b() === 0) setB(1);
+      }
+    });
+
+    effect(() => {
+      if (a() > 0) order.push('user-a');
+    });
+
+    renderEffect(() => {
+      if (b() > 0) order.push('render-b');
+    });
+
+    setA(1);
+    flushSync();
+    expect(order).toEqual(['render-a', 'render-b', 'user-a']);
+  });
 });
 
 describe('scope', () => {
