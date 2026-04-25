@@ -9,3 +9,13 @@ declare module 'virtual:mikata-routes' {
     | undefined;
   export const apiRoutes: readonly ApiRouteDefinition[];
 }
+
+declare module 'virtual:mikata-nav' {
+  import type { NavEntry } from '@mikata/kit';
+  // Emitted entries always carry a resolved `path` (single-route nav
+  // gets it from the manifest, dynamic-route nav must supply its own).
+  type ResolvedNavEntry = NavEntry & { path: string };
+  const nav: readonly ResolvedNavEntry[];
+  export default nav;
+  export { nav };
+}

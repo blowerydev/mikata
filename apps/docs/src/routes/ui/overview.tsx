@@ -2,6 +2,8 @@ import { useMeta } from '@mikata/kit/head';
 import { CodeBlock, highlight } from '../../components/CodeBlock';
 import { Link } from '@mikata/router';
 
+export const nav = { title: 'Overview', section: 'UI', order: 1 };
+
 const setupExample = await highlight(
   `import { ThemeProvider, Button, TextInput } from '@mikata/ui';
 import '@mikata/ui/styles.css';

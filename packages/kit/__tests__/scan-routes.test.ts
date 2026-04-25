@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { scanRoutes, isApiRouteSource } from '../src/scan-routes';
+import {
+  scanRoutes,
+  isApiRouteSource,
+  extractNavExport,
+} from '../src/scan-routes';
 
 describe('scanRoutes: file → path conversion', () => {
   it('maps index.tsx to the parent path', () => {
@@ -185,6 +189,66 @@ describe('isApiRouteSource', () => {
 
   it('rejects a module with no verb exports', () => {
     expect(isApiRouteSource('export function helper() {}')).toBe(false);
+  });
+});
+
+describe('extractNavExport', () => {
+  it('returns null when no nav export is present', () => {
+    expect(extractNavExport('export default function() {}')).toBeNull();
+  });
+
+  it('extracts a simple object literal', () => {
+    const src = `export const nav = { title: 'Button', section: 'UI', order: 2 };`;
+    expect(extractNavExport(src)).toEqual({
+      title: 'Button',
+      section: 'UI',
+      order: 2,
+    });
+  });
+
+  it('handles a TS type annotation between the binding and the value', () => {
+    const src = `export const nav: NavEntry = { title: 'X', section: 'Y' };`;
+    expect(extractNavExport(src)).toEqual({ title: 'X', section: 'Y' });
+  });
+
+  it('extracts an array literal for dynamic-route nav', () => {
+    const src = `
+      export const nav = [
+        { path: '/reference/a', title: '@mikata/a', section: 'Reference', order: 1 },
+        { path: '/reference/b', title: '@mikata/b', section: 'Reference', order: 2 },
+      ];
+    `;
+    expect(extractNavExport(src)).toEqual([
+      { path: '/reference/a', title: '@mikata/a', section: 'Reference', order: 1 },
+      { path: '/reference/b', title: '@mikata/b', section: 'Reference', order: 2 },
+    ]);
+  });
+
+  it('tolerates braces inside string values', () => {
+    const src = `export const nav = { title: 'a } b', section: 'X' };`;
+    expect(extractNavExport(src)).toEqual({ title: 'a } b', section: 'X' });
+  });
+
+  it('returns null for a non-literal expression (variable reference)', () => {
+    // Build-time eval has no scope to read `someTitle` from.
+    const src = `export const nav = { title: someTitle, section: 'X' };`;
+    expect(extractNavExport(src)).toBeNull();
+  });
+
+  it('returns null for a malformed literal', () => {
+    const src = `export const nav = { title: 'X', section: };`;
+    expect(extractNavExport(src)).toBeNull();
+  });
+
+  it('ignores `nav` as a non-export binding', () => {
+    const src = `const nav = { title: 'X' }; export default nav;`;
+    expect(extractNavExport(src)).toBeNull();
+  });
+
+  it('ignores `nav`-prefixed names', () => {
+    // `navigation`, `navBar`, etc. shouldn't match.
+    const src = `export const navigation = { foo: 1 };`;
+    expect(extractNavExport(src)).toBeNull();
   });
 });
 

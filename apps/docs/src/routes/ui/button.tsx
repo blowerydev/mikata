@@ -3,6 +3,8 @@ import { Button } from '@mikata/ui';
 import { CodeBlock, highlight } from '../../components/CodeBlock';
 import { Playground, type PlaygroundControl } from '../../components/Playground';
 
+export const nav = { title: 'Button', section: 'UI', order: 2 };
+
 const usage = await highlight(
   `import { Button } from '@mikata/ui';
 

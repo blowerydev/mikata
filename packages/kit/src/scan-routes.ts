@@ -84,6 +84,41 @@ export interface ScanOptions {
   apiFiles?: ReadonlySet<string>;
 }
 
+/**
+ * Sidebar / nav metadata exported by a route module as `export const nav`.
+ * Optional - routes without a `nav` export are simply omitted from the
+ * generated nav manifest. A page route exports a single entry; a dynamic
+ * route (`[slug].tsx`) exports an array, one entry per concrete URL it
+ * generates.
+ *
+ * `path` is required for array form (the auto-derived path contains a
+ * pattern segment like `:package` and can't represent a single nav item).
+ * For single-entry form, `path` is filled in by the manifest emitter.
+ */
+export interface NavEntry {
+  /** Display text in the sidebar / top nav. */
+  title: string;
+  /**
+   * Section name. The app keeps a separate ordered list of section
+   * names (e.g. `apps/docs/src/sections.ts`) - `section` is matched
+   * against that list, and the order of pages within a section is
+   * controlled by `order` below.
+   */
+  section: string;
+  /**
+   * Order within the section. Lower comes first. Defaults to 0; ties
+   * fall back to source order, which matches the route scanner's
+   * deterministic file sort.
+   */
+  order?: number;
+  /**
+   * Override the auto-derived URL path. Required for dynamic-route
+   * pages, which would otherwise carry an unfillable pattern segment.
+   * Must start with `/` and not contain pattern segments (`:foo`, `*`).
+   */
+  path?: string;
+}
+
 const ROUTE_EXT_RE = /\.(?:tsx|jsx|ts|js|mjs|cjs|mts|cts|mdx)$/;
 const DYNAMIC_SEGMENT_RE = /^\[(\.\.\.)?([A-Za-z_$][\w$]*)\]$/;
 
@@ -203,6 +238,81 @@ export function isApiRouteSource(source: string): boolean {
   return /^[ \t]*export\s+(?:async\s+)?(?:function|const|let|var)\s+(?:GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\b/m.test(
     source,
   );
+}
+
+/**
+ * Pull the value of `export const nav = <object|array literal>;` out of
+ * a route source. Returns `null` when there's no nav export, the export
+ * isn't a literal, or the literal can't be evaluated as JS.
+ *
+ * The literal is evaluated via `new Function('return (...)')` at build
+ * time. That keeps the scanner free of a JS parser dependency at the
+ * cost of a constraint: nav exports must be self-contained literals
+ * (string, number, boolean, null, object, array). References to imports
+ * or other module-scope bindings won't work - the eval has no scope to
+ * read them from. The constraint is documented and the failure mode is
+ * a clean `null`, not a crash.
+ *
+ * Does not validate the shape - the caller is expected to type-narrow
+ * via `NavEntry`. A malformed shape will surface when the consumer
+ * (Sidebar component, etc.) reads a missing field.
+ */
+export function extractNavExport(source: string): unknown {
+  const startMatch = /export\s+const\s+nav\b(?:\s*:\s*[^=]+)?\s*=\s*/.exec(
+    source,
+  );
+  if (!startMatch) return null;
+  const exprStart = startMatch.index + startMatch[0].length;
+  const exprText = consumeBalancedExpression(source, exprStart);
+  if (exprText === null) return null;
+  try {
+    // Build-time eval of a literal. The source is the user's own route
+    // file - no untrusted-input concern. Wrap in parens so an object
+    // literal isn't parsed as a block.
+    return new Function('return (' + exprText + ')')();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Walk an object/array literal starting at `start` and return its
+ * source text up to and including the matching close brace/bracket.
+ * Tracks string and template-literal escapes so braces inside strings
+ * don't throw off the depth counter. Returns `null` if the literal
+ * isn't balanced (truncated source, etc.).
+ */
+function consumeBalancedExpression(
+  source: string,
+  start: number,
+): string | null {
+  const first = source[start];
+  if (first !== '{' && first !== '[') return null;
+  const open = first;
+  const close = first === '{' ? '}' : ']';
+  let depth = 0;
+  let inString: string | null = null;
+  for (let i = start; i < source.length; i++) {
+    const c = source[i];
+    if (inString !== null) {
+      if (c === '\\') {
+        i++;
+        continue;
+      }
+      if (c === inString) inString = null;
+      continue;
+    }
+    if (c === '"' || c === "'" || c === '`') {
+      inString = c;
+      continue;
+    }
+    if (c === open) depth++;
+    else if (c === close) {
+      depth--;
+      if (depth === 0) return source.slice(start, i + 1);
+    }
+  }
+  return null;
 }
 
 function toPathSegment(raw: string): string {

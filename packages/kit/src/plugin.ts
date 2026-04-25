@@ -19,8 +19,15 @@ import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import type { Plugin, ResolvedConfig, ViteDevServer } from 'vite';
-import { scanRoutes, isApiRouteSource, type RouteManifest } from './scan-routes';
+import {
+  scanRoutes,
+  isApiRouteSource,
+  extractNavExport,
+  type NavEntry,
+  type RouteManifest,
+} from './scan-routes';
 import { generateManifestModule } from './generate-manifest';
+import { generateNavModule } from './generate-nav';
 import { createSsrMiddleware } from './middleware';
 import { prerender, type PrerenderOptions } from './prerender';
 import {
@@ -114,9 +121,11 @@ export interface MikataKitOptions {
 }
 
 const VIRTUAL_ID = 'virtual:mikata-routes';
+const VIRTUAL_NAV_ID = 'virtual:mikata-nav';
 // Vite convention: resolved id must start with a `\0` so other plugins
 // know not to try and read it from disk.
 const RESOLVED_VIRTUAL_ID = '\0' + VIRTUAL_ID;
+const RESOLVED_VIRTUAL_NAV_ID = '\0' + VIRTUAL_NAV_ID;
 
 const DEFAULT_EXTENSIONS = ['.tsx', '.jsx', '.ts', '.js', '.mdx'] as const;
 
@@ -159,20 +168,29 @@ export default function mikataKit(options: MikataKitOptions = {}): Plugin {
   let routesDirAbs = '';
   let resolvedConfig: ResolvedConfig | undefined;
 
-  async function readManifest(): Promise<RouteManifest> {
+  interface ScannedRoutes {
+    manifest: RouteManifest;
+    navByFile: Map<string, NavEntry | NavEntry[]>;
+  }
+
+  async function readManifest(): Promise<ScannedRoutes> {
     const files: string[] = [];
     await walk(routesDirAbs, routesDirAbs, files, extensions);
     // Classify API routes by reading each file and checking the
-    // "no-default-export + at least one HTTP verb export" heuristic.
-    // Done here (not in scanRoutes) so the scanner stays a pure
+    // "no-default-export + at least one HTTP verb export" heuristic,
+    // and pull out any `export const nav = ...` literal in the same
+    // pass. Done here (not in scanRoutes) so the scanner stays a pure
     // function of its filename inputs.
     const apiFiles = new Set<string>();
+    const navByFile = new Map<string, NavEntry | NavEntry[]>();
     await Promise.all(
       files.map(async (rel) => {
         const abs = path.join(routesDirAbs, rel);
         try {
           const source = await fs.readFile(abs, 'utf8');
           if (isApiRouteSource(source)) apiFiles.add(rel);
+          const nav = extractNavExport(source);
+          if (nav) navByFile.set(rel, nav as NavEntry | NavEntry[]);
         } catch {
           // A transient read failure (e.g. file deleted between walk
           // and read) just means we treat it as a page route. The next
@@ -180,7 +198,7 @@ export default function mikataKit(options: MikataKitOptions = {}): Plugin {
         }
       }),
     );
-    return scanRoutes(files, { apiFiles });
+    return { manifest: scanRoutes(files, { apiFiles }), navByFile };
   }
 
   return {
@@ -223,8 +241,13 @@ export default function mikataKit(options: MikataKitOptions = {}): Plugin {
       const watcher = s.watcher;
       const onChange = (changedPath: string) => {
         if (!changedPath.startsWith(routesDirAbs)) return;
-        const mod = s.moduleGraph.getModuleById(RESOLVED_VIRTUAL_ID);
-        if (mod) s.moduleGraph.invalidateModule(mod);
+        const routesMod = s.moduleGraph.getModuleById(RESOLVED_VIRTUAL_ID);
+        if (routesMod) s.moduleGraph.invalidateModule(routesMod);
+        // The nav module is derived from the same scan, so any route
+        // file change might add/remove/rename a nav entry. Invalidate
+        // alongside the routes module so importers see consistent state.
+        const navMod = s.moduleGraph.getModuleById(RESOLVED_VIRTUAL_NAV_ID);
+        if (navMod) s.moduleGraph.invalidateModule(navMod);
         // Nudge the client — the list of routes changed.
         s.ws.send({ type: 'full-reload' });
       };
@@ -249,16 +272,23 @@ export default function mikataKit(options: MikataKitOptions = {}): Plugin {
 
     resolveId(id) {
       if (id === VIRTUAL_ID) return RESOLVED_VIRTUAL_ID;
+      if (id === VIRTUAL_NAV_ID) return RESOLVED_VIRTUAL_NAV_ID;
       return null;
     },
 
     async load(id) {
-      if (id !== RESOLVED_VIRTUAL_ID) return null;
-      const manifest = await readManifest();
-      return generateManifestModule({
-        routesDir: routesDirAbs,
-        manifest,
-      });
+      if (id === RESOLVED_VIRTUAL_ID) {
+        const { manifest } = await readManifest();
+        return generateManifestModule({
+          routesDir: routesDirAbs,
+          manifest,
+        });
+      }
+      if (id === RESOLVED_VIRTUAL_NAV_ID) {
+        const { manifest, navByFile } = await readManifest();
+        return generateNavModule({ manifest, navByFile }).source;
+      }
+      return null;
     },
 
     // Inject framework `<head>` infrastructure into index.html:
@@ -494,6 +524,6 @@ function toPosix(p: string): string {
   return p.split(path.sep).join('/');
 }
 
-export { scanRoutes, generateManifestModule };
-export type { RouteManifest, RouteManifestEntry } from './scan-routes';
+export { scanRoutes, generateManifestModule, generateNavModule, extractNavExport };
+export type { RouteManifest, RouteManifestEntry, NavEntry } from './scan-routes';
 export type { ColorSchemeInitOptions } from './html-setup';

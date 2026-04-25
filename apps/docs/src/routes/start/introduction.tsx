@@ -2,6 +2,8 @@ import { useMeta } from '@mikata/kit/head';
 import { CodeBlock, highlight } from '../../components/CodeBlock';
 import { Link } from '@mikata/router';
 
+export const nav = { title: 'Introduction', section: 'Start', order: 1 };
+
 const mentalModel = await highlight(
   `import { signal, computed } from 'mikata';
 

@@ -1,6 +1,8 @@
 import { useMeta } from '@mikata/kit/head';
 import { CodeBlock, highlight } from '../../components/CodeBlock';
 
+export const nav = { title: 'Reactivity', section: 'Core', order: 1 };
+
 const signalExample = await highlight(
   `import { signal } from '@mikata/reactivity';
 

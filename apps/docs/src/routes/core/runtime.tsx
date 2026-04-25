@@ -1,6 +1,8 @@
 import { useMeta } from '@mikata/kit/head';
 import { CodeBlock, highlight } from '../../components/CodeBlock';
 
+export const nav = { title: 'Runtime & JSX', section: 'Core', order: 2 };
+
 const setupExample = await highlight(
   `function Counter() {
   const [count, setCount] = signal(0);

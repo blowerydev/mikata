@@ -20,10 +20,11 @@
 export { default as mikataKit } from './plugin';
 export type { MikataKitOptions } from './plugin';
 export type { ColorSchemeInitOptions } from './html-setup';
-export type { RouteManifest, RouteManifestEntry } from './scan-routes';
+export type { RouteManifest, RouteManifestEntry, NavEntry } from './scan-routes';
 
-export { scanRoutes } from './scan-routes';
+export { scanRoutes, extractNavExport } from './scan-routes';
 export { generateManifestModule } from './generate-manifest';
+export { generateNavModule } from './generate-nav';
 
 // NOTE: the loader API (`useLoaderData`, `provideLoaderData`,
 // `LoadContext`) lives at `@mikata/kit/loader`. Keeping it off the
