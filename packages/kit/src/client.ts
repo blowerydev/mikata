@@ -25,7 +25,7 @@
  * consumers in the new tree see up-to-date data.
  */
 
-import { hydrate, render, lazy } from '@mikata/runtime';
+import { hydrate, render, lazy, type HydrateDeferStrategy } from '@mikata/runtime';
 import { effect } from '@mikata/reactivity';
 import {
   createRouter,
@@ -118,6 +118,14 @@ export interface MountOptions extends Omit<RouterOptions, 'routes' | 'notFound'>
    */
   hydrate?: boolean;
   /**
+   * Wait for a readiness signal before hydrating - forwarded as
+   * `hydrate({ defer })`. `'css'` is the dev-mode default elsewhere
+   * because Vite serves JS and CSS independently and a measure-on-mount
+   * component (e.g. a sliding indicator) reads pre-CSS layout. Ignored
+   * on plain `render()` mounts (no SSR markup to hydrate).
+   */
+  defer?: HydrateDeferStrategy;
+  /**
    * 404 component loader from the virtual manifest (i.e.
    * `import { notFound } from 'virtual:mikata-routes'`). When present,
    * it's wrapped with `lazy()` and passed to the router so any
@@ -154,7 +162,7 @@ export function mount(
   const manifestNotFound = resolved.notFound;
   const manifestBase = resolved.base;
 
-  const { hydrate: shouldHydrate, notFound: notFoundOverride, ...rest } =
+  const { hydrate: shouldHydrate, defer: deferStrategy, notFound: notFoundOverride, ...rest } =
     options;
   const notFoundLoader = notFoundOverride ?? manifestNotFound;
   const routerOptions = {
@@ -257,8 +265,19 @@ export function mount(
     .filter((r) => typeof r.lazy === 'function');
   const needsNotFound =
     !!(notFoundComponent && initial.matches.length === 0);
+  // `defer` only applies to hydrate. render() clears the container and
+  // re-renders synchronously - there's no SSR markup to wait for, and
+  // delaying a fresh render only widens the visible empty-shell window.
+  const attach = async (): Promise<() => void> => {
+    if (!wantsHydrate) return render(App, container);
+    if (deferStrategy) {
+      return hydrate(App, container, { defer: deferStrategy });
+    }
+    return hydrate(App, container);
+  };
+
   let ready: Promise<void>;
-  if (matchedLazyRoutes.length === 0 && !needsNotFound) {
+  if (matchedLazyRoutes.length === 0 && !needsNotFound && !deferStrategy) {
     // Nothing to wait on - attach synchronously so tests, SPA dev mode,
     // and any code that expects routeOutlet() to have rendered before
     // the next tick see consistent behaviour.
@@ -280,10 +299,8 @@ export function mount(
     const preloadNotFound = needsNotFound
       ? notFoundComponent!.preload()
       : Promise.resolve();
-    ready = Promise.all([preloadLazys, preloadNotFound]).then(() => {
-      renderDispose = wantsHydrate
-        ? hydrate(App, container)
-        : render(App, container);
+    ready = Promise.all([preloadLazys, preloadNotFound]).then(async () => {
+      renderDispose = await attach();
     });
   }
 

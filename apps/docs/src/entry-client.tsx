@@ -15,4 +15,11 @@ installThemeVars();
 // (plus the 404 component) before calling `hydrate()`. Passing the
 // manifest namespace lets it read `notFound` and `base` directly - no
 // per-entry plumbing of `import.meta.env.BASE_URL` or named imports.
-mount(manifest, document.getElementById('root')!);
+//
+// `defer: 'css'` waits for every linked stylesheet to finish loading
+// before adopting the SSR markup. In Vite dev the JS bundle outraces
+// the docs stylesheet, so any component that measures layout on first
+// paint (a sliding indicator, a virtualised list reading offsetTop)
+// would otherwise read pre-CSS values. Production bundles inline the
+// critical CSS so this resolves on the same tick.
+mount(manifest, document.getElementById('root')!, { defer: 'css' });

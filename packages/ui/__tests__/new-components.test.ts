@@ -421,6 +421,21 @@ describe('SegmentedControl', () => {
     const el = SegmentedControl({ data: ['A', 'B'], fullWidth: true });
     expect(el.classList.contains('mkt-segmented-control--full-width')).toBe(true);
   });
+
+  it('writes --mkt-sc-count and --mkt-sc-index on the wrapper', () => {
+    const el = SegmentedControl({ data: ['A', 'B', 'C'], defaultValue: 'B' });
+    expect(el.style.getPropertyValue('--mkt-sc-count')).toBe('3');
+    expect(el.style.getPropertyValue('--mkt-sc-index')).toBe('1');
+  });
+
+  it('updates --mkt-sc-index on change without measuring layout', () => {
+    const el = SegmentedControl({ data: ['A', 'B', 'C'] });
+    expect(el.style.getPropertyValue('--mkt-sc-index')).toBe('0');
+    const inputs = el.querySelectorAll('input[type="radio"]') as NodeListOf<HTMLInputElement>;
+    inputs[2].checked = true;
+    inputs[2].dispatchEvent(new Event('change'));
+    expect(el.style.getPropertyValue('--mkt-sc-index')).toBe('2');
+  });
 });
 
 // ── Breadcrumb ────────────────────────────────────

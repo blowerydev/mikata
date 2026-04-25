@@ -78,7 +78,15 @@ export type { LazyOptions } from './lazy';
 
 // Render
 export { render, hydrate } from './render';
-export type { RenderOptions } from './render';
+export type { RenderOptions, HydrateOptions } from './render';
+
+// Deferred-hydration helpers - usable directly or via hydrate({ defer })
+export {
+  whenStylesheetsReady,
+  whenLoad,
+  whenIdle,
+} from './defer';
+export type { HydrateDeferStrategy } from './defer';
 
 // Dev-mode error overlay
 export {

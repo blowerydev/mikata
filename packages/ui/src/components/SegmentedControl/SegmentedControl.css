@@ -1,26 +1,40 @@
+/* SegmentedControl - CSS-grid wrapper with a CSS-variable-driven
+   sliding indicator. The component sets two custom properties on the
+   wrapper:
+     --mkt-sc-count : total columns (set once at construction)
+     --mkt-sc-index : active column index (updated on change)
+   Width and X-translate of the indicator come from these vars. No JS
+   measurement, no rAF, no ResizeObserver. */
+
 .mkt-segmented-control {
-  display: inline-flex;
+  display: inline-grid;
+  grid-template-columns: repeat(var(--mkt-sc-count, 1), 1fr);
   position: relative;
   background-color: var(--mkt-color-gray-1, #f1f3f5);
   border-radius: var(--mkt-radius-sm);
   padding: 3px;
   font-family: var(--mkt-font-family);
+  /* RTL multiplier flips the indicator's translate sign when the
+     wrapper inherits dir="rtl". CSS calc supports the multiplication. */
+  --mkt-sc-rtl-mult: 1;
 }
 
 [data-mkt-color-scheme="dark"] .mkt-segmented-control {
   background-color: rgba(255, 255, 255, 0.07);
 }
 
+[dir="rtl"] .mkt-segmented-control,
+.mkt-segmented-control[dir="rtl"] {
+  --mkt-sc-rtl-mult: -1;
+}
+
 .mkt-segmented-control--full-width {
-  display: flex;
+  display: grid;
+  width: 100%;
 }
 
-.mkt-segmented-control--full-width .mkt-segmented-control__label {
-  flex: 1;
-  text-align: center;
-}
-
-/* Hidden radio inputs */
+/* Hidden radio inputs - kept in DOM for accessibility (screen readers,
+   focus-visible) but visually clipped. Labels are the click surface. */
 .mkt-segmented-control__input {
   position: absolute;
   width: 1px;
@@ -33,7 +47,6 @@
   border: 0;
 }
 
-/* Label (acts as the clickable area) */
 .mkt-segmented-control__label {
   position: relative;
   z-index: 1;
@@ -49,43 +62,40 @@
   transition: color var(--mkt-transition-duration) var(--mkt-transition-timing);
 }
 
-/* Size */
 .mkt-segmented-control[data-size="xs"] .mkt-segmented-control__label { padding: 4px 8px;  font-size: var(--mkt-font-size-xs); }
 .mkt-segmented-control[data-size="sm"] .mkt-segmented-control__label { padding: 5px 12px; font-size: var(--mkt-font-size-xs); }
 .mkt-segmented-control[data-size="md"] .mkt-segmented-control__label { padding: 7px 16px; font-size: var(--mkt-font-size-sm); }
 .mkt-segmented-control[data-size="lg"] .mkt-segmented-control__label { padding: 9px 20px; font-size: var(--mkt-font-size-sm); }
 .mkt-segmented-control[data-size="xl"] .mkt-segmented-control__label { padding: 11px 24px; font-size: var(--mkt-font-size-md); }
 
-.mkt-segmented-control__label:hover:not([data-disabled]) {
-  color: var(--mkt-color-text);
-}
+.mkt-segmented-control__label:hover:not([data-disabled]) { color: var(--mkt-color-text); }
+.mkt-segmented-control__label[data-active]              { color: var(--mkt-color-text); }
+.mkt-segmented-control__label[data-disabled]            { opacity: 0.5; cursor: not-allowed; }
 
-.mkt-segmented-control__label[data-active] {
-  color: var(--mkt-color-text);
-}
-
-.mkt-segmented-control__label[data-disabled] {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* Focus on radio shows on label */
 .mkt-segmented-control__input:focus-visible + .mkt-segmented-control__label {
   outline: 2px solid var(--mkt-color-focus-ring);
   outline-offset: 2px;
 }
 
-/* Sliding indicator */
+/* Sliding indicator. Width = one grid column. Position = active index
+   times one column width via `translateX(N * 100%)` where 100% is the
+   indicator's own width. Both values are pure CSS, derived from the
+   two custom properties the component writes onto the wrapper. */
 .mkt-segmented-control__indicator {
   position: absolute;
   top: 3px;
-  inset-inline-start: 0;
-  height: calc(100% - 6px);
+  bottom: 3px;
+  /* Inset from the wrapper's padding edge (3px on each side) so the
+     indicator visually aligns with the labels' grid columns. */
+  inset-inline-start: 3px;
+  width: calc((100% - 6px) / var(--mkt-sc-count, 1));
+  transform: translateX(calc(var(--mkt-sc-index, 0) * 100% * var(--mkt-sc-rtl-mult, 1)));
   background-color: var(--mkt-color-bg, #fff);
   border-radius: var(--mkt-radius-xs);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  transition: transform 200ms ease, width 200ms ease;
+  transition: transform 200ms ease;
   z-index: 0;
+  pointer-events: none;
 }
 
 [data-mkt-color-scheme="dark"] .mkt-segmented-control__indicator {

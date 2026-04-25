@@ -88,3 +88,44 @@ export function normalizeCssHref(href: string): string {
   if (href.startsWith('./')) return '/' + href.slice(2);
   return '/' + href;
 }
+
+/**
+ * A self-contained function meant to run synchronously in `<head>`
+ * before any other JS or CSS paints. Serialized via
+ * `Function.prototype.toString()` and inlined into the SSR HTML, so:
+ *
+ *   - No closures over outer scope. The serialized text is the only
+ *     thing that ships - if it references `myFlag` declared in the
+ *     module above it, the runtime will throw `ReferenceError`.
+ *   - No module imports, no TS-only helpers. Plain ES syntax only.
+ *   - Synchronous. `await` suspends HTML parsing and undoes the whole
+ *     point of running before paint.
+ *   - Keep it small. This is on the critical path between
+ *     `<head>` open and the first CSS link.
+ *
+ * The classic use case is mirroring state the server can't see
+ * (localStorage, navigator features, viewport DPR) into `<html>`
+ * attributes so the SSR markup matches what the client would compute
+ * and the user never sees a flash through the SSR default.
+ */
+export type PreHydrationScript = () => void;
+
+/**
+ * Serialize a single pre-hydration function as an inline IIFE. The
+ * caller is responsible for the constraints in `PreHydrationScript`.
+ */
+export function buildPreHydrationScript(fn: PreHydrationScript): string {
+  return `(${fn.toString()})();`;
+}
+
+/**
+ * Serialize a list of pre-hydration functions as a single concatenated
+ * inline script. Each runs in declaration order. Returning a single
+ * combined `<script>` body keeps the parser-blocking surface minimal -
+ * one script tag, no extra HTTP / parse cost per entry.
+ */
+export function buildPreHydrationScripts(
+  fns: ReadonlyArray<PreHydrationScript>,
+): string {
+  return fns.map(buildPreHydrationScript).join('');
+}

@@ -19,7 +19,7 @@
  */
 export { default as mikataKit } from './plugin';
 export type { MikataKitOptions } from './plugin';
-export type { ColorSchemeInitOptions } from './html-setup';
+export type { ColorSchemeInitOptions, PreHydrationScript } from './html-setup';
 export type { RouteManifest, RouteManifestEntry, NavEntry } from './scan-routes';
 
 export { scanRoutes, extractNavExport } from './scan-routes';

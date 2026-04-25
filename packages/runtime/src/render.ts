@@ -2,11 +2,12 @@
  * Entry point for mounting a Mikata application to the DOM.
  */
 
-import { createScope } from '@mikata/reactivity';
+import { createScope, type Scope } from '@mikata/reactivity';
 import { installDevTools } from './devtools';
 import { installErrorOverlay } from './error-overlay';
 import { isSSR } from './env';
 import { beginHydration, endHydration } from './adopt';
+import { resolveDefer, type HydrateDeferStrategy } from './defer';
 
 declare const __DEV__: boolean;
 
@@ -21,6 +22,20 @@ export interface RenderOptions {
    * `window.__MIKATA_ERROR_OVERLAY__ = false` before the first render.
    */
   errorOverlay?: boolean;
+}
+
+export interface HydrateOptions extends RenderOptions {
+  /**
+   * Wait for a readiness signal before walking the SSR DOM. `'css'`
+   * waits for every `<link rel="stylesheet">` to load - the right
+   * default in dev where the JS bundle can outrun the stylesheet.
+   * `'load'` waits for `window.load`; `'idle'` waits for
+   * `requestIdleCallback`; a function lets callers plug in arbitrary
+   * readiness logic. When set, hydrate() returns a `Promise<dispose>`
+   * instead of `dispose`. Devtools and the error overlay are installed
+   * synchronously so they're available during the deferred window.
+   */
+  defer?: HydrateDeferStrategy;
 }
 
 /**
@@ -75,27 +90,50 @@ export function render(
  * Usage:
  *   // in HTML: <div id="root"><!-- server output --></div>
  *   hydrate(() => <App />, document.getElementById('root')!);
+ *
+ *   // Defer until stylesheets are parsed (recommended in dev):
+ *   await hydrate(() => <App />, root, { defer: 'css' });
  */
 export function hydrate(
   component: () => Node,
   container: HTMLElement,
-  options: RenderOptions = {},
-): () => void {
-  if (__DEV__ && !isSSR() && typeof window !== 'undefined') {
-    if (!devToolsInstalled) {
-      devToolsInstalled = true;
-      installDevTools();
-    }
-    const globalFlag = (window as unknown as { __MIKATA_ERROR_OVERLAY__?: boolean }).__MIKATA_ERROR_OVERLAY__;
-    const overlayEnabled = options.errorOverlay !== false && globalFlag !== false;
-    if (overlayEnabled && !errorOverlayInstalled) {
-      errorOverlayInstalled = true;
-      installErrorOverlay();
-    }
-  }
+  options?: RenderOptions,
+): () => void;
+export function hydrate(
+  component: () => Node,
+  container: HTMLElement,
+  options: HydrateOptions & { defer: HydrateDeferStrategy },
+): Promise<() => void>;
+export function hydrate(
+  component: () => Node,
+  container: HTMLElement,
+  options: HydrateOptions = {},
+): (() => void) | Promise<() => void> {
+  installHydrateDevHelpers(options);
 
+  if (options.defer) {
+    return resolveDefer(options.defer).then(() => doHydrate(component, container));
+  }
+  return doHydrate(component, container);
+}
+
+function installHydrateDevHelpers(options: HydrateOptions): void {
+  if (!__DEV__ || isSSR() || typeof window === 'undefined') return;
+  if (!devToolsInstalled) {
+    devToolsInstalled = true;
+    installDevTools();
+  }
+  const globalFlag = (window as unknown as { __MIKATA_ERROR_OVERLAY__?: boolean }).__MIKATA_ERROR_OVERLAY__;
+  const overlayEnabled = options.errorOverlay !== false && globalFlag !== false;
+  if (overlayEnabled && !errorOverlayInstalled) {
+    errorOverlayInstalled = true;
+    installErrorOverlay();
+  }
+}
+
+function doHydrate(component: () => Node, container: HTMLElement): () => void {
   beginHydration(container);
-  let scope;
+  let scope: Scope | undefined;
   try {
     scope = createScope(() => {
       // Component returns the root node — during hydration this IS the
@@ -107,7 +145,7 @@ export function hydrate(
   }
 
   return () => {
-    scope.dispose();
+    scope?.dispose();
     container.textContent = '';
   };
 }

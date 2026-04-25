@@ -32,6 +32,8 @@ import { createSsrMiddleware } from './middleware';
 import { prerender, type PrerenderOptions } from './prerender';
 import {
   buildColorSchemeInitScript,
+  buildPreHydrationScripts,
+  type PreHydrationScript,
   normalizeCssHref,
   type ColorSchemeInitOptions,
 } from './html-setup';
@@ -118,6 +120,25 @@ export interface MikataKitOptions {
    * head-prepend slot - ahead of every CSS link in the template.
    */
   colorSchemeInit?: boolean | ColorSchemeInitOptions;
+  /**
+   * Pre-hydration scripts inlined into `<head>` before any stylesheet
+   * and before the client bundle loads. Each function is serialized
+   * via `Function.prototype.toString()` and runs synchronously during
+   * HTML parse, so it can mirror state the server can't see
+   * (localStorage, navigator features, viewport DPR) into `<html>`
+   * attributes / CSS variables before first paint.
+   *
+   * The serialization model is brittle: functions MUST be
+   * self-contained (no closures, no module imports, no TS helpers,
+   * no `await`). Keep them small - this is parser-blocking content on
+   * the critical path. See the `PreHydrationScript` type doc in
+   * `@mikata/kit/html-setup` for the full rules.
+   *
+   * Runs in declaration order, after `colorSchemeInit` (so the theme
+   * attribute is already on `<html>` by the time custom scripts read
+   * `document.documentElement.dataset.mktColorScheme`).
+   */
+  preHydrate?: PreHydrationScript | readonly PreHydrationScript[];
 }
 
 const VIRTUAL_ID = 'virtual:mikata-routes';
@@ -162,6 +183,7 @@ export default function mikataKit(options: MikataKitOptions = {}): Plugin {
       ? (options.css as readonly string[])
       : [options.css as string];
   const colorSchemeInit = normalizeColorSchemeInit(options.colorSchemeInit);
+  const preHydrateScripts = normalizePreHydrate(options.preHydrate);
 
   let server: ViteDevServer | undefined;
   let projectRoot = '';
@@ -312,7 +334,13 @@ export default function mikataKit(options: MikataKitOptions = {}): Plugin {
     transformIndexHtml: {
       order: 'pre' as const,
       handler(html: string) {
-        if (!colorSchemeInit && cssEntries.length === 0) return;
+        if (
+          !colorSchemeInit &&
+          preHydrateScripts.length === 0 &&
+          cssEntries.length === 0
+        ) {
+          return;
+        }
         const tags: Array<{
           tag: string;
           attrs?: Record<string, string>;
@@ -323,6 +351,16 @@ export default function mikataKit(options: MikataKitOptions = {}): Plugin {
           tags.push({
             tag: 'script',
             children: buildColorSchemeInitScript(colorSchemeInit),
+            injectTo: 'head-prepend',
+          });
+        }
+        if (preHydrateScripts.length > 0) {
+          // One combined <script> tag rather than N: each tag adds
+          // parser overhead and a separate execution slot. Concatenated
+          // bodies keep the critical-path budget tight.
+          tags.push({
+            tag: 'script',
+            children: buildPreHydrationScripts(preHydrateScripts),
             injectTo: 'head-prepend',
           });
         }
@@ -467,6 +505,19 @@ function normalizeColorSchemeInit(
   if (!raw) return null;
   if (raw === true) return {};
   return raw;
+}
+
+/**
+ * Coerce the `preHydrate` option into an array. Accepts a single
+ * function (the common case - one script per concern) or a list. The
+ * empty array short-circuits the head-prepend path entirely so apps
+ * that never opt in pay zero cost.
+ */
+function normalizePreHydrate(
+  raw: MikataKitOptions['preHydrate'],
+): readonly PreHydrationScript[] {
+  if (!raw) return [];
+  return Array.isArray(raw) ? raw : [raw as PreHydrationScript];
 }
 
 /**

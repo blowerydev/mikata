@@ -169,4 +169,50 @@ describe('mikataKit() transformIndexHtml', () => {
     expect(result.tags[0]!.tag).toBe('script');
     expect(result.tags[1]!.tag).toBe('link');
   });
+
+  it('inlines a single preHydrate function as an IIFE', () => {
+    const plugin = mikataKit({
+      preHydrate: () => {
+        document.documentElement.dataset.touch = 'pin';
+      },
+    });
+    const result = callTransform(plugin)!;
+    expect(result.tags).toHaveLength(1);
+    expect(result.tags[0]!.tag).toBe('script');
+    expect(result.tags[0]!.injectTo).toBe('head-prepend');
+    const body = result.tags[0]!.children!;
+    expect(body).toMatch(/^\(.+\)\(\);$/s);
+    expect(body).toContain('document.documentElement.dataset.touch');
+  });
+
+  it('concatenates multiple preHydrate functions into one script tag', () => {
+    const plugin = mikataKit({
+      preHydrate: [
+        () => { document.documentElement.dataset.a = '1'; },
+        () => { document.documentElement.dataset.b = '2'; },
+      ],
+    });
+    const result = callTransform(plugin)!;
+    expect(result.tags).toHaveLength(1);
+    const body = result.tags[0]!.children!;
+    expect(body).toContain('dataset.a');
+    expect(body).toContain('dataset.b');
+    // Two IIFEs run back-to-back inside the same <script>.
+    expect(body.match(/\)\(\);/g)!.length).toBe(2);
+  });
+
+  it('orders preHydrate after colorSchemeInit but before css links', () => {
+    const plugin = mikataKit({
+      colorSchemeInit: true,
+      preHydrate: () => { document.documentElement.dataset.dpr = String(window.devicePixelRatio); },
+      css: ['./src/styles.css'],
+    });
+    const result = callTransform(plugin)!;
+    expect(result.tags).toHaveLength(3);
+    expect(result.tags[0]!.tag).toBe('script');
+    expect(result.tags[0]!.children).toContain('prefers-color-scheme');
+    expect(result.tags[1]!.tag).toBe('script');
+    expect(result.tags[1]!.children).toContain('devicePixelRatio');
+    expect(result.tags[2]!.tag).toBe('link');
+  });
 });
