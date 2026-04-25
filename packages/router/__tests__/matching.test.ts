@@ -146,4 +146,32 @@ describe('matchRouteTree()', () => {
     expect(result).not.toBeNull();
     expect(result![1].params.id).toBe('hello world');
   });
+
+  it('returns null for malformed percent-encoding instead of throwing URIError', () => {
+    const routes = makeRoutes();
+    // `%E0%A4%A` is a truncated UTF-8 multi-byte sequence. Native
+    // `decodeURIComponent` throws URIError on this; the matcher must
+    // treat it as no-match (the framework surfaces a 404) rather than
+    // letting the error escape into the 500 path.
+    expect(matchRouteTree('/users/%E0%A4%A', routes)).toBeNull();
+    // A bare `%` with no hex digits is the simplest malformed form.
+    expect(matchRouteTree('/users/%', routes)).toBeNull();
+    // Stray `%G0` with non-hex digits.
+    expect(matchRouteTree('/users/foo%G0', routes)).toBeNull();
+  });
+
+  it('matchPath returns null for malformed percent-encoding', () => {
+    const compiled = compilePath('/users/:id');
+    const route: NormalizedRoute = {
+      path: '/users/:id',
+      fullPath: '/users/:id',
+      segments: parseSegments('/users/:id'),
+      regex: compiled.regex,
+      paramNames: compiled.paramNames,
+      children: [],
+      component: () => document.createElement('div'),
+    };
+    expect(matchPath('/users/%', route)).toBeNull();
+    expect(matchPath('/users/abc', route)).toEqual({ id: 'abc' });
+  });
 });

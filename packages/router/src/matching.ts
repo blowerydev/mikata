@@ -85,6 +85,40 @@ function escapeRegex(str: string): string {
 // Match a pathname against a single route (exact match)
 // ---------------------------------------------------------------------------
 
+/**
+ * `decodeURIComponent` wrapper that returns `null` on `URIError`.
+ * Malformed percent-encoding in the URL (a stray `%` or `%G0` from a
+ * crawler / fuzzer) would otherwise throw straight through the matcher
+ * into framework-level 500 handling. Returning null lets the caller
+ * treat the URL as no-match (the right answer: malformed input is a
+ * 404, not a server error).
+ */
+function safeDecode(s: string): string | null {
+  try {
+    return decodeURIComponent(s);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Decode every captured group into `params`, returning `null` if any
+ * group has invalid percent-encoding. Bails on the first failure so
+ * routes with multiple params aren't half-populated.
+ */
+function decodeParams(
+  paramNames: readonly string[],
+  match: RegExpExecArray,
+  out: Record<string, string>,
+): boolean {
+  for (let i = 0; i < paramNames.length; i++) {
+    const decoded = safeDecode(match[i + 1]);
+    if (decoded === null) return false;
+    out[paramNames[i]] = decoded;
+  }
+  return true;
+}
+
 export function matchPath(
   pathname: string,
   route: NormalizedRoute
@@ -93,9 +127,7 @@ export function matchPath(
   if (!match) return null;
 
   const params: Record<string, string> = {};
-  for (let i = 0; i < route.paramNames.length; i++) {
-    params[route.paramNames[i]] = decodeURIComponent(match[i + 1]);
-  }
+  if (!decodeParams(route.paramNames, match, params)) return null;
   return params;
 }
 
@@ -178,9 +210,7 @@ function matchChildRoute(
     if (!prefixMatch) return null;
 
     const params: Record<string, string> = {};
-    for (let i = 0; i < prefixParamNames.length; i++) {
-      params[prefixParamNames[i]] = decodeURIComponent(prefixMatch[i + 1]);
-    }
+    if (!decodeParams(prefixParamNames, prefixMatch, params)) return null;
 
     const matched = prefixMatch[0];
     const childRemaining = remaining.slice(matched.length) || '/';
@@ -196,9 +226,7 @@ function matchChildRoute(
     const exactMatch = regex.exec(remaining);
     if (exactMatch && (child.component || child.lazy)) {
       const exactParams: Record<string, string> = {};
-      for (let i = 0; i < paramNames.length; i++) {
-        exactParams[paramNames[i]] = decodeURIComponent(exactMatch[i + 1]);
-      }
+      if (!decodeParams(paramNames, exactMatch, exactParams)) return null;
       return [{ route: child, params: exactParams }];
     }
 
@@ -210,9 +238,7 @@ function matchChildRoute(
   if (!match) return null;
 
   const params: Record<string, string> = {};
-  for (let i = 0; i < paramNames.length; i++) {
-    params[paramNames[i]] = decodeURIComponent(match[i + 1]);
-  }
+  if (!decodeParams(paramNames, match, params)) return null;
   return [{ route: child, params }];
 }
 
@@ -282,9 +308,7 @@ function matchAsPrefix(
   if (!match) return null;
 
   const params: Record<string, string> = {};
-  for (let i = 0; i < paramNames.length; i++) {
-    params[paramNames[i]] = decodeURIComponent(match[i + 1]);
-  }
+  if (!decodeParams(paramNames, match, params)) return null;
 
   const matched = match[0];
   const remaining = pathname.slice(matched.length) || '/';

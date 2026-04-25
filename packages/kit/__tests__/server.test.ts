@@ -124,6 +124,55 @@ describe('renderRoute', () => {
     expect(status).toBe(404);
   });
 
+  describe('base path stripping', () => {
+    // Browser history strips the configured `base` from `pathname`
+    // before matching. Memory history (used here) takes the URL
+    // verbatim, so the kit has to strip it first. Without that, an
+    // app mounted under `/docs` 404s every SSR / prerender hit.
+    const Home = staticNode('<h1>Home <!>!</h1>', 'page');
+    const About = staticNode('<h1>About <!>!</h1>', 'page');
+    const routes = [
+      { path: '/', component: () => _createComponent(Home, {}) },
+      { path: '/about', component: () => _createComponent(About, {}) },
+    ];
+
+    it('matches /docs/about against route /about when base=/docs', async () => {
+      const { html, status } = await renderRoute(routes, { url: '/docs/about', base: '/docs' });
+      expect(status).toBe(200);
+      expect(html).toContain('About page');
+    });
+
+    it('treats the bare base path as the route root', async () => {
+      const { html, status } = await renderRoute(routes, { url: '/docs', base: '/docs' });
+      expect(status).toBe(200);
+      expect(html).toContain('Home page');
+    });
+
+    it('preserves the search/hash when stripping the base off a base-only URL', async () => {
+      const { html, status } = await renderRoute(routes, { url: '/docs?q=1', base: '/docs' });
+      expect(status).toBe(200);
+      expect(html).toContain('Home page');
+    });
+
+    it('does not strip an incidental base prefix (/docsfoo vs base=/docs)', async () => {
+      // `/docsfoo` is a different route, not a base + `/foo`. Without a
+      // boundary check the matcher would adopt `/foo` here.
+      const { status } = await renderRoute(routes, { url: '/docsfoo', base: '/docs' });
+      expect(status).toBe(404);
+    });
+
+    it('still 404s for unmatched paths under the base', async () => {
+      const { status } = await renderRoute(routes, { url: '/docs/missing', base: '/docs' });
+      expect(status).toBe(404);
+    });
+
+    it('is a no-op when base is empty', async () => {
+      const { html, status } = await renderRoute(routes, { url: '/about' });
+      expect(status).toBe(200);
+      expect(html).toContain('About page');
+    });
+  });
+
   describe('loaders', () => {
     it('invokes load() and provides data to the matched component', async () => {
       let loadCount = 0;

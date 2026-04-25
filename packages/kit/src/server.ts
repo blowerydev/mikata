@@ -220,9 +220,17 @@ export async function renderRoute(
     // render closure runs). Loaders must finish before the component
     // tree renders so `useLoaderData()` returns seeded data on the
     // first pass — there's no second pass in SSR.
+    //
+    // Strip the configured `base` from the URL before constructing the
+    // memory history. Browser history does this in `parseLocation()` so
+    // matching always sees a base-relative path; memory history takes
+    // the URL verbatim, so without this an app mounted at `/docs` would
+    // SSR-404 on `/docs/api/...` because the matcher tries to match
+    // `/docs/api/...` against route patterns like `/api/...`.
+    const memoryUrl = stripBase(url, routerRest.base ?? '');
     const matcher = createRouter({
       routes: [...resolvedRoutes],
-      history: createMemoryHistory(url),
+      history: createMemoryHistory(memoryUrl),
       ...routerRest,
       ...(notFoundComponent ? { notFound: notFoundComponent as () => Node } : {}),
     });
@@ -352,7 +360,10 @@ export async function renderRoute(
       () => {
         const router = createRouter({
           routes: [...resolvedRoutes],
-          history: createMemoryHistory(url),
+          // Same base-stripping as the pre-render matcher above; both
+          // sides of the render must see the base-relative path or the
+          // outlet pre-flight matches and the actual render disagree.
+          history: createMemoryHistory(memoryUrl),
           ...routerRest,
           ...(notFoundComponent ? { notFound: notFoundComponent as () => Node } : {}),
         });
@@ -527,4 +538,24 @@ function extractPathname(url: string): string {
   } catch {
     return url;
   }
+}
+
+/**
+ * Strip the router's configured `base` prefix from `url`. Mirrors
+ * `parseLocation()` in the browser-history adapter so memory-history
+ * (used for SSR / prerender) sees the same base-relative path the
+ * matcher expects.
+ *
+ * Boundary-aware: `base = "/docs"` strips from `/docs/api`, `/docs?q`,
+ * `/docs#x`, and `/docs` exactly. `/docsfoo` is left untouched - the
+ * `/docs` prefix there is incidental, not a real mount-point match.
+ */
+function stripBase(url: string, base: string): string {
+  if (!base) return url;
+  if (!url.startsWith(base)) return url;
+  const rest = url.slice(base.length);
+  if (rest === '') return '/';
+  if (rest.startsWith('/')) return rest;
+  if (rest.startsWith('?') || rest.startsWith('#')) return '/' + rest;
+  return url;
 }

@@ -22,6 +22,7 @@ import * as path from 'node:path';
 import type { Connect, ViteDevServer } from 'vite';
 import { spliceHead } from './splice-head';
 import { dispatchApiRoute, type ApiRouteDefinition } from './api';
+import { buildRequestUrl } from './request-url';
 
 export interface SsrMiddlewareOptions {
   /** Project root (usually `config.root`). */
@@ -41,6 +42,15 @@ export interface SsrMiddlewareOptions {
    * closing `</head>` tag.
    */
   headMarker?: string;
+  /**
+   * When `true`, read `x-forwarded-host` and `x-forwarded-proto` from
+   * the dev request to build `request.url`. Default: `false`. See
+   * `request-url.ts` for the trust model and the production handler
+   * for the equivalent option in deployed mode. Dev rarely sees real
+   * forwarded headers, but the same untrusted-by-default rule applies
+   * so dev tests don't lull anyone into shipping the unsafe shape.
+   */
+  trustProxy?: boolean;
 }
 
 const DEFAULT_ENTRY = 'src/entry-server';
@@ -118,6 +128,7 @@ export function createSsrMiddleware(
   const entryRel = options.entry ?? DEFAULT_ENTRY;
   const outletMarker = options.outletMarker ?? DEFAULT_OUTLET;
   const headMarker = options.headMarker ?? DEFAULT_HEAD_MARKER;
+  const trustProxy = options.trustProxy === true;
   const indexHtmlPath = path.resolve(options.projectRoot, 'index.html');
 
   return async function mikataSsrMiddleware(req, res, next) {
@@ -165,9 +176,9 @@ export function createSsrMiddleware(
       // in which case we need a Request for every method so
       // `dispatchApiRoute()` can hand it to the verb handler.
       const request = isMutation
-        ? await buildFetchRequest(req)
+        ? await buildFetchRequest(req, { trustProxy })
         : hasApi
-          ? await buildFetchRequest(req)
+          ? await buildFetchRequest(req, { trustProxy })
           : undefined;
 
       // API dispatch before SSR — a matching handler's `Response` is
@@ -315,16 +326,19 @@ function escapeHtml(s: string): string {
  * Matches the adapter-node helper — dev and prod must give actions the
  * same `request` shape so `request.formData()` works in both modes.
  */
-async function buildFetchRequest(req: Connect.IncomingMessage): Promise<Request> {
+async function buildFetchRequest(
+  req: Connect.IncomingMessage,
+  options: { trustProxy?: boolean } = {},
+): Promise<Request> {
   const chunks: Buffer[] = [];
   for await (const chunk of req) {
     chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
   }
   const body = chunks.length > 0 ? Buffer.concat(chunks) : undefined;
 
-  const host = (req.headers['x-forwarded-host'] ?? req.headers.host ?? 'localhost') as string;
-  const proto = (req.headers['x-forwarded-proto'] ?? 'http') as string;
-  const url = `${proto}://${host}${req.url ?? '/'}`;
+  // Use the shared origin-resolution helper. Forwarded headers are
+  // ignored unless `trustProxy` is set; see `request-url.ts`.
+  const url = buildRequestUrl(req, { trustProxy: options.trustProxy });
 
   const headers = new Headers();
   for (const [name, value] of Object.entries(req.headers)) {

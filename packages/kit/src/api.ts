@@ -109,9 +109,19 @@ export async function dispatchApiRoute(
     if (!m) continue;
 
     const params: Record<string, string> = {};
+    let decodeFailed = false;
     for (let i = 0; i < compiled.paramNames.length; i++) {
-      params[compiled.paramNames[i]!] = decodeURIComponent(m[i + 1]!);
+      try {
+        params[compiled.paramNames[i]!] = decodeURIComponent(m[i + 1]!);
+      } catch {
+        // Malformed percent-encoding in a path segment is a bad
+        // request, not a server error - skip the route and let the
+        // outer dispatcher return a 404.
+        decodeFailed = true;
+        break;
+      }
     }
+    if (decodeFailed) continue;
 
     const mod = await route.lazy();
     const handler = mod[upper];

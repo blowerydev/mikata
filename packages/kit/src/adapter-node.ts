@@ -33,6 +33,7 @@ import * as path from 'node:path';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { spliceHead } from './splice-head';
 import { dispatchApiRoute, type ApiRouteDefinition } from './api';
+import { buildRequestUrl } from './request-url';
 
 export interface AdapterRenderContext {
   url: string;
@@ -127,6 +128,20 @@ export interface CreateRequestHandlerOptions {
    * `</head>`.
    */
   headMarker?: string;
+  /**
+   * When `true`, read `x-forwarded-host` and `x-forwarded-proto` to
+   * build `request.url`. Default: `false`. Only enable when a trusted
+   * reverse proxy fronts this server and is guaranteed to overwrite
+   * any client-supplied forwarded headers - otherwise a remote client
+   * can poison `request.url`, which cascades into open redirects,
+   * origin-check bypasses, and OAuth callback tampering.
+   *
+   * Without this flag, the handler reads `req.headers.host` and
+   * infers the scheme from `req.socket.encrypted`. Falls back to
+   * `localhost` only when no host header is present at all (curl
+   * `--no-host`, synthetic test harnesses).
+   */
+  trustProxy?: boolean;
 }
 
 export type RequestHandler = (
@@ -153,6 +168,7 @@ export function createRequestHandler(
 ): RequestHandler {
   const outletMarker = options.outletMarker ?? DEFAULT_OUTLET;
   const headMarker = options.headMarker ?? DEFAULT_HEAD_MARKER;
+  const trustProxy = options.trustProxy === true;
   const clientDir = path.resolve(options.clientDir);
   const indexHtmlPath = path.join(clientDir, 'index.html');
 
@@ -195,9 +211,9 @@ export function createRequestHandler(
       // so `dispatchApiRoute()` can hand it to the verb handler.
       let request: Request | undefined;
       if (method !== 'GET' && method !== 'HEAD') {
-        request = await buildFetchRequest(req);
+        request = await buildFetchRequest(req, { trustProxy });
       } else if (hasApi) {
-        request = await buildFetchRequest(req);
+        request = await buildFetchRequest(req, { trustProxy });
       }
 
       // Try API dispatch first. A matching handler short-circuits the
@@ -325,19 +341,20 @@ export function createRequestHandler(
  * server already accepted; no explicit cap is imposed here because real
  * deployments should front this with a reverse proxy that enforces one.
  */
-async function buildFetchRequest(req: IncomingMessage): Promise<Request> {
+async function buildFetchRequest(
+  req: IncomingMessage,
+  options: { trustProxy?: boolean } = {},
+): Promise<Request> {
   const chunks: Buffer[] = [];
   for await (const chunk of req) {
     chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
   }
   const body = chunks.length > 0 ? Buffer.concat(chunks) : undefined;
 
-  // Build an absolute URL so `new Request()` accepts it. The scheme /
-  // host hint from the proxy headers is preferred; fall back to
-  // synthetic defaults when none are set (keeps local curl calls working).
-  const host = (req.headers['x-forwarded-host'] ?? req.headers.host ?? 'localhost') as string;
-  const proto = (req.headers['x-forwarded-proto'] ?? 'http') as string;
-  const url = `${proto}://${host}${req.url ?? '/'}`;
+  // Build an absolute URL so `new Request()` accepts it. Forwarded
+  // headers are honoured only with explicit opt-in; see
+  // `resolveRequestOrigin` for the trust model.
+  const url = buildRequestUrl(req, { trustProxy: options.trustProxy });
 
   // Mirror node headers into fetch Headers. Skip undefined and host
   // pseudo-headers; duplicate headers (set-cookie-ish) come through as
@@ -435,8 +452,15 @@ async function tryServeStatic(
   res: ServerResponse,
 ): Promise<boolean> {
   // Drop query string (some user agents include ?t= cache-busters on
-  // module imports) and decode before joining.
-  const decoded = decodeURIComponent(pathname.split('?')[0]);
+  // module imports) and decode before joining. Malformed
+  // percent-encoding in a static asset URL is a 404, not a 500 -
+  // there's no file on disk that maps to a broken `%XX` anyway.
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(pathname.split('?')[0]);
+  } catch {
+    return false;
+  }
   // Strip the leading slash so `path.join` doesn't treat it as an
   // absolute path and escape `clientDir`.
   const rel = decoded.replace(/^\/+/, '');

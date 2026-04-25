@@ -78,6 +78,28 @@ describe('dispatchApiRoute', () => {
     expect(seen).toBe('hello world');
   });
 
+  it('treats malformed percent-encoding as no-match (no URIError into 500)', async () => {
+    // The handler should never run; the dispatcher returns null and
+    // the framework surfaces a 404. Without the safe-decode wrap this
+    // test would crash the test runner on a thrown URIError.
+    let handlerCalled = false;
+    const result = await dispatchApiRoute(
+      '/api/search/%E0%A4%A',
+      'GET',
+      [
+        route('/api/search/:q', {
+          GET: () => {
+            handlerCalled = true;
+            return new Response();
+          },
+        }),
+      ],
+      req('http://localhost/api/search/%E0%A4%A'),
+    );
+    expect(handlerCalled).toBe(false);
+    expect(result).toBeNull();
+  });
+
   it('captures catch-all segments as the `*` param', async () => {
     let seen = '';
     await dispatchApiRoute(

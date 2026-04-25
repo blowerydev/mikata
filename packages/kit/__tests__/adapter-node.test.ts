@@ -462,6 +462,24 @@ describe('createRequestHandler — static files', () => {
     expect(res.statusCode).toBe(200);
     expect(res.body).toBe('spaced');
   });
+
+  it('falls through to SSR (200) for malformed percent-encoded asset paths', async () => {
+    // `%E0%A4%A` throws URIError from decodeURIComponent. Without the
+    // try/catch in tryServeStatic this would bubble out as a 500 from
+    // the framework. Expected behaviour: skip static, fall through to
+    // SSR which renders the index template with no matched route.
+    const clientDir = await mkClientDir({
+      'index.html': '<p>shell <!--ssr-outlet--></p>',
+    });
+    const handler = createRequestHandler({
+      clientDir,
+      serverEntry: { render: () => ({ html: 'no match' }) },
+    });
+    const res = makeRes();
+    await handler(makeReq('/assets/%E0%A4%A.js'), res as never);
+    await waitFinish(res);
+    expect(res.statusCode).not.toBe(500);
+  });
 });
 
 describe('createRequestHandler — cookies', () => {

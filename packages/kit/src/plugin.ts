@@ -58,6 +58,14 @@ export interface MikataKitOptions {
     entry?: string;
     /** HTML comment replaced with the rendered tree. Default: `<!--ssr-outlet-->`. */
     outletMarker?: string;
+    /**
+     * Trust `x-forwarded-host` / `x-forwarded-proto` when building
+     * `request.url` in dev. Default: `false`. Only enable when a
+     * trusted reverse proxy fronts the dev server and is guaranteed to
+     * overwrite client-supplied forwarded headers. The same flag is
+     * available via `createRequestHandler({ trustProxy })` for prod.
+     */
+    trustProxy?: boolean;
   };
   /**
    * Static-site generation. Runs after the SSR build completes (hooked
@@ -287,6 +295,7 @@ export default function mikataKit(options: MikataKitOptions = {}): Plugin {
             projectRoot,
             entry: ssrOptions.entry,
             outletMarker: ssrOptions.outletMarker,
+            trustProxy: ssrOptions.trustProxy,
           }),
         );
       };
