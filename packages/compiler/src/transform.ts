@@ -125,6 +125,12 @@ export function mikataJSXPlugin({ types: t }: { types: typeof BabelTypes }): Plu
     node: BabelTypes.Expression,
     scope?: Scope,
   ): boolean {
+    if ((node as { type: string }).type === 'ParenthesizedExpression') {
+      return isPotentiallyReactive((node as unknown as { expression: BabelTypes.Expression }).expression, scope);
+    }
+    if (t.isTSAsExpression(node) || t.isTSTypeAssertion(node) || t.isTSNonNullExpression(node)) {
+      return isPotentiallyReactive(node.expression, scope);
+    }
     if (t.isCallExpression(node)) return true;
     if (t.isMemberExpression(node)) {
       // Static-callback-param fast path: `row.id` where `row` is a param of
@@ -159,6 +165,30 @@ export function mikataJSXPlugin({ types: t }: { types: typeof BabelTypes }): Plu
     }
     if (t.isUnaryExpression(node)) {
       return isPotentiallyReactive(node.argument as BabelTypes.Expression, scope);
+    }
+    if (t.isArrayExpression(node)) {
+      return node.elements.some((element) => {
+        if (!element) return false;
+        if (t.isSpreadElement(element)) {
+          return isPotentiallyReactive(element.argument as BabelTypes.Expression, scope);
+        }
+        return isPotentiallyReactive(element as BabelTypes.Expression, scope);
+      });
+    }
+    if (t.isObjectExpression(node)) {
+      return node.properties.some((prop) => {
+        if (t.isSpreadElement(prop)) {
+          return isPotentiallyReactive(prop.argument as BabelTypes.Expression, scope);
+        }
+        if (t.isObjectProperty(prop)) {
+          const keyReactive =
+            prop.computed && t.isExpression(prop.key)
+              ? isPotentiallyReactive(prop.key, scope)
+              : false;
+          return keyReactive || isPotentiallyReactive(prop.value as BabelTypes.Expression, scope);
+        }
+        return false;
+      });
     }
     if (t.isArrowFunctionExpression(node) || t.isFunctionExpression(node)) return false;
     if (t.isLiteral(node)) return false;

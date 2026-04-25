@@ -1,4 +1,4 @@
-import { createIcon, Close } from '@mikata/icons';
+import { createIcon, Close } from '../../internal/icons';
 import { onCleanup, _mergeProps, adoptElement } from '@mikata/runtime';
 import { renderEffect } from '@mikata/reactivity';
 import { mergeClasses } from '../../utils/class-merge';

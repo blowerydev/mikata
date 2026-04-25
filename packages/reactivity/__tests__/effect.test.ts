@@ -300,6 +300,17 @@ describe('scope', () => {
     expect(cleanup).toHaveBeenCalledTimes(1);
   });
 
+  it('warns when onCleanup is called outside a reactive scope', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    onCleanup(() => {});
+
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining('onCleanup() was called outside a reactive scope'),
+    );
+    warn.mockRestore();
+  });
+
   it('disposes nested scopes', () => {
     const fn1 = vi.fn();
     const fn2 = vi.fn();

@@ -1,6 +1,6 @@
 import { signal, effect, renderEffect } from '@mikata/reactivity';
 import { _mergeProps, adoptElement } from '@mikata/runtime';
-import { createIcon, ChevronLeft, ChevronRight } from '@mikata/icons';
+import { createIcon, ChevronLeft, ChevronRight } from '../../internal/icons';
 import { mergeClasses } from '../../utils/class-merge';
 import { useComponentDefaults } from '../../theme/component-defaults';
 import { useDirection } from '../../theme';

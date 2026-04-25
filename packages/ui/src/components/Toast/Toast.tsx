@@ -1,4 +1,4 @@
-import { createIcon, Close } from '@mikata/icons';
+import { createIcon, Close } from '../../internal/icons';
 import { mergeClasses } from '../../utils/class-merge';
 import { applyThemeToPortal } from '../../utils/get-color-scheme';
 import type { ToastOptions, ToastInstance, ToastManager, ToastPosition } from './Toast.types';

@@ -311,9 +311,6 @@ importers:
       '@mikata/i18n':
         specifier: workspace:*
         version: link:../i18n
-      '@mikata/icons':
-        specifier: workspace:*
-        version: link:../icons
       '@mikata/reactivity':
         specifier: workspace:*
         version: link:../reactivity

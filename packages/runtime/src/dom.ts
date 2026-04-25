@@ -34,16 +34,35 @@ function resolveClass(value: unknown): string {
 /**
  * Apply a style object to an element, converting camelCase to kebab-case.
  */
+const STYLE_OBJECT_KEYS = new WeakMap<HTMLElement, Set<string>>();
+
 function applyStyleObject(el: HTMLElement, styles: Record<string, unknown>): void {
+  const nextKeys = new Set<string>();
+  const previousKeys = STYLE_OBJECT_KEYS.get(el);
+
+  for (const prop of Object.keys(styles)) {
+    nextKeys.add(prop.replace(/[A-Z]/g, m => '-' + m.toLowerCase()));
+  }
+
+  if (previousKeys) {
+    for (const prop of previousKeys) {
+      if (!nextKeys.has(prop)) {
+        el.style.removeProperty(prop);
+      }
+    }
+  }
+
   for (const [prop, val] of Object.entries(styles)) {
+    const cssProp = prop.replace(/[A-Z]/g, m => '-' + m.toLowerCase());
     if (val == null || val === false) {
-      el.style.removeProperty(prop.replace(/[A-Z]/g, m => '-' + m.toLowerCase()));
+      el.style.removeProperty(cssProp);
     } else {
       // camelCase → kebab-case for setProperty
-      const cssProp = prop.replace(/[A-Z]/g, m => '-' + m.toLowerCase());
       el.style.setProperty(cssProp, String(val));
     }
   }
+
+  STYLE_OBJECT_KEYS.set(el, nextKeys);
 }
 
 /**
@@ -284,8 +303,12 @@ export function _setProp(
   } else if (key === 'style') {
     if (typeof value === 'string') {
       el.style.cssText = value;
+      STYLE_OBJECT_KEYS.delete(el);
     } else if (typeof value === 'object' && value !== null) {
       applyStyleObject(el, value as Record<string, unknown>);
+    } else if (value == null || value === false) {
+      el.style.cssText = '';
+      STYLE_OBJECT_KEYS.delete(el);
     }
   } else if (key === 'innerHTML' || key === 'textContent') {
     if (__DEV__ && key === 'innerHTML' && typeof value === 'string' && SUSPICIOUS_INNER_HTML.test(value)) {

@@ -1,4 +1,4 @@
-import { createIcon, Close } from '@mikata/icons';
+import { createIcon, Close } from '../../internal/icons';
 import { _mergeProps } from '@mikata/runtime';
 import { mergeClasses } from '../../utils/class-merge';
 import { useComponentDefaults } from '../../theme/component-defaults';

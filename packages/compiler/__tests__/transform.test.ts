@@ -61,6 +61,25 @@ describe('JSX transform', () => {
     expect(output).toContain('get count');
   });
 
+  it('wraps object-literal native attributes when nested values are reactive', () => {
+    const output = transform(`const el = <div class={{ active: isActive() }} />;`);
+    expect(output).toContain('renderEffect');
+    expect(output).toContain('_setProp');
+    expect(output).toContain('isActive()');
+  });
+
+  it('creates getters for component props with reactive object literals', () => {
+    const output = transform(`const el = <Counter options={{ value: count() }} />;`);
+    expect(output).toContain('_createComponent');
+    expect(output).toMatch(/get\s+options\s*\(\s*\)/);
+    expect(output).toContain('count()');
+  });
+
+  it('treats object and array literals with only static values as non-reactive', () => {
+    const output = transform(`const el = <div class={{ active: true }} data-values={[1, 2]} />;`);
+    expect(output).not.toContain('renderEffect');
+  });
+
   it('creates string-literal getters for dashed reactive component props', () => {
     // Without the dashed-key getter, `aria-label={signal()}` snapshots
     // the value once at setup time and never sees subsequent updates.

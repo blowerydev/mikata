@@ -1,5 +1,5 @@
-import { createIcon } from '@mikata/icons';
-import type { IconNode } from '@mikata/icons';
+import { createIcon } from '../../internal/icons';
+import type { IconNode } from '../../internal/icons';
 import { renderEffect } from '@mikata/reactivity';
 import { _mergeProps, adoptElement } from '@mikata/runtime';
 import { mergeClasses } from '../../utils/class-merge';

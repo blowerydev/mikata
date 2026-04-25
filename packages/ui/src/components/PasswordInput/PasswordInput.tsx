@@ -1,4 +1,4 @@
-import { createIcon, Eye, EyeOff } from '@mikata/icons';
+import { createIcon, Eye, EyeOff } from '../../internal/icons';
 import { renderEffect } from '@mikata/reactivity';
 import { _mergeProps, adoptElement } from '@mikata/runtime';
 import { mergeClasses } from '../../utils/class-merge';

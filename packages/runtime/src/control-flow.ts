@@ -8,6 +8,7 @@
 import {
   renderEffect,
   createScope,
+  signal,
   type Scope,
 } from '@mikata/reactivity';
 import { _createComponent, disposeComponent } from './component';
@@ -221,6 +222,7 @@ export function each<T>(
     node: Node;
     scope: Scope;
     item: T;
+    setIndex: (index: number) => void;
   };
 
   let entries: ItemEntry[] = [];
@@ -244,12 +246,12 @@ export function each<T>(
         const fresh: ItemEntry[] = new Array(items.length);
         for (let i = 0; i < items.length; i++) {
           const item = items[i];
-          const idx = i;
+          const [index, setIndex] = signal(i);
           let node: Node;
           const scope = createScope(() => {
-            node = render(item, () => idx);
+            node = render(item, index);
           });
-          fresh[i] = { node: node!, scope, item };
+          fresh[i] = { node: node!, scope, item, setIndex };
         }
         entries = fresh;
         // Place marker after the last adopted item so future reactive
@@ -318,12 +320,12 @@ export function each<T>(
           }
           seenKeys!.add(key);
         }
-        const idx = i;
+        const [index, setIndex] = signal(i);
         let node: Node;
         const scope = createScope(() => {
-          node = render(item, () => idx);
+          node = render(item, index);
         });
-        fresh[i] = { node: node!, scope, item };
+        fresh[i] = { node: node!, scope, item, setIndex };
         frag.appendChild(node!);
       }
       parent.insertBefore(frag, marker);
@@ -362,14 +364,15 @@ export function each<T>(
       if (oldIndex !== undefined && !reused[oldIndex]) {
         reused[oldIndex] = 1;
         newEntries[i] = entries[oldIndex];
+        newEntries[i].setIndex(i);
         sources[i] = oldIndex;
       } else {
         let node: Node;
-        const idx = i;
+        const [index, setIndex] = signal(i);
         const scope = createScope(() => {
-          node = render(item, () => idx);
+          node = render(item, index);
         });
-        newEntries[i] = { node: node!, scope, item };
+        newEntries[i] = { node: node!, scope, item, setIndex };
         sources[i] = -1;
       }
     }

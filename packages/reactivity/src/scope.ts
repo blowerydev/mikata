@@ -119,6 +119,11 @@ export function createScope(fn: () => void): Scope {
 export function onCleanup(fn: () => void): void {
   if (currentScope) {
     currentScope.addCleanup(fn);
+  } else if (typeof __DEV__ !== 'undefined' && __DEV__) {
+    console.warn(
+      '[mikata] onCleanup() was called outside a reactive scope. ' +
+      'The cleanup will not run; call it during component setup, effect(), or createScope().'
+    );
   }
   if (typeof __DEV__ !== 'undefined' && __DEV__) {
     notifyOnCleanupCalled();

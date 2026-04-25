@@ -44,6 +44,14 @@ describe('DOM helpers', () => {
     expect(el.style.fontSize).toBe('14px');
   });
 
+  it('_setProp removes omitted keys from previous style objects', () => {
+    const el = _createElement('div');
+    _setProp(el, 'style', { color: 'red', fontSize: '14px' });
+    _setProp(el, 'style', { fontSize: '16px' });
+    expect(el.style.color).toBe('');
+    expect(el.style.fontSize).toBe('16px');
+  });
+
   it('_setProp sets boolean attributes', () => {
     const el = _createElement('input') as HTMLInputElement;
     _setProp(el, 'disabled', true);
@@ -311,6 +319,37 @@ describe('each()', () => {
     container.appendChild(node);
     flushSync();
     expect(container.textContent).toBe('empty');
+  });
+
+  it('updates index accessors when keyed rows are reused', () => {
+    const container = _createElement('div');
+    const [items, setItems] = signal([
+      { id: 'a', label: 'A' },
+      { id: 'b', label: 'B' },
+      { id: 'c', label: 'C' },
+    ]);
+
+    const node = each(
+      items,
+      (item, index) => {
+        const el = _createElement('span');
+        _insert(el, () => `${item.label}:${index()}`);
+        return el;
+      },
+      undefined,
+      { key: (item) => item.id },
+    );
+    container.appendChild(node);
+    flushSync();
+    expect(container.textContent).toBe('A:0B:1C:2');
+
+    setItems([
+      { id: 'c', label: 'C' },
+      { id: 'a', label: 'A' },
+      { id: 'b', label: 'B' },
+    ]);
+    flushSync();
+    expect(container.textContent).toBe('C:0A:1B:2');
   });
 });
 
