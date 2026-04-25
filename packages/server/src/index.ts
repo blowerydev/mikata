@@ -63,6 +63,22 @@ export interface RenderToStringResult {
   state: Record<string, unknown>;
 }
 
+let renderQueue: Promise<void> = Promise.resolve();
+
+export async function runWithRenderLock<T>(fn: () => T | Promise<T>): Promise<T> {
+  const prior = renderQueue;
+  let release!: () => void;
+  renderQueue = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await prior;
+  try {
+    return await fn();
+  } finally {
+    release();
+  }
+}
+
 /**
  * Render a Mikata component tree to an HTML string + state payload.
  *
@@ -77,6 +93,13 @@ export interface RenderToStringResult {
 export async function renderToString(
   component: () => unknown,
   options: RenderToStringOptions = {},
+): Promise<RenderToStringResult> {
+  return await runWithRenderLock(() => renderToStringUnlocked(component, options));
+}
+
+async function renderToStringUnlocked(
+  component: () => unknown,
+  options: RenderToStringOptions,
 ): Promise<RenderToStringResult> {
   const shim = installShim();
   _setSSR(true);

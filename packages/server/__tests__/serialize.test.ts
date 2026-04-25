@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { escapeStateScript, renderStateScript } from '../src/serialize';
+import { escapeStateScript, renderStateScript, serializeNode } from '../src/serialize';
+import { installShim } from '../src/dom-shim';
 
 describe('escapeStateScript', () => {
   it('escapes < > & and the line/paragraph separators', () => {
@@ -38,12 +39,12 @@ describe('escapeStateScript', () => {
 describe('renderStateScript', () => {
   it('wraps the payload in a <script> tag with a global assignment', () => {
     const script = renderStateScript({ a: 1 });
-    expect(script).toBe('<script>window.__MIKATA_STATE__={"a":1}</script>');
+    expect(script).toBe('<script>window["__MIKATA_STATE__"]={"a":1}</script>');
   });
 
   it('honours a custom global name', () => {
     const script = renderStateScript({ a: 1 }, 'MY_STATE');
-    expect(script).toBe('<script>window.MY_STATE={"a":1}</script>');
+    expect(script).toBe('<script>window["MY_STATE"]={"a":1}</script>');
   });
 
   it('escapes state content so attackers can\'t close the script', () => {
@@ -52,5 +53,24 @@ describe('renderStateScript', () => {
     // script tag at the end is the only one, and our payload uses \u003c.
     const occurrences = script.match(/<\/script>/gi) ?? [];
     expect(occurrences.length).toBe(1);
+  });
+
+  it('does not emit custom global names as executable source', () => {
+    const script = renderStateScript({ a: 1 }, 'x;window.pwned=1//');
+    expect(script).toBe('<script>window["x;window.pwned=1//"]={"a":1}</script>');
+  });
+});
+
+describe('serializeNode comments', () => {
+  it('neutralizes comment terminators', () => {
+    const shim = installShim();
+    try {
+      const comment = document.createComment('--><script>alert(1)</script>');
+      const html = serializeNode(comment as never);
+      expect(html).toBe('<!--- -><script>alert(1)</script>-->');
+      expect(html.match(/-->/g)).toHaveLength(1);
+    } finally {
+      shim.restore();
+    }
   });
 });

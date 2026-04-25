@@ -142,6 +142,27 @@ describe('renderRoute', () => {
       expect(html).toContain('About page');
     });
 
+    it('preloads lazy routes after stripping the base', async () => {
+      let loaded = 0;
+      const Lazy = staticNode('<h1>Lazy <!>!</h1>', 'page');
+      const lazyRoutes = [
+        {
+          path: '/lazy',
+          lazy: async () => {
+            loaded++;
+            return { default: () => _createComponent(Lazy, {}) };
+          },
+        },
+      ];
+      const { html, status } = await renderRoute(lazyRoutes, {
+        url: '/docs/lazy',
+        base: '/docs',
+      });
+      expect(status).toBe(200);
+      expect(loaded).toBe(1);
+      expect(html).toContain('Lazy page');
+    });
+
     it('treats the bare base path as the route root', async () => {
       const { html, status } = await renderRoute(routes, { url: '/docs', base: '/docs' });
       expect(status).toBe(200);

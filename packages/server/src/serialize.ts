@@ -35,7 +35,7 @@ export function serializeNode(node: SNode): string {
     // structurally (single-root dynamic content replaces the marker).
     // Named comments (e.g. `<!--each-->`) are runtime-created and kept.
     if (data === '') return '';
-    return `<!--${data}-->`;
+    return `<!--${escapeComment(data)}-->`;
   }
   if (node.nodeType === DOCUMENT_FRAGMENT_NODE) {
     let out = '';
@@ -133,5 +133,9 @@ export function renderStateScript(
   const safe = escapeStateScript(json);
   // `window.` rather than bare assignment — older engines choke on the latter
   // at the top level of a script.
-  return `<script>window.${globalName}=${safe}</script>`;
+  return `<script>window[${JSON.stringify(globalName)}]=${safe}</script>`;
+}
+
+export function escapeComment(data: string): string {
+  return data.replace(/--/g, '- -').replace(/-$/g, '- ');
 }

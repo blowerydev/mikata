@@ -142,6 +142,11 @@ export interface CreateRequestHandlerOptions {
    * `--no-host`, synthetic test harnesses).
    */
   trustProxy?: boolean;
+  /**
+   * Maximum bytes buffered when building a Fetch `Request` for actions/API
+   * handlers. Defaults to 1 MiB. Set to `Infinity` to opt out.
+   */
+  maxBodyBytes?: number;
 }
 
 export type RequestHandler = (
@@ -155,6 +160,7 @@ const ASSET_EXT_RE = /\.[a-z0-9]+(?:\?|$)/i;
 
 const DEFAULT_OUTLET = '<!--ssr-outlet-->';
 const DEFAULT_HEAD_MARKER = '<!--mikata-head-->';
+const DEFAULT_MAX_BODY_BYTES = 1024 * 1024;
 
 /** Request header that marks a fetch-enhanced form submit — see `form.ts`. */
 const FORM_SUBMIT_HEADER = 'x-mikata-form';
@@ -169,6 +175,7 @@ export function createRequestHandler(
   const outletMarker = options.outletMarker ?? DEFAULT_OUTLET;
   const headMarker = options.headMarker ?? DEFAULT_HEAD_MARKER;
   const trustProxy = options.trustProxy === true;
+  const maxBodyBytes = options.maxBodyBytes ?? DEFAULT_MAX_BODY_BYTES;
   const clientDir = path.resolve(options.clientDir);
   const indexHtmlPath = path.join(clientDir, 'index.html');
 
@@ -211,9 +218,9 @@ export function createRequestHandler(
       // so `dispatchApiRoute()` can hand it to the verb handler.
       let request: Request | undefined;
       if (method !== 'GET' && method !== 'HEAD') {
-        request = await buildFetchRequest(req, { trustProxy });
+        request = await buildFetchRequest(req, { trustProxy, maxBodyBytes });
       } else if (hasApi) {
-        request = await buildFetchRequest(req, { trustProxy });
+        request = await buildFetchRequest(req, { trustProxy, maxBodyBytes });
       }
 
       // Try API dispatch first. A matching handler short-circuits the
@@ -318,6 +325,12 @@ export function createRequestHandler(
       }
       res.end(full);
     } catch (err) {
+      if (err instanceof BodyTooLargeError) {
+        res.statusCode = 413;
+        res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+        res.end('Payload Too Large');
+        return;
+      }
       // Fail loudly to stderr so the deploy's log pipeline catches it;
       // respond with a terse 500 so we don't leak stack traces to users.
       // eslint-disable-next-line no-console
@@ -343,11 +356,18 @@ export function createRequestHandler(
  */
 async function buildFetchRequest(
   req: IncomingMessage,
-  options: { trustProxy?: boolean } = {},
+  options: { trustProxy?: boolean; maxBodyBytes?: number } = {},
 ): Promise<Request> {
   const chunks: Buffer[] = [];
+  const maxBodyBytes = options.maxBodyBytes ?? DEFAULT_MAX_BODY_BYTES;
+  let size = 0;
   for await (const chunk of req) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    size += buf.byteLength;
+    if (size > maxBodyBytes) {
+      throw new BodyTooLargeError(maxBodyBytes);
+    }
+    chunks.push(buf);
   }
   const body = chunks.length > 0 ? Buffer.concat(chunks) : undefined;
 
@@ -381,6 +401,13 @@ async function buildFetchRequest(
   } as RequestInit);
 }
 
+class BodyTooLargeError extends Error {
+  constructor(readonly limit: number) {
+    super(`Request body exceeded ${limit} bytes`);
+    this.name = 'BodyTooLargeError';
+  }
+}
+
 function sendJson(res: ServerResponse, status: number, body: unknown): void {
   res.statusCode = status;
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
@@ -401,15 +428,29 @@ async function sendFetchResponse(
   response: Response,
 ): Promise<void> {
   res.statusCode = response.status;
+  const setCookies = getSetCookieHeaders(response.headers);
   response.headers.forEach((value, key) => {
+    if (key.toLowerCase() === 'set-cookie') return;
     res.setHeader(key, value);
   });
+  if (setCookies.length > 0) {
+    res.setHeader('set-cookie', setCookies);
+  }
   if (response.body === null) {
     res.end();
     return;
   }
   const buf = Buffer.from(await response.arrayBuffer());
   res.end(buf);
+}
+
+function getSetCookieHeaders(headers: Headers): string[] {
+  const withGetter = headers as Headers & { getSetCookie?: () => string[] };
+  if (typeof withGetter.getSetCookie === 'function') {
+    return withGetter.getSetCookie();
+  }
+  const value = headers.get('set-cookie');
+  return value ? [value] : [];
 }
 
 // ---------------------------------------------------------------------------

@@ -589,4 +589,51 @@ describe('createRequestHandler — cookies', () => {
     expect(first).toContain('visited=1');
     expect(first).toContain('Path=/');
   });
+
+  it('preserves multiple Set-Cookie headers from API responses', async () => {
+    const clientDir = await mkClientDir({
+      'index.html': '<!--ssr-outlet-->',
+    });
+    const serverEntry: ServerEntry = {
+      render: () => ({ html: '' }),
+      apiRoutes: [
+        {
+          path: '/api/cookies',
+          lazy: async () => ({
+            GET: (ctx) => {
+              ctx.cookies.set('a', '1', { path: '/' });
+              ctx.cookies.set('b', '2', { path: '/' });
+              return Response.json({ ok: true });
+            },
+          }),
+        },
+      ],
+    };
+    const handler = createRequestHandler({ clientDir, serverEntry });
+    const res = makeRes();
+    await handler(makeReq('/api/cookies'), res as never);
+    await waitFinish(res);
+    expect(res._headers['set-cookie']).toEqual(['a=1; Path=/', 'b=2; Path=/']);
+  });
+});
+
+describe('createRequestHandler — body limits', () => {
+  it('returns 413 when a buffered request body exceeds maxBodyBytes', async () => {
+    const clientDir = await mkClientDir({
+      'index.html': '<!--ssr-outlet-->',
+    });
+    const serverEntry: ServerEntry = {
+      render: () => ({ html: 'should not render' }),
+    };
+    const handler = createRequestHandler({
+      clientDir,
+      serverEntry,
+      maxBodyBytes: 4,
+    });
+    const res = makeRes();
+    await handler(makeReq('/submit', 'POST', { body: '12345' }), res as never);
+    await waitFinish(res);
+    expect(res.statusCode).toBe(413);
+    expect(res.body).toBe('Payload Too Large');
+  });
 });

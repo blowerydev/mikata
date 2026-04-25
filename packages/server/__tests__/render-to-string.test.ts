@@ -165,7 +165,7 @@ describe('renderToString: query hydration', () => {
     // Query data is keyed by the stable stringified key.
     expect(JSON.stringify(state)).toContain('Ada');
     expect(stateScript).toContain('<script>');
-    expect(stateScript).toContain('window.__MIKATA_STATE__');
+    expect(stateScript).toContain('window["__MIKATA_STATE__"]');
   });
 });
 

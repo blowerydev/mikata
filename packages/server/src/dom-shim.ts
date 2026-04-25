@@ -779,7 +779,7 @@ function unescapeEntities(s: string): string {
 
 function serializeForInner(node: SNode): string {
   if (node.nodeType === TEXT_NODE) return escapeText((node as SText).data);
-  if (node.nodeType === COMMENT_NODE) return `<!--${(node as SComment).data}-->`;
+  if (node.nodeType === COMMENT_NODE) return `<!--${escapeComment((node as SComment).data)}-->`;
   if (node.nodeType === ELEMENT_NODE) {
     const el = node as SElement;
     const tag = el.tagName.toLowerCase();
@@ -809,4 +809,8 @@ function escapeAttr(s: string): string {
     .replace(/&/g, '&amp;')
     .replace(/"/g, '&quot;')
     .replace(/</g, '&lt;');
+}
+
+function escapeComment(data: string): string {
+  return data.replace(/--/g, '- -').replace(/-$/g, '- ');
 }

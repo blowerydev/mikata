@@ -23,6 +23,7 @@ import {
   renderStateScript,
   type RenderToStringResult,
 } from '@mikata/server';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import {
   createRouter,
   provideRouter,
@@ -147,6 +148,26 @@ export interface RenderRouteResult extends RenderToStringResult {
   setCookies: readonly string[];
 }
 
+let routeRenderQueue: Promise<void> = Promise.resolve();
+const routeRenderLockContext = new AsyncLocalStorage<boolean>();
+
+async function runWithRouteRenderLock<T>(fn: () => T | Promise<T>): Promise<T> {
+  if (routeRenderLockContext.getStore()) {
+    return await fn();
+  }
+  const prior = routeRenderQueue;
+  let release!: () => void;
+  routeRenderQueue = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await prior;
+  try {
+    return await routeRenderLockContext.run(true, fn);
+  } finally {
+    release();
+  }
+}
+
 /**
  * Render the route matching `url` to HTML. Lazy routes on the match
  * chain are awaited before rendering, so the returned HTML contains
@@ -165,6 +186,13 @@ export interface RenderRouteResult extends RenderToStringResult {
  * that route and loaders run against the post-action state.
  */
 export async function renderRoute(
+  manifest: readonly RouteDefinition[] | RouteManifestModule,
+  options: RenderRouteOptions,
+): Promise<RenderRouteResult> {
+  return await runWithRouteRenderLock(() => renderRouteUnlocked(manifest, options));
+}
+
+async function renderRouteUnlocked(
   manifest: readonly RouteDefinition[] | RouteManifestModule,
   options: RenderRouteOptions,
 ): Promise<RenderRouteResult> {
@@ -187,9 +215,10 @@ export async function renderRoute(
   // shim again internally; the second call is a no-op.
   const shim = installShim();
   try {
+    const preloadUrl = normalizeMemoryUrl(options.url, options.base ?? '');
     const { routes: resolvedRoutes, loaders, actions } = await resolveLazyRoutes(
       routes,
-      options.url,
+      preloadUrl,
     );
     const { url, request, cookieHeader, notFound: notFoundLoader, ...routerRest } = options;
     // One cookies handle per render: the action (if any) runs first and
