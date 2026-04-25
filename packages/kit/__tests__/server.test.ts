@@ -154,6 +154,24 @@ describe('renderRoute', () => {
       expect(html).toContain('Home page');
     });
 
+    it('normalizes absolute URLs before stripping the base', async () => {
+      const { html, status } = await renderRoute(routes, {
+        url: 'https://example.test/docs/about?q=1#intro',
+        base: '/docs',
+      });
+      expect(status).toBe(200);
+      expect(html).toContain('About page');
+    });
+
+    it('treats an absolute base-only URL as the route root', async () => {
+      const { html, status } = await renderRoute(routes, {
+        url: 'https://example.test/docs?q=1#intro',
+        base: '/docs',
+      });
+      expect(status).toBe(200);
+      expect(html).toContain('Home page');
+    });
+
     it('does not strip an incidental base prefix (/docsfoo vs base=/docs)', async () => {
       // `/docsfoo` is a different route, not a base + `/foo`. Without a
       // boundary check the matcher would adopt `/foo` here.

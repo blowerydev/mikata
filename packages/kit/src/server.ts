@@ -227,7 +227,7 @@ export async function renderRoute(
     // the URL verbatim, so without this an app mounted at `/docs` would
     // SSR-404 on `/docs/api/...` because the matcher tries to match
     // `/docs/api/...` against route patterns like `/api/...`.
-    const memoryUrl = stripBase(url, routerRest.base ?? '');
+    const memoryUrl = normalizeMemoryUrl(url, routerRest.base ?? '');
     const matcher = createRouter({
       routes: [...resolvedRoutes],
       history: createMemoryHistory(memoryUrl),
@@ -541,21 +541,35 @@ function extractPathname(url: string): string {
 }
 
 /**
- * Strip the router's configured `base` prefix from `url`. Mirrors
- * `parseLocation()` in the browser-history adapter so memory-history
- * (used for SSR / prerender) sees the same base-relative path the
- * matcher expects.
+ * Normalize a render URL to the path-ish shape memory history expects:
+ * `pathname + search + hash`, then strip the router's configured
+ * `base` prefix from that path-ish value. Mirrors `parseLocation()` in
+ * the browser-history adapter so memory-history (used for SSR /
+ * prerender) sees the same base-relative path the matcher expects.
  *
  * Boundary-aware: `base = "/docs"` strips from `/docs/api`, `/docs?q`,
- * `/docs#x`, and `/docs` exactly. `/docsfoo` is left untouched - the
- * `/docs` prefix there is incidental, not a real mount-point match.
+ * `/docs#x`, and `/docs` exactly. Absolute URLs are normalized first
+ * (`https://host/docs/about?q=1#x` -> `/docs/about?q=1#x`). `/docsfoo`
+ * is left untouched - the `/docs` prefix there is incidental, not a
+ * real mount-point match.
  */
-function stripBase(url: string, base: string): string {
-  if (!base) return url;
-  if (!url.startsWith(base)) return url;
-  const rest = url.slice(base.length);
+function normalizeMemoryUrl(url: string, base: string): string {
+  const pathish = toPathishUrl(url);
+  if (!base) return pathish;
+  if (!pathish.startsWith(base)) return pathish;
+  const rest = pathish.slice(base.length);
   if (rest === '') return '/';
   if (rest.startsWith('/')) return rest;
   if (rest.startsWith('?') || rest.startsWith('#')) return '/' + rest;
-  return url;
+  return pathish;
+}
+
+function toPathishUrl(url: string): string {
+  if (url.startsWith('/')) return url;
+  try {
+    const parsed = new URL(url);
+    return parsed.pathname + parsed.search + parsed.hash;
+  } catch {
+    return url;
+  }
 }
