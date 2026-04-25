@@ -9,7 +9,7 @@ import { Box } from '../src/components/Box';
 import { Burger } from '../src/components/Burger';
 import { ButtonGroup } from '../src/components/ButtonGroup';
 import { Center } from '../src/components/Center';
-import { Chip } from '../src/components/Chip';
+import { Chip, ChipGroup } from '../src/components/Chip';
 import { CloseButton } from '../src/components/CloseButton';
 import { Code } from '../src/components/Code';
 import { CopyButton } from '../src/components/CopyButton';
@@ -233,6 +233,95 @@ describe('Chip', () => {
     input.checked = true;
     input.dispatchEvent(new Event('change'));
     expect(fn).toHaveBeenCalledWith(true, 'x');
+  });
+});
+
+// ─── ChipGroup ─────────────────────────────────────────
+describe('ChipGroup', () => {
+  it('renders as a radiogroup by default and coerces child chips to radios', () => {
+    const el = ChipGroup({
+      children: [
+        Chip({ value: 'a', children: 'A' }),
+        Chip({ value: 'b', children: 'B' }),
+      ],
+    });
+    const inputs = el.querySelectorAll('input') as NodeListOf<HTMLInputElement>;
+
+    expect(el.getAttribute('role')).toBe('radiogroup');
+    expect(inputs[0].type).toBe('radio');
+    expect(inputs[1].type).toBe('radio');
+    expect(inputs[0].name).toBe(inputs[1].name);
+    expect(inputs[0].name).not.toBe('');
+  });
+
+  it('applies defaultValue for a single-select group', () => {
+    const el = ChipGroup({
+      defaultValue: 'b',
+      children: [
+        Chip({ value: 'a', children: 'A' }),
+        Chip({ value: 'b', children: 'B' }),
+      ],
+    });
+    const inputs = el.querySelectorAll('input') as NodeListOf<HTMLInputElement>;
+
+    expect(inputs[0].checked).toBe(false);
+    expect(inputs[1].checked).toBe(true);
+  });
+
+  it('reports the selected value in single-select mode', () => {
+    const onChange = vi.fn();
+    const el = ChipGroup({
+      onChange,
+      children: [
+        Chip({ value: 'a', children: 'A' }),
+        Chip({ value: 'b', children: 'B' }),
+      ],
+    });
+    const second = el.querySelectorAll('input')[1] as HTMLInputElement;
+
+    second.checked = true;
+    second.dispatchEvent(new Event('change'));
+
+    expect(onChange).toHaveBeenCalledWith('b');
+  });
+
+  it('supports multiple selection with checkbox children and array payloads', () => {
+    const onChange = vi.fn();
+    const el = ChipGroup({
+      multiple: true,
+      defaultValue: ['a'],
+      onChange,
+      children: [
+        Chip({ value: 'a', children: 'A' }),
+        Chip({ value: 'b', children: 'B' }),
+      ],
+    });
+    const inputs = el.querySelectorAll('input') as NodeListOf<HTMLInputElement>;
+
+    expect(el.getAttribute('role')).toBe('group');
+    expect(inputs[0].type).toBe('checkbox');
+    expect(inputs[1].type).toBe('checkbox');
+    expect(inputs[0].checked).toBe(true);
+
+    inputs[1].checked = true;
+    inputs[1].dispatchEvent(new Event('change'));
+    expect(onChange).toHaveBeenCalledWith(['a', 'b']);
+
+    inputs[0].checked = false;
+    inputs[0].dispatchEvent(new Event('change'));
+    expect(onChange).toHaveBeenLastCalledWith(['b']);
+  });
+
+  it('resolves size-token gaps and merges root class names', () => {
+    const el = ChipGroup({
+      gap: 'lg',
+      class: 'custom-chip-group',
+      children: Chip({ value: 'a', children: 'A' }),
+    });
+
+    expect(el.classList.contains('mkt-chip-group')).toBe(true);
+    expect(el.classList.contains('custom-chip-group')).toBe(true);
+    expect(el.style.gap).toBe('var(--mkt-space-4)');
   });
 });
 

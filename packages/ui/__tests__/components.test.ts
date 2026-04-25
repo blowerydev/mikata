@@ -429,4 +429,64 @@ describe('Switch', () => {
     expect(input).not.toBeNull();
     expect(input!.getAttribute('role')).toBe('switch');
   });
+
+  it('reflects defaultChecked, disabled, size, and color props', () => {
+    const el = Switch({
+      label: 'Dark mode',
+      defaultChecked: true,
+      disabled: true,
+      size: 'lg',
+      color: 'green',
+    });
+    const input = el.querySelector('input') as HTMLInputElement;
+    const track = el.querySelector('.mkt-switch__track') as HTMLElement;
+    const thumb = el.querySelector('.mkt-switch__thumb') as HTMLElement;
+
+    expect(input.checked).toBe(true);
+    expect(input.disabled).toBe(true);
+    expect(el.classList.contains('mkt-switch--disabled')).toBe(true);
+    expect(el.dataset.color).toBe('green');
+    expect(track.dataset.size).toBe('lg');
+    expect(thumb.dataset.size).toBe('lg');
+  });
+
+  it('renders label, description, and error text with invalid state', () => {
+    const el = Switch({
+      label: 'Notifications',
+      description: 'Send product updates',
+      error: 'Required',
+    });
+    const input = el.querySelector('input') as HTMLInputElement;
+
+    expect(el.querySelector('.mkt-switch__label')!.textContent).toBe('Notifications');
+    expect(el.querySelector('.mkt-switch__description')!.textContent).toBe('Send product updates');
+    expect(el.querySelector('[role="alert"]')!.textContent).toBe('Required');
+    expect(input.getAttribute('aria-invalid')).toBe('true');
+  });
+
+  it('calls onChange when toggled', () => {
+    const onChange = vi.fn();
+    const el = Switch({ label: 'Dark mode', onChange });
+    const input = el.querySelector('input') as HTMLInputElement;
+
+    input.checked = true;
+    input.dispatchEvent(new Event('change'));
+
+    expect(onChange).toHaveBeenCalledTimes(1);
+  });
+
+  it('syncs controlled checked updates', async () => {
+    const { signal, flushSync } = await import('@mikata/reactivity');
+    const [checked, setChecked] = signal(false);
+    const el = Switch({
+      label: 'Dark mode',
+      get checked() { return checked(); },
+    });
+    const input = el.querySelector('input') as HTMLInputElement;
+
+    expect(input.checked).toBe(false);
+    setChecked(true);
+    flushSync();
+    expect(input.checked).toBe(true);
+  });
 });

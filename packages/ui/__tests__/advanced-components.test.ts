@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createScope, flushSync, signal } from '@mikata/reactivity';
 import { _resetIdCounter } from '../src/utils/unique-id';
 
@@ -27,6 +27,7 @@ import { BackgroundImage } from '../src/components/BackgroundImage';
 import { Input } from '../src/components/Input';
 import { Indicator } from '../src/components/Indicator';
 import { AppShell } from '../src/components/AppShell';
+import { Spoiler } from '../src/components/Spoiler';
 
 beforeEach(() => {
   _resetIdCounter();
@@ -1085,6 +1086,110 @@ describe('AppShell', () => {
     });
     expect(el.style.getPropertyValue('--_shell-header')).toBe('80px');
     expect(el.style.getPropertyValue('--_shell-padding')).toBe('16px');
+  });
+});
+
+// ─── Spoiler ─────────────────────────────────────────────
+describe('Spoiler', () => {
+  class ResizeObserverMock {
+    static instances: ResizeObserverMock[] = [];
+    callback: ResizeObserverCallback;
+    disconnect = vi.fn();
+    observe = vi.fn();
+
+    constructor(callback: ResizeObserverCallback) {
+      this.callback = callback;
+      ResizeObserverMock.instances.push(this);
+    }
+
+    emit() {
+      this.callback([], this as unknown as ResizeObserver);
+    }
+  }
+
+  let OriginalResizeObserver: typeof ResizeObserver | undefined;
+
+  beforeEach(() => {
+    OriginalResizeObserver = globalThis.ResizeObserver;
+    ResizeObserverMock.instances = [];
+    globalThis.ResizeObserver = ResizeObserverMock as unknown as typeof ResizeObserver;
+  });
+
+  afterEach(() => {
+    globalThis.ResizeObserver = OriginalResizeObserver!;
+  });
+
+  it('renders collapsed content with default max height', () => {
+    const child = makeNode('Hidden details');
+    const el = Spoiler({ children: child });
+    const content = el.querySelector('.mkt-spoiler__content') as HTMLElement;
+
+    expect(el.classList.contains('mkt-spoiler')).toBe(true);
+    expect(content.contains(child)).toBe(true);
+    expect(content.style.maxHeight).toBe('100px');
+  });
+
+  it('adds a control after mount only when content overflows', async () => {
+    createScope(() => {
+      const el = Spoiler({ children: makeNode('Tall'), maxHeight: 20 });
+      document.body.appendChild(el);
+      const content = el.querySelector('.mkt-spoiler__content') as HTMLElement;
+      Object.defineProperty(content, 'scrollHeight', { value: 60, configurable: true });
+    });
+
+    await Promise.resolve();
+
+    const control = document.body.querySelector('.mkt-spoiler__control') as HTMLButtonElement;
+    expect(control).toBeTruthy();
+    expect(control.textContent).toBe('Show more');
+    expect(control.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('toggles labels, aria-expanded, and max height', async () => {
+    createScope(() => {
+      const el = Spoiler({
+        children: makeNode('Tall'),
+        maxHeight: 20,
+        showLabel: 'Expand',
+        hideLabel: 'Collapse',
+      });
+      document.body.appendChild(el);
+      const content = el.querySelector('.mkt-spoiler__content') as HTMLElement;
+      Object.defineProperty(content, 'scrollHeight', { value: 60, configurable: true });
+    });
+
+    await Promise.resolve();
+
+    const content = document.body.querySelector('.mkt-spoiler__content') as HTMLElement;
+    const control = document.body.querySelector('.mkt-spoiler__control') as HTMLButtonElement;
+
+    control.click();
+    expect(content.style.maxHeight).toBe('60px');
+    expect(control.textContent).toBe('Collapse');
+    expect(control.getAttribute('aria-expanded')).toBe('true');
+
+    control.click();
+    expect(content.style.maxHeight).toBe('20px');
+    expect(control.textContent).toBe('Expand');
+    expect(control.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('removes the control when resized content no longer overflows', async () => {
+    createScope(() => {
+      const el = Spoiler({ children: makeNode('Resizable'), maxHeight: 20 });
+      document.body.appendChild(el);
+      const content = el.querySelector('.mkt-spoiler__content') as HTMLElement;
+      Object.defineProperty(content, 'scrollHeight', { value: 60, configurable: true });
+    });
+
+    await Promise.resolve();
+    expect(document.body.querySelector('.mkt-spoiler__control')).toBeTruthy();
+
+    const content = document.body.querySelector('.mkt-spoiler__content') as HTMLElement;
+    Object.defineProperty(content, 'scrollHeight', { value: 10, configurable: true });
+    ResizeObserverMock.instances[0]!.emit();
+
+    expect(document.body.querySelector('.mkt-spoiler__control')).toBeFalsy();
   });
 });
 
