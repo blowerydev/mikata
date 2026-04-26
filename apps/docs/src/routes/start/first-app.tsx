@@ -1,7 +1,7 @@
 import { useMeta } from '@mikata/kit/head';
 import { CodeBlock, highlight } from '../../components/CodeBlock';
 
-export const nav = { title: 'Your first app', section: 'Start', order: 3 };
+export const nav = { title: 'Your first app', section: 'Start', order: 5 };
 
 const todoList = await highlight(
   `import { signal, computed, render, show, each } from 'mikata';

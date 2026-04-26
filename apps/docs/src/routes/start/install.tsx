@@ -2,7 +2,7 @@ import { useMeta } from '@mikata/kit/head';
 import { CodeBlock, highlight } from '../../components/CodeBlock';
 import { Link } from '@mikata/router';
 
-export const nav = { title: 'Install', section: 'Start', order: 2 };
+export const nav = { title: 'Installation', section: 'Start', order: 3 };
 
 const createCmd = await highlight(`npm create mikata@latest my-app`, 'bash');
 const runCmd = await highlight(
@@ -25,10 +25,10 @@ const manualDeps = await highlight(
 );
 
 export default function Install() {
-  useMeta({ title: 'Install - Mikata' });
+  useMeta({ title: 'Installation - Mikata' });
   return (
     <article>
-      <h1>Install</h1>
+      <h1>Installation</h1>
       <h2>Scaffold a new project</h2>
       <p>
         The fastest way to get started is <code>create-mikata</code>, an

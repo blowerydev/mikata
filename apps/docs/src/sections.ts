@@ -12,10 +12,13 @@
  */
 export const sections = [
   'Start',
-  'Core',
-  'Routing & Data',
+  'Core Concepts',
+  'App Framework',
+  'State & Data',
   'UI',
-  'Reference',
+  'Tooling',
+  'FAQ',
+  'Packages',
 ] as const;
 
 export type SectionName = (typeof sections)[number];

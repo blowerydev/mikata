@@ -20,6 +20,10 @@ export default function Home() {
       <h2>What's inside</h2>
       <ul>
         <li>
+          <strong>create-mikata</strong> - scaffold a focused project or a
+          fuller app stack.
+        </li>
+        <li>
           <strong>Signals + effects</strong> with no component re-renders -
           updates target exact DOM nodes.
         </li>
@@ -34,6 +38,10 @@ export default function Home() {
         <li>
           <strong>@mikata/ui</strong> - 80+ accessible components with live
           playgrounds on the docs pages.
+        </li>
+        <li>
+          <strong>Optional packages</strong> for stores, forms, persistence,
+          i18n, icons, testing, and lint rules.
         </li>
       </ul>
     </section>

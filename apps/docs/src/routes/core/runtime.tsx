@@ -1,7 +1,7 @@
 import { useMeta } from '@mikata/kit/head';
 import { CodeBlock, highlight } from '../../components/CodeBlock';
 
-export const nav = { title: 'Runtime & JSX', section: 'Core', order: 2 };
+export const nav = { title: 'Components & JSX', section: 'Core Concepts', order: 2 };
 
 const setupExample = await highlight(
   `function Counter() {
@@ -48,10 +48,10 @@ renderEffect(() => { _node.textContent = user().name; });`,
 );
 
 export default function Runtime() {
-  useMeta({ title: 'Runtime & JSX - Mikata' });
+  useMeta({ title: 'Components & JSX - Mikata' });
   return (
     <article>
-      <h1>Runtime & JSX</h1>
+      <h1>Components & JSX</h1>
 
       <h2>Components run once</h2>
       <p>

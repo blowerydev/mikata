@@ -2,8 +2,8 @@ import { useMeta } from '@mikata/kit/head';
 import { CodeBlock, highlight } from '../../components/CodeBlock';
 
 export const nav = {
-  title: 'Kit: file routes, loaders, SSR/SSG',
-  section: 'Routing & Data',
+  title: 'Kit overview',
+  section: 'App Framework',
   order: 1,
 };
 
