@@ -11,13 +11,18 @@ export default tseslint.config(
     ],
   },
   {
-    // Start with the docs surface and the controls cleaned up in CI; the rest of
-    // @mikata/ui still has existing cleanup warnings to burn down separately.
+    // Start with the docs surface and the UI components cleaned up in CI; the
+    // rest of @mikata/ui still has existing cleanup warnings to burn down
+    // separately.
     files: [
       'apps/docs/src/**/*.{ts,tsx}',
+      'packages/ui/src/components/Calendar/**/*.{ts,tsx}',
       'packages/ui/src/components/Checkbox/**/*.{ts,tsx}',
+      'packages/ui/src/components/DatePicker/**/*.{ts,tsx}',
+      'packages/ui/src/components/MonthPicker/**/*.{ts,tsx}',
       'packages/ui/src/components/Select/**/*.{ts,tsx}',
       'packages/ui/src/components/TextInput/**/*.{ts,tsx}',
+      'packages/ui/src/components/YearPicker/**/*.{ts,tsx}',
     ],
     languageOptions: {
       parser: tseslint.parser,

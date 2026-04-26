@@ -1,4 +1,4 @@
-import { signal, effect, renderEffect } from '@mikata/reactivity';
+import { signal, effect, renderEffect, getCurrentScope, onCleanup } from '@mikata/reactivity';
 import { _mergeProps, adoptElement } from '@mikata/runtime';
 import { createIcon, ChevronLeft, ChevronRight } from '../../internal/icons';
 import { mergeClasses } from '../../utils/class-merge';
@@ -164,11 +164,6 @@ export function DatePicker(userProps: DatePickerProps = {}): HTMLElement {
         if (isSameDay(day, today)) btn.dataset.today = '';
         if (day.getDay() === 0 || day.getDay() === 6) btn.dataset.weekend = '';
         if (dateDisabled(day)) btn.disabled = true;
-        btn.addEventListener('click', () => pickDay(day));
-        if (type === 'range') {
-          btn.addEventListener('mouseenter', () => setHover(day));
-          btn.addEventListener('mouseleave', () => setHover(null));
-        }
         bodyEl.appendChild(btn);
         dayButtons.push({ day, btn });
       }
@@ -215,10 +210,6 @@ export function DatePicker(userProps: DatePickerProps = {}): HTMLElement {
       if ((minDate && isBefore(monthEnd, minDate)) || (maxDate && isAfter(monthStart, maxDate))) {
         btn.disabled = true;
       }
-      btn.addEventListener('click', () => {
-        updateView(new Date(y, m, 1));
-        changeLevel('day');
-      });
       bodyEl.appendChild(btn);
     }
   }
@@ -240,10 +231,6 @@ export function DatePicker(userProps: DatePickerProps = {}): HTMLElement {
       if ((minDate && isBefore(new Date(y, 11, 31), minDate)) || (maxDate && isAfter(new Date(y, 0, 1), maxDate))) {
         btn.disabled = true;
       }
-      btn.addEventListener('click', () => {
-        updateView(new Date(y, viewDate().getMonth(), 1));
-        changeLevel('month');
-      });
       bodyEl.appendChild(btn);
     }
   }
@@ -286,23 +273,27 @@ export function DatePicker(userProps: DatePickerProps = {}): HTMLElement {
         else { header.appendChild(prevBtn); header.appendChild(label); header.appendChild(nextBtn); }
       });
 
-      prevBtn.addEventListener('click', () => {
+      const handlePrevClick = () => {
         const l = level();
         if (l === 'day') updateView(addMonths(viewDate(), -1));
         else if (l === 'month') updateView(new Date(viewDate().getFullYear() - 1, viewDate().getMonth(), 1));
         else updateView(new Date(viewDate().getFullYear() - 10, 0, 1));
-      });
-      nextBtn.addEventListener('click', () => {
+      };
+      const handleNextClick = () => {
         const l = level();
         if (l === 'day') updateView(addMonths(viewDate(), 1));
         else if (l === 'month') updateView(new Date(viewDate().getFullYear() + 1, viewDate().getMonth(), 1));
         else updateView(new Date(viewDate().getFullYear() + 10, 0, 1));
-      });
+      };
 
-      label.addEventListener('click', () => {
+      const handleLabelClick = () => {
         const next = canClimb(level());
         if (next) changeLevel(next);
-      });
+      };
+
+      prevBtn.addEventListener('click', handlePrevClick);
+      nextBtn.addEventListener('click', handleNextClick);
+      label.addEventListener('click', handleLabelClick);
 
       effect(() => {
         const l = level();
@@ -323,6 +314,14 @@ export function DatePicker(userProps: DatePickerProps = {}): HTMLElement {
         }
         label.disabled = canClimb(l) === null;
       });
+
+      if (getCurrentScope()) {
+        onCleanup(() => {
+          prevBtn.removeEventListener('click', handlePrevClick);
+          nextBtn.removeEventListener('click', handleNextClick);
+          label.removeEventListener('click', handleLabelClick);
+        });
+      }
     });
 
     adoptElement<HTMLDivElement>('div', (weekdayRow) => {
@@ -364,7 +363,57 @@ export function DatePicker(userProps: DatePickerProps = {}): HTMLElement {
         if (level() === 'day') applyDayState();
       });
 
-      body.addEventListener('keydown', (e: KeyboardEvent) => {
+      const getDayFromTarget = (target: EventTarget | null): Date | null => {
+        const btn = target instanceof Element
+          ? target.closest<HTMLButtonElement>('.mkt-calendar__day')
+          : null;
+        if (!btn || btn.disabled || !body.contains(btn)) return null;
+        const entry = dayButtons.find((item) => item.btn === btn);
+        return entry?.day ?? null;
+      };
+
+      const handleClick = (e: MouseEvent) => {
+        const target = e.target instanceof Element ? e.target : null;
+        if (!target) return;
+
+        const day = level() === 'day' ? getDayFromTarget(target) : null;
+        if (day) {
+          pickDay(day);
+          return;
+        }
+
+        const monthButton = target.closest<HTMLButtonElement>('.mkt-month-picker__month');
+        if (monthButton && !monthButton.disabled && body.contains(monthButton)) {
+          const [year, month] = (monthButton.dataset.month ?? '').split('-').map(Number);
+          if (!Number.isNaN(year) && !Number.isNaN(month)) {
+            updateView(new Date(year, month, 1));
+            changeLevel('day');
+          }
+          return;
+        }
+
+        const yearButton = target.closest<HTMLButtonElement>('.mkt-year-picker__year');
+        if (yearButton && !yearButton.disabled && body.contains(yearButton)) {
+          const y = Number(yearButton.dataset.year);
+          if (!Number.isNaN(y)) {
+            updateView(new Date(y, viewDate().getMonth(), 1));
+            changeLevel('month');
+          }
+        }
+      };
+
+      const handleMouseEnter = (e: MouseEvent) => {
+        if (type !== 'range' || level() !== 'day') return;
+        const day = getDayFromTarget(e.target);
+        if (day) setHover(day);
+      };
+
+      const handleMouseLeave = (e: MouseEvent) => {
+        if (type !== 'range' || level() !== 'day') return;
+        if (getDayFromTarget(e.target)) setHover(null);
+      };
+
+      const handleKeyDown = (e: KeyboardEvent) => {
         if (level() !== 'day') return;
         const target = e.target as HTMLElement;
         if (!target.classList.contains('mkt-calendar__day')) return;
@@ -393,7 +442,20 @@ export function DatePicker(userProps: DatePickerProps = {}): HTMLElement {
           const selector = `.mkt-calendar__day[data-date="${next!.getFullYear()}-${next!.getMonth()}-${next!.getDate()}"]`;
           (body.querySelector(selector) as HTMLElement | null)?.focus();
         });
-      });
+      };
+
+      body.addEventListener('click', handleClick);
+      body.addEventListener('mouseenter', handleMouseEnter, true);
+      body.addEventListener('mouseleave', handleMouseLeave, true);
+      body.addEventListener('keydown', handleKeyDown);
+      if (getCurrentScope()) {
+        onCleanup(() => {
+          body.removeEventListener('click', handleClick);
+          body.removeEventListener('mouseenter', handleMouseEnter, true);
+          body.removeEventListener('mouseleave', handleMouseLeave, true);
+          body.removeEventListener('keydown', handleKeyDown);
+        });
+      }
     });
 
     const ref = props.ref;

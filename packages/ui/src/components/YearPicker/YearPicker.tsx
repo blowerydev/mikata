@@ -1,4 +1,4 @@
-import { signal, effect, renderEffect } from '@mikata/reactivity';
+import { signal, effect, renderEffect, getCurrentScope, onCleanup } from '@mikata/reactivity';
 import { _mergeProps, adoptElement } from '@mikata/runtime';
 import { createIcon, ChevronLeft, ChevronRight } from '../../internal/icons';
 import { mergeClasses } from '../../utils/class-merge';
@@ -69,7 +69,8 @@ export function YearPicker(userProps: YearPickerProps = {}): HTMLElement {
       });
       prevBtn.setAttribute('aria-label', 'Previous decade');
       prevBtn.appendChild(createIcon(ChevronLeft, { size: 16 }));
-      prevBtn.addEventListener('click', () => updateDecade(decadeStart() - 10));
+      const handlePrevClick = () => updateDecade(decadeStart() - 10);
+      prevBtn.addEventListener('click', handlePrevClick);
 
       const label = document.createElement('button');
       label.type = 'button';
@@ -84,7 +85,8 @@ export function YearPicker(userProps: YearPickerProps = {}): HTMLElement {
       });
       nextBtn.setAttribute('aria-label', 'Next decade');
       nextBtn.appendChild(createIcon(ChevronRight, { size: 16 }));
-      nextBtn.addEventListener('click', () => updateDecade(decadeStart() + 10));
+      const handleNextClick = () => updateDecade(decadeStart() + 10);
+      nextBtn.addEventListener('click', handleNextClick);
 
       effect(() => {
         const rtl = direction() === 'rtl';
@@ -100,6 +102,13 @@ export function YearPicker(userProps: YearPickerProps = {}): HTMLElement {
         prevBtn.disabled = !!(minDate && isBefore(new Date(decadeStart() - 1, 11, 31), minDate));
         nextBtn.disabled = !!(maxDate && isAfter(new Date(decadeStart() + 10, 0, 1), maxDate));
       });
+
+      if (getCurrentScope()) {
+        onCleanup(() => {
+          prevBtn.removeEventListener('click', handlePrevClick);
+          nextBtn.removeEventListener('click', handleNextClick);
+        });
+      }
     });
 
     adoptElement<HTMLDivElement>('div', (grid) => {
@@ -127,12 +136,25 @@ export function YearPicker(userProps: YearPickerProps = {}): HTMLElement {
             btn.setAttribute('aria-selected', 'true');
           }
           if (yearDisabled(y)) btn.disabled = true;
-          btn.addEventListener('click', () => pick(y));
           grid.appendChild(btn);
         }
       });
 
-      grid.addEventListener('keydown', (e: KeyboardEvent) => {
+      const getYearFromTarget = (target: EventTarget | null): number | null => {
+        const btn = target instanceof Element
+          ? target.closest<HTMLButtonElement>('.mkt-year-picker__year')
+          : null;
+        if (!btn || btn.disabled || !grid.contains(btn) || !btn.dataset.year) return null;
+        const y = +btn.dataset.year;
+        return Number.isNaN(y) ? null : y;
+      };
+
+      const handleClick = (e: MouseEvent) => {
+        const y = getYearFromTarget(e.target);
+        if (y !== null) pick(y);
+      };
+
+      const handleKeyDown = (e: KeyboardEvent) => {
         const target = e.target as HTMLElement;
         if (!target.dataset.year) return;
         let y = +target.dataset.year;
@@ -155,7 +177,16 @@ export function YearPicker(userProps: YearPickerProps = {}): HTMLElement {
         requestAnimationFrame(() => {
           (grid.querySelector(`[data-year="${y}"]`) as HTMLElement | null)?.focus();
         });
-      });
+      };
+
+      grid.addEventListener('click', handleClick);
+      grid.addEventListener('keydown', handleKeyDown);
+      if (getCurrentScope()) {
+        onCleanup(() => {
+          grid.removeEventListener('click', handleClick);
+          grid.removeEventListener('keydown', handleKeyDown);
+        });
+      }
     });
 
     const ref = props.ref;

@@ -1,4 +1,4 @@
-import { signal, effect, renderEffect } from '@mikata/reactivity';
+import { signal, effect, renderEffect, getCurrentScope, onCleanup } from '@mikata/reactivity';
 import { _mergeProps, adoptElement } from '@mikata/runtime';
 import { createIcon, ChevronLeft, ChevronRight } from '../../internal/icons';
 import { mergeClasses } from '../../utils/class-merge';
@@ -70,7 +70,8 @@ export function MonthPicker(userProps: MonthPickerProps = {}): HTMLElement {
       });
       prevBtn.setAttribute('aria-label', 'Previous year');
       prevBtn.appendChild(createIcon(ChevronLeft, { size: 16 }));
-      prevBtn.addEventListener('click', () => updateYear(year() - 1));
+      const handlePrevClick = () => updateYear(year() - 1);
+      prevBtn.addEventListener('click', handlePrevClick);
 
       const label = document.createElement('button');
       label.type = 'button';
@@ -85,7 +86,8 @@ export function MonthPicker(userProps: MonthPickerProps = {}): HTMLElement {
       });
       nextBtn.setAttribute('aria-label', 'Next year');
       nextBtn.appendChild(createIcon(ChevronRight, { size: 16 }));
-      nextBtn.addEventListener('click', () => updateYear(year() + 1));
+      const handleNextClick = () => updateYear(year() + 1);
+      nextBtn.addEventListener('click', handleNextClick);
 
       effect(() => {
         const rtl = direction() === 'rtl';
@@ -101,6 +103,13 @@ export function MonthPicker(userProps: MonthPickerProps = {}): HTMLElement {
         prevBtn.disabled = !!(minDate && isBefore(new Date(year() - 1, 11, 31), minDate));
         nextBtn.disabled = !!(maxDate && isAfter(new Date(year() + 1, 0, 1), maxDate));
       });
+
+      if (getCurrentScope()) {
+        onCleanup(() => {
+          prevBtn.removeEventListener('click', handlePrevClick);
+          nextBtn.removeEventListener('click', handleNextClick);
+        });
+      }
     });
 
     adoptElement<HTMLDivElement>('div', (grid) => {
@@ -126,12 +135,25 @@ export function MonthPicker(userProps: MonthPickerProps = {}): HTMLElement {
             btn.setAttribute('aria-selected', 'true');
           }
           if (monthDisabled(y, m)) btn.disabled = true;
-          btn.addEventListener('click', () => pick(y, m));
           grid.appendChild(btn);
         }
       });
 
-      grid.addEventListener('keydown', (e: KeyboardEvent) => {
+      const getMonthFromTarget = (target: EventTarget | null): [number, number] | null => {
+        const btn = target instanceof Element
+          ? target.closest<HTMLButtonElement>('.mkt-month-picker__month')
+          : null;
+        if (!btn || btn.disabled || !grid.contains(btn) || !btn.dataset.month) return null;
+        const [yStr, mStr] = btn.dataset.month.split('-');
+        return [+yStr, +mStr];
+      };
+
+      const handleClick = (e: MouseEvent) => {
+        const month = getMonthFromTarget(e.target);
+        if (month) pick(month[0], month[1]);
+      };
+
+      const handleKeyDown = (e: KeyboardEvent) => {
         const target = e.target as HTMLElement;
         if (!target.dataset.month) return;
         const [yStr, mStr] = target.dataset.month.split('-');
@@ -159,7 +181,16 @@ export function MonthPicker(userProps: MonthPickerProps = {}): HTMLElement {
         requestAnimationFrame(() => {
           (grid.querySelector(`[data-month="${y}-${m}"]`) as HTMLElement | null)?.focus();
         });
-      });
+      };
+
+      grid.addEventListener('click', handleClick);
+      grid.addEventListener('keydown', handleKeyDown);
+      if (getCurrentScope()) {
+        onCleanup(() => {
+          grid.removeEventListener('click', handleClick);
+          grid.removeEventListener('keydown', handleKeyDown);
+        });
+      }
     });
 
     const ref = props.ref;

@@ -1,4 +1,4 @@
-import { signal, effect, renderEffect } from '@mikata/reactivity';
+import { signal, effect, renderEffect, getCurrentScope, onCleanup } from '@mikata/reactivity';
 import { _mergeProps, adoptElement } from '@mikata/runtime';
 import { createIcon, ChevronLeft, ChevronRight } from '../../internal/icons';
 import { mergeClasses } from '../../utils/class-merge';
@@ -126,7 +126,8 @@ export function Calendar(userProps: CalendarProps = {}): HTMLElement {
       });
       prevBtn.setAttribute('aria-label', 'Previous month');
       prevBtn.appendChild(createIcon(ChevronLeft, { size: 16 }));
-      prevBtn.addEventListener('click', () => updateView(addMonths(viewDate(), -1)));
+      const handlePrevClick = () => updateView(addMonths(viewDate(), -1));
+      prevBtn.addEventListener('click', handlePrevClick);
 
       const label = document.createElement('button');
       label.type = 'button';
@@ -142,7 +143,8 @@ export function Calendar(userProps: CalendarProps = {}): HTMLElement {
       });
       nextBtn.setAttribute('aria-label', 'Next month');
       nextBtn.appendChild(createIcon(ChevronRight, { size: 16 }));
-      nextBtn.addEventListener('click', () => updateView(addMonths(viewDate(), 1)));
+      const handleNextClick = () => updateView(addMonths(viewDate(), 1));
+      nextBtn.addEventListener('click', handleNextClick);
 
       // Visually swap prev/next in RTL so arrows point the direction they travel.
       effect(() => {
@@ -167,6 +169,13 @@ export function Calendar(userProps: CalendarProps = {}): HTMLElement {
         prevBtn.disabled = !!(minDate && isBefore(addDays(startOfMonth(viewDate()), -1), minDate));
         nextBtn.disabled = !!(maxDate && isAfter(startOfMonth(nextMonth), maxDate));
       });
+
+      if (getCurrentScope()) {
+        onCleanup(() => {
+          prevBtn.removeEventListener('click', handlePrevClick);
+          nextBtn.removeEventListener('click', handleNextClick);
+        });
+      }
     });
 
     adoptElement<HTMLDivElement>('div', (weekdayRow) => {
@@ -229,12 +238,6 @@ export function Calendar(userProps: CalendarProps = {}): HTMLElement {
             if (day.getDay() === 0 || day.getDay() === 6) btn.dataset.weekend = '';
             if (dateDisabled(day)) btn.disabled = true;
 
-            btn.addEventListener('click', () => handleSelect(day));
-            if (type === 'range') {
-              btn.addEventListener('mouseenter', () => setHover(day));
-              btn.addEventListener('mouseleave', () => setHover(null));
-            }
-
             grid.appendChild(btn);
             dayButtons.push({ day, btn });
           }
@@ -264,7 +267,32 @@ export function Calendar(userProps: CalendarProps = {}): HTMLElement {
         }
       });
 
-      grid.addEventListener('keydown', (e: KeyboardEvent) => {
+      const getDayFromTarget = (target: EventTarget | null): Date | null => {
+        const btn = target instanceof Element
+          ? target.closest<HTMLButtonElement>('.mkt-calendar__day')
+          : null;
+        if (!btn || btn.disabled || !grid.contains(btn)) return null;
+        const entry = dayButtons.find((item) => item.btn === btn);
+        return entry?.day ?? null;
+      };
+
+      const handleClick = (e: MouseEvent) => {
+        const day = getDayFromTarget(e.target);
+        if (day) handleSelect(day);
+      };
+
+      const handleMouseEnter = (e: MouseEvent) => {
+        if (type !== 'range') return;
+        const day = getDayFromTarget(e.target);
+        if (day) setHover(day);
+      };
+
+      const handleMouseLeave = (e: MouseEvent) => {
+        if (type !== 'range') return;
+        if (getDayFromTarget(e.target)) setHover(null);
+      };
+
+      const handleKeyDown = (e: KeyboardEvent) => {
         const target = e.target as HTMLElement;
         if (!target.classList.contains('mkt-calendar__day')) return;
         const [y, m, d] = (target.dataset.date ?? '').split('-').map(Number);
@@ -297,7 +325,20 @@ export function Calendar(userProps: CalendarProps = {}): HTMLElement {
           const selector = `.mkt-calendar__day[data-date="${next!.getFullYear()}-${next!.getMonth()}-${next!.getDate()}"]`;
           (gridEl.querySelector(selector) as HTMLElement | null)?.focus();
         });
-      });
+      };
+
+      grid.addEventListener('click', handleClick);
+      grid.addEventListener('mouseenter', handleMouseEnter, true);
+      grid.addEventListener('mouseleave', handleMouseLeave, true);
+      grid.addEventListener('keydown', handleKeyDown);
+      if (getCurrentScope()) {
+        onCleanup(() => {
+          grid.removeEventListener('click', handleClick);
+          grid.removeEventListener('mouseenter', handleMouseEnter, true);
+          grid.removeEventListener('mouseleave', handleMouseLeave, true);
+          grid.removeEventListener('keydown', handleKeyDown);
+        });
+      }
     });
 
     const ref = props.ref;
