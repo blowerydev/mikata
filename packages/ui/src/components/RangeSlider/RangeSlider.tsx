@@ -1,5 +1,5 @@
-import { onCleanup, _mergeProps, adoptElement } from '@mikata/runtime';
-import { renderEffect } from '@mikata/reactivity';
+import { _mergeProps, adoptElement } from '@mikata/runtime';
+import { getCurrentScope, onCleanup, renderEffect } from '@mikata/reactivity';
 import { mergeClasses } from '../../utils/class-merge';
 import { useDirection } from '../../theme';
 import type { RangeSliderProps } from './RangeSlider.types';
@@ -187,8 +187,16 @@ export function RangeSlider(userProps: RangeSliderProps = {}): HTMLElement {
         thumbLow.setAttribute('aria-valuemin', String(min));
         thumbLow.setAttribute('aria-valuemax', String(max));
         thumbLow.setAttribute('aria-label', 'Minimum');
-        thumbLow.addEventListener('pointerdown', startDrag('low') as EventListener);
-        thumbLow.addEventListener('keydown', (e) => keyStep(e as KeyboardEvent, 'low'));
+        const handlePointerDown = startDrag('low') as EventListener;
+        const handleKeyDown = (e: KeyboardEvent) => keyStep(e, 'low');
+        thumbLow.addEventListener('pointerdown', handlePointerDown);
+        thumbLow.addEventListener('keydown', handleKeyDown);
+        if (getCurrentScope()) {
+          onCleanup(() => {
+            thumbLow.removeEventListener('pointerdown', handlePointerDown);
+            thumbLow.removeEventListener('keydown', handleKeyDown);
+          });
+        }
       });
 
       adoptElement<HTMLDivElement>('div', (thumbHigh) => {
@@ -201,14 +209,22 @@ export function RangeSlider(userProps: RangeSliderProps = {}): HTMLElement {
         thumbHigh.setAttribute('aria-valuemin', String(min));
         thumbHigh.setAttribute('aria-valuemax', String(max));
         thumbHigh.setAttribute('aria-label', 'Maximum');
-        thumbHigh.addEventListener('pointerdown', startDrag('high') as EventListener);
-        thumbHigh.addEventListener('keydown', (e) => keyStep(e as KeyboardEvent, 'high'));
+        const handlePointerDown = startDrag('high') as EventListener;
+        const handleKeyDown = (e: KeyboardEvent) => keyStep(e, 'high');
+        thumbHigh.addEventListener('pointerdown', handlePointerDown);
+        thumbHigh.addEventListener('keydown', handleKeyDown);
+        if (getCurrentScope()) {
+          onCleanup(() => {
+            thumbHigh.removeEventListener('pointerdown', handlePointerDown);
+            thumbHigh.removeEventListener('keydown', handleKeyDown);
+          });
+        }
       });
 
-      track.addEventListener('pointerdown', (e) => {
+      const handleTrackPointerDown = (e: PointerEvent) => {
         if (props.disabled) return;
         if (e.target === thumbLowEl || e.target === thumbHighEl) return;
-        const v = posToValue((e as PointerEvent).clientX);
+        const v = posToValue(e.clientX);
         const which = Math.abs(v - v0) <= Math.abs(v - v1) ? 'low' : 'high';
         if (which === 'low') setValues(v, v1, 'low', true);
         else setValues(v0, v, 'high', true);
@@ -216,15 +232,21 @@ export function RangeSlider(userProps: RangeSliderProps = {}): HTMLElement {
         (which === 'low' ? thumbLowEl : thumbHighEl)?.focus();
         document.addEventListener('pointermove', onMove);
         document.addEventListener('pointerup', onUp);
-      });
+      };
+      track.addEventListener('pointerdown', handleTrackPointerDown);
+      if (getCurrentScope()) {
+        onCleanup(() => track.removeEventListener('pointerdown', handleTrackPointerDown));
+      }
     });
 
     paint();
 
-    onCleanup(() => {
-      document.removeEventListener('pointermove', onMove);
-      document.removeEventListener('pointerup', onUp);
-    });
+    if (getCurrentScope()) {
+      onCleanup(() => {
+        document.removeEventListener('pointermove', onMove);
+        document.removeEventListener('pointerup', onUp);
+      });
+    }
 
     const ref = props.ref;
     if (ref) {

@@ -1,8 +1,8 @@
-import { renderEffect } from '@mikata/reactivity';
-import { _mergeProps, adoptElement, onCleanup } from '@mikata/runtime';
+import { getCurrentScope, onCleanup, renderEffect } from '@mikata/reactivity';
+import { _mergeProps, adoptElement } from '@mikata/runtime';
 import { mergeClasses } from '../../utils/class-merge';
 import { uniqueId } from '../../utils/unique-id';
-import type { MenuProps, MenuItemDef } from './Menu.types';
+import type { MenuProps, MenuItem, MenuItemDef } from './Menu.types';
 import './Menu.css';
 
 export function Menu(userProps: MenuProps): HTMLElement {
@@ -11,6 +11,7 @@ export function Menu(userProps: MenuProps): HTMLElement {
   const target = props.target;
   const items = props.items;
   const closeOnItemClick = props.closeOnItemClick ?? true;
+  const actionItems = items.filter((item): item is MenuItem => item.type !== 'divider' && item.type !== 'label');
 
   const id = uniqueId('menu');
   let isOpen = false;
@@ -55,16 +56,24 @@ export function Menu(userProps: MenuProps): HTMLElement {
       });
       if (target.parentNode !== targetWrapper) targetWrapper.appendChild(target);
 
-      targetWrapper.addEventListener('click', (e) => {
+      const handleTargetClick = (e: MouseEvent) => {
         e.stopPropagation();
         toggle();
-      });
-      targetWrapper.addEventListener('keydown', (e) => {
+      };
+      const handleTargetKeyDown = (e: KeyboardEvent) => {
         if (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
           open();
         }
-      });
+      };
+      targetWrapper.addEventListener('click', handleTargetClick);
+      targetWrapper.addEventListener('keydown', handleTargetKeyDown);
+      if (getCurrentScope()) {
+        onCleanup(() => {
+          targetWrapper.removeEventListener('click', handleTargetClick);
+          targetWrapper.removeEventListener('keydown', handleTargetKeyDown);
+        });
+      }
 
       const targetBtn = targetWrapper.querySelector('button');
       if (targetBtn) {
@@ -142,17 +151,23 @@ export function Menu(userProps: MenuProps): HTMLElement {
             });
           });
 
-          menuItem.addEventListener('click', () => {
-            if (item.disabled) return;
-            item.onClick?.();
-            if (closeOnItemClick) close();
-          });
-
           menuItems.push(menuItem);
         });
       });
 
-      dropdown.addEventListener('keydown', (e) => {
+      const handleDropdownClick = (e: MouseEvent) => {
+        const menuItem = e.target instanceof Element
+          ? e.target.closest<HTMLButtonElement>('.mkt-menu__item')
+          : null;
+        if (!menuItem || menuItem.disabled || !dropdown.contains(menuItem)) return;
+        const index = menuItems.indexOf(menuItem);
+        const item = actionItems[index];
+        if (!item || item.disabled) return;
+        item.onClick?.();
+        if (closeOnItemClick) close();
+      };
+
+      const handleDropdownKeyDown = (e: KeyboardEvent) => {
         const enabled = menuItems.filter((el) => !el.hasAttribute('disabled'));
         const currentIndex = enabled.indexOf(document.activeElement as HTMLElement);
 
@@ -174,14 +189,25 @@ export function Menu(userProps: MenuProps): HTMLElement {
           e.preventDefault();
           close();
         }
-      });
+      };
+
+      dropdown.addEventListener('click', handleDropdownClick);
+      dropdown.addEventListener('keydown', handleDropdownKeyDown);
+      if (getCurrentScope()) {
+        onCleanup(() => {
+          dropdown.removeEventListener('click', handleDropdownClick);
+          dropdown.removeEventListener('keydown', handleDropdownKeyDown);
+        });
+      }
     });
 
     const onDocClick = () => {
       if (isOpen) close();
     };
     document.addEventListener('click', onDocClick);
-    onCleanup(() => document.removeEventListener('click', onDocClick));
+    if (getCurrentScope()) {
+      onCleanup(() => document.removeEventListener('click', onDocClick));
+    }
 
     const ref = props.ref;
     if (ref) {

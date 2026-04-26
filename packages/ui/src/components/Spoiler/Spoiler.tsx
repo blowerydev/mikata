@@ -1,5 +1,5 @@
-import { renderEffect } from '@mikata/reactivity';
-import { _mergeProps, adoptElement, onMount, onCleanup } from '@mikata/runtime';
+import { getCurrentScope, onCleanup, renderEffect } from '@mikata/reactivity';
+import { _mergeProps, adoptElement, onMount } from '@mikata/runtime';
 import { mergeClasses } from '../../utils/class-merge';
 import type { SpoilerProps } from './Spoiler.types';
 import './Spoiler.css';
@@ -37,7 +37,7 @@ export function Spoiler(userProps: SpoilerProps): HTMLElement {
     control.setAttribute('aria-expanded', 'false');
 
     let expanded = false;
-    control.addEventListener('click', () => {
+    const handleControlClick = () => {
       if (!contentEl) return;
       expanded = !expanded;
       if (expanded) {
@@ -49,7 +49,8 @@ export function Spoiler(userProps: SpoilerProps): HTMLElement {
         control.textContent = showLabel;
         control.setAttribute('aria-expanded', 'false');
       }
-    });
+    };
+    control.addEventListener('click', handleControlClick);
 
     onMount(() => {
       if (!contentEl) return;
@@ -61,8 +62,14 @@ export function Spoiler(userProps: SpoilerProps): HTMLElement {
         else if (!overflowing && control.isConnected) control.remove();
       });
       ro.observe(contentEl);
-      onCleanup(() => ro.disconnect());
+      if (getCurrentScope()) {
+        onCleanup(() => ro.disconnect());
+      }
     });
+
+    if (getCurrentScope()) {
+      onCleanup(() => control.removeEventListener('click', handleControlClick));
+    }
 
     const ref = props.ref;
     if (ref) {

@@ -1,5 +1,5 @@
-import { renderEffect } from '@mikata/reactivity';
-import { _mergeProps, adoptElement, onCleanup } from '@mikata/runtime';
+import { getCurrentScope, onCleanup, renderEffect } from '@mikata/reactivity';
+import { _mergeProps, adoptElement } from '@mikata/runtime';
 import { mergeClasses } from '../../utils/class-merge';
 import type { HoverCardProps } from './HoverCard.types';
 import './HoverCard.css';
@@ -61,11 +61,17 @@ export function HoverCard(userProps: HoverCardProps): HTMLElement {
     wrapper.addEventListener('focusin', show);
     wrapper.addEventListener('focusout', hide);
 
-    onCleanup(() => {
-      clearTimeout(openT);
-      clearTimeout(closeT);
-      dropdown.remove();
-    });
+    if (getCurrentScope()) {
+      onCleanup(() => {
+        clearTimeout(openT);
+        clearTimeout(closeT);
+        dropdown.remove();
+        wrapper.removeEventListener('mouseenter', show);
+        wrapper.removeEventListener('mouseleave', hide);
+        wrapper.removeEventListener('focusin', show);
+        wrapper.removeEventListener('focusout', hide);
+      });
+    }
 
     const ref = props.ref;
     if (ref) {

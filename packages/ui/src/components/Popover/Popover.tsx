@@ -1,5 +1,5 @@
-import { renderEffect } from '@mikata/reactivity';
-import { _mergeProps, adoptElement, createRef, onCleanup } from '@mikata/runtime';
+import { getCurrentScope, onCleanup, renderEffect } from '@mikata/reactivity';
+import { _mergeProps, adoptElement, createRef } from '@mikata/runtime';
 import { mergeClasses } from '../../utils/class-merge';
 import { onClickOutside } from '../../utils/on-click-outside';
 import type { PopoverProps } from './Popover.types';
@@ -53,7 +53,9 @@ export function Popover(userProps: PopoverProps): HTMLSpanElement {
         if (e.key === 'Escape') onClose();
       };
       document.addEventListener('keydown', handler);
-      onCleanup(() => document.removeEventListener('keydown', handler));
+      if (getCurrentScope()) {
+        onCleanup(() => document.removeEventListener('keydown', handler));
+      }
     }
 
     const ref = props.ref;

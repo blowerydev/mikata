@@ -1,5 +1,5 @@
-import { onCleanup, _mergeProps, adoptElement } from '@mikata/runtime';
-import { renderEffect } from '@mikata/reactivity';
+import { _mergeProps, adoptElement } from '@mikata/runtime';
+import { getCurrentScope, onCleanup, renderEffect } from '@mikata/reactivity';
 import { mergeClasses } from '../../utils/class-merge';
 import { useComponentDefaults } from '../../theme/component-defaults';
 import { uniqueId } from '../../utils/unique-id';
@@ -107,7 +107,9 @@ export function Select(userProps: SelectProps): HTMLDivElement {
         }
 
         const controller = new AbortController();
-        onCleanup(() => controller.abort());
+        if (getCurrentScope()) {
+          onCleanup(() => controller.abort());
+        }
 
         (data as SelectFetcher)(controller.signal).then(
           (items) => {
@@ -153,7 +155,9 @@ export function Select(userProps: SelectProps): HTMLDivElement {
       const onChange = props.onChange;
       if (onChange) {
         select.addEventListener('change', onChange as EventListener);
-        onCleanup(() => select.removeEventListener('change', onChange as EventListener));
+        if (getCurrentScope()) {
+          onCleanup(() => select.removeEventListener('change', onChange as EventListener));
+        }
       }
 
       const ref = props.ref;

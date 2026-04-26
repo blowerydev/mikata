@@ -1,4 +1,4 @@
-import { onCleanup } from '@mikata/reactivity';
+import { getCurrentScope, onCleanup } from '@mikata/reactivity';
 import type { Ref } from '@mikata/runtime';
 
 /**
@@ -17,7 +17,9 @@ export function onClickOutside(
 
   // Use capture to detect clicks before they're stopped
   document.addEventListener('mousedown', listener, true);
-  onCleanup(() => document.removeEventListener('mousedown', listener, true));
+  if (getCurrentScope()) {
+    onCleanup(() => document.removeEventListener('mousedown', listener, true));
+  }
 }
 
 /** @deprecated Use `onClickOutside` instead. */

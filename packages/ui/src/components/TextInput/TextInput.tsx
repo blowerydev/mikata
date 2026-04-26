@@ -1,5 +1,5 @@
-import { renderEffect } from '@mikata/reactivity';
-import { _mergeProps, adoptElement, onCleanup } from '@mikata/runtime';
+import { getCurrentScope, onCleanup, renderEffect } from '@mikata/reactivity';
+import { _mergeProps, adoptElement } from '@mikata/runtime';
 import { mergeClasses } from '../../utils/class-merge';
 import { useComponentDefaults } from '../../theme/component-defaults';
 import { uniqueId } from '../../utils/unique-id';
@@ -96,17 +96,23 @@ export function TextInput(userProps: TextInputProps = {}): HTMLDivElement {
       const onInput = props.onInput;
       if (onInput) {
         input.addEventListener('input', onInput as EventListener);
-        onCleanup(() => input.removeEventListener('input', onInput as EventListener));
+        if (getCurrentScope()) {
+          onCleanup(() => input.removeEventListener('input', onInput as EventListener));
+        }
       }
       const onChange = props.onChange;
       if (onChange) {
         input.addEventListener('change', onChange as EventListener);
-        onCleanup(() => input.removeEventListener('change', onChange as EventListener));
+        if (getCurrentScope()) {
+          onCleanup(() => input.removeEventListener('change', onChange as EventListener));
+        }
       }
       const onBlur = props.onBlur;
       if (onBlur) {
         input.addEventListener('blur', onBlur as EventListener);
-        onCleanup(() => input.removeEventListener('blur', onBlur as EventListener));
+        if (getCurrentScope()) {
+          onCleanup(() => input.removeEventListener('blur', onBlur as EventListener));
+        }
       }
 
       const ref = props.ref;

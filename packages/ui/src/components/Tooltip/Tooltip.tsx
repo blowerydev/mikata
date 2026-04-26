@@ -1,4 +1,4 @@
-import { onCleanup, renderEffect } from '@mikata/reactivity';
+import { getCurrentScope, onCleanup, renderEffect } from '@mikata/reactivity';
 import { _mergeProps, adoptElement } from '@mikata/runtime';
 import { mergeClasses } from '../../utils/class-merge';
 import { uniqueId } from '../../utils/unique-id';
@@ -60,13 +60,15 @@ export function Tooltip(userProps: TooltipProps): HTMLSpanElement {
     wrapper.addEventListener('focusin', show);
     wrapper.addEventListener('focusout', hide);
 
-    onCleanup(() => {
-      hide();
-      wrapper.removeEventListener('mouseenter', show);
-      wrapper.removeEventListener('mouseleave', hide);
-      wrapper.removeEventListener('focusin', show);
-      wrapper.removeEventListener('focusout', hide);
-    });
+    if (getCurrentScope()) {
+      onCleanup(() => {
+        hide();
+        wrapper.removeEventListener('mouseenter', show);
+        wrapper.removeEventListener('mouseleave', hide);
+        wrapper.removeEventListener('focusin', show);
+        wrapper.removeEventListener('focusout', hide);
+      });
+    }
 
     const ref = props.ref;
     if (ref) {
