@@ -82,6 +82,17 @@ describe('require-effect-cleanup', () => {
             }
           `,
         },
+        // adoptElement setup callback with addEventListener + onCleanup
+        {
+          code: `
+            function MyComponent() {
+              return adoptElement('button', (button) => {
+                button.addEventListener('click', handler);
+                onCleanup(() => button.removeEventListener('click', handler));
+              });
+            }
+          `,
+        },
         // Component body with no subscriptions
         {
           code: `
@@ -163,6 +174,18 @@ describe('require-effect-cleanup', () => {
             function Counter() {
               setInterval(tick, 1000);
               return null;
+            }
+          `,
+          errors: [{ messageId: 'missingComponentCleanup' }],
+        },
+        // adoptElement callbacks are setup callbacks too: returning the
+        // element is not a listener cleanup, so onCleanup is required.
+        {
+          code: `
+            function MyComponent() {
+              return adoptElement('button', (button) => {
+                button.addEventListener('click', handler);
+              });
             }
           `,
           errors: [{ messageId: 'missingComponentCleanup' }],

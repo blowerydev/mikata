@@ -8,6 +8,7 @@ import {
 } from '../utils';
 
 const EFFECT_WRAPPERS = new Set(['effect', 'renderEffect', 'onMount']);
+const SETUP_CALLBACK_WRAPPERS = new Set(['adoptElement']);
 
 const SUBSCRIPTION_METHODS = new Set(['addEventListener', 'on']);
 const SUBSCRIPTION_FUNCTIONS = new Set(['setInterval', 'setTimeout']);
@@ -127,7 +128,30 @@ export const requireEffectCleanup: Rule.RuleModule = {
     return {
       CallExpression(node) {
         const wrapperName = getCalleeName(node);
-        if (!wrapperName || !EFFECT_WRAPPERS.has(wrapperName)) return;
+        if (!wrapperName) return;
+
+        if (SETUP_CALLBACK_WRAPPERS.has(wrapperName)) {
+          const callback = node.arguments[1];
+          if (!callback || !isFunctionNode(callback as unknown as Node)) return;
+
+          const fn = callback as unknown as { body: Node };
+          if (!fn.body || fn.body.type !== 'BlockStatement') return;
+
+          const { subs, hasOnCleanup } = collectSubs(fn.body);
+
+          if (subs.length === 0 || hasOnCleanup) return;
+
+          for (const sub of subs) {
+            context.report({
+              node: sub.node,
+              messageId: 'missingComponentCleanup',
+              data: { name: sub.name, name2: wrapperName },
+            });
+          }
+          return;
+        }
+
+        if (!EFFECT_WRAPPERS.has(wrapperName)) return;
 
         const callback = node.arguments[0];
         if (!callback || !isFunctionNode(callback as unknown as Node)) return;
