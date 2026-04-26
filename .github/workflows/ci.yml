@@ -25,4 +25,6 @@ jobs:
 
       - run: pnpm -r build
 
+      - run: pnpm lint
+
       - run: pnpm test:run
