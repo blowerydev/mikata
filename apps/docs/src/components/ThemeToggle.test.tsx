@@ -17,10 +17,10 @@ function mount(): { container: HTMLElement; dispose: () => void } {
   };
 }
 
-function radios(container: HTMLElement): HTMLButtonElement[] {
+function radios(container: HTMLElement): HTMLInputElement[] {
   return Array.from(
-    container.querySelectorAll('.theme-toggle__option'),
-  ) as HTMLButtonElement[];
+    container.querySelectorAll('.theme-toggle input[type="radio"]'),
+  ) as HTMLInputElement[];
 }
 
 afterEach(() => {
@@ -30,80 +30,51 @@ afterEach(() => {
 });
 
 describe('ThemeToggle', () => {
-  it('uses a roving tabindex with the active option as the only tab stop', () => {
+  it('renders an accessible SegmentedControl with the active option checked', () => {
     setColorScheme('auto');
     const { container, dispose } = mount();
     try {
+      const root = container.querySelector('.theme-toggle') as HTMLElement | null;
+      expect(root?.getAttribute('role')).toBe('radiogroup');
+      expect(root?.getAttribute('aria-label')).toBe('Color theme');
       const buttons = radios(container);
-      expect(buttons.map((b) => b.tabIndex)).toEqual([-1, 0, -1]);
-      expect(buttons.map((b) => b.getAttribute('aria-checked'))).toEqual([
-        'false',
-        'true',
-        'false',
+      expect(buttons.map((b) => b.getAttribute('aria-label'))).toEqual([
+        'Light',
+        'System',
+        'Dark',
       ]);
+      expect(buttons.map((b) => b.checked)).toEqual([false, true, false]);
     } finally {
       dispose();
     }
   });
 
-  it('ArrowRight moves focus and selection to the next option', () => {
+  it('clicking an option updates selection', () => {
     setColorScheme('auto');
     const { container, dispose } = mount();
     try {
       const buttons = radios(container);
-      buttons[1]!.focus();
-      buttons[1]!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+      buttons[2]!.checked = true;
+      buttons[2]!.dispatchEvent(new Event('change', { bubbles: true }));
       flushSync();
 
-      expect(document.activeElement).toBe(buttons[2]);
-      expect(buttons.map((b) => b.tabIndex)).toEqual([-1, -1, 0]);
-      expect(buttons.map((b) => b.getAttribute('aria-checked'))).toEqual([
-        'false',
-        'false',
-        'true',
-      ]);
+      expect(buttons.map((b) => b.checked)).toEqual([false, false, true]);
     } finally {
       dispose();
     }
   });
 
-  it('ArrowLeft wraps focus and selection to the previous option', () => {
+  it('reacts when the color scheme signal changes externally', () => {
     setColorScheme('light');
     const { container, dispose } = mount();
     try {
       const buttons = radios(container);
-      buttons[0]!.focus();
-      buttons[0]!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
+      expect(buttons.map((b) => b.checked)).toEqual([true, false, false]);
+
+      setColorScheme('dark');
       flushSync();
 
-      expect(document.activeElement).toBe(buttons[2]);
-      expect(buttons.map((b) => b.tabIndex)).toEqual([-1, -1, 0]);
-      expect(buttons.map((b) => b.getAttribute('aria-checked'))).toEqual([
-        'false',
-        'false',
-        'true',
-      ]);
-    } finally {
-      dispose();
-    }
-  });
-
-  it('Home and End jump to the first and last options', () => {
-    setColorScheme('auto');
-    const { container, dispose } = mount();
-    try {
-      const buttons = radios(container);
-
-      buttons[1]!.focus();
-      buttons[1]!.dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true }));
-      flushSync();
-      expect(document.activeElement).toBe(buttons[2]);
-      expect(buttons[2]!.getAttribute('aria-checked')).toBe('true');
-
-      buttons[2]!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true }));
-      flushSync();
-      expect(document.activeElement).toBe(buttons[0]);
-      expect(buttons[0]!.getAttribute('aria-checked')).toBe('true');
+      expect(buttons.map((b) => b.checked)).toEqual([false, false, true]);
     } finally {
       dispose();
     }

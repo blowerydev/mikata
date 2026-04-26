@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render } from '@mikata/runtime';
+import { flushSync, signal } from '@mikata/reactivity';
 import { _resetIdCounter } from '../src/utils/unique-id';
 
 import { Card } from '../src/components/Card';
@@ -434,6 +435,46 @@ describe('SegmentedControl', () => {
     const inputs = el.querySelectorAll('input[type="radio"]') as NodeListOf<HTMLInputElement>;
     inputs[2].checked = true;
     inputs[2].dispatchEvent(new Event('change'));
+    expect(el.style.getPropertyValue('--mkt-sc-index')).toBe('2');
+  });
+
+  it('supports icon-only accessible labels and titles', () => {
+    const el = SegmentedControl({
+      ariaLabel: 'Theme',
+      data: [
+        { value: 'light', label: document.createElement('span'), ariaLabel: 'Light', title: 'Light' },
+        { value: 'dark', label: document.createElement('span'), ariaLabel: 'Dark', title: 'Dark' },
+      ],
+    });
+    const inputs = el.querySelectorAll('input[type="radio"]') as NodeListOf<HTMLInputElement>;
+    const labels = el.querySelectorAll('label') as NodeListOf<HTMLLabelElement>;
+    expect(el.getAttribute('aria-label')).toBe('Theme');
+    expect(inputs[0].getAttribute('aria-label')).toBe('Light');
+    expect(inputs[1].getAttribute('aria-label')).toBe('Dark');
+    expect(labels[0].title).toBe('Light');
+    expect(labels[1].title).toBe('Dark');
+  });
+
+  it('syncs checked state when controlled value changes', () => {
+    const [value, setValue] = signal('A');
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const props: Parameters<typeof SegmentedControl>[0] = { data: ['A', 'B', 'C'] };
+    Object.defineProperty(props, 'value', {
+      enumerable: true,
+      get: value,
+    });
+    render(() => SegmentedControl(props), container);
+    const el = container.firstElementChild as HTMLElement;
+    const inputs = el.querySelectorAll('input[type="radio"]') as NodeListOf<HTMLInputElement>;
+    expect(inputs[0].checked).toBe(true);
+    expect(el.style.getPropertyValue('--mkt-sc-index')).toBe('0');
+
+    setValue('C');
+    flushSync();
+
+    expect(inputs[0].checked).toBe(false);
+    expect(inputs[2].checked).toBe(true);
     expect(el.style.getPropertyValue('--mkt-sc-index')).toBe('2');
   });
 });

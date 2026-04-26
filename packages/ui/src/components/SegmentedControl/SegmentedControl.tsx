@@ -47,6 +47,11 @@ export function SegmentedControl(userProps: SegmentedControlProps): HTMLElement 
     renderEffect(() => { root.dataset.size = props.size ?? 'sm'; });
     renderEffect(() => { root.dataset.color = props.color ?? 'primary'; });
     root.setAttribute('role', 'radiogroup');
+    renderEffect(() => {
+      const label = props.ariaLabel ?? props['aria-label'];
+      if (label) root.setAttribute('aria-label', label);
+      else root.removeAttribute('aria-label');
+    });
 
     // Column count is structural - set once and forget. The active
     // index is updated by `commitActive` whenever a change occurs.
@@ -65,16 +70,29 @@ export function SegmentedControl(userProps: SegmentedControlProps): HTMLElement 
     });
 
     const labels: HTMLLabelElement[] = [];
+    const inputs: HTMLInputElement[] = [];
+
+    function syncActive(): void {
+      root.style.setProperty('--mkt-sc-index', String(activeIndex()));
+      labels.forEach((label, i) => {
+        const active = items[i].value === activeValue;
+        if (active) label.dataset.active = '';
+        else delete label.dataset.active;
+        if (inputs[i]) inputs[i].checked = active;
+      });
+    }
 
     function commitActive(next: string): void {
       activeValue = next;
       props.onChange?.(activeValue);
-      root.style.setProperty('--mkt-sc-index', String(activeIndex()));
-      labels.forEach((label, i) => {
-        if (items[i].value === activeValue) label.dataset.active = '';
-        else delete label.dataset.active;
-      });
+      syncActive();
     }
+
+    renderEffect(() => {
+      if (props.value === undefined || props.value === activeValue) return;
+      activeValue = props.value;
+      syncActive();
+    });
 
     // Hydration path: SSR already emitted radio + label pairs. Pair
     // them positionally - the server-side `uniqueId` counter persists
@@ -85,20 +103,25 @@ export function SegmentedControl(userProps: SegmentedControlProps): HTMLElement 
     // sidesteps the id mismatch entirely.
     const existing = root.querySelectorAll<HTMLLabelElement>('.mkt-segmented-control__label');
     if (existing.length === items.length) {
-      const inputs = root.querySelectorAll<HTMLInputElement>('.mkt-segmented-control__input');
+      const existingInputs = root.querySelectorAll<HTMLInputElement>('.mkt-segmented-control__input');
       existing.forEach((label, i) => {
         labels.push(label);
-        const input = inputs[i];
+        const input = existingInputs[i];
         if (!input) return;
+        inputs.push(input);
         // Sync SSR `checked` and label `data-active` to client
         // activeValue. The server can't see localStorage / browser-only
         // sources, so SSR may have flagged the wrong option; without
         // this sync the user can never select that option as their
         // first action because the browser only fires `change` on
         // transitions.
+        if (items[i].ariaLabel) input.setAttribute('aria-label', items[i].ariaLabel);
+        else input.removeAttribute('aria-label');
         input.checked = items[i].value === activeValue;
         if (items[i].value === activeValue) label.dataset.active = '';
         else delete label.dataset.active;
+        if (items[i].title) label.title = items[i].title;
+        else label.removeAttribute('title');
         input.addEventListener('change', () => {
           if (items[i].disabled) return;
           commitActive(items[i].value);
@@ -113,6 +136,7 @@ export function SegmentedControl(userProps: SegmentedControlProps): HTMLElement 
         input.setAttribute('name', id);
         input.id = inputId;
         input.setAttribute('value', item.value);
+        if (item.ariaLabel) input.setAttribute('aria-label', item.ariaLabel);
         input.className = mergeClasses('mkt-segmented-control__input', props.classNames?.input);
         input.checked = item.value === activeValue;
         if (item.disabled) input.disabled = true;
@@ -125,6 +149,7 @@ export function SegmentedControl(userProps: SegmentedControlProps): HTMLElement 
         const label = document.createElement('label');
         label.className = mergeClasses('mkt-segmented-control__label', props.classNames?.label);
         label.htmlFor = inputId;
+        if (item.title) label.title = item.title;
         const norm = typeof props.data[index] === 'string'
           ? (props.data[index] as string)
           : (props.data[index] as SegmentedControlItem)?.label;
@@ -134,6 +159,7 @@ export function SegmentedControl(userProps: SegmentedControlProps): HTMLElement 
         if (item.value === activeValue) label.dataset.active = '';
         if (item.disabled) label.dataset.disabled = '';
 
+        inputs.push(input);
         labels.push(label);
         root.appendChild(label);
       });

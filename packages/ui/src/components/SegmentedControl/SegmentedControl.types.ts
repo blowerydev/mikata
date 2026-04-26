@@ -5,11 +5,15 @@ export type SegmentedControlParts = 'root' | 'indicator' | 'label' | 'input';
 export interface SegmentedControlItem {
   value: string;
   label: string | Node;
+  ariaLabel?: string;
+  title?: string;
   disabled?: boolean;
 }
 
 export interface SegmentedControlProps extends MikataBaseProps {
   data: (string | SegmentedControlItem)[];
+  ariaLabel?: string;
+  'aria-label'?: string;
   value?: string;
   defaultValue?: string;
   size?: MikataSize;

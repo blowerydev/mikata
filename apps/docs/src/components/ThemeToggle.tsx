@@ -1,94 +1,35 @@
-import { renderEffect } from '@mikata/reactivity';
 import { createIcon, Sun, Moon, Monitor } from '@mikata/icons';
+import { SegmentedControl } from '@mikata/ui';
+import type { SegmentedControlProps } from '@mikata/ui';
 import { colorSchemeSignal, setColorScheme, type ColorScheme } from '../theme-state';
 
-// CSS-only theme switcher for the docs topbar.
-//
-// Why not `@mikata/ui`'s `SegmentedControl`: that component positions
-// its sliding indicator imperatively (reads `getBoundingClientRect()`
-// + `offsetLeft` on the active label, writes inline width / transform
-// on a separate indicator div). In Vite dev, the JS bundle can run
-// before the docs stylesheet has applied `position: relative` to the
-// wrapper, so `offsetLeft` resolves against `<body>` and the pill
-// ends up off-screen until the user clicks and forces a re-measure.
-// A pure CSS active-state ([data-active] background) renders correctly
-// from the very first paint, no measurement, no race.
-//
-// `<ThemeProvider>` is deliberately NOT used here - it scopes its
-// tokens to a wrapper div, but docs chrome (html / body backgrounds)
-// needs the tokens on `<html>`. `theme-state.ts` does that via
-// `applyThemeToDocument`.
-const OPTIONS: Array<{ value: ColorScheme; label: string; icon: () => SVGSVGElement }> = [
-  { value: 'light', label: 'Light', icon: () => createIcon(Sun, { size: 14 }) },
-  { value: 'auto', label: 'System', icon: () => createIcon(Monitor, { size: 14 }) },
-  { value: 'dark', label: 'Dark', icon: () => createIcon(Moon, { size: 14 }) },
+// `<ThemeProvider>` is deliberately not used here: it scopes tokens to a
+// wrapper div, but the docs chrome needs tokens on `<html>`. `theme-state.ts`
+// handles that with `applyThemeToDocument`.
+const OPTIONS: Array<{ value: ColorScheme; label: string; icon: typeof Sun }> = [
+  { value: 'light', label: 'Light', icon: Sun },
+  { value: 'auto', label: 'System', icon: Monitor },
+  { value: 'dark', label: 'Dark', icon: Moon },
 ];
 
 export function ThemeToggle() {
   const scheme = colorSchemeSignal();
-  const buttons: HTMLButtonElement[] = [];
+  const props: SegmentedControlProps = {
+    class: 'theme-toggle',
+    'aria-label': 'Color theme',
+    size: 'xs',
+    onChange: (value) => setColorScheme(value as ColorScheme),
+    data: OPTIONS.map((opt) => ({
+      value: opt.value,
+      label: createIcon(opt.icon, { size: 14 }),
+      ariaLabel: opt.label,
+      title: opt.label,
+    })),
+  };
+  Object.defineProperty(props, 'value', {
+    enumerable: true,
+    get: scheme,
+  });
 
-  // Standard W3C ARIA radio-group keyboard model: arrow keys move
-  // BOTH focus and selection, Home/End jump to the ends, Space/Enter
-  // re-select. Without this, only one option is tabbable (roving
-  // tabindex below) and there's no way to reach the others by keyboard.
-  function onKeyDown(this: HTMLButtonElement, e: KeyboardEvent): void {
-    const idx = buttons.indexOf(this);
-    if (idx < 0) return;
-    let target = -1;
-    switch (e.key) {
-      case 'ArrowRight':
-      case 'ArrowDown':
-        target = (idx + 1) % buttons.length;
-        break;
-      case 'ArrowLeft':
-      case 'ArrowUp':
-        target = (idx - 1 + buttons.length) % buttons.length;
-        break;
-      case 'Home':
-        target = 0;
-        break;
-      case 'End':
-        target = buttons.length - 1;
-        break;
-      default:
-        return;
-    }
-    e.preventDefault();
-    const opt = OPTIONS[target]!;
-    setColorScheme(opt.value);
-    buttons[target]!.focus();
-  }
-
-  return (
-    <div class="theme-toggle" role="radiogroup" aria-label="Color theme">
-      {OPTIONS.map((opt) => {
-        const button = (
-          <button
-            type="button"
-            class="theme-toggle__option"
-            role="radio"
-            aria-label={opt.label}
-            title={opt.label}
-            onClick={() => setColorScheme(opt.value)}
-            onKeyDown={onKeyDown}
-          >
-            {() => opt.icon()}
-          </button>
-        ) as HTMLButtonElement;
-        buttons.push(button);
-        // `data-active` + `aria-checked` keep CSS and accessibility in
-        // sync. Reactive so click-to-change updates the visual state
-        // without any DOM measurement or sliding-indicator math.
-        renderEffect(() => {
-          const active = scheme() === opt.value;
-          if (active) button.dataset.active = '';
-          else delete button.dataset.active;
-          button.setAttribute('aria-checked', active ? 'true' : 'false');
-          button.tabIndex = active ? 0 : -1;
-        });
-        return button;
-      })}
-    </div>
-  );
+  return SegmentedControl(props);
 }

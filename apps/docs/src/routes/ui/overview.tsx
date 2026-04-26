@@ -12,7 +12,7 @@ function App() {
   return (
     <ThemeProvider>
       <TextInput label="Email" type="email" />
-      <Button variant="primary">Sign up</Button>
+      <Button color="primary">Sign up</Button>
     </ThemeProvider>
   );
 }`,
