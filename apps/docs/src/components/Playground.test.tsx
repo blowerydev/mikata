@@ -17,7 +17,7 @@
  * interaction that's unique to Playground.
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render } from '@mikata/runtime';
 import { flushSync } from '@mikata/reactivity';
 import { fireEvent } from '@mikata/testing';
@@ -61,8 +61,23 @@ function mount(): { container: HTMLElement; dispose: () => void } {
   };
 }
 
+function watchLeakWarnings(): { assertClean: () => void; restore: () => void } {
+  const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  return {
+    assertClean: () => {
+      expect(
+        warn.mock.calls.filter(([message]) =>
+          String(message).includes('Possible subscription leak'),
+        ),
+      ).toEqual([]);
+    },
+    restore: () => warn.mockRestore(),
+  };
+}
+
 describe('Playground', () => {
   it('renders the preview subtree from the render callback with defaults applied', () => {
+    const leaks = watchLeakWarnings();
     const { container, dispose } = mount();
     try {
       const button = container.querySelector(
@@ -71,12 +86,15 @@ describe('Playground', () => {
       expect(button).toBeTruthy();
       expect(button!.textContent).toContain('Click me');
       expect(button!.disabled).toBe(false);
+      leaks.assertClean();
     } finally {
       dispose();
+      leaks.restore();
     }
   });
 
   it('updates the preview in place when a boolean control toggles', () => {
+    const leaks = watchLeakWarnings();
     const { container, dispose } = mount();
     try {
       const previewButton = container.querySelector(
@@ -98,12 +116,15 @@ describe('Playground', () => {
       expect(
         container.querySelector('.playground-preview button'),
       ).toBe(previewButton);
+      leaks.assertClean();
     } finally {
       dispose();
+      leaks.restore();
     }
   });
 
   it('updates the preview in place when a text control changes', () => {
+    const leaks = watchLeakWarnings();
     const { container, dispose } = mount();
     try {
       const previewButton = container.querySelector(
@@ -123,12 +144,15 @@ describe('Playground', () => {
       expect(
         container.querySelector('.playground-preview button'),
       ).toBe(previewButton);
+      leaks.assertClean();
     } finally {
       dispose();
+      leaks.restore();
     }
   });
 
   it('updates the preview in place when a select control changes', () => {
+    const leaks = watchLeakWarnings();
     const { container, dispose } = mount();
     try {
       const previewButton = container.querySelector(
@@ -150,8 +174,10 @@ describe('Playground', () => {
       expect(
         container.querySelector('.playground-preview button'),
       ).toBe(previewButton);
+      leaks.assertClean();
     } finally {
       dispose();
+      leaks.restore();
     }
   });
 });

@@ -1,5 +1,5 @@
 import { renderEffect } from '@mikata/reactivity';
-import { _mergeProps, adoptElement } from '@mikata/runtime';
+import { _mergeProps, adoptElement, onCleanup } from '@mikata/runtime';
 import { createIcon, Check } from '../../internal/icons';
 import { mergeClasses } from '../../utils/class-merge';
 import { useComponentDefaults } from '../../theme/component-defaults';
@@ -68,9 +68,15 @@ export function Checkbox(userProps: CheckboxProps = {}): HTMLLabelElement {
         else input.removeAttribute('aria-describedby');
       });
       const onChange = props.onChange;
-      if (onChange) input.addEventListener('change', onChange as EventListener);
+      if (onChange) {
+        input.addEventListener('change', onChange as EventListener);
+        onCleanup(() => input.removeEventListener('change', onChange as EventListener));
+      }
       const onBlur = props.onBlur;
-      if (onBlur) input.addEventListener('blur', onBlur as EventListener);
+      if (onBlur) {
+        input.addEventListener('blur', onBlur as EventListener);
+        onCleanup(() => input.removeEventListener('blur', onBlur as EventListener));
+      }
 
       const ref = props.ref;
       if (ref) {

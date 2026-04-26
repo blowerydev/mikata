@@ -151,7 +151,10 @@ export function Select(userProps: SelectProps): HTMLDivElement {
       });
 
       const onChange = props.onChange;
-      if (onChange) select.addEventListener('change', onChange as EventListener);
+      if (onChange) {
+        select.addEventListener('change', onChange as EventListener);
+        onCleanup(() => select.removeEventListener('change', onChange as EventListener));
+      }
 
       const ref = props.ref;
       if (ref) {
