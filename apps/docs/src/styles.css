@@ -180,6 +180,7 @@ a:hover {
   border-right: 1px solid var(--mkt-color-border);
   padding: 1.5rem 1rem;
   overflow-y: auto;
+  overflow-anchor: none;
   max-height: calc(100vh - var(--topbar-height));
   position: sticky;
   top: var(--topbar-height);
@@ -259,6 +260,26 @@ a:hover {
   margin-top: 0.35rem;
 }
 
+.docs-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.5rem 0;
+}
+
+.docs-content th,
+.docs-content td {
+  text-align: left;
+  vertical-align: top;
+  padding: 0.65rem 0.75rem;
+  border-bottom: 1px solid var(--mkt-color-border);
+}
+
+.docs-content th {
+  font-weight: 600;
+  color: var(--mkt-color-text);
+  background: var(--mkt-color-bg-subtle);
+}
+
 /* Inline <code> styling. Explicitly scoped to prose containers so the
    rule cannot cascade into `<code>`/`<span>` elements inside a
    `.codeblock` (where Shiki's inline styles should win). */
@@ -320,18 +341,8 @@ a:hover {
   border: 1px solid var(--mkt-color-border);
   color: var(--mkt-color-text-dimmed);
   cursor: pointer;
-  /* Hidden by default, fade in on hover/focus of the wrapper so the
-     button doesn't compete with the code on first read. */
-  opacity: 0;
-  transition: opacity 120ms ease, color 120ms ease, border-color 120ms ease;
-}
-.codeblock-wrapper:hover .codeblock-copy,
-.codeblock-wrapper:focus-within .codeblock-copy,
-.codeblock-copy:focus-visible,
-/* Always visible while the "copied" state is showing so the user
-   gets confirmation even if they've already moved the mouse away. */
-.codeblock-copy[data-copied='true'] {
   opacity: 1;
+  transition: color 120ms ease, border-color 120ms ease;
 }
 .codeblock-copy:hover {
   color: var(--mkt-color-text);
@@ -344,6 +355,13 @@ a:hover {
 .codeblock-copy[data-copied='true'] {
   color: var(--mkt-color-code-success);
   border-color: var(--mkt-color-code-success);
+}
+.codeblock-copy-icon-check,
+.codeblock-copy[data-copied='true'] .codeblock-copy-icon-copy {
+  display: none;
+}
+.codeblock-copy[data-copied='true'] .codeblock-copy-icon-check {
+  display: block;
 }
 
 .codeblock {
@@ -389,6 +407,8 @@ a:hover {
 /* ---------- Playground ---------- */
 
 .playground {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(16rem, 18rem);
   border: 1px solid var(--mkt-color-border);
   border-radius: var(--mkt-radius-md, 0.5rem);
   overflow: hidden;
@@ -403,8 +423,8 @@ a:hover {
   align-items: center;
   justify-content: center;
   background: var(--mkt-color-bg);
-  border-bottom: 1px solid var(--mkt-color-border);
   min-height: 120px;
+  gap: 0.75rem;
 }
 
 /* Controls come from @mikata/ui (Select, TextInput, NumberInput,
@@ -414,7 +434,74 @@ a:hover {
   padding: 1rem;
   background: var(--mkt-color-bg-subtle);
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 0.75rem 1rem;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
   align-items: end;
+  border-left: 1px solid var(--mkt-color-border);
+}
+
+.component-map {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 1rem;
+  margin: 1.5rem 0;
+}
+
+.component-group {
+  border: 1px solid var(--mkt-color-border);
+  border-radius: var(--mkt-radius-md, 0.5rem);
+  padding: 1rem;
+  background: var(--mkt-color-bg);
+}
+
+.component-group h3 {
+  margin: 0 0 0.4rem;
+  font-size: 1rem;
+}
+
+.component-group p {
+  margin: 0.35rem 0 0;
+  color: var(--mkt-color-text-dimmed);
+}
+
+.component-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.75rem;
+}
+
+.component-list code {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.55rem;
+}
+
+.example-strip {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  margin: 1rem 0;
+  border: 1px solid var(--mkt-color-border);
+  border-radius: var(--mkt-radius-md, 0.5rem);
+  background: var(--mkt-color-bg);
+}
+
+@media (max-width: 720px) {
+  .docs-content {
+    padding: 1.5rem 1rem 4rem;
+  }
+
+  .playground {
+    grid-template-columns: 1fr;
+  }
+
+  .playground-controls {
+    border-left: 0;
+    border-top: 1px solid var(--mkt-color-border);
+  }
+
 }

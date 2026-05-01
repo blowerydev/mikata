@@ -22,4 +22,7 @@ installThemeVars();
 // paint (a sliding indicator, a virtualised list reading offsetTop)
 // would otherwise read pre-CSS values. Production bundles inline the
 // critical CSS so this resolves on the same tick.
-mount(manifest, document.getElementById('root')!, { defer: 'css' });
+mount(manifest, document.getElementById('root')!, {
+  defer: 'css',
+  scrollBehavior: 'auto',
+});

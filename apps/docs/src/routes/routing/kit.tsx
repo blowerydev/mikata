@@ -1,4 +1,5 @@
 import { useMeta } from '@mikata/kit/head';
+import { Link } from '@mikata/router';
 import { CodeBlock, highlight } from '../../components/CodeBlock';
 
 export const nav = {
@@ -70,7 +71,10 @@ export default function Post() { /* ... */ }`,
 );
 
 export default function KitPage() {
-  useMeta({ title: '@mikata/kit - Routing, loaders, SSR & SSG' });
+  useMeta({
+    title: '@mikata/kit - Routing, loaders, SSR & SSG',
+    description: 'Understand the Mikata Kit app framework and its route, data, and rendering model.',
+  });
   return (
     <article>
       <h1>@mikata/kit</h1>
@@ -82,26 +86,25 @@ export default function KitPage() {
 
       <h2>File-based routing</h2>
       <p>
-        Any <code>.tsx</code>/<code>.jsx</code>/<code>.mdx</code> file
-        under <code>src/routes/</code> becomes a route. Dynamic segments
-        are written as <code>[id].tsx</code>; catch-alls as{' '}
-        <code>[...rest].tsx</code>; nested <code>_layout.tsx</code>
-        {' '}files wrap their subtree.
+        Any <code>.tsx</code>/<code>.jsx</code>/<code>.mdx</code> file under{' '}
+        <code>src/routes/</code> becomes a route. Dynamic segments are written
+        as <code>[id].tsx</code>; catch-alls as <code>[...rest].tsx</code>;
+        nested <code>_layout.tsx</code> files wrap their subtree.
       </p>
       <CodeBlock html={routeTree} />
 
       <h2>Loaders</h2>
       <p>
-        A route can export a <code>load()</code> function that runs on
-        the server for the initial request and on the client for
-        subsequent navigations. Its return value is made available via
-        <code> useLoaderData()</code>.
+        A route can export a <code>load()</code> function that runs on the
+        server for the initial request and on the client for subsequent
+        navigations. Its return value is made available via{' '}
+        <code>useLoaderData()</code>.
       </p>
       <CodeBlock html={loaderExample} />
 
       <h2>SSR and SSG</h2>
       <p>
-        Server-render in dev and production with no extra setup - kit's
+        Server-render in dev and production with no extra setup - Kit's
         Vite plugin installs the SSR middleware. Set{' '}
         <code>prerender: true</code> to emit static HTML at build time
         for every discoverable route; the output in{' '}
@@ -123,6 +126,22 @@ export default function KitPage() {
         <code>@mikata/ui</code> pages are interactive islands that wake
         up on load.
       </p>
+
+      <h2>Where next</h2>
+      <ul>
+        <li>
+          <Link to="/app/file-routes">File routes</Link> documents the route
+          scanner conventions in depth.
+        </li>
+        <li>
+          <Link to="/app/actions">Actions &amp; forms</Link> covers mutations,
+          validation, CSRF, and redirects.
+        </li>
+        <li>
+          <Link to="/app/deployment">Deployment</Link> compares static, Node,
+          and edge targets.
+        </li>
+      </ul>
     </article>
   );
 }

@@ -122,7 +122,7 @@ Repo layout:
 - `examples/`: runnable example apps
 - `playground/`: dev-only app wired to workspace packages
 - `integration/`: cross-package integration tests
-- `docs/`: source for the docs site
+- `apps/docs/`: source for the docs site
 
 ## License
 

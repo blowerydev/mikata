@@ -49,7 +49,8 @@ export function CodeBlock(props: CodeBlockProps) {
         data-copied={copied() ? 'true' : 'false'}
         onClick={onCopy}
       >
-        {() => createIcon(copied() ? Check : Copy, { size: 14 })}
+        {createIcon(Copy, { size: 14, class: 'codeblock-copy-icon codeblock-copy-icon-copy' })}
+        {createIcon(Check, { size: 14, class: 'codeblock-copy-icon codeblock-copy-icon-check' })}
       </button>
       <RawHTML class="codeblock" html={props.html} />
     </div>

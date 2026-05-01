@@ -136,9 +136,22 @@ export function Link(props: LinkProps): Node {
   // dev-mode detector from blaming this on a containing renderEffect
   // (a parent `_insert` accessor frame, for instance).
   suppressLeakTracking(() => {
+    // Forward additional attributes/events before the router's own click
+    // handler, so user handlers can call preventDefault() to opt out.
+    for (const [key, value] of Object.entries(rest)) {
+      if (isEventProp(key)) {
+        if (typeof value === 'function') {
+          el.addEventListener(eventNameForProp(key), value as EventListener);
+        }
+      } else if (typeof value === 'string') {
+        el.setAttribute(key, value);
+      }
+    }
+
     el.addEventListener('click', (e: MouseEvent) => {
       // Allow normal behavior for modified clicks
       if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+      if (e.defaultPrevented) return;
       e.preventDefault();
       router.navigate(to, { replace });
     });
@@ -152,13 +165,6 @@ export function Link(props: LinkProps): Node {
       }, { once: true });
     }
   });
-
-  // Forward additional attributes
-  for (const [key, value] of Object.entries(rest)) {
-    if (typeof value === 'string') {
-      el.setAttribute(key, value);
-    }
-  }
 
   if (children !== undefined) {
     _insert(el as HTMLElement, children as never);
@@ -181,4 +187,12 @@ function applyBase(base: string, path: string): string {
   if (path === base || path.startsWith(base + '/')) return path;
   const segment = path.startsWith('/') ? path : '/' + path;
   return base + segment;
+}
+
+function isEventProp(key: string): boolean {
+  return /^on[A-Z]/.test(key);
+}
+
+function eventNameForProp(key: string): string {
+  return key.slice(2).toLowerCase();
 }

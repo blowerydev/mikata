@@ -1,5 +1,6 @@
 import { useMeta } from '@mikata/kit/head';
 import { CodeBlock, highlight } from '../../components/CodeBlock';
+import { Link } from '@mikata/router';
 
 export const nav = { title: 'Components & JSX', section: 'Core Concepts', order: 2 };
 
@@ -46,9 +47,38 @@ const _node = _el.firstChild;
 renderEffect(() => { _node.textContent = user().name; });`,
   'tsx',
 );
+const lifecycleExample = await highlight(
+  `import { createRef, onMount, onCleanup } from 'mikata';
+
+function SearchBox() {
+  const input = createRef<HTMLInputElement>();
+
+  onMount(() => input.current?.focus());
+  onCleanup(() => console.log('SearchBox disposed'));
+
+  return <input ref={input} placeholder="Search" />;
+}`,
+  'tsx',
+);
+const propsExample = await highlight(
+  `function Badge(props: { label: string; tone?: 'info' | 'danger' }) {
+  return <span class={['badge', props.tone ?? 'info']}>{props.label}</span>;
+}
+
+<Badge label="New" tone="info" />
+<>
+  <Badge label="A" />
+  <Badge label="B" />
+</>`,
+  'tsx',
+);
 
 export default function Runtime() {
-  useMeta({ title: 'Components & JSX - Mikata' });
+  useMeta({
+    title: 'Components & JSX - Mikata',
+    description: 'Understand Mikata components, JSX, lifecycle hooks, refs, props, and events.',
+  });
+
   return (
     <article>
       <h1>Components & JSX</h1>
@@ -68,6 +98,23 @@ export default function Runtime() {
         inside the component close over stable references - no stale
         closures, no dependency arrays.
       </p>
+
+      <h2>Lifecycle and refs</h2>
+      <p>
+        Components receive a reactive scope. Effects and cleanups created during
+        setup are tied to that scope. Use <code>onMount()</code> for browser DOM
+        work after insertion, <code>onCleanup()</code> for teardown, and{' '}
+        <code>createRef()</code> for DOM references.
+      </p>
+      <CodeBlock html={lifecycleExample} />
+
+      <h2>Props, events, and fragments</h2>
+      <p>
+        Props are plain readonly objects. Event handlers receive native DOM
+        events, so <code>event.currentTarget</code> is the element you attached
+        the handler to. Fragments group sibling nodes without adding a wrapper.
+      </p>
+      <CodeBlock html={propsExample} />
 
       <h2>Control flow</h2>
       <p>
@@ -91,6 +138,26 @@ export default function Runtime() {
         The result: no reconciler, no component re-execution, no diffing.
         Updates touch the one node that actually changed.
       </p>
+
+      <h2>JSX constraints</h2>
+      <ul>
+        <li>Use <code>class</code> instead of <code>className</code>.</li>
+        <li>Use native event names such as <code>onClick</code> and <code>onInput</code>.</li>
+        <li>Put changing reads in JSX, effects, computed values, or control-flow callbacks.</li>
+        <li>Return a DOM node or fragment from every component.</li>
+      </ul>
+
+      <h2>Where next</h2>
+      <ul>
+        <li>
+          <Link to="/core/compiler">JSX &amp; compiler</Link> explains how JSX
+          is transformed.
+        </li>
+        <li>
+          <Link to="/core/rendering">Rendering &amp; hydration</Link> covers
+          mounting and SSR handoff.
+        </li>
+      </ul>
     </article>
   );
 }

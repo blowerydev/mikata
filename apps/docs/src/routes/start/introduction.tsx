@@ -17,7 +17,11 @@ const doubled = computed(() => count() * 2);
 );
 
 export default function Introduction() {
-  useMeta({ title: 'Introduction - Mikata' });
+  useMeta({
+    title: 'Introduction - Mikata',
+    description: 'Start learning Mikata, a signals-first UI framework with compiled JSX.',
+  });
+
   return (
     <article>
       <h1>Introduction</h1>
@@ -46,8 +50,13 @@ export default function Introduction() {
       <h2>Where to next</h2>
       <ul>
         <li>
+          <Link to="/start/why-mikata">Why Mikata</Link> - design goals,
+          tradeoffs, and when to reach for another tool.
+        </li>
+        <li>
           <Link to="/start/install">Install</Link> - bootstrap a new app with
-          <code> create-mikata</code>.
+          {' '}
+          <code>create-mikata</code>.
         </li>
         <li>
           <Link to="/start/first-app">Your first app</Link> - a working todo
@@ -56,6 +65,10 @@ export default function Introduction() {
         <li>
           <Link to="/core/reactivity">Reactivity</Link> - signals, computed,
           effects in depth.
+        </li>
+        <li>
+          <Link to="/packages/mikata">Package reference</Link> - the umbrella
+          exports available from <code>mikata</code>.
         </li>
       </ul>
     </article>

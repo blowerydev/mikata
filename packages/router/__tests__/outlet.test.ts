@@ -298,6 +298,62 @@ describe('Link children', () => {
   });
 });
 
+describe('Link event props', () => {
+  let container: HTMLElement;
+  let router: Router;
+  let dispose: () => void;
+
+  beforeEach(() => {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    router = createRouter({
+      routes: [
+        { path: '/', component: () => document.createElement('div') },
+        { path: '/about', component: () => document.createElement('div') },
+      ],
+      history: 'memory',
+    });
+  });
+
+  afterEach(() => {
+    dispose?.();
+    router?.dispose();
+    container.remove();
+  });
+
+  function renderLink(props: Parameters<typeof Link>[0]) {
+    dispose = render(() => {
+      provideRouter(router);
+      return Link(props);
+    }, container);
+    flushSync();
+    return container.querySelector('a')!;
+  }
+
+  it('forwards native event props to the anchor', () => {
+    const onMouseDown = vi.fn((event: MouseEvent) => event.preventDefault());
+    const a = renderLink({ to: '/about', onMouseDown });
+
+    const event = new MouseEvent('mousedown', { button: 0, bubbles: true, cancelable: true });
+    a.dispatchEvent(event);
+
+    expect(onMouseDown).toHaveBeenCalledOnce();
+    expect(event.defaultPrevented).toBe(true);
+  });
+
+  it('lets onClick prevent router navigation', async () => {
+    const a = renderLink({
+      to: '/about',
+      onClick: (event: MouseEvent) => event.preventDefault(),
+    });
+
+    a.dispatchEvent(new MouseEvent('click', { button: 0, bubbles: true, cancelable: true }));
+    await Promise.resolve();
+
+    expect(router.path()).toBe('/');
+  });
+});
+
 describe('Link base-path awareness', () => {
   let container: HTMLElement;
   let dispose: () => void;
