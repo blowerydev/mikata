@@ -191,6 +191,18 @@ describe('JSX transform', () => {
     expect(output).toContain('_delegate');
   });
 
+  it('captures sibling slot refs before inserting inline component children', () => {
+    const output = transform(
+      `const el = <p>Start <Link to="/a">A</Link>, then <Link to="/b">B</Link>.</p>;`,
+    );
+    const firstInsert = output.indexOf('_insert(');
+    const secondSlotRef = output.indexOf('firstChild.nextSibling.nextSibling.nextSibling');
+
+    expect(firstInsert).toBeGreaterThan(-1);
+    expect(secondSlotRef).toBeGreaterThan(-1);
+    expect(secondSlotRef).toBeLessThan(firstInsert);
+  });
+
   it('auto-labels signal() with its destructured name', () => {
     const output = transform(`const [count, setCount] = signal(0);`);
     expect(output).toContain('signal(0, "count")');

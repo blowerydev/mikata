@@ -718,14 +718,11 @@ export function mikataJSXPlugin({ types: t }: { types: typeof BabelTypes }): Plu
       return;
     }
 
-    // Walk children in order, emitting refs only for nodes that need wiring.
-    // Gap-skipping: track the template index of the last emitted ref so
-    // sibling chains can be computed with the right number of nextSibling
-    // hops when static children sit between two wired ones. Tail-dynamic
-    // children produce no template node, so we keep a separate "template
-    // index" counter that advances only for children that emit HTML.
-    let lastId: BabelTypes.Identifier | null = null;
-    let lastTplIdx = -1;
+    // Capture every child ref before emitting operations that may insert or
+    // adopt nodes. This matters during hydration: component slots are real SSR
+    // nodes instead of comment markers, so the first `_insert(...)` can shift
+    // the sibling chain the next slot would otherwise walk.
+    const childRefs = new Map<number, BabelTypes.Identifier>();
     let tplIdx = 0;
 
     for (let i = 0; i < plan.children.length; i++) {
@@ -734,7 +731,6 @@ export function mikataJSXPlugin({ types: t }: { types: typeof BabelTypes }): Plu
 
       if (tail) {
         // Emitted with no marker — no walk ref, no tplIdx bump (not in HTML).
-        emitChildInsert(elementId, null, child, state, stmts);
         continue;
       }
 
@@ -743,24 +739,30 @@ export function mikataJSXPlugin({ types: t }: { types: typeof BabelTypes }): Plu
       if (!needsWalking(child)) continue;
 
       const childId = mkUid();
-      let navExpr: BabelTypes.Expression;
-      if (lastId === null) {
-        navExpr = t.memberExpression(elementId, t.identifier('firstChild'));
-        for (let j = 0; j < myTplIdx; j++) {
-          navExpr = t.memberExpression(navExpr, t.identifier('nextSibling'));
-        }
-      } else {
-        navExpr = t.memberExpression(lastId, t.identifier('nextSibling'));
-        for (let j = 0; j < (myTplIdx - lastTplIdx - 1); j++) {
-          navExpr = t.memberExpression(navExpr, t.identifier('nextSibling'));
-        }
+      let navExpr: BabelTypes.Expression = t.memberExpression(
+        elementId,
+        t.identifier('firstChild'),
+      );
+      for (let j = 0; j < myTplIdx; j++) {
+        navExpr = t.memberExpression(navExpr, t.identifier('nextSibling'));
       }
       stmts.push(t.variableDeclaration('const', [
         t.variableDeclarator(childId, navExpr),
       ]));
-      lastId = childId;
-      lastTplIdx = myTplIdx;
+      childRefs.set(i, childId);
+    }
 
+    for (let i = 0; i < plan.children.length; i++) {
+      const child = plan.children[i];
+      const tail = isTailDynamic(plan, i);
+
+      if (tail) {
+        emitChildInsert(elementId, null, child, state, stmts);
+        continue;
+      }
+
+      const childId = childRefs.get(i);
+      if (!childId) continue;
       if (child.kind === 'element') {
         walkAndEmit(child, childId, state, stmts, mkUid);
       } else {

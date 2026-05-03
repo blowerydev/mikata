@@ -4,7 +4,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createScope, flushSync } from '@mikata/reactivity';
-import { render } from '@mikata/runtime';
+import { hydrate, render } from '@mikata/runtime';
 import { createRouter } from '../src/router';
 import { provideRouter, routeOutlet } from '../src/outlet';
 import { Link } from '../src/link';
@@ -351,6 +351,31 @@ describe('Link event props', () => {
     await Promise.resolve();
 
     expect(router.path()).toBe('/');
+  });
+
+  it('hydrates the visible anchor so clicks use client routing', async () => {
+    container.innerHTML = '<a href="/about">About</a>';
+    const ssrAnchor = container.querySelector('a')!;
+
+    dispose = hydrate(() => {
+      provideRouter(router);
+      return Link({ to: '/about', children: 'About' });
+    }, container);
+    flushSync();
+
+    expect(container.querySelector('a')).toBe(ssrAnchor);
+
+    const event = new MouseEvent('click', {
+      button: 0,
+      bubbles: true,
+      cancelable: true,
+    });
+    ssrAnchor.dispatchEvent(event);
+    await Promise.resolve();
+    flushSync();
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(router.path()).toBe('/about');
   });
 });
 

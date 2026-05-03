@@ -45,6 +45,9 @@ export function Sidebar() {
     aside = el;
     pendingScrollTop = readSidebarScroll();
     restoringScroll = pendingScrollTop > 0;
+    // Ref callbacks run during DOM creation, before the browser gets a
+    // chance to paint a remounted sidebar at scrollTop=0.
+    if (restoringScroll) aside.scrollTop = pendingScrollTop;
   };
 
   const saveScroll = (): void => {

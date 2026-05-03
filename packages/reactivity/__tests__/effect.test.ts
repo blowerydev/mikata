@@ -265,6 +265,28 @@ describe('renderEffect priority', () => {
     flushSync();
     expect(order).toEqual(['render-a', 'render-b', 'user-a']);
   });
+
+  it('does not warn for many distinct effects in one flush', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const [value, setValue] = signal(0);
+    const runs: number[] = [];
+
+    for (let i = 0; i < 120; i++) {
+      renderEffect(() => {
+        value();
+        runs[i] = (runs[i] ?? 0) + 1;
+      });
+    }
+
+    setValue(1);
+    flushSync();
+
+    expect(warn).not.toHaveBeenCalledWith(
+      expect.stringContaining('Unusually high number of'),
+    );
+    expect(runs.every((run) => run === 2)).toBe(true);
+    warn.mockRestore();
+  });
 });
 
 describe('scope', () => {

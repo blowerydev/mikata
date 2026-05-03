@@ -3,7 +3,7 @@
  */
 
 import { computed, renderEffect, suppressLeakTracking } from '@mikata/reactivity';
-import { inject, _insert } from '@mikata/runtime';
+import { adoptElement, inject, _insert } from '@mikata/runtime';
 import { RouterContext } from './outlet';
 import type { NavigateTarget } from './types';
 
@@ -45,132 +45,130 @@ export function Link(props: LinkProps): Node {
     ...rest
   } = props;
 
-  const el = document.createElement('a');
-
-  // Resolve href. `base` is prefixed so the rendered `<a href>` lands on
-  // the correct URL when the app is hosted under a sub-path — the
-  // browser handles right-click-open-in-new-tab, middle-click, and
-  // no-JS navigation entirely via the href attribute, so a bare
-  // route path would 404 on GitHub Pages' `/mikata/` mount.
-  const href = computed(() => {
-    let path: string;
-    if (typeof to === 'string') {
-      path = to;
-    } else {
-      path = to.path;
-      if (to.params) {
-        for (const [key, value] of Object.entries(to.params)) {
-          path = path.replace(`:${key}`, encodeURIComponent(String(value)));
+  return adoptElement<HTMLAnchorElement>('a', (el) => {
+    // Resolve href. `base` is prefixed so the rendered `<a href>` lands on
+    // the correct URL when the app is hosted under a sub-path — the
+    // browser handles right-click-open-in-new-tab, middle-click, and
+    // no-JS navigation entirely via the href attribute, so a bare
+    // route path would 404 on GitHub Pages' `/mikata/` mount.
+    const href = computed(() => {
+      let path: string;
+      if (typeof to === 'string') {
+        path = to;
+      } else {
+        path = to.path;
+        if (to.params) {
+          for (const [key, value] of Object.entries(to.params)) {
+            path = path.replace(`:${key}`, encodeURIComponent(String(value)));
+          }
+        }
+        if (to.search) {
+          const params = new URLSearchParams();
+          for (const [key, value] of Object.entries(to.search)) {
+            if (value != null) params.set(key, String(value));
+          }
+          const str = params.toString();
+          if (str) path += '?' + str;
+        }
+        if (to.hash) {
+          path += to.hash.startsWith('#') ? to.hash : '#' + to.hash;
         }
       }
-      if (to.search) {
-        const params = new URLSearchParams();
-        for (const [key, value] of Object.entries(to.search)) {
-          if (value != null) params.set(key, String(value));
-        }
-        const str = params.toString();
-        if (str) path += '?' + str;
-      }
-      if (to.hash) {
-        path += to.hash.startsWith('#') ? to.hash : '#' + to.hash;
-      }
-    }
-    return applyBase(base, path);
-  });
-
-  // Keep href in sync
-  renderEffect(() => {
-    const value = href();
-    if (__DEV__ && !SAFE_SCHEME.test(value)) {
-      console.warn(
-        `[mikata/router] <Link to="${value}"> uses an unsafe URL scheme. ` +
-        'javascript:, data:, and similar schemes can execute arbitrary code when clicked.'
-      );
-    }
-    el.setAttribute('href', value);
-  });
-
-  // Active state. `router.path()` is base-stripped (the history adapter
-  // removes the prefix before handing paths to the router), so we
-  // compare against the logical, un-prefixed target rather than `href()`
-  // which carries the base for display purposes.
-  const logicalTarget = computed(() => {
-    const raw = typeof to === 'string' ? to : to.path;
-    return raw.split('?')[0].split('#')[0];
-  });
-  const isActive = computed(() => {
-    const current = router.path();
-    const target = logicalTarget();
-    return current === target || current.startsWith(target + '/');
-  });
-
-  const isExactActive = computed(() => {
-    const current = router.path();
-    return current === logicalTarget();
-  });
-
-  // Apply classes
-  renderEffect(() => {
-    const classes: string[] = [];
-    if (className) classes.push(className);
-    if (isActive() && activeClass) classes.push(activeClass);
-    if (isExactActive() && exactActiveClass) classes.push(exactActiveClass);
-    el.className = classes.join(' ');
-  });
-
-  // `aria-current="page"` on the exact-match anchor. Screen readers
-  // announce it and CSS can target `a[aria-current='page']` without a
-  // per-app active-class convention. Removed (not set to `false`) when
-  // inactive — the attribute's absence is the "not current" state.
-  renderEffect(() => {
-    if (isExactActive()) {
-      el.setAttribute('aria-current', 'page');
-    } else {
-      el.removeAttribute('aria-current');
-    }
-  });
-
-  // Click handler - intercept navigation. Listener is bound to the
-  // `<a>` we're about to return, so it GCs with the element when the
-  // link is removed from the DOM. `suppressLeakTracking` keeps the
-  // dev-mode detector from blaming this on a containing renderEffect
-  // (a parent `_insert` accessor frame, for instance).
-  suppressLeakTracking(() => {
-    // Forward additional attributes/events before the router's own click
-    // handler, so user handlers can call preventDefault() to opt out.
-    for (const [key, value] of Object.entries(rest)) {
-      if (isEventProp(key)) {
-        if (typeof value === 'function') {
-          el.addEventListener(eventNameForProp(key), value as EventListener);
-        }
-      } else if (typeof value === 'string') {
-        el.setAttribute(key, value);
-      }
-    }
-
-    el.addEventListener('click', (e: MouseEvent) => {
-      // Allow normal behavior for modified clicks
-      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
-      if (e.defaultPrevented) return;
-      e.preventDefault();
-      router.navigate(to, { replace });
+      return applyBase(base, path);
     });
 
-    if (preload === true || preload === 'hover') {
-      el.addEventListener('mouseenter', () => {
-        // If the target route is lazy, trigger preload
-        const target = href().split('?')[0].split('#')[0];
-        // The lazy component's preload is handled by the lazy() wrapper
-        // We could prefetch here in the future
-      }, { once: true });
+    // Keep href in sync
+    renderEffect(() => {
+      const value = href();
+      if (__DEV__ && !SAFE_SCHEME.test(value)) {
+        console.warn(
+          `[mikata/router] <Link to="${value}"> uses an unsafe URL scheme. ` +
+          'javascript:, data:, and similar schemes can execute arbitrary code when clicked.',
+        );
+      }
+      el.setAttribute('href', value);
+    });
+
+    // Active state. `router.path()` is base-stripped (the history adapter
+    // removes the prefix before handing paths to the router), so we
+    // compare against the logical, un-prefixed target rather than `href()`
+    // which carries the base for display purposes.
+    const logicalTarget = computed(() => {
+      const raw = typeof to === 'string' ? to : to.path;
+      return raw.split('?')[0].split('#')[0];
+    });
+    const isActive = computed(() => {
+      const current = router.path();
+      const target = logicalTarget();
+      return current === target || current.startsWith(target + '/');
+    });
+
+    const isExactActive = computed(() => {
+      const current = router.path();
+      return current === logicalTarget();
+    });
+
+    // Apply classes
+    renderEffect(() => {
+      const classes: string[] = [];
+      if (className) classes.push(className);
+      if (isActive() && activeClass) classes.push(activeClass);
+      if (isExactActive() && exactActiveClass) classes.push(exactActiveClass);
+      el.className = classes.join(' ');
+    });
+
+    // `aria-current="page"` on the exact-match anchor. Screen readers
+    // announce it and CSS can target `a[aria-current='page']` without a
+    // per-app active-class convention. Removed (not set to `false`) when
+    // inactive — the attribute's absence is the "not current" state.
+    renderEffect(() => {
+      if (isExactActive()) {
+        el.setAttribute('aria-current', 'page');
+      } else {
+        el.removeAttribute('aria-current');
+      }
+    });
+
+    // Click handler - intercept navigation. Listener is bound to the
+    // `<a>` we're about to return, so it GCs with the element when the
+    // link is removed from the DOM. `suppressLeakTracking` keeps the
+    // dev-mode detector from blaming this on a containing renderEffect
+    // (a parent `_insert` accessor frame, for instance).
+    suppressLeakTracking(() => {
+      // Forward additional attributes/events before the router's own click
+      // handler, so user handlers can call preventDefault() to opt out.
+      for (const [key, value] of Object.entries(rest)) {
+        if (isEventProp(key)) {
+          if (typeof value === 'function') {
+            el.addEventListener(eventNameForProp(key), value as EventListener);
+          }
+        } else if (typeof value === 'string') {
+          el.setAttribute(key, value);
+        }
+      }
+
+      el.addEventListener('click', (e: MouseEvent) => {
+        // Allow normal behavior for modified clicks
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+        if (e.defaultPrevented) return;
+        e.preventDefault();
+        router.navigate(to, { replace });
+      });
+
+      if (preload === true || preload === 'hover') {
+        el.addEventListener('mouseenter', () => {
+          // If the target route is lazy, trigger preload
+          const target = href().split('?')[0].split('#')[0];
+          // The lazy component's preload is handled by the lazy() wrapper
+          // We could prefetch here in the future
+        }, { once: true });
+      }
+    });
+
+    if (children !== undefined) {
+      _insert(el as HTMLElement, children as never);
     }
   });
-
-  if (children !== undefined) {
-    _insert(el as HTMLElement, children as never);
-  }
-
-  return el;
 }
 
 /**

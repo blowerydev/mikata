@@ -40,6 +40,7 @@ export function scheduleDirty(
   priority: EffectPriority = 'user'
 ): void {
   if (!node._run) return; // Only schedule nodes with a run function (effects)
+  if (node._dirty) return;
 
   node._dirty = true;
   pendingEffects.push({ node, priority: node._priority ?? priority });
@@ -62,9 +63,10 @@ function flush(): void {
     // New effects may be added during processing. Re-select the next
     // highest-priority item on every loop so transitive render effects
     // queued mid-flush still run before any pending user effects.
+    const runCounts = __DEV__ ? new Map<ReactiveNode, number>() : null;
     let guard = 0;
     while (pendingEffects.length > 0) {
-      if (++guard > 1000) {
+      if (++guard > 100000) {
         pendingEffects.length = 0;
         throw new Error(
           '[mikata] Circular reactive dependency detected. ' +
@@ -72,17 +74,29 @@ function flush(): void {
             'Check for effects that write to signals they also read.'
         );
       }
-      if (__DEV__ && guard === 100) {
-        console.warn(
-          `[mikata] Unusually high number of effect re-runs (${guard}) in a single flush. ` +
-          `This may indicate an effect that triggers itself. ` +
-          `Check for effects that write to signals they also read.`
-        );
-      }
 
       const { node } = takeNextScheduledEffect();
       if (node._dirty) {
         node._dirty = false;
+        if (__DEV__ && runCounts) {
+          const count = (runCounts.get(node) ?? 0) + 1;
+          runCounts.set(node, count);
+          if (count > 1000) {
+            pendingEffects.length = 0;
+            throw new Error(
+              '[mikata] Circular reactive dependency detected. ' +
+                'The same effect re-ran more than 1000 times in one flush. ' +
+                'Check for effects that write to signals they also read.',
+            );
+          }
+          if (count === 100) {
+            console.warn(
+              `[mikata] Unusually high number of re-runs (${count}) for the same effect in a single flush. ` +
+              `This may indicate an effect that triggers itself. ` +
+              `Check for effects that write to signals they also read.`,
+            );
+          }
+        }
         node._run?.();
       }
     }
