@@ -36,6 +36,9 @@ Desktop.ini
 *.swo
 
 # AI assistants
+BENCHMARK_PLAN.md
+bench-baseline.json
+bench-current.json
 .claude
 CLAUDE.md
 .cursor
