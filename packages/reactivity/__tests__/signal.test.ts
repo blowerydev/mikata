@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { signal, isSignal } from '../src/signal';
+import { signal, subscribe, isSignal } from '../src/signal';
 import { effect } from '../src/effect';
 import { computed } from '../src/computed';
 import { batch } from '../src/utils';
@@ -86,5 +86,26 @@ describe('isSignal', () => {
     expect(isSignal(() => 42)).toBe(false);
     expect(isSignal(null)).toBe(false);
     expect(isSignal(undefined)).toBe(false);
+  });
+});
+
+describe('subscribe', () => {
+  it('subscribes directly to signal values', () => {
+    const values: number[] = [];
+    const [count, setCount] = signal(0);
+    const unsubscribe = subscribe(count, (value) => {
+      values.push(value);
+    });
+
+    setCount(1);
+    setCount(2);
+    unsubscribe();
+    setCount(3);
+
+    expect(values).toEqual([0, 1, 2]);
+  });
+
+  it('requires a signal getter', () => {
+    expect(() => subscribe((() => 1) as any, () => {})).toThrow(/signal getter/);
   });
 });

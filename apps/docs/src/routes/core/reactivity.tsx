@@ -43,6 +43,20 @@ setName('mikata');
   'tsx',
 );
 
+const subscribeExample = await highlight(
+  `import { signal, subscribe } from '@mikata/reactivity';
+
+const [count, setCount] = signal(0);
+
+const stop = subscribe(count, (value) => {
+  console.log(value);
+});
+
+setCount(1);
+stop();`,
+  'tsx',
+);
+
 const batchExample = await highlight(
   `import { signal, effect, batch } from '@mikata/reactivity';
 
@@ -137,6 +151,16 @@ export default function Reactivity() {
         fires.
       </p>
       <CodeBlock html={effectExample} />
+
+      <h2>Direct subscriptions</h2>
+      <p>
+        <code>subscribe(signal, fn)</code> is a lightweight observer for one
+        signal. It calls the callback immediately, calls it again on each
+        write, and returns an unsubscribe function. Use it for store-style
+        fanout; use <code>effect()</code> when the callback needs dynamic
+        dependency tracking, cleanup, or component scope disposal.
+      </p>
+      <CodeBlock html={subscribeExample} />
 
       <h2>Batching</h2>
       <p>

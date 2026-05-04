@@ -19,6 +19,7 @@ import { registerNode, unregisterNode } from './debug';
 declare const __DEV__: boolean;
 
 const SIGNAL_BRAND = Symbol('mikata:signal');
+const SIGNAL_NODES = new WeakMap<ReadSignal<unknown>, SignalNode<unknown>>();
 
 export type ReadSignal<T> = (() => T) & { [SIGNAL_BRAND]: true };
 export type WriteSignal<T> = {
@@ -57,6 +58,7 @@ export function signal<T>(initialValue: T, label?: string): Signal<T> {
 
   // Brand for isSignal() checks
   (get as any)[SIGNAL_BRAND] = true;
+  SIGNAL_NODES.set(get as ReadSignal<unknown>, node as SignalNode<unknown>);
 
   const set = ((valueOrUpdater: T | ((prev: T) => T)) => {
     if (__DEV__ && isInsideComputed()) {
@@ -87,6 +89,41 @@ export function signal<T>(initialValue: T, label?: string): Signal<T> {
   }) as WriteSignal<T>;
 
   return [get, set];
+}
+
+/**
+ * Subscribe directly to a signal without creating an effect node.
+ *
+ * This is useful for store-style fanout where the callback only needs the
+ * changed signal value and does not need dependency tracking, cleanup scopes,
+ * or scheduler ordering. Use effect() when the callback reads dynamic
+ * dependencies or participates in component lifecycle cleanup.
+ */
+export function subscribe<T>(
+  source: ReadSignal<T>,
+  fn: (value: T) => void,
+): () => void {
+  const sourceNode = SIGNAL_NODES.get(source as ReadSignal<unknown>) as SignalNode<T> | undefined;
+  if (!sourceNode) {
+    throw new TypeError('[mikata] subscribe() expects a signal getter.');
+  }
+
+  const subscriber: ReactiveNode = {
+    _subscribers: [],
+    _version: 0,
+    _dirty: false,
+    _markDirty() {
+      fn(sourceNode._value);
+    },
+    _dispose() {
+      const index = sourceNode._subscribers.indexOf(subscriber);
+      if (index >= 0) sourceNode._subscribers.splice(index, 1);
+    },
+  };
+
+  sourceNode._subscribers.push(subscriber);
+  fn(sourceNode._value);
+  return () => subscriber._dispose();
 }
 
 export function isSignal(value: unknown): value is ReadSignal<unknown> {

@@ -48,10 +48,10 @@ const viteExample = await highlight(
 );
 
 const stringEmitterExample = await highlight(
-  `import { escapeText, renderToString } from '@mikata/server';
+  `import { escapeText, renderToStaticString } from '@mikata/server';
 
-export async function renderRows(rows: Array<{ label: string }>) {
-  return renderToString(() => {
+export function renderRows(rows: Array<{ label: string }>) {
+  return renderToStaticString(() => {
     let html = '<ul>';
     for (const row of rows) {
       html += \`<li>\${escapeText(row.label)}</li>\`;
@@ -87,10 +87,12 @@ export default function SsrSsg() {
 
       <h2>String emitters</h2>
       <p>
-        <code>renderToString()</code> also accepts a returned HTML string. This
-        lets compiler targets or custom renderers bypass the DOM shim for hot
-        SSR paths while still using Mikata's query collection, state script,
-        and SSR runtime flag. Use <code>escapeText()</code> and{' '}
+        <code>renderToStaticString()</code> is the fast path for compiler
+        targets or custom renderers that already emit escaped HTML strings.
+        It bypasses the DOM shim, query collection, and hydration verification
+        while keeping the SSR runtime flag active during the render. Use{' '}
+        <code>renderToString()</code> when you need component SSR, query state,
+        or verification. Use <code>escapeText()</code> and{' '}
         <code>escapeAttr()</code> whenever string output includes user data.
       </p>
       <CodeBlock html={stringEmitterExample} />

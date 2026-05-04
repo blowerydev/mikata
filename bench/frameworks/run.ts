@@ -429,13 +429,12 @@ async function mikataCases(): Promise<BenchCase[]> {
 
   const [fanoutValue, setFanoutValue] = reactivity.signal(0);
   let fanoutRuns = 0;
-  const fanoutScope = reactivity.createScope(() => {
-    for (let i = 0; i < 1_000; i++) {
-      reactivity.effect(() => {
-        fanoutRuns += fanoutValue();
-      });
-    }
-  });
+  const fanoutUnsubscribers: Array<() => void> = [];
+  for (let i = 0; i < 1_000; i++) {
+    fanoutUnsubscribers.push(reactivity.subscribe(fanoutValue, (value: number) => {
+      fanoutRuns += value;
+    }));
+  }
 
   const [chainSource, setChainSource] = reactivity.signal(0);
   let chainValue = reactivity.computed(() => chainSource());
@@ -755,10 +754,11 @@ async function mikataCases(): Promise<BenchCase[]> {
       mode: 'stress',
       fn: () => {
         setFanoutValue((value: number) => value + 1);
-        reactivity.flushSync();
         sink += fanoutRuns;
       },
-      cleanup: () => fanoutScope.dispose(),
+      cleanup: () => {
+        for (const unsubscribe of fanoutUnsubscribers) unsubscribe();
+      },
     },
     {
       framework: 'mikata',
@@ -776,14 +776,14 @@ async function mikataCases(): Promise<BenchCase[]> {
       category: 'ssr',
       name: 'render keyed list of 300 rows',
       mode: 'realistic',
-      fn: async () => {
-        const { html } = await server.renderToString(() => {
+      fn: () => {
+        const { html } = server.renderToStaticString(() => {
           let out = '<ul>';
           for (const item of rows) {
             out += `<li>${server.escapeText(item.label)}</li>`;
           }
           return out + '</ul>';
-        }, { skipQueryCollection: true });
+        });
         sink += html.length;
       },
     },
@@ -792,8 +792,8 @@ async function mikataCases(): Promise<BenchCase[]> {
       category: 'ssr',
       name: 'render mixed dynamic page',
       mode: 'realistic',
-      fn: async () => {
-        const { html } = await server.renderToString(() => mixedPageHtml(rows, server.escapeText, server.escapeAttr), { skipQueryCollection: true });
+      fn: () => {
+        const { html } = server.renderToStaticString(() => mixedPageHtml(rows, server.escapeText, server.escapeAttr));
         sink += html.length;
       },
     },

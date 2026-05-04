@@ -219,15 +219,45 @@ export function each<T>(
 
   type ItemEntry = {
     node: Node;
-    scope: Scope;
+    scope: Scope | null;
     item: T;
     setIndex: (index: number) => void;
   };
 
   let entries: ItemEntry[] = [];
-  let fallbackEntry: { node: Node; scope: Scope } | null = null;
+  let fallbackEntry: { node: Node; scope: Scope | null } | null = null;
   const keyFn = options?.key ?? ((item: T) => item);
   let hydrated = false;
+
+  const createEntry = (item: T, i: number): ItemEntry => {
+    let node: Node;
+    let indexValue = i;
+    let getIndex: (() => number) | null = null;
+    let setIndexImpl: ((index: number) => void) | null = null;
+    const index = () => {
+      if (!getIndex) {
+        const [get, set] = signal(indexValue);
+        getIndex = get;
+        setIndexImpl = set;
+      }
+      return getIndex();
+    };
+    const setIndex = (next: number) => {
+      indexValue = next;
+      setIndexImpl?.(next);
+    };
+    const scope = createLazyScope(() => {
+      node = render(item, index);
+    });
+    return { node: node!, scope, item, setIndex };
+  };
+
+  const disposeEntry = (entry: ItemEntry): void => {
+    if (entry.node.parentNode) {
+      entry.node.parentNode.removeChild(entry.node);
+    }
+    entry.scope?.dispose();
+  };
 
   renderEffect(() => {
     const items = list();
@@ -244,13 +274,7 @@ export function each<T>(
       } else {
         const fresh: ItemEntry[] = new Array(items.length);
         for (let i = 0; i < items.length; i++) {
-          const item = items[i];
-          const [index, setIndex] = signal(i);
-          let node: Node;
-          const scope = createScope(() => {
-            node = render(item, index);
-          });
-          fresh[i] = { node: node!, scope, item, setIndex };
+          fresh[i] = createEntry(items[i], i);
         }
         entries = fresh;
         // Place marker after the last adopted item so future reactive
@@ -277,22 +301,19 @@ export function each<T>(
       if (fallbackEntry.node.parentNode) {
         fallbackEntry.node.parentNode.removeChild(fallbackEntry.node);
       }
-      fallbackEntry.scope.dispose();
+      fallbackEntry.scope?.dispose();
       fallbackEntry = null;
     }
 
     if (items.length === 0 && fallback) {
       // Show fallback
       for (const entry of entries) {
-        if (entry.node.parentNode) {
-          entry.node.parentNode.removeChild(entry.node);
-        }
-        entry.scope.dispose();
+        disposeEntry(entry);
       }
       entries = [];
 
       let fallbackNode: Node;
-      const scope = createScope(() => {
+      const scope = createLazyScope(() => {
         fallbackNode = fallback!();
       });
       parent.insertBefore(fallbackNode!, marker);
@@ -319,13 +340,9 @@ export function each<T>(
           }
           seenKeys!.add(key);
         }
-        const [index, setIndex] = signal(i);
-        let node: Node;
-        const scope = createScope(() => {
-          node = render(item, index);
-        });
-        fresh[i] = { node: node!, scope, item, setIndex };
-        frag.appendChild(node!);
+        const entry = createEntry(item, i);
+        fresh[i] = entry;
+        frag.appendChild(entry.node);
       }
       parent.insertBefore(frag, marker);
       entries = fresh;
@@ -366,12 +383,7 @@ export function each<T>(
         newEntries[i].setIndex(i);
         sources[i] = oldIndex;
       } else {
-        let node: Node;
-        const [index, setIndex] = signal(i);
-        const scope = createScope(() => {
-          node = render(item, index);
-        });
-        newEntries[i] = { node: node!, scope, item, setIndex };
+        newEntries[i] = createEntry(item, i);
         sources[i] = -1;
       }
     }
@@ -379,11 +391,7 @@ export function each<T>(
     // Dispose removed entries (any old entry not reused).
     for (let i = 0; i < entries.length; i++) {
       if (reused[i]) continue;
-      const entry = entries[i];
-      if (entry.node.parentNode) {
-        entry.node.parentNode.removeChild(entry.node);
-      }
-      entry.scope.dispose();
+      disposeEntry(entries[i]);
     }
 
     // Compute LIS of `sources` (ignoring -1 entries). Any reused entry whose

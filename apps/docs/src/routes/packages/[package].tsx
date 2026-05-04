@@ -77,7 +77,7 @@ render(() => <Counter />, document.getElementById('root')!);`,
     description:
       'Fine-grained signals, computed values, effects, scopes, batching, and reactive object proxies.',
     install: 'pnpm add @mikata/reactivity',
-    imports: ['signal, computed, effect, renderEffect', 'reactive, batch, untrack, on', 'createScope, onCleanup, flushSync'],
+    imports: ['signal, subscribe, computed, effect, renderEffect', 'reactive, batch, untrack, on', 'createScope, onCleanup, flushSync'],
     source: 'packages/reactivity',
     tests: ['packages/reactivity/__tests__'],
     whenToUse: [
@@ -87,6 +87,7 @@ render(() => <Counter />, document.getElementById('root')!);`,
     ],
     apis: [
       { name: 'signal(initial)', kind: 'State', description: 'Creates a read signal and setter pair.' },
+      { name: 'subscribe(signal, fn)', kind: 'State', description: 'Direct store-style subscription for a single signal value.' },
       { name: 'computed(fn)', kind: 'Derived', description: 'Caches a derived value and tracks dependencies automatically.' },
       { name: 'effect(fn), renderEffect(fn)', kind: 'Effects', description: 'Runs side effects when tracked reads change.' },
       { name: 'reactive(object)', kind: 'Objects', description: 'Wraps object properties in fine-grained reactive tracking.' },
@@ -296,7 +297,7 @@ export default defineConfig({
     description:
       'Server-side renderer that runs Mikata components against a DOM shim or accepts compiled HTML strings, then collects query state for hydration.',
     install: 'pnpm add @mikata/server',
-    imports: ['renderToString, installShim', 'escapeText, escapeAttr', 'escapeStateScript, renderStateScript', 'isSSR'],
+    imports: ['renderToString, renderToStaticString, installShim', 'escapeText, escapeAttr', 'escapeStateScript, renderStateScript', 'isSSR'],
     source: 'packages/server',
     tests: ['packages/server/__tests__'],
     whenToUse: [
@@ -307,6 +308,7 @@ export default defineConfig({
     ],
     apis: [
       { name: 'renderToString(component, options?)', kind: 'SSR', description: 'Renders a component tree or returned HTML string to HTML plus optional query state script.' },
+      { name: 'renderToStaticString(component)', kind: 'SSR', description: 'Fast path for compiled string-only SSR emitters that do not need query collection or hydration verification.' },
       { name: 'verifyHydration', kind: 'Option', description: 'Hydrates the generated HTML in the shim to catch SSR/client mismatches.' },
       { name: 'installShim()', kind: 'DOM shim', description: 'Installs the minimal DOM implementation used by the renderer.' },
       { name: 'escapeText(value)', kind: 'Serialization', description: 'Escapes text content for custom string emitters.' },

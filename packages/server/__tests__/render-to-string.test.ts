@@ -12,7 +12,7 @@ import {
 } from '@mikata/runtime';
 import { installShim } from '../src/dom-shim';
 import { serializeNode } from '../src/serialize';
-import { renderToString } from '../src/index';
+import { renderToStaticString, renderToString } from '../src/index';
 
 // These tests drive the runtime helpers directly (mimicking what the JSX
 // compiler emits) so we can assert against the SSR shim without wiring
@@ -144,6 +144,27 @@ describe('renderToString', () => {
     // attribute would break out of its value.
     expect(html).not.toContain('alert("xss")"');
     expect(html).toContain('&quot;');
+  });
+});
+
+describe('renderToStaticString', () => {
+  it('renders compiled string emitters without installing the DOM shim', () => {
+    const before = (globalThis as any).document;
+    const { html, stateScript, state } = renderToStaticString(() => '<main><h1>Hi</h1></main>');
+    expect(html).toBe('<main><h1>Hi</h1></main>');
+    expect(stateScript).toBe('');
+    expect(state).toEqual({});
+    expect((globalThis as any).document).toBe(before);
+  });
+
+  it('sets isSSR while the static string emitter runs', async () => {
+    const { isSSR } = await import('@mikata/runtime');
+    expect(isSSR()).toBe(false);
+    renderToStaticString(() => {
+      expect(isSSR()).toBe(true);
+      return '<p>server</p>';
+    });
+    expect(isSSR()).toBe(false);
   });
 });
 

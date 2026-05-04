@@ -1,4 +1,4 @@
-export { signal, isSignal } from './signal';
+export { signal, subscribe, isSignal } from './signal';
 export { computed } from './computed';
 export { reactive, isReactive, toRaw } from './reactive';
 export { effect, renderEffect } from './effect';

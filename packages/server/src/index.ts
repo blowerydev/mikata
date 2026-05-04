@@ -63,6 +63,27 @@ export interface RenderToStringResult {
   state: Record<string, unknown>;
 }
 
+/**
+ * Render a compiled string-only server emitter.
+ *
+ * This is the fast path for compiler output that already writes escaped HTML
+ * strings and does not need the DOM shim, query collection, hydration
+ * verification, or reactive cleanup. `isSSR()` is still true while the
+ * callback runs so shared code can branch consistently.
+ */
+export function renderToStaticString(component: () => string): RenderToStringResult {
+  _setSSR(true);
+  try {
+    return {
+      html: component(),
+      stateScript: '',
+      state: {},
+    };
+  } finally {
+    _setSSR(false);
+  }
+}
+
 let renderQueue: Promise<void> = Promise.resolve();
 
 export async function runWithRenderLock<T>(fn: () => T | Promise<T>): Promise<T> {
