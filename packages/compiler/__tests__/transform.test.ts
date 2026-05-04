@@ -243,6 +243,61 @@ describe('JSX transform', () => {
     expect(output).toContain('row.label()');
   });
 
+  it('marks fully static show branches as static automatically', () => {
+    const output = transform(
+      `import { show } from '@mikata/runtime';
+const node = show(open, () => <strong>Expanded</strong>, () => <em>Collapsed</em>);`,
+    );
+    expect(output).toContain('static: true');
+  });
+
+  it('marks public mikata show imports as static automatically', () => {
+    const output = transform(
+      `import { show } from 'mikata';
+const node = show(open, () => <strong>Expanded</strong>, () => <em>Collapsed</em>);`,
+    );
+    expect(output).toContain('static: true');
+  });
+
+  it('keeps no-fallback static show calls on the options argument slot', () => {
+    const output = transform(
+      `import { show } from '@mikata/runtime';
+const node = show(open, () => <strong>Expanded</strong>);`,
+    );
+    expect(output).toMatch(/show\(open,[\s\S]*undefined,\s*\{\s*static: true\s*\}/);
+  });
+
+  it('does not mark dynamic show branches as static', () => {
+    const output = transform(
+      `import { show } from '@mikata/runtime';
+const node = show(open, () => <strong>{label()}</strong>, () => <em>Collapsed</em>);`,
+    );
+    expect(output).not.toContain('static: true');
+  });
+
+  it('does not mark component show branches as static', () => {
+    const output = transform(
+      `import { show } from '@mikata/runtime';
+const node = show(open, () => <Panel />, () => <em>Collapsed</em>);`,
+    );
+    expect(output).not.toContain('static: true');
+  });
+
+  it('does not rewrite local show functions', () => {
+    const output = transform(
+      `function show(a, b, c) { return b(); }
+const node = show(open, () => <strong>Expanded</strong>, () => <em>Collapsed</em>);`,
+    );
+    expect(output).not.toContain('static: true');
+  });
+
+  it('does not rewrite unbound show functions', () => {
+    const output = transform(
+      `const node = show(open, () => <strong>Expanded</strong>, () => <em>Collapsed</em>);`,
+    );
+    expect(output).not.toContain('static: true');
+  });
+
   it('leaves component props.x reactive', () => {
     // Component-body props are lazy-prop proxies — reads stay reactive.
     const output = transform(

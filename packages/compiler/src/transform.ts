@@ -18,6 +18,7 @@ type Binding = NonNullable<ReturnType<Scope['getBinding']>>;
 
 const RUNTIME_MODULE = '@mikata/runtime';
 const REACTIVITY_MODULE = '@mikata/reactivity';
+const PUBLIC_RUNTIME_MODULES = new Set([RUNTIME_MODULE, 'mikata']);
 
 /**
  * Callbacks whose parameter is guaranteed to be plain data — not a
@@ -109,6 +110,72 @@ export function mikataJSXPlugin({ types: t }: { types: typeof BabelTypes }): Plu
     const callee = call.node.callee;
     if (!t.isIdentifier(callee)) return false;
     return STATIC_CALLBACK_CALLEES.has(callee.name);
+  }
+
+  function isImportedRuntimeHelper(scope: Scope | undefined, name: string): boolean {
+    const binding = scope?.getBinding(name);
+    if (!binding) return false;
+    const parent = binding.path.parentPath?.node;
+    if (!t.isImportDeclaration(parent)) return false;
+    return PUBLIC_RUNTIME_MODULES.has(parent.source.value);
+  }
+
+  function isStaticJSXBranch(node: BabelTypes.Node): boolean {
+    if (t.isJSXFragment(node)) {
+      return node.children.every((child) => {
+        if (t.isJSXText(child)) return true;
+        if (t.isJSXExpressionContainer(child)) return t.isJSXEmptyExpression(child.expression);
+        if (t.isJSXElement(child) || t.isJSXFragment(child)) return isStaticJSXBranch(child);
+        return false;
+      });
+    }
+
+    if (!t.isJSXElement(node)) return false;
+    if (isComponent(node.openingElement.name)) return false;
+
+    for (const attr of node.openingElement.attributes) {
+      if (t.isJSXSpreadAttribute(attr)) return false;
+      const name = attr.name;
+      if (!t.isJSXIdentifier(name)) return false;
+      if (name.name === 'ref' || /^on[A-Z]/.test(name.name)) return false;
+      const value = attr.value;
+      if (!value || t.isStringLiteral(value)) continue;
+      if (
+        t.isJSXExpressionContainer(value) &&
+        (t.isStringLiteral(value.expression) ||
+          t.isNumericLiteral(value.expression) ||
+          t.isBooleanLiteral(value.expression))
+      ) {
+        continue;
+      }
+      return false;
+    }
+
+    return node.children.every((child) => {
+      if (t.isJSXText(child)) return true;
+      if (t.isJSXExpressionContainer(child)) return t.isJSXEmptyExpression(child.expression);
+      if (t.isJSXElement(child) || t.isJSXFragment(child)) return isStaticJSXBranch(child);
+      return false;
+    });
+  }
+
+  function branchReturnsStaticJSX(arg: BabelTypes.CallExpression['arguments'][number] | undefined): boolean {
+    if (!arg || t.isSpreadElement(arg)) return false;
+    if (!t.isArrowFunctionExpression(arg) && !t.isFunctionExpression(arg)) return false;
+    if (t.isJSXElement(arg.body) || t.isJSXFragment(arg.body)) {
+      return isStaticJSXBranch(arg.body);
+    }
+    if (!t.isBlockStatement(arg.body)) return false;
+    const returns = arg.body.body.filter((stmt): stmt is BabelTypes.ReturnStatement => t.isReturnStatement(stmt));
+    return returns.length === 1 && !!returns[0].argument && isStaticJSXBranch(returns[0].argument);
+  }
+
+  function canAutoStaticShow(node: BabelTypes.CallExpression, scope?: Scope): boolean {
+    if (!t.isIdentifier(node.callee, { name: 'show' })) return false;
+    if (!isImportedRuntimeHelper(scope, 'show')) return false;
+    if (node.arguments.length < 2 || node.arguments.length > 3) return false;
+    if (!branchReturnsStaticJSX(node.arguments[1])) return false;
+    return node.arguments.length === 2 || branchReturnsStaticJSX(node.arguments[2]);
   }
 
   function rootIdentifier(node: BabelTypes.Expression): BabelTypes.Identifier | null {
@@ -1001,6 +1068,18 @@ export function mikataJSXPlugin({ types: t }: { types: typeof BabelTypes }): Plu
             return;
           }
           path.replaceWith(transformFragment(path.node, state, path.scope));
+        },
+      },
+
+      CallExpression: {
+        enter(path) {
+          if (!canAutoStaticShow(path.node, path.scope)) return;
+          if (path.node.arguments.length === 2) {
+            path.node.arguments.push(t.identifier('undefined'));
+          }
+          path.node.arguments.push(t.objectExpression([
+            t.objectProperty(t.identifier('static'), t.booleanLiteral(true)),
+          ]));
         },
       },
 

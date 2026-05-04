@@ -99,9 +99,12 @@ export default function ControlFlow() {
         to stay mounted and toggle visibility instead of remounting.
       </p>
       <p>
-        Pass <code>{'{ static: true }'}</code> only for hot branches that return
-        plain static DOM with no components, effects, or cleanup. Static
-        branches still remount on each swap, but skip branch cleanup scopes.
+        The compiler automatically applies the static branch path for plain
+        native JSX branches it can prove are static. Pass{' '}
+        <code>{'{ static: true }'}</code> manually only for hot runtime helper
+        branches that return plain static DOM with no components, effects, or
+        cleanup. Static branches still remount on each swap, but skip branch
+        cleanup scopes.
       </p>
       <CodeBlock html={staticShowExample} />
 
