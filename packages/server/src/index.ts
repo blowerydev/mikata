@@ -12,7 +12,7 @@
  */
 
 import { createScope, flushSync } from '@mikata/reactivity';
-import { _setSSR, hydrate } from '@mikata/runtime';
+import { _setSSR, hydrate, isSSR as getSSR } from '@mikata/runtime';
 import {
   beginCollect,
   endCollect,
@@ -23,7 +23,7 @@ import {
   type SNode,
   type SElement,
 } from './dom-shim';
-import { serializeNode, renderStateScript } from './serialize';
+import { serializeNode, renderStateScript, escapeText } from './serialize';
 
 export interface RenderToStringOptions {
   /**
@@ -72,6 +72,7 @@ export interface RenderToStringResult {
  * callback runs so shared code can branch consistently.
  */
 export function renderToStaticString(component: () => string): RenderToStringResult {
+  const previousSSR = getSSR();
   _setSSR(true);
   try {
     return {
@@ -80,7 +81,7 @@ export function renderToStaticString(component: () => string): RenderToStringRes
       state: {},
     };
   } finally {
-    _setSSR(false);
+    _setSSR(previousSSR);
   }
 }
 
@@ -133,7 +134,7 @@ async function renderToStringUnlocked(
     const scope = createScope(() => {
       const result = component() as unknown;
       if (typeof result === 'string') {
-        html = result;
+        html = escapeText(result);
       } else {
         root = coerceToNode(result);
       }

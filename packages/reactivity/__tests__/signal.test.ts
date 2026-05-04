@@ -105,6 +105,26 @@ describe('subscribe', () => {
     expect(values).toEqual([0, 1, 2]);
   });
 
+  it('continues notifying later subscribers when one unsubscribes during notification', () => {
+    const values: string[] = [];
+    const [count, setCount] = signal(0);
+    let unsubscribeFirst = () => {};
+
+    unsubscribeFirst = subscribe(count, (value) => {
+      if (value === 1) unsubscribeFirst();
+      values.push(`first:${value}`);
+    });
+    subscribe(count, (value) => {
+      values.push(`second:${value}`);
+    });
+
+    values.length = 0;
+    setCount(1);
+    setCount(2);
+
+    expect(values).toEqual(['first:1', 'second:1', 'second:2']);
+  });
+
   it('requires a signal getter', () => {
     expect(() => subscribe((() => 1) as any, () => {})).toThrow(/signal getter/);
   });

@@ -76,9 +76,12 @@ export function signal<T>(initialValue: T, label?: string): Signal<T> {
     if (!Object.is(node._value, newValue)) {
       node._value = newValue;
       node._version++;
-      // Notify all subscribers
-      for (let i = 0; i < node._subscribers.length; i++) {
-        const sub = node._subscribers[i]!;
+      // Snapshot before notifying so subscribers can unsubscribe during
+      // callbacks without shifting later subscribers out of this update.
+      const subscribers = node._subscribers.slice();
+      for (let i = 0; i < subscribers.length; i++) {
+        const sub = subscribers[i]!;
+        if (!node._subscribers.includes(sub)) continue;
         if (sub._markDirty) {
           sub._markDirty();
         } else {

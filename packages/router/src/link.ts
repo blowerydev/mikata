@@ -80,11 +80,15 @@ export function Link(props: LinkProps): Node {
     // Keep href in sync
     renderEffect(() => {
       const value = href();
-      if (__DEV__ && !SAFE_SCHEME.test(value)) {
-        console.warn(
-          `[mikata/router] <Link to="${value}"> uses an unsafe URL scheme. ` +
-          'javascript:, data:, and similar schemes can execute arbitrary code when clicked.',
-        );
+      if (!isSafeHref(value)) {
+        if (__DEV__) {
+          console.warn(
+            `[mikata/router] <Link to="${value}"> uses an unsafe URL scheme. ` +
+            'javascript:, data:, and similar schemes can execute arbitrary code when clicked.',
+          );
+        }
+        el.setAttribute('href', '#');
+        return;
       }
       el.setAttribute('href', value);
     });
@@ -142,7 +146,7 @@ export function Link(props: LinkProps): Node {
           if (typeof value === 'function') {
             el.addEventListener(eventNameForProp(key), value as EventListener);
           }
-        } else if (typeof value === 'string') {
+        } else if (typeof value === 'string' && shouldForwardStringAttribute(key)) {
           el.setAttribute(key, value);
         }
       }
@@ -151,6 +155,10 @@ export function Link(props: LinkProps): Node {
         // Allow normal behavior for modified clicks
         if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
         if (e.defaultPrevented) return;
+        if (!isSafeHref(href())) {
+          e.preventDefault();
+          return;
+        }
         e.preventDefault();
         router.navigate(to, { replace });
       });
@@ -187,8 +195,17 @@ function applyBase(base: string, path: string): string {
   return base + segment;
 }
 
+function isSafeHref(value: string): boolean {
+  return SAFE_SCHEME.test(value);
+}
+
 function isEventProp(key: string): boolean {
   return /^on[A-Z]/.test(key);
+}
+
+function shouldForwardStringAttribute(key: string): boolean {
+  const normalized = key.toLowerCase();
+  return normalized !== 'href' && !normalized.startsWith('on');
 }
 
 function eventNameForProp(key: string): string {

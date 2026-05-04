@@ -239,18 +239,24 @@ describe('Link unsafe-scheme warning', () => {
     warn.mockRestore();
   });
 
-  it('warns in dev for javascript: URLs', () => {
+  it('sanitizes javascript: URLs', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     renderLink('javascript:alert(1)');
+    const a = container.querySelector('a')!;
+
     expect(warn).toHaveBeenCalled();
     expect((warn.mock.calls[0][0] as string)).toContain('unsafe URL scheme');
+    expect(a.getAttribute('href')).toBe('#');
     warn.mockRestore();
   });
 
-  it('warns for data: URLs', () => {
+  it('sanitizes data: URLs', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     renderLink('data:text/html,<script>alert(1)</script>');
+    const a = container.querySelector('a')!;
+
     expect(warn).toHaveBeenCalled();
+    expect(a.getAttribute('href')).toBe('#');
     warn.mockRestore();
   });
 });
@@ -351,6 +357,35 @@ describe('Link event props', () => {
     await Promise.resolve();
 
     expect(router.path()).toBe('/');
+  });
+
+  it('does not forward inline handler attributes or href overrides', () => {
+    const a = renderLink({
+      to: '/about',
+      onclick: 'alert(1)',
+      onmouseover: 'alert(2)',
+      href: 'javascript:alert(3)',
+      'data-id': 'about',
+    });
+
+    expect(a.getAttribute('href')).toBe('/about');
+    expect(a.hasAttribute('onclick')).toBe(false);
+    expect(a.hasAttribute('onmouseover')).toBe(false);
+    expect(a.getAttribute('data-id')).toBe('about');
+  });
+
+  it('blocks router navigation for unsafe targets', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const a = renderLink({ to: 'javascript:alert(1)' });
+    const event = new MouseEvent('click', { button: 0, bubbles: true, cancelable: true });
+
+    a.dispatchEvent(event);
+    await Promise.resolve();
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(router.path()).toBe('/');
+    expect(warn).toHaveBeenCalled();
+    warn.mockRestore();
   });
 
   it('hydrates the visible anchor so clicks use client routing', async () => {

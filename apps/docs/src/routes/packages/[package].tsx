@@ -295,7 +295,7 @@ export default defineConfig({
     slug: 'server',
     title: '@mikata/server',
     description:
-      'Server-side renderer that runs Mikata components against a DOM shim or accepts compiled HTML strings, then collects query state for hydration.',
+      'Server-side renderer that runs Mikata components against a DOM shim, plus an explicit static-string path for trusted escaped HTML emitters.',
     install: 'pnpm add @mikata/server',
     imports: ['renderToString, renderToStaticString, installShim', 'escapeText, escapeAttr', 'escapeStateScript, renderStateScript', 'isSSR'],
     source: 'packages/server',
@@ -303,12 +303,12 @@ export default defineConfig({
     whenToUse: [
       'Custom SSR integrations outside @mikata/kit.',
       'Tests or tools that need a server DOM shim.',
-      'Compiled or custom SSR emitters that return HTML strings directly.',
+      'Compiled or custom static emitters that return trusted escaped HTML strings directly.',
       'Advanced render pipelines that need access to serialized query state.',
     ],
     apis: [
-      { name: 'renderToString(component, options?)', kind: 'SSR', description: 'Renders a component tree or returned HTML string to HTML plus optional query state script.' },
-      { name: 'renderToStaticString(component)', kind: 'SSR', description: 'Fast path for compiled string-only SSR emitters that do not need query collection or hydration verification.' },
+      { name: 'renderToString(component, options?)', kind: 'SSR', description: 'Renders a component tree to HTML plus optional query state script; plain string returns are escaped as text.' },
+      { name: 'renderToStaticString(component)', kind: 'SSR', description: 'Fast path for trusted compiled string-only SSR emitters that do not need query collection or hydration verification.' },
       { name: 'verifyHydration', kind: 'Option', description: 'Hydrates the generated HTML in the shim to catch SSR/client mismatches.' },
       { name: 'installShim()', kind: 'DOM shim', description: 'Installs the minimal DOM implementation used by the renderer.' },
       { name: 'escapeText(value)', kind: 'Serialization', description: 'Escapes text content for custom string emitters.' },

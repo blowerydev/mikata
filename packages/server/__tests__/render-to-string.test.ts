@@ -28,9 +28,9 @@ describe('renderToString', () => {
     expect(html).toBe('<div class="card">hi</div>');
   });
 
-  it('accepts compiled string emitters without building shim nodes', async () => {
-    const { html } = await renderToString(() => '<ul><li>Row 1</li></ul>');
-    expect(html).toBe('<ul><li>Row 1</li></ul>');
+  it('escapes string returns instead of treating them as trusted HTML', async () => {
+    const { html } = await renderToString(() => '<img src=x onerror=alert(1)>');
+    expect(html).toBe('&lt;img src=x onerror=alert(1)&gt;');
   });
 
   it('serialises a component with a reactive text-bake', async () => {
@@ -164,6 +164,43 @@ describe('renderToStaticString', () => {
       expect(isSSR()).toBe(true);
       return '<p>server</p>';
     });
+    expect(isSSR()).toBe(false);
+  });
+
+  it('preserves an outer SSR render state when called concurrently', async () => {
+    const { createQuery } = await import('@mikata/store');
+    const { isSSR } = await import('@mikata/runtime');
+    let releaseQuery!: () => void;
+    let observedDuringQueryResume = false;
+    const queryGate = new Promise<void>((resolve) => {
+      releaseQuery = resolve;
+    });
+
+    const pendingRender = renderToString(() => {
+      const query = createQuery({
+        key: () => 'static-overlap',
+        fn: async () => {
+          await queryGate;
+          observedDuringQueryResume = isSSR();
+          return 'ready';
+        },
+      });
+      const root = _template('<p> </p>').cloneNode(true) as any;
+      _insert(root, () => query.data() ?? 'loading');
+      return root;
+    });
+
+    await Promise.resolve();
+    const { html } = renderToStaticString(() => {
+      expect(isSSR()).toBe(true);
+      return '<span>static</span>';
+    });
+    expect(html).toBe('<span>static</span>');
+
+    releaseQuery();
+    await pendingRender;
+
+    expect(observedDuringQueryResume).toBe(true);
     expect(isSSR()).toBe(false);
   });
 });
