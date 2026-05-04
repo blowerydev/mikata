@@ -9,6 +9,7 @@
 import {
   type ReactiveNode,
   track,
+  clearSubscribers,
   getCurrentSubscriber,
   isInsideComputed,
 } from './tracking';
@@ -36,12 +37,12 @@ export function signal<T>(initialValue: T, label?: string): Signal<T> {
     // `_sources` omitted — signals are sources only, never subscribers, so
     // the Set would never be populated. Saves one allocation per signal,
     // ~10k on a 10k-row list.
-    _subscribers: new Set(),
+    _subscribers: [],
     _version: 0,
     _dirty: false,
     _dispose() {
       unregisterNode(this);
-      this._subscribers.clear();
+      clearSubscribers(this);
     },
   };
 
@@ -74,7 +75,8 @@ export function signal<T>(initialValue: T, label?: string): Signal<T> {
       node._value = newValue;
       node._version++;
       // Notify all subscribers
-      for (const sub of node._subscribers) {
+      for (let i = 0; i < node._subscribers.length; i++) {
+        const sub = node._subscribers[i]!;
         if (sub._markDirty) {
           sub._markDirty();
         } else {

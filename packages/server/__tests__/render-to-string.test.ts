@@ -28,6 +28,11 @@ describe('renderToString', () => {
     expect(html).toBe('<div class="card">hi</div>');
   });
 
+  it('accepts compiled string emitters without building shim nodes', async () => {
+    const { html } = await renderToString(() => '<ul><li>Row 1</li></ul>');
+    expect(html).toBe('<ul><li>Row 1</li></ul>');
+  });
+
   it('serialises a component with a reactive text-bake', async () => {
     const { html } = await renderToString(() => {
       const [count] = signal(3);

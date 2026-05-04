@@ -207,7 +207,17 @@ function describeAdoptedNode(node: Node): string {
  * Per-instantiation:
  *   const el = _tmpl$0.cloneNode(true);  // ~3x cheaper than rebuilding
  */
+const TEMPLATE_CACHE = new WeakMap<Document, Map<string, Node>>();
+
 export function _template(html: string): Node {
+  let cache = TEMPLATE_CACHE.get(document);
+  if (!cache) {
+    cache = new Map();
+    TEMPLATE_CACHE.set(document, cache);
+  }
+  const cached = cache.get(html);
+  if (cached) return cached;
+
   const t = document.createElement('template');
   t.innerHTML = html;
   const root = t.content.firstChild!;
@@ -223,6 +233,7 @@ export function _template(html: string): Node {
     }
     return nativeClone(deep);
   };
+  cache.set(html, root);
   return root;
 }
 

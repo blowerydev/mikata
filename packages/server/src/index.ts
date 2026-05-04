@@ -23,7 +23,7 @@ import {
   type SNode,
   type SElement,
 } from './dom-shim';
-import { serializeNode, renderStateScript, escapeStateScript } from './serialize';
+import { serializeNode, renderStateScript } from './serialize';
 
 export interface RenderToStringOptions {
   /**
@@ -106,11 +106,16 @@ async function renderToStringUnlocked(
   if (!options.skipQueryCollection) beginCollect();
 
   let root: SNode | null = null;
+  let html: string | null = null;
   let scopeDispose: (() => void) | null = null;
   try {
     const scope = createScope(() => {
       const result = component() as unknown;
-      root = coerceToNode(result);
+      if (typeof result === 'string') {
+        html = result;
+      } else {
+        root = coerceToNode(result);
+      }
     });
     scopeDispose = () => scope.dispose();
 
@@ -126,7 +131,7 @@ async function renderToStringUnlocked(
       flushSync();
     }
 
-    const html = root ? serializeNode(root) : '';
+    html ??= root ? serializeNode(root) : '';
     const stateScript = Object.keys(state).length > 0
       ? renderStateScript(state, options.stateGlobal ?? '__MIKATA_STATE__')
       : '';
@@ -206,4 +211,4 @@ export { installShim } from './dom-shim';
 // that only depend on `@mikata/server` can still branch on it without
 // reaching for a second package.
 export { isSSR } from '@mikata/runtime';
-export { escapeStateScript, renderStateScript };
+export { escapeStateScript, renderStateScript, escapeText, escapeAttr } from './serialize';

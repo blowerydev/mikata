@@ -36,10 +36,10 @@ export class Scope {
    */
   contexts: Map<symbol, unknown> | null = null;
 
-  constructor(parent: Scope | null) {
+  constructor(parent: Scope | null, attach = true) {
     this.id = nextScopeId++;
     this.parent = parent;
-    parent?.children.push(this);
+    if (attach) parent?.children.push(this);
   }
 
   addChild(node: Disposable | Scope): void {
@@ -81,6 +81,12 @@ export class Scope {
       cleanup();
     }
     this.cleanups = [];
+
+    if (this.parent && !this.parent.disposed) {
+      const index = this.parent.children.indexOf(this);
+      if (index >= 0) this.parent.children.splice(index, 1);
+    }
+    this.parent = null;
   }
 }
 
@@ -109,6 +115,38 @@ export function createScope(fn: () => void): Scope {
   } finally {
     currentScope = prev;
   }
+  return scope;
+}
+
+/**
+ * Create a scope only if work inside actually registers disposable state.
+ *
+ * Runtime control-flow helpers use this for branches that are often just
+ * static DOM. Descendant effects/scopes still see a real current scope while
+ * rendering; if nothing subscribes or registers cleanup, we avoid linking an
+ * empty scope into the owner tree and disposal becomes a no-op.
+ */
+export function createLazyScope(fn: () => void): Scope | null {
+  const parent = currentScope;
+  const scope = new Scope(parent, false);
+  const prev = currentScope;
+  currentScope = scope;
+  try {
+    fn();
+  } finally {
+    currentScope = prev;
+  }
+
+  if (
+    scope.children.length === 0 &&
+    scope.cleanups.length === 0 &&
+    scope.contexts === null
+  ) {
+    scope.parent = null;
+    return null;
+  }
+
+  if (parent && !parent.disposed) parent.children.push(scope);
   return scope;
 }
 

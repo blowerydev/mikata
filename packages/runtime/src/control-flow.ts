@@ -8,6 +8,7 @@
 import {
   renderEffect,
   createScope,
+  createLazyScope,
   signal,
   type Scope,
 } from '@mikata/reactivity';
@@ -59,15 +60,13 @@ export function show<T>(
     let newNode: Node;
 
     if (value) {
-      const scope = createScope(() => {
+      currentScope = createLazyScope(() => {
         newNode = render(value as NonNullable<T>);
       });
-      currentScope = scope;
     } else if (fallback) {
-      const scope = createScope(() => {
+      currentScope = createLazyScope(() => {
         newNode = fallback();
       });
-      currentScope = scope;
     } else {
       newNode = document.createComment('show:empty');
     }

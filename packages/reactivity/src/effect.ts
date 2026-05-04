@@ -10,7 +10,10 @@
 import {
   type ReactiveNode,
   cleanupSources,
+  cleanupStaleSources,
   cleanupPropertySources,
+  clearSubscribers,
+  beginDependencyTracking,
   pushSubscriber,
   popSubscriber,
 } from './tracking';
@@ -26,13 +29,15 @@ interface EffectNode extends ReactiveNode {
   _fn: () => void | (() => void);
   _isRender: boolean;
   /**
-   * Lazily allocated: only effects that survive their first run and
-   * actually track sources need the version snapshot. Static
-   * renderEffects (e.g. `{row.id}`) auto-dispose on first run and never
-   * allocate this Map.
+   * Version snapshot used to skip effect re-runs when computed sources
+   * revalidate to the same value. The one-source case is kept in scalar
+   * fields because it is the hot path for DOM bindings and fanout effects;
+   * multi-source effects lazily allocate the Map.
    */
+  _singleSource?: ReactiveNode;
+  _singleSourceVersion?: number;
   _sourceVersions?: Map<ReactiveNode, number>;
-  _sources: Set<ReactiveNode>;
+  _sources: NonNullable<ReactiveNode['_sources']>;
   /**
    * The scope that owned this effect at creation time. Restored for
    * every re-run so that `createScope()` / `onCleanup()` calls inside
@@ -52,8 +57,10 @@ function createEffectNode(
 ): () => void {
   const owner = getCurrentScope();
   const node: EffectNode = {
-    _sources: new Set(),
-    _subscribers: new Set(),
+    _sources: [],
+    _sourceSlots: [],
+    _sourceMarks: [],
+    _subscribers: [],
     _version: 0,
     _dirty: false,
     _cleanup: undefined,
@@ -69,23 +76,29 @@ function createEffectNode(
       // effects when a computed recomputes to the same value.
       // Skip this optimization when the effect has reactive proxy property
       // deps, since those aren't tracked in _sources/_sourceVersions.
-      const versions = node._sourceVersions;
-      if (versions && versions.size > 0 && !node._hasPropertyDeps) {
-        // Force computeds to recompute
-        for (const source of node._sources) {
-          if (source._revalidate) {
-            source._revalidate();
+      if (!node._hasPropertyDeps) {
+        const singleSource = node._singleSource;
+        const versions = node._sourceVersions;
+        if (singleSource) {
+          singleSource._revalidate?.();
+          if (singleSource._version === node._singleSourceVersion) return;
+        } else if (versions && versions.size > 0) {
+          // Force computeds to recompute
+          for (const source of node._sources) {
+            if (source._revalidate) {
+              source._revalidate();
+            }
           }
-        }
-        // Check if any version actually changed
-        let changed = false;
-        for (const [source, version] of versions) {
-          if (source._version !== version) {
-            changed = true;
-            break;
+          // Check if any version actually changed
+          let changed = false;
+          for (const [source, version] of versions) {
+            if (source._version !== version) {
+              changed = true;
+              break;
+            }
           }
+          if (!changed) return;
         }
-        if (!changed) return;
       }
 
       // Run cleanup from previous execution
@@ -94,8 +107,10 @@ function createEffectNode(
         node._cleanup = undefined;
       }
 
-      // Clear old dependency tracking
-      cleanupSources(node);
+      // Mark dependencies read during this run, then sweep only stale links.
+      // Stable DOM bindings keep their indexed edges instead of unlinking
+      // and re-linking on every flush.
+      const trackEpoch = beginDependencyTracking();
       cleanupPropertySources(node);
       node._hasPropertyDeps = false;
 
@@ -103,7 +118,7 @@ function createEffectNode(
       // createScope()/onCleanup()/provide() inside the effect body see
       // the same ambient scope on scheduler-driven re-runs as they did
       // on the first (synchronous) run.
-      pushSubscriber(node);
+      pushSubscriber(node, trackEpoch);
       const prevScope = setCurrentScope(node._owner);
       const leakFrame = __DEV__
         ? beginLeakFrame(isRender ? 'renderEffect' : 'effect', label)
@@ -113,22 +128,29 @@ function createEffectNode(
       } finally {
         setCurrentScope(prevScope);
         popSubscriber();
+        cleanupStaleSources(node, trackEpoch);
         if (__DEV__) {
           endLeakFrame(leakFrame, node, typeof node._cleanup === 'function');
         }
       }
 
-      // Snapshot source versions for next dirty check. Reuse the existing
-      // Map (clearing it) to avoid allocating a fresh one every run — this
-      // is hot for per-row effects in large lists. The Map stays unallocated
-      // for effects with zero sources (static `{row.id}` auto-disposes
-      // before reaching this branch in the common case).
-      if (node._sources.size > 0) {
+      // Snapshot source versions for next dirty check.
+      if (node._sources.length === 1) {
+        const source = node._sources[0]!;
+        node._singleSource = source;
+        node._singleSourceVersion = source._version;
+      } else {
+        node._singleSource = undefined;
+        node._singleSourceVersion = undefined;
+      }
+      if (node._sources.length > 1) {
         const map = node._sourceVersions ?? (node._sourceVersions = new Map());
         if (map.size > 0) map.clear();
         for (const source of node._sources) {
           map.set(source, source._version);
         }
+      } else if (node._sourceVersions && node._sourceVersions.size > 0) {
+        node._sourceVersions.clear();
       }
 
       if (__DEV__) {
@@ -144,7 +166,7 @@ function createEffectNode(
       }
       cleanupSources(node);
       cleanupPropertySources(node);
-      node._subscribers.clear();
+      clearSubscribers(node);
     },
   };
 
@@ -163,7 +185,7 @@ function createEffectNode(
   // rare case where an effect registers teardown without tracking a source.
   if (
     isRender &&
-    node._sources.size === 0 &&
+    node._sources.length === 0 &&
     !node._hasPropertyDeps &&
     !node._cleanup
   ) {

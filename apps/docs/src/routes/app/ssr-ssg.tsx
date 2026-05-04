@@ -47,6 +47,21 @@ const viteExample = await highlight(
   'ts',
 );
 
+const stringEmitterExample = await highlight(
+  `import { escapeText, renderToString } from '@mikata/server';
+
+export async function renderRows(rows: Array<{ label: string }>) {
+  return renderToString(() => {
+    let html = '<ul>';
+    for (const row of rows) {
+      html += \`<li>\${escapeText(row.label)}</li>\`;
+    }
+    return html + '</ul>';
+  });
+}`,
+  'ts',
+);
+
 export default function SsrSsg() {
   useMeta({
     title: 'SSR, SSG, and adapters - Mikata Kit',
@@ -69,6 +84,16 @@ export default function SsrSsg() {
         and returns HTML plus serialized route state.
       </p>
       <CodeBlock html={serverEntry} />
+
+      <h2>String emitters</h2>
+      <p>
+        <code>renderToString()</code> also accepts a returned HTML string. This
+        lets compiler targets or custom renderers bypass the DOM shim for hot
+        SSR paths while still using Mikata's query collection, state script,
+        and SSR runtime flag. Use <code>escapeText()</code> and{' '}
+        <code>escapeAttr()</code> whenever string output includes user data.
+      </p>
+      <CodeBlock html={stringEmitterExample} />
 
       <h2>Hydration</h2>
       <p>

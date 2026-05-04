@@ -50,12 +50,12 @@ export abstract class SNode {
   appendChild<T extends SNode>(child: T): T {
     if (child.nodeType === DOCUMENT_FRAGMENT_NODE) {
       const frag = child as unknown as SDocumentFragment;
-      const kids = frag.childNodes.slice();
+      const kids = frag.childNodes;
       for (const k of kids) {
-        if (k.parentNode) k.parentNode.removeChild(k);
+        if (k.parentNode && k.parentNode !== frag) k.parentNode.removeChild(k);
         k.parentNode = this;
-        this.childNodes.push(k);
       }
+      this.childNodes.push(...kids);
       frag.childNodes = [];
       return child;
     }
@@ -71,13 +71,12 @@ export abstract class SNode {
     if (idx < 0) return this.appendChild(child);
     if (child.nodeType === DOCUMENT_FRAGMENT_NODE) {
       const frag = child as unknown as SDocumentFragment;
-      const kids = frag.childNodes.slice();
-      let at = idx;
+      const kids = frag.childNodes;
       for (const k of kids) {
-        if (k.parentNode) k.parentNode.removeChild(k);
+        if (k.parentNode && k.parentNode !== frag) k.parentNode.removeChild(k);
         k.parentNode = this;
-        this.childNodes.splice(at++, 0, k);
       }
+      this.childNodes.splice(idx, 0, ...kids);
       frag.childNodes = [];
       return child;
     }

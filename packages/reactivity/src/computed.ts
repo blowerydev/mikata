@@ -9,7 +9,10 @@ import {
   type ReactiveNode,
   track,
   cleanupSources,
+  cleanupStaleSources,
   cleanupPropertySources,
+  clearSubscribers,
+  beginDependencyTracking,
   pushSubscriber,
   popSubscriber,
   setInsideComputed,
@@ -39,9 +42,9 @@ export function computed<T>(fn: () => T, label?: string): ReadSignal<T> {
       );
     }
     computing = true;
-    cleanupSources(node);
+    const trackEpoch = beginDependencyTracking();
     cleanupPropertySources(node);
-    pushSubscriber(node);
+    pushSubscriber(node, trackEpoch);
     if (__DEV__) setInsideComputed(true);
     try {
       const newValue = fn();
@@ -65,20 +68,24 @@ export function computed<T>(fn: () => T, label?: string): ReadSignal<T> {
     } finally {
       if (__DEV__) setInsideComputed(false);
       popSubscriber();
+      cleanupStaleSources(node, trackEpoch);
       computing = false;
     }
   }
 
   const node: ReactiveNode = {
-    _sources: new Set(),
-    _subscribers: new Set(),
+    _sources: [],
+    _sourceSlots: [],
+    _sourceMarks: [],
+    _subscribers: [],
     _version: 0,
     _dirty: true,
 
     _markDirty() {
       if (!node._dirty) {
         node._dirty = true;
-        for (const sub of node._subscribers) {
+        for (let i = 0; i < node._subscribers.length; i++) {
+          const sub = node._subscribers[i]!;
           if (sub._markDirty) {
             sub._markDirty();
           } else {
@@ -107,7 +114,7 @@ export function computed<T>(fn: () => T, label?: string): ReadSignal<T> {
       unregisterNode(this);
       cleanupSources(this);
       cleanupPropertySources(this);
-      this._subscribers.clear();
+      clearSubscribers(this);
     },
   };
 

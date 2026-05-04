@@ -77,7 +77,7 @@ function serializeElement(el: SElement): string {
  * Escape HTML text content. `<`, `>`, `&` is enough for text — quotes
  * don't need escaping outside attribute values.
  */
-function escapeText(s: unknown): string {
+export function escapeText(s: unknown): string {
   return String(s ?? '').replace(/[<>&]/g, (c) => TEXT_ESCAPES[c]!);
 }
 
@@ -88,7 +88,7 @@ const TEXT_ESCAPES: Record<string, string> = {
 };
 
 /** Escape an attribute value. `"` is the delimiter, so it must go. */
-function escapeAttr(s: string): string {
+export function escapeAttr(s: string): string {
   return s
     .replace(/&/g, '&amp;')
     .replace(/"/g, '&quot;')

@@ -11,19 +11,11 @@ declare const __DEV__: boolean;
 
 export type EffectPriority = 'render' | 'user';
 
-interface ScheduledEffect {
-  node: ReactiveNode;
-  priority: EffectPriority;
-}
-
-const pendingEffects: ScheduledEffect[] = [];
+const renderEffects: ReactiveNode[] = [];
+const userEffects: ReactiveNode[] = [];
 let isFlushing = false;
 let batchDepth = 0;
-
-const PRIORITY_ORDER: Record<EffectPriority, number> = {
-  render: 0,
-  user: 1,
-};
+let microtaskQueued = false;
 
 /**
  * Schedule a dirty node for re-execution.
@@ -43,9 +35,13 @@ export function scheduleDirty(
   if (node._dirty) return;
 
   node._dirty = true;
-  pendingEffects.push({ node, priority: node._priority ?? priority });
+  const queue = (node._priority ?? priority) === 'render'
+    ? renderEffects
+    : userEffects;
+  queue.push(node);
 
-  if (!isFlushing && batchDepth === 0) {
+  if (!isFlushing && batchDepth === 0 && !microtaskQueued) {
+    microtaskQueued = true;
     queueMicrotask(flush);
   }
 }
@@ -57,6 +53,9 @@ export function scheduleDirty(
 function flush(): void {
   if (isFlushing) return;
   isFlushing = true;
+  microtaskQueued = false;
+  let renderIndex = 0;
+  let userIndex = 0;
 
   try {
     // Process all pending effects
@@ -65,9 +64,10 @@ function flush(): void {
     // queued mid-flush still run before any pending user effects.
     const runCounts = __DEV__ ? new Map<ReactiveNode, number>() : null;
     let guard = 0;
-    while (pendingEffects.length > 0) {
+    while (renderIndex < renderEffects.length || userIndex < userEffects.length) {
       if (++guard > 100000) {
-        pendingEffects.length = 0;
+        renderEffects.length = 0;
+        userEffects.length = 0;
         throw new Error(
           '[mikata] Circular reactive dependency detected. ' +
             'An effect is triggering itself during its own execution. ' +
@@ -75,14 +75,17 @@ function flush(): void {
         );
       }
 
-      const { node } = takeNextScheduledEffect();
+      const node = renderIndex < renderEffects.length
+        ? renderEffects[renderIndex++]!
+        : userEffects[userIndex++]!;
       if (node._dirty) {
         node._dirty = false;
         if (__DEV__ && runCounts) {
           const count = (runCounts.get(node) ?? 0) + 1;
           runCounts.set(node, count);
           if (count > 1000) {
-            pendingEffects.length = 0;
+            renderEffects.length = 0;
+            userEffects.length = 0;
             throw new Error(
               '[mikata] Circular reactive dependency detected. ' +
                 'The same effect re-ran more than 1000 times in one flush. ' +
@@ -101,6 +104,8 @@ function flush(): void {
       }
     }
   } finally {
+    renderEffects.length = 0;
+    userEffects.length = 0;
     isFlushing = false;
   }
 }
@@ -119,7 +124,13 @@ export function batch(fn: () => void): void {
     fn();
   } finally {
     batchDepth--;
-    if (batchDepth === 0) {
+    if (
+      batchDepth === 0 &&
+      !isFlushing &&
+      !microtaskQueued &&
+      (renderEffects.length > 0 || userEffects.length > 0)
+    ) {
+      microtaskQueued = true;
       queueMicrotask(flush);
     }
   }
@@ -131,19 +142,4 @@ export function batch(fn: () => void): void {
  */
 export function flushSync(): void {
   flush();
-}
-
-function takeNextScheduledEffect(): ScheduledEffect {
-  let bestIdx = 0;
-  let bestPriority = PRIORITY_ORDER[pendingEffects[0]!.priority];
-
-  for (let i = 1; i < pendingEffects.length; i++) {
-    const priority = PRIORITY_ORDER[pendingEffects[i]!.priority];
-    if (priority < bestPriority) {
-      bestIdx = i;
-      bestPriority = priority;
-    }
-  }
-
-  return pendingEffects.splice(bestIdx, 1)[0]!;
 }

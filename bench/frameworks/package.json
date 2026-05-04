@@ -1,0 +1,19 @@
+{
+  "name": "@mikata/framework-benchmarks",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "bench": "tsx run.ts",
+    "bench:quick": "tsx run.ts --quick",
+    "bench:json": "tsx run.ts --json results/latest.json"
+  },
+  "devDependencies": {
+    "@vue/server-renderer": "3.5.33",
+    "react": "19.2.5",
+    "react-dom": "19.2.5",
+    "solid-js": "1.9.12",
+    "svelte": "5.55.5",
+    "tsx": "4.21.0",
+    "vue": "3.5.33"
+  }
+}

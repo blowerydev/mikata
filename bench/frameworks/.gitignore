@@ -1,0 +1,4 @@
+node_modules
+results
+.generated
+pnpm-lock.yaml

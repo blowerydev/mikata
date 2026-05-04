@@ -39,6 +39,10 @@ Desktop.ini
 BENCHMARK_PLAN.md
 bench-baseline.json
 bench-current.json
+bench/frameworks/node_modules
+bench/frameworks/results
+bench/frameworks/.generated
+bench/frameworks/pnpm-lock.yaml
 .claude
 CLAUDE.md
 .cursor

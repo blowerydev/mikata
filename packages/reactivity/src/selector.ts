@@ -26,6 +26,9 @@ import {
   type ReactiveNode,
   getCurrentSubscriber,
   cleanupSources,
+  cleanupStaleSources,
+  beginDependencyTracking,
+  subscribe,
   pushSubscriber,
   popSubscriber,
 } from './tracking';
@@ -51,7 +54,8 @@ export function createSelector<T, U = T>(
     // Bump version so subscribers' _sourceVersions check sees a change
     // and doesn't short-circuit the re-run.
     bucket._version++;
-    for (const sub of bucket._subscribers) {
+    for (let i = 0; i < bucket._subscribers.length; i++) {
+      const sub = bucket._subscribers[i]!;
       if (sub._markDirty) sub._markDirty();
       else scheduleDirty(sub);
     }
@@ -60,7 +64,7 @@ export function createSelector<T, U = T>(
   // Lazy-GC empty buckets so long-running apps that rotate keys don't grow
   // the bucket map unboundedly. Called from the iteration path.
   const pruneIfEmpty = (key: U, bucket: ReactiveNode): boolean => {
-    if (bucket._subscribers.size === 0) {
+    if (bucket._subscribers.length === 0) {
       buckets.delete(key);
       return true;
     }
@@ -68,18 +72,21 @@ export function createSelector<T, U = T>(
   };
 
   const watcher: ReactiveNode = {
-    _sources: new Set(),
-    _subscribers: new Set(),
+    _sources: [],
+    _sourceSlots: [],
+    _sourceMarks: [],
+    _subscribers: [],
     _version: 0,
     _dirty: false,
     _run() {
-      cleanupSources(watcher);
-      pushSubscriber(watcher);
+      const trackEpoch = beginDependencyTracking();
+      pushSubscriber(watcher, trackEpoch);
       let nextValue: T;
       try {
         nextValue = source();
       } finally {
         popSubscriber();
+        cleanupStaleSources(watcher, trackEpoch);
       }
       if (Object.is(currentValue, nextValue)) return;
       const prev = currentValue;
@@ -109,11 +116,13 @@ export function createSelector<T, U = T>(
   };
 
   // Prime initial value without firing notifications.
-  pushSubscriber(watcher);
+  const initialTrackEpoch = beginDependencyTracking();
+  pushSubscriber(watcher, initialTrackEpoch);
   try {
     currentValue = source();
   } finally {
     popSubscriber();
+    cleanupStaleSources(watcher, initialTrackEpoch);
   }
 
   return (key: U): boolean => {
@@ -122,16 +131,17 @@ export function createSelector<T, U = T>(
       let bucket = buckets.get(key);
       if (!bucket) {
         bucket = {
-          _sources: new Set(),
-          _subscribers: new Set(),
+          _sources: [],
+          _sourceSlots: [],
+          _sourceMarks: [],
+          _subscribers: [],
           _version: 0,
           _dirty: false,
           _dispose() {},
         };
         buckets.set(key, bucket);
       }
-      bucket._subscribers.add(sub);
-      sub._sources!.add(bucket);
+      subscribe(bucket, sub);
     }
     return equals(key, currentValue);
   };

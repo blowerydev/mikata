@@ -159,14 +159,14 @@ function snapshotNode(info: DebugNodeInfo): DebugNodeSnapshot {
     value: info.getValue ? safeGetValue(info.getValue) : undefined,
     dirty: node._dirty,
     version: node._version,
-    sourceCount: node._sources?.size ?? 0,
-    subscriberCount: node._subscribers.size,
+    sourceCount: node._sources?.length ?? 0,
+    subscriberCount: node._subscribers.length,
     sources: node._sources
-      ? [...node._sources]
-          .map((s) => nodeRegistry.get(s)?.id)
+      ? node._sources
+          .map((source) => nodeRegistry.get(source)?.id)
           .filter((id): id is number => id !== undefined)
       : [],
-    subscribers: [...node._subscribers]
+    subscribers: node._subscribers
       .map((s) => nodeRegistry.get(s)?.id)
       .filter((id): id is number => id !== undefined),
     createdAt: info.createdAt,
