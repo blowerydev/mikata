@@ -78,21 +78,57 @@ function serializeElement(el: SElement): string {
  * don't need escaping outside attribute values.
  */
 export function escapeText(s: unknown): string {
-  return String(s ?? '').replace(/[<>&]/g, (c) => TEXT_ESCAPES[c]!);
-}
+  const value = String(s ?? '');
+  if (
+    value.indexOf('<') < 0 &&
+    value.indexOf('>') < 0 &&
+    value.indexOf('&') < 0
+  ) {
+    return value;
+  }
 
-const TEXT_ESCAPES: Record<string, string> = {
-  '<': '&lt;',
-  '>': '&gt;',
-  '&': '&amp;',
-};
+  let out = '';
+  let left = 0;
+  for (let i = 0; i < value.length; i++) {
+    const code = value.charCodeAt(i);
+    let escaped = '';
+    if (code === 60) escaped = '&lt;';
+    else if (code === 62) escaped = '&gt;';
+    else if (code === 38) escaped = '&amp;';
+    if (escaped) {
+      if (left < i) out += value.slice(left, i);
+      out += escaped;
+      left = i + 1;
+    }
+  }
+  return left < value.length ? out + value.slice(left) : out;
+}
 
 /** Escape an attribute value. `"` is the delimiter, so it must go. */
 export function escapeAttr(s: string): string {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/"/g, '&quot;')
-    .replace(/</g, '&lt;');
+  if (
+    s.indexOf('&') < 0 &&
+    s.indexOf('"') < 0 &&
+    s.indexOf('<') < 0
+  ) {
+    return s;
+  }
+
+  let out = '';
+  let left = 0;
+  for (let i = 0; i < s.length; i++) {
+    const code = s.charCodeAt(i);
+    let escaped = '';
+    if (code === 38) escaped = '&amp;';
+    else if (code === 34) escaped = '&quot;';
+    else if (code === 60) escaped = '&lt;';
+    if (escaped) {
+      if (left < i) out += s.slice(left, i);
+      out += escaped;
+      left = i + 1;
+    }
+  }
+  return left < s.length ? out + s.slice(left) : out;
 }
 
 /**
