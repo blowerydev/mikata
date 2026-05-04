@@ -96,14 +96,18 @@ export default function FrameworkComparison() {
         static mounts, text updates, keyed list reorders, list churn, partial
         row updates, conditional branch disposal, controlled forms, event
         dispatch, nested updates, hydration where the framework harness can use
-        real SSR markup, server rendering, and reactive fanout stress.
+        real SSR markup, server rendering, and reactive fanout stress. The
+        realistic flow layer adds route-style app-shell navigation, async data
+        state transitions, large forms, table interactions, modal cleanup,
+        context fanout, full-page SSR and hydration, leak sentinels, and
+        scheduler batching pressure.
       </p>
       <p>
         Run <code>pnpm bench:frameworks:quick</code> for a smoke comparison or
-        <code>pnpm bench:frameworks</code> for the fuller run after installing
-        the optional packages in <code>bench/frameworks</code>. Treat the
-        results as diagnostic signals for finding gaps, not as release-gate
-        numbers or marketing claims.
+        <code>pnpm bench:frameworks:all</code> for the full JSON-producing run
+        after installing the optional packages in <code>bench/frameworks</code>.
+        Treat the results as diagnostic signals for finding gaps, not as
+        release-gate numbers or marketing claims.
       </p>
 
       <h2>Where next</h2>

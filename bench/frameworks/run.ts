@@ -365,6 +365,19 @@ function mixedPageHtml(rows: Array<{ id: number; label: string }>, escapeText: (
   return out + '</main>';
 }
 
+function fullPageHtml(rows: Array<{ id: number; label: string }>, escapeText: (value: unknown) => string, escapeAttr: (value: string) => string): string {
+  let out = '<main class="app-shell" data-route="reports">';
+  out += '<header><h1>Ops dashboard</h1><nav><a class="active" href="/reports">Reports</a><a href="/settings">Settings</a></nav></header>';
+  out += '<section class="summary"><h2>Revenue</h2><p>Regional performance</p><output>ready</output></section>';
+  out += '<form><label>Search<input name="q" value="north"></label><button disabled>Search</button></form>';
+  out += '<table><tbody>';
+  for (const item of rows.slice(0, 80)) {
+    out += `<tr data-id="${item.id}"><td>${escapeText(item.label)}</td><td><a href="/rows/${item.id}" title="${escapeAttr(item.label)}">Open</a></td></tr>`;
+  }
+  out += '</tbody></table><aside>Loaded</aside></main>';
+  return out;
+}
+
 async function mikataCases(): Promise<BenchCase[]> {
   const reactivity = await import('../../packages/reactivity/dist/index.js');
   const runtime = await import('../../packages/runtime/dist/index.js');
@@ -551,6 +564,213 @@ async function mikataCases(): Promise<BenchCase[]> {
     return root;
   };
   const { html: mikataHydrateHtml } = await server.renderToString(buildHydrateList, { skipQueryCollection: true });
+  const fullPageRows = createRows(160);
+  const buildFullPage = (): HTMLElement => {
+    const root = document.createElement('main');
+    root.className = 'app-shell';
+    const header = document.createElement('header');
+    const h1 = document.createElement('h1');
+    const nav = document.createElement('nav');
+    const reports = document.createElement('a');
+    const settings = document.createElement('a');
+    const summary = document.createElement('section');
+    const h2 = document.createElement('h2');
+    const p = document.createElement('p');
+    const output = document.createElement('output');
+    const form = document.createElement('form');
+    const label = document.createElement('label');
+    const input = document.createElement('input');
+    const button = document.createElement('button');
+    const table = document.createElement('table');
+    const tbody = document.createElement('tbody');
+    const aside = document.createElement('aside');
+    h1.textContent = 'Ops dashboard';
+    reports.className = 'active';
+    reports.href = '/reports';
+    reports.textContent = 'Reports';
+    settings.href = '/settings';
+    settings.textContent = 'Settings';
+    nav.appendChild(reports);
+    nav.appendChild(settings);
+    header.appendChild(h1);
+    header.appendChild(nav);
+    summary.className = 'summary';
+    h2.textContent = 'Revenue';
+    p.textContent = 'Regional performance';
+    output.textContent = 'ready';
+    summary.appendChild(h2);
+    summary.appendChild(p);
+    summary.appendChild(output);
+    label.textContent = 'Search';
+    input.name = 'q';
+    input.value = 'north';
+    button.disabled = true;
+    button.textContent = 'Search';
+    label.appendChild(input);
+    form.appendChild(label);
+    form.appendChild(button);
+    for (const item of fullPageRows.slice(0, 80)) {
+      const tr = document.createElement('tr');
+      const labelCell = document.createElement('td');
+      const actionCell = document.createElement('td');
+      const link = document.createElement('a');
+      tr.dataset.id = String(item.id);
+      labelCell.textContent = item.label;
+      link.href = `/rows/${item.id}`;
+      link.title = item.label;
+      link.textContent = 'Open';
+      actionCell.appendChild(link);
+      tr.appendChild(labelCell);
+      tr.appendChild(actionCell);
+      tbody.appendChild(tr);
+    }
+    table.appendChild(tbody);
+    aside.textContent = 'Loaded';
+    root.appendChild(header);
+    root.appendChild(summary);
+    root.appendChild(form);
+    root.appendChild(table);
+    root.appendChild(aside);
+    return root;
+  };
+  const { html: mikataFullPageHtml } = await server.renderToString(buildFullPage, { skipQueryCollection: true });
+
+  const [route, setRoute] = reactivity.signal<'overview' | 'reports' | 'settings'>('overview');
+  const routeContainer = document.createElement('div');
+  const disposeRoute = runtime.render(() => {
+    const root = runtime._template('<section><nav><button>Overview</button><button>Reports</button><button>Settings</button></nav><main><h2> </h2><p> </p></main></section>').cloneNode(true) as HTMLElement;
+    const buttons = root.querySelectorAll('button');
+    buttons[0]!.addEventListener('click', () => setRoute('overview'));
+    buttons[1]!.addEventListener('click', () => setRoute('reports'));
+    buttons[2]!.addEventListener('click', () => setRoute('settings'));
+    const title = root.querySelector('h2')!.firstChild!;
+    const body = root.querySelector('p')!.firstChild!;
+    reactivity.renderEffect(() => {
+      const current = route();
+      title.textContent = current;
+      body.textContent = current === 'reports' ? 'Nested report outlet' : current === 'settings' ? 'Nested settings outlet' : 'Nested overview outlet';
+      buttons.forEach((button, index) => {
+        button.toggleAttribute('aria-current', index === (current === 'overview' ? 0 : current === 'reports' ? 1 : 2));
+      });
+    });
+    return root;
+  }, routeContainer);
+
+  const [asyncStatus, setAsyncStatus] = reactivity.signal<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [asyncData, setAsyncData] = reactivity.signal('none');
+  const asyncContainer = document.createElement('div');
+  const disposeAsync = runtime.render(() => {
+    const root = runtime._template('<section><h2> </h2><p> </p><button>Retry</button></section>').cloneNode(true) as HTMLElement;
+    const title = root.querySelector('h2')!.firstChild!;
+    const body = root.querySelector('p')!.firstChild!;
+    reactivity.renderEffect(() => {
+      title.textContent = asyncStatus();
+      body.textContent = asyncStatus() === 'success' ? asyncData() : asyncStatus() === 'error' ? 'failed' : 'waiting';
+    });
+    return root;
+  }, asyncContainer);
+
+  const largeFormValues = Array.from({ length: 75 }, () => '');
+  const [largeFormVersion, setLargeFormVersion] = reactivity.signal(0);
+  const largeFormContainer = document.createElement('div');
+  const disposeLargeForm = runtime.render(() => {
+    const form = runtime._template('<form><fieldset></fieldset><output> </output></form>').cloneNode(true) as HTMLFormElement;
+    const fieldset = form.firstChild as HTMLFieldSetElement;
+    const output = form.lastChild as HTMLOutputElement;
+    for (let i = 0; i < largeFormValues.length; i++) {
+      const input = runtime._template('<input>').cloneNode(true) as HTMLInputElement;
+      input.name = `field-${i}`;
+      input.addEventListener('input', () => {
+        largeFormValues[i] = input.value;
+        setLargeFormVersion((value: number) => value + 1);
+      });
+      fieldset.appendChild(input);
+    }
+    reactivity.renderEffect(() => {
+      largeFormVersion();
+      output.firstChild!.textContent = String(largeFormValues.filter(Boolean).length);
+    });
+    return form;
+  }, largeFormContainer);
+  const largeFormInputs = Array.from(largeFormContainer.querySelectorAll('input'));
+
+  const tableBaseRows = createValueRows(500);
+  let tableCurrentRows = tableBaseRows;
+  const [tableRows, setTableRows] = reactivity.signal(tableBaseRows);
+  const [tableFilter, setTableFilter] = reactivity.signal('');
+  const [tableSortAsc, setTableSortAsc] = reactivity.signal(true);
+  const [tablePage, setTablePage] = reactivity.signal(0);
+  const [tableSelectedId, setTableSelectedId] = reactivity.signal<number | null>(null);
+  const tableVisibleRows = reactivity.computed(() => {
+    const needle = tableFilter();
+    const sorted = [...tableRows()].filter((row: { label: string }) => row.label.includes(needle));
+    sorted.sort((a, b) => tableSortAsc() ? a.id - b.id : b.id - a.id);
+    return sorted.slice(tablePage() * 25, tablePage() * 25 + 25);
+  });
+  const tableContainer = document.createElement('div');
+  const disposeTable = runtime.render(() => {
+    const table = runtime._template('<table><tbody></tbody></table>').cloneNode(true) as HTMLTableElement;
+    const tbody = table.firstChild as HTMLTableSectionElement;
+    runtime._insert(tbody, () => runtime.each(tableVisibleRows, (item: { id: number; label: string; value: number }) => {
+      const tr = runtime._template('<tr><td> </td><td> </td><td> </td></tr>').cloneNode(true) as HTMLTableRowElement;
+      tr.addEventListener('click', () => setTableSelectedId(item.id));
+      reactivity.renderEffect(() => {
+        tr.toggleAttribute('aria-selected', tableSelectedId() === item.id);
+      });
+      tr.childNodes[0]!.textContent = item.label;
+      tr.childNodes[1]!.textContent = String(item.value);
+      tr.childNodes[2]!.textContent = String(item.id);
+      return tr;
+    }, undefined, { key: (item: { id: number }) => item.id }));
+    return table;
+  }, tableContainer);
+
+  const [overlayOpen, setOverlayOpen] = reactivity.signal(false);
+  let overlayCleanups = 0;
+  const overlayContainer = document.createElement('div');
+  const disposeOverlay = runtime.render(() => {
+    const root = runtime._template('<section></section>').cloneNode(true) as HTMLElement;
+    runtime._insert(root, () => runtime.show(overlayOpen, () => {
+      const dialog = runtime._template('<dialog open><button>Close</button></dialog>').cloneNode(true) as HTMLDialogElement;
+      const onKey = () => {};
+      document.addEventListener('keydown', onKey);
+      reactivity.onCleanup(() => {
+        document.removeEventListener('keydown', onKey);
+        overlayCleanups++;
+      });
+      return dialog;
+    }, () => runtime._template('<span>Closed</span>').cloneNode(true)));
+    return root;
+  }, overlayContainer);
+
+  const ContextSeed = runtime.createContext();
+  const [contextSeed, setContextSeed] = reactivity.signal(0);
+  const contextContainer = document.createElement('div');
+  const disposeContext = runtime.render(() => {
+    runtime.provide(ContextSeed, contextSeed);
+    const root = runtime._template('<section></section>').cloneNode(true) as HTMLElement;
+    for (let i = 0; i < 50; i++) {
+      const seed = runtime.inject(ContextSeed) as () => number;
+      const p = runtime._template('<p> </p>').cloneNode(true) as HTMLParagraphElement;
+      reactivity.renderEffect(() => {
+        p.firstChild!.textContent = String(seed() + i);
+      });
+      root.appendChild(p);
+    }
+    return root;
+  }, contextContainer);
+
+  let leakCleanups = 0;
+  const schedulerSignals = Array.from({ length: 20 }, () => reactivity.signal(0) as [() => number, (value: number | ((value: number) => number)) => void]);
+  const schedulerContainer = document.createElement('div');
+  const disposeScheduler = runtime.render(() => {
+    const root = runtime._template('<section><output> </output></section>').cloneNode(true) as HTMLElement;
+    const output = root.querySelector('output')!.firstChild!;
+    reactivity.renderEffect(() => {
+      output.textContent = String(schedulerSignals.reduce((total, [read]) => total + read(), 0));
+    });
+    return root;
+  }, schedulerContainer);
 
   return [
     {
@@ -749,6 +969,164 @@ async function mikataCases(): Promise<BenchCase[]> {
     },
     {
       framework: 'mikata',
+      category: 'routing',
+      name: 'navigate nested app shell 200x',
+      mode: 'realistic',
+      fn: () => {
+        const next = ['overview', 'reports', 'settings'] as const;
+        for (let i = 0; i < 200; i++) {
+          setRoute(next[i % next.length]);
+          reactivity.flushSync();
+        }
+        sink += routeContainer.textContent?.length ?? 0;
+      },
+      cleanup: disposeRoute,
+    },
+    {
+      framework: 'mikata',
+      category: 'async',
+      name: 'query lifecycle refetch recovery 100x',
+      mode: 'realistic',
+      fn: () => {
+        for (let i = 0; i < 100; i++) {
+          setAsyncStatus('loading');
+          reactivity.flushSync();
+          setAsyncData(`row-${i}`);
+          setAsyncStatus('success');
+          reactivity.flushSync();
+          setAsyncStatus('error');
+          reactivity.flushSync();
+          setAsyncStatus('loading');
+          setAsyncData(`retry-${i}`);
+          setAsyncStatus('success');
+          reactivity.flushSync();
+        }
+        sink += asyncContainer.textContent?.length ?? 0;
+      },
+      cleanup: disposeAsync,
+    },
+    {
+      framework: 'mikata',
+      category: 'forms',
+      name: 'large validated form flow 20x',
+      mode: 'realistic',
+      fn: () => {
+        for (let round = 0; round < 20; round++) {
+          for (let i = 0; i < largeFormInputs.length; i++) {
+            dispatchInput(largeFormInputs[i]!, `v-${round}-${i}`);
+          }
+          reactivity.flushSync();
+          for (let i = 0; i < largeFormInputs.length; i += 3) {
+            dispatchInput(largeFormInputs[i]!, '');
+          }
+          reactivity.flushSync();
+        }
+        sink += largeFormContainer.textContent?.length ?? 0;
+      },
+      cleanup: disposeLargeForm,
+    },
+    {
+      framework: 'mikata',
+      category: 'table',
+      name: 'sort filter paginate edit select 50x',
+      mode: 'realistic',
+      fn: () => {
+        for (let i = 0; i < 50; i++) {
+          tableCurrentRows = tableCurrentRows.map((row, index) => index === i ? { ...row, value: row.value + i + 1 } : row);
+          setTableRows(tableCurrentRows);
+          setTableFilter(i % 3 === 0 ? '1' : '');
+          setTableSortAsc((value: boolean) => !value);
+          setTablePage(i % 4);
+          setTableSelectedId(i);
+          reactivity.flushSync();
+        }
+        sink += tableContainer.textContent?.length ?? 0;
+      },
+      cleanup: disposeTable,
+    },
+    {
+      framework: 'mikata',
+      category: 'lifecycle',
+      name: 'modal listener cleanup 250x',
+      mode: 'realistic',
+      fn: () => {
+        for (let i = 0; i < 250; i++) {
+          setOverlayOpen((value: boolean) => !value);
+          reactivity.flushSync();
+        }
+        sink += overlayContainer.textContent?.length ?? 0;
+        sink += overlayCleanups;
+      },
+      cleanup: disposeOverlay,
+    },
+    {
+      framework: 'mikata',
+      category: 'context',
+      name: 'deep provider consumers update 250x',
+      mode: 'realistic',
+      fn: () => {
+        for (let i = 0; i < 250; i++) {
+          setContextSeed((value: number) => value + 1);
+          reactivity.flushSync();
+        }
+        sink += contextContainer.textContent?.length ?? 0;
+      },
+      cleanup: disposeContext,
+    },
+    {
+      framework: 'mikata',
+      category: 'hydration',
+      name: 'hydrate full app page 50x',
+      mode: 'realistic',
+      fn: () => {
+        for (let i = 0; i < 50; i++) {
+          const container = document.createElement('div');
+          container.innerHTML = mikataFullPageHtml;
+          const dispose = runtime.hydrate(buildFullPage, container);
+          dispose();
+          sink += container.textContent?.length ?? 0;
+        }
+      },
+    },
+    {
+      framework: 'mikata',
+      category: 'memory',
+      name: 'mount dispose leak sentinel 100x',
+      mode: 'stress',
+      fn: () => {
+        for (let i = 0; i < 100; i++) {
+          const container = document.createElement('div');
+          const dispose = runtime.render(() => {
+            const root = runtime._template('<section><p>tracked</p></section>').cloneNode(true) as HTMLElement;
+            reactivity.onCleanup(() => { leakCleanups++; });
+            return root;
+          }, container);
+          dispose();
+          sink += container.childNodes.length;
+        }
+        sink += leakCleanups;
+      },
+    },
+    {
+      framework: 'mikata',
+      category: 'scheduler',
+      name: 'batch 20 signal writes 100x',
+      mode: 'stress',
+      fn: () => {
+        for (let i = 0; i < 100; i++) {
+          reactivity.batch(() => {
+            for (const [, write] of schedulerSignals) {
+              write((value: number) => value + 1);
+            }
+          });
+          reactivity.flushSync();
+        }
+        sink += schedulerContainer.textContent?.length ?? 0;
+      },
+      cleanup: disposeScheduler,
+    },
+    {
+      framework: 'mikata',
       category: 'reactivity',
       name: 'notify 1k subscribers',
       mode: 'stress',
@@ -794,6 +1172,16 @@ async function mikataCases(): Promise<BenchCase[]> {
       mode: 'realistic',
       fn: () => {
         const { html } = server.renderToStaticString(() => mixedPageHtml(rows, server.escapeText, server.escapeAttr));
+        sink += html.length;
+      },
+    },
+    {
+      framework: 'mikata',
+      category: 'ssr',
+      name: 'render full app page',
+      mode: 'realistic',
+      fn: () => {
+        const { html } = server.renderToStaticString(() => fullPageHtml(fullPageRows, server.escapeText, server.escapeAttr));
         sink += html.length;
       },
     },
@@ -947,6 +1335,144 @@ async function reactCases(): Promise<BenchCase[]> {
   const formInput = formContainer.querySelector('input') as HTMLInputElement;
   const formCheckbox = formContainer.querySelector('input[type="checkbox"]') as HTMLInputElement;
   const formSelect = formContainer.querySelector('select') as HTMLSelectElement;
+
+  const appRoutes = ['overview', 'reports', 'settings'] as const;
+  let setRoute!: (value: typeof appRoutes[number]) => void;
+  const routeContainer = document.createElement('div');
+  const routeRoot = ReactDOMClient.createRoot(routeContainer);
+  function RouteApp(): unknown {
+    const [route, updateRoute] = React.useState<typeof appRoutes[number]>('overview');
+    setRoute = updateRoute;
+    return h('section', null,
+      h('nav', null, appRoutes.map((item) => h('button', { key: item, 'aria-current': route === item || undefined, onClick: () => updateRoute(item) }, item))),
+      h('main', null, h('h2', null, route), h('p', null, route === 'reports' ? 'Nested report outlet' : route === 'settings' ? 'Nested settings outlet' : 'Nested overview outlet')),
+    );
+  }
+  ReactDOM.flushSync(() => routeRoot.render(h(RouteApp)));
+
+  let setAsyncStatus!: (value: 'idle' | 'loading' | 'success' | 'error') => void;
+  let setAsyncData!: (value: string) => void;
+  const asyncContainer = document.createElement('div');
+  const asyncRoot = ReactDOMClient.createRoot(asyncContainer);
+  function AsyncApp(): unknown {
+    const [status, updateStatus] = React.useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+    const [data, updateData] = React.useState('none');
+    setAsyncStatus = updateStatus;
+    setAsyncData = updateData;
+    return h('section', null, h('h2', null, status), h('p', null, status === 'success' ? data : status === 'error' ? 'failed' : 'waiting'), h('button', null, 'Retry'));
+  }
+  ReactDOM.flushSync(() => asyncRoot.render(h(AsyncApp)));
+
+  const largeFormContainer = document.createElement('div');
+  const largeFormRoot = ReactDOMClient.createRoot(largeFormContainer);
+  function LargeFormApp(): unknown {
+    const [values, setValues] = React.useState(() => Array.from({ length: 75 }, () => ''));
+    return h('form', null,
+      h('fieldset', null, values.map((value, index) => h('input', {
+        key: index,
+        name: `field-${index}`,
+        value,
+        onInput: (event: any) => {
+          const nextValue = event.currentTarget.value;
+          setValues((prev) => prev.map((item, i) => i === index ? nextValue : item));
+        },
+      }))),
+      h('output', null, values.filter(Boolean).length),
+    );
+  }
+  ReactDOM.flushSync(() => largeFormRoot.render(h(LargeFormApp)));
+  const largeFormInputs = Array.from(largeFormContainer.querySelectorAll('input'));
+
+  const tableBaseRows = createValueRows(500);
+  let tableCurrentRows = tableBaseRows;
+  let setTableRows!: (value: Array<{ id: number; label: string; value: number }>) => void;
+  let setTableFilter!: (value: string) => void;
+  let setTableSortAsc!: (value: boolean | ((value: boolean) => boolean)) => void;
+  let setTablePage!: (value: number) => void;
+  let setTableSelectedId!: (value: number | null) => void;
+  const tableContainer = document.createElement('div');
+  const tableRoot = ReactDOMClient.createRoot(tableContainer);
+  function TableApp(): unknown {
+    const [items, updateItems] = React.useState(tableBaseRows);
+    const [filter, updateFilter] = React.useState('');
+    const [sortAsc, updateSortAsc] = React.useState(true);
+    const [page, updatePage] = React.useState(0);
+    const [selectedId, updateSelectedId] = React.useState<number | null>(null);
+    setTableRows = updateItems;
+    setTableFilter = updateFilter;
+    setTableSortAsc = updateSortAsc;
+    setTablePage = updatePage;
+    setTableSelectedId = updateSelectedId;
+    const visible = [...items]
+      .filter((row) => row.label.includes(filter))
+      .sort((a, b) => sortAsc ? a.id - b.id : b.id - a.id)
+      .slice(page * 25, page * 25 + 25);
+    return h('table', null, h('tbody', null, visible.map((item) => h('tr', {
+      key: item.id,
+      'aria-selected': selectedId === item.id || undefined,
+      onClick: () => updateSelectedId(item.id),
+    }, h('td', null, item.label), h('td', null, item.value), h('td', null, item.id)))));
+  }
+  ReactDOM.flushSync(() => tableRoot.render(h(TableApp)));
+
+  let setOverlayOpen!: (value: boolean | ((value: boolean) => boolean)) => void;
+  let overlayCleanups = 0;
+  const overlayContainer = document.createElement('div');
+  const overlayRoot = ReactDOMClient.createRoot(overlayContainer);
+  function ModalPanel(): unknown {
+    React.useEffect(() => {
+      const onKey = () => {};
+      document.addEventListener('keydown', onKey);
+      return () => {
+        document.removeEventListener('keydown', onKey);
+        overlayCleanups++;
+      };
+    }, []);
+    return h('dialog', { open: true }, h('button', null, 'Close'));
+  }
+  function OverlayApp(): unknown {
+    const [open, updateOpen] = React.useState(false);
+    setOverlayOpen = updateOpen;
+    return h('section', null, open ? h(ModalPanel) : h('span', null, 'Closed'));
+  }
+  ReactDOM.flushSync(() => overlayRoot.render(h(OverlayApp)));
+
+  const ContextSeed = React.createContext(0);
+  let setContextSeed!: (value: number | ((value: number) => number)) => void;
+  const contextContainer = document.createElement('div');
+  const contextRoot = ReactDOMClient.createRoot(contextContainer);
+  function ContextConsumer({ offset }: { offset: number }): unknown {
+    return h('p', null, React.useContext(ContextSeed) + offset);
+  }
+  function ContextApp(): unknown {
+    const [seed, updateSeed] = React.useState(0);
+    setContextSeed = updateSeed;
+    return h(ContextSeed.Provider, { value: seed }, h('section', null, Array.from({ length: 50 }, (_, index) => h(ContextConsumer, { key: index, offset: index }))));
+  }
+  ReactDOM.flushSync(() => contextRoot.render(h(ContextApp)));
+
+  const fullPageRows = createRows(160);
+  function FullPage(): unknown {
+    return h('main', { className: 'app-shell', 'data-route': 'reports' },
+      h('header', null, h('h1', null, 'Ops dashboard'), h('nav', null, h('a', { className: 'active', href: '/reports' }, 'Reports'), h('a', { href: '/settings' }, 'Settings'))),
+      h('section', { className: 'summary' }, h('h2', null, 'Revenue'), h('p', null, 'Regional performance'), h('output', null, 'ready')),
+      h('form', null, h('label', null, 'Search', h('input', { name: 'q', defaultValue: 'north' })), h('button', { disabled: true }, 'Search')),
+      h('table', null, h('tbody', null, fullPageRows.slice(0, 80).map((item) => h('tr', { key: item.id, 'data-id': item.id }, h('td', null, item.label), h('td', null, h('a', { href: `/rows/${item.id}`, title: item.label }, 'Open')))))),
+      h('aside', null, 'Loaded'),
+    );
+  }
+  const reactFullPageHtml = ReactDOMServer.renderToString(h(FullPage));
+
+  let leakCleanups = 0;
+  let setSchedulerValues!: (value: number[] | ((value: number[]) => number[])) => void;
+  const schedulerContainer = document.createElement('div');
+  const schedulerRoot = ReactDOMClient.createRoot(schedulerContainer);
+  function SchedulerApp(): unknown {
+    const [values, updateValues] = React.useState(() => Array.from({ length: 20 }, () => 0));
+    setSchedulerValues = updateValues;
+    return h('section', null, h('output', null, values.reduce((total, value) => total + value, 0)));
+  }
+  ReactDOM.flushSync(() => schedulerRoot.render(h(SchedulerApp)));
 
   return [
     {
@@ -1128,6 +1654,157 @@ async function reactCases(): Promise<BenchCase[]> {
     },
     {
       framework: 'react',
+      category: 'routing',
+      name: 'navigate nested app shell 200x',
+      mode: 'realistic',
+      fn: () => {
+        for (let i = 0; i < 200; i++) {
+          ReactDOM.flushSync(() => setRoute(appRoutes[i % appRoutes.length]));
+        }
+        sink += routeContainer.textContent?.length ?? 0;
+      },
+      cleanup: () => routeRoot.unmount(),
+    },
+    {
+      framework: 'react',
+      category: 'async',
+      name: 'query lifecycle refetch recovery 100x',
+      mode: 'realistic',
+      fn: () => {
+        for (let i = 0; i < 100; i++) {
+          ReactDOM.flushSync(() => setAsyncStatus('loading'));
+          ReactDOM.flushSync(() => {
+            setAsyncData(`row-${i}`);
+            setAsyncStatus('success');
+          });
+          ReactDOM.flushSync(() => setAsyncStatus('error'));
+          ReactDOM.flushSync(() => {
+            setAsyncData(`retry-${i}`);
+            setAsyncStatus('success');
+          });
+        }
+        sink += asyncContainer.textContent?.length ?? 0;
+      },
+      cleanup: () => asyncRoot.unmount(),
+    },
+    {
+      framework: 'react',
+      category: 'forms',
+      name: 'large validated form flow 20x',
+      mode: 'realistic',
+      fn: () => {
+        for (let round = 0; round < 20; round++) {
+          for (let i = 0; i < largeFormInputs.length; i++) {
+            ReactDOM.flushSync(() => dispatchInput(largeFormInputs[i]!, `v-${round}-${i}`));
+          }
+          for (let i = 0; i < largeFormInputs.length; i += 3) {
+            ReactDOM.flushSync(() => dispatchInput(largeFormInputs[i]!, ''));
+          }
+        }
+        sink += largeFormContainer.textContent?.length ?? 0;
+      },
+      cleanup: () => largeFormRoot.unmount(),
+    },
+    {
+      framework: 'react',
+      category: 'table',
+      name: 'sort filter paginate edit select 50x',
+      mode: 'realistic',
+      fn: () => {
+        for (let i = 0; i < 50; i++) {
+          tableCurrentRows = tableCurrentRows.map((row, index) => index === i ? { ...row, value: row.value + i + 1 } : row);
+          ReactDOM.flushSync(() => {
+            setTableRows(tableCurrentRows);
+            setTableFilter(i % 3 === 0 ? '1' : '');
+            setTableSortAsc((value) => !value);
+            setTablePage(i % 4);
+            setTableSelectedId(i);
+          });
+        }
+        sink += tableContainer.textContent?.length ?? 0;
+      },
+      cleanup: () => tableRoot.unmount(),
+    },
+    {
+      framework: 'react',
+      category: 'lifecycle',
+      name: 'modal listener cleanup 250x',
+      mode: 'realistic',
+      fn: () => {
+        for (let i = 0; i < 250; i++) {
+          ReactDOM.flushSync(() => setOverlayOpen((value) => !value));
+        }
+        sink += overlayContainer.textContent?.length ?? 0;
+        sink += overlayCleanups;
+      },
+      cleanup: () => overlayRoot.unmount(),
+    },
+    {
+      framework: 'react',
+      category: 'context',
+      name: 'deep provider consumers update 250x',
+      mode: 'realistic',
+      fn: () => {
+        for (let i = 0; i < 250; i++) {
+          ReactDOM.flushSync(() => setContextSeed((value) => value + 1));
+        }
+        sink += contextContainer.textContent?.length ?? 0;
+      },
+      cleanup: () => contextRoot.unmount(),
+    },
+    {
+      framework: 'react',
+      category: 'hydration',
+      name: 'hydrate full app page 50x',
+      mode: 'realistic',
+      fn: async () => {
+        for (let i = 0; i < 50; i++) {
+          const container = document.createElement('div');
+          container.innerHTML = reactFullPageHtml;
+          document.body.appendChild(container);
+          const root = ReactDOMClient.hydrateRoot(container, h(FullPage), { onRecoverableError: () => {} });
+          await new Promise((resolve) => setTimeout(resolve, 1));
+          root.unmount();
+          container.remove();
+          sink += container.textContent?.length ?? 0;
+        }
+      },
+    },
+    {
+      framework: 'react',
+      category: 'memory',
+      name: 'mount dispose leak sentinel 100x',
+      mode: 'stress',
+      fn: () => {
+        function LeakSentinel(): unknown {
+          React.useEffect(() => () => { leakCleanups++; }, []);
+          return h('section', null, h('p', null, 'tracked'));
+        }
+        for (let i = 0; i < 100; i++) {
+          const container = document.createElement('div');
+          const root = ReactDOMClient.createRoot(container);
+          ReactDOM.flushSync(() => root.render(h(LeakSentinel)));
+          root.unmount();
+          sink += container.childNodes.length;
+        }
+        sink += leakCleanups;
+      },
+    },
+    {
+      framework: 'react',
+      category: 'scheduler',
+      name: 'batch 20 signal writes 100x',
+      mode: 'stress',
+      fn: () => {
+        for (let i = 0; i < 100; i++) {
+          ReactDOM.flushSync(() => setSchedulerValues((values) => values.map((value) => value + 1)));
+        }
+        sink += schedulerContainer.textContent?.length ?? 0;
+      },
+      cleanup: () => schedulerRoot.unmount(),
+    },
+    {
+      framework: 'react',
       category: 'reactivity',
       name: 'notify 1k subscribers',
       mode: 'stress',
@@ -1160,6 +1837,16 @@ async function reactCases(): Promise<BenchCase[]> {
           h('ul', null, rows.map((item) => h('li', { key: item.id, 'data-id': item.id }, h('a', { href: `/rows/${item.id}`, title: item.label }, item.label)))),
           rows.length > 0 ? h('aside', null, 'Loaded') : h('aside', null, 'Empty'),
         ));
+        sink += html.length;
+      },
+    },
+    {
+      framework: 'react',
+      category: 'ssr',
+      name: 'render full app page',
+      mode: 'realistic',
+      fn: () => {
+        const html = ReactDOMServer.renderToString(h(FullPage));
         sink += html.length;
       },
     },
@@ -1297,6 +1984,127 @@ async function vueCases(): Promise<BenchCase[]> {
     render: () => Vue.h('ul', hydrateRows.map((item: { id: number; label: string }) => Vue.h('li', { key: item.id }, item.label))),
   };
   const vueHydrateHtml = VueServer ? await VueServer.renderToString(Vue.createSSRApp(HydrateList)) : '';
+
+  const appRoutes = ['overview', 'reports', 'settings'] as const;
+  const route = Vue.ref<typeof appRoutes[number]>('overview');
+  const routeContainer = document.createElement('div');
+  const routeApp = Vue.createApp({
+    setup: () => () => Vue.h('section', [
+      Vue.h('nav', appRoutes.map((item) => Vue.h('button', { 'aria-current': route.value === item || undefined, onClick: () => { route.value = item; } }, item))),
+      Vue.h('main', [Vue.h('h2', route.value), Vue.h('p', route.value === 'reports' ? 'Nested report outlet' : route.value === 'settings' ? 'Nested settings outlet' : 'Nested overview outlet')]),
+    ]),
+  });
+  routeApp.mount(routeContainer);
+
+  const asyncStatus = Vue.ref<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const asyncData = Vue.ref('none');
+  const asyncContainer = document.createElement('div');
+  const asyncApp = Vue.createApp({
+    setup: () => () => Vue.h('section', [
+      Vue.h('h2', asyncStatus.value),
+      Vue.h('p', asyncStatus.value === 'success' ? asyncData.value : asyncStatus.value === 'error' ? 'failed' : 'waiting'),
+      Vue.h('button', 'Retry'),
+    ]),
+  });
+  asyncApp.mount(asyncContainer);
+
+  const largeFormValues = Vue.ref(Array.from({ length: 75 }, () => ''));
+  const largeFormContainer = document.createElement('div');
+  const largeFormApp = Vue.createApp({
+    setup: () => () => Vue.h('form', [
+      Vue.h('fieldset', largeFormValues.value.map((value, index) => Vue.h('input', {
+        key: index,
+        name: `field-${index}`,
+        value,
+        onInput: (event: Event) => {
+          largeFormValues.value = largeFormValues.value.map((item, i) => i === index ? (event.currentTarget as HTMLInputElement).value : item);
+        },
+      }))),
+      Vue.h('output', String(largeFormValues.value.filter(Boolean).length)),
+    ]),
+  });
+  largeFormApp.mount(largeFormContainer);
+  const largeFormInputs = Array.from(largeFormContainer.querySelectorAll('input'));
+
+  const tableBaseRows = createValueRows(500);
+  let tableCurrentRows = tableBaseRows;
+  const tableRows = Vue.ref(tableBaseRows);
+  const tableFilter = Vue.ref('');
+  const tableSortAsc = Vue.ref(true);
+  const tablePage = Vue.ref(0);
+  const tableSelectedId = Vue.ref<number | null>(null);
+  const tableContainer = document.createElement('div');
+  const tableApp = Vue.createApp({
+    setup: () => () => {
+      const visibleRows = [...tableRows.value]
+        .filter((row) => row.label.includes(tableFilter.value))
+        .sort((a, b) => tableSortAsc.value ? a.id - b.id : b.id - a.id)
+        .slice(tablePage.value * 25, tablePage.value * 25 + 25);
+      return Vue.h('table', [Vue.h('tbody', visibleRows.map((item) => Vue.h('tr', {
+        key: item.id,
+        'aria-selected': tableSelectedId.value === item.id || undefined,
+        onClick: () => { tableSelectedId.value = item.id; },
+      }, [Vue.h('td', item.label), Vue.h('td', String(item.value)), Vue.h('td', String(item.id))])))]);
+    },
+  });
+  tableApp.mount(tableContainer);
+
+  const overlayOpen = Vue.ref(false);
+  let overlayCleanups = 0;
+  const ModalPanel = {
+    setup() {
+      const onKey = () => {};
+      document.addEventListener('keydown', onKey);
+      Vue.onUnmounted(() => {
+        document.removeEventListener('keydown', onKey);
+        overlayCleanups++;
+      });
+      return () => Vue.h('dialog', { open: true }, [Vue.h('button', 'Close')]);
+    },
+  };
+  const overlayContainer = document.createElement('div');
+  const overlayApp = Vue.createApp({
+    setup: () => () => Vue.h('section', overlayOpen.value ? Vue.h(ModalPanel) : Vue.h('span', 'Closed')),
+  });
+  overlayApp.mount(overlayContainer);
+
+  const ContextSeed = Symbol('context-seed');
+  const contextSeed = Vue.ref(0);
+  const contextContainer = document.createElement('div');
+  const ContextConsumer = {
+    props: ['offset'],
+    setup(props: { offset: number }) {
+      const seed = Vue.inject(ContextSeed) as { value: number };
+      return () => Vue.h('p', String(seed.value + props.offset));
+    },
+  };
+  const contextApp = Vue.createApp({
+    setup() {
+      Vue.provide(ContextSeed, contextSeed);
+      return () => Vue.h('section', Array.from({ length: 50 }, (_, index) => Vue.h(ContextConsumer, { key: index, offset: index })));
+    },
+  });
+  contextApp.mount(contextContainer);
+
+  const fullPageRows = createRows(160);
+  const FullPage = {
+    render: () => Vue.h('main', { class: 'app-shell', 'data-route': 'reports' }, [
+      Vue.h('header', [Vue.h('h1', 'Ops dashboard'), Vue.h('nav', [Vue.h('a', { class: 'active', href: '/reports' }, 'Reports'), Vue.h('a', { href: '/settings' }, 'Settings')])]),
+      Vue.h('section', { class: 'summary' }, [Vue.h('h2', 'Revenue'), Vue.h('p', 'Regional performance'), Vue.h('output', 'ready')]),
+      Vue.h('form', [Vue.h('label', ['Search', Vue.h('input', { name: 'q', value: 'north' })]), Vue.h('button', { disabled: true }, 'Search')]),
+      Vue.h('table', [Vue.h('tbody', fullPageRows.slice(0, 80).map((item) => Vue.h('tr', { key: item.id, 'data-id': item.id }, [Vue.h('td', item.label), Vue.h('td', [Vue.h('a', { href: `/rows/${item.id}`, title: item.label }, 'Open')])])))]),
+      Vue.h('aside', 'Loaded'),
+    ]),
+  };
+  const vueFullPageHtml = VueServer ? await VueServer.renderToString(Vue.createSSRApp(FullPage)) : '';
+
+  let leakCleanups = 0;
+  const schedulerValues = Vue.ref(Array.from({ length: 20 }, () => 0));
+  const schedulerContainer = document.createElement('div');
+  const schedulerApp = Vue.createApp({
+    setup: () => () => Vue.h('section', [Vue.h('output', String(schedulerValues.value.reduce((total, value) => total + value, 0)))]),
+  });
+  schedulerApp.mount(schedulerContainer);
 
   const cases: BenchCase[] = [
     {
@@ -1489,6 +2297,146 @@ async function vueCases(): Promise<BenchCase[]> {
       },
       cleanup: () => chainScope.stop(),
     },
+    {
+      framework: 'vue',
+      category: 'routing',
+      name: 'navigate nested app shell 200x',
+      mode: 'realistic',
+      fn: async () => {
+        for (let i = 0; i < 200; i++) {
+          route.value = appRoutes[i % appRoutes.length];
+          await Vue.nextTick();
+        }
+        sink += routeContainer.textContent?.length ?? 0;
+      },
+      cleanup: () => routeApp.unmount(),
+    },
+    {
+      framework: 'vue',
+      category: 'async',
+      name: 'query lifecycle refetch recovery 100x',
+      mode: 'realistic',
+      fn: async () => {
+        for (let i = 0; i < 100; i++) {
+          asyncStatus.value = 'loading';
+          await Vue.nextTick();
+          asyncData.value = `row-${i}`;
+          asyncStatus.value = 'success';
+          await Vue.nextTick();
+          asyncStatus.value = 'error';
+          await Vue.nextTick();
+          asyncData.value = `retry-${i}`;
+          asyncStatus.value = 'success';
+          await Vue.nextTick();
+        }
+        sink += asyncContainer.textContent?.length ?? 0;
+      },
+      cleanup: () => asyncApp.unmount(),
+    },
+    {
+      framework: 'vue',
+      category: 'forms',
+      name: 'large validated form flow 20x',
+      mode: 'realistic',
+      fn: async () => {
+        for (let round = 0; round < 20; round++) {
+          for (let i = 0; i < largeFormInputs.length; i++) {
+            dispatchInput(largeFormInputs[i]!, `v-${round}-${i}`);
+          }
+          await Vue.nextTick();
+          for (let i = 0; i < largeFormInputs.length; i += 3) {
+            dispatchInput(largeFormInputs[i]!, '');
+          }
+          await Vue.nextTick();
+        }
+        sink += largeFormContainer.textContent?.length ?? 0;
+      },
+      cleanup: () => largeFormApp.unmount(),
+    },
+    {
+      framework: 'vue',
+      category: 'table',
+      name: 'sort filter paginate edit select 50x',
+      mode: 'realistic',
+      fn: async () => {
+        for (let i = 0; i < 50; i++) {
+          tableCurrentRows = tableCurrentRows.map((row, index) => index === i ? { ...row, value: row.value + i + 1 } : row);
+          tableRows.value = tableCurrentRows;
+          tableFilter.value = i % 3 === 0 ? '1' : '';
+          tableSortAsc.value = !tableSortAsc.value;
+          tablePage.value = i % 4;
+          tableSelectedId.value = i;
+          await Vue.nextTick();
+        }
+        sink += tableContainer.textContent?.length ?? 0;
+      },
+      cleanup: () => tableApp.unmount(),
+    },
+    {
+      framework: 'vue',
+      category: 'lifecycle',
+      name: 'modal listener cleanup 250x',
+      mode: 'realistic',
+      fn: async () => {
+        for (let i = 0; i < 250; i++) {
+          overlayOpen.value = !overlayOpen.value;
+          await Vue.nextTick();
+        }
+        sink += overlayContainer.textContent?.length ?? 0;
+        sink += overlayCleanups;
+      },
+      cleanup: () => overlayApp.unmount(),
+    },
+    {
+      framework: 'vue',
+      category: 'context',
+      name: 'deep provider consumers update 250x',
+      mode: 'realistic',
+      fn: async () => {
+        for (let i = 0; i < 250; i++) {
+          contextSeed.value += 1;
+          await Vue.nextTick();
+        }
+        sink += contextContainer.textContent?.length ?? 0;
+      },
+      cleanup: () => contextApp.unmount(),
+    },
+    {
+      framework: 'vue',
+      category: 'memory',
+      name: 'mount dispose leak sentinel 100x',
+      mode: 'stress',
+      fn: () => {
+        const LeakSentinel = {
+          setup() {
+            Vue.onUnmounted(() => { leakCleanups++; });
+            return () => Vue.h('section', [Vue.h('p', 'tracked')]);
+          },
+        };
+        for (let i = 0; i < 100; i++) {
+          const container = document.createElement('div');
+          const app = Vue.createApp(LeakSentinel);
+          app.mount(container);
+          app.unmount();
+          sink += container.childNodes.length;
+        }
+        sink += leakCleanups;
+      },
+    },
+    {
+      framework: 'vue',
+      category: 'scheduler',
+      name: 'batch 20 signal writes 100x',
+      mode: 'stress',
+      fn: async () => {
+        for (let i = 0; i < 100; i++) {
+          schedulerValues.value = schedulerValues.value.map((value) => value + 1);
+          await Vue.nextTick();
+        }
+        sink += schedulerContainer.textContent?.length ?? 0;
+      },
+      cleanup: () => schedulerApp.unmount(),
+    },
   ];
 
   if (VueServer) {
@@ -1534,6 +2482,32 @@ async function vueCases(): Promise<BenchCase[]> {
           ]),
         });
         const html = await VueServer.renderToString(app);
+        sink += html.length;
+      },
+    });
+    cases.push({
+      framework: 'vue',
+      category: 'hydration',
+      name: 'hydrate full app page 50x',
+      mode: 'realistic',
+      fn: () => {
+        for (let i = 0; i < 50; i++) {
+          const container = document.createElement('div');
+          container.innerHTML = vueFullPageHtml;
+          const app = Vue.createSSRApp(FullPage);
+          app.mount(container);
+          app.unmount();
+          sink += container.textContent?.length ?? 0;
+        }
+      },
+    });
+    cases.push({
+      framework: 'vue',
+      category: 'ssr',
+      name: 'render full app page',
+      mode: 'realistic',
+      fn: async () => {
+        const html = await VueServer.renderToString(Vue.createSSRApp(FullPage));
         sink += html.length;
       },
     });
@@ -1757,6 +2731,199 @@ async function solidCases(): Promise<BenchCase[]> {
   }, eventContainer);
   const eventButtons = Array.from(eventContainer.querySelectorAll('button'));
   const lifecycleRows = createRows(100);
+  const appRoutes = ['overview', 'reports', 'settings'] as const;
+  const routeContainer = document.createElement('div');
+  let setRoute!: (value: typeof appRoutes[number]) => void;
+  const disposeRoute = SolidWeb.render(() => {
+    const [route, updateRoute] = Solid.createSignal<typeof appRoutes[number]>('overview');
+    setRoute = updateRoute;
+    const root = document.createElement('section');
+    const nav = document.createElement('nav');
+    const main = document.createElement('main');
+    const title = document.createElement('h2');
+    const body = document.createElement('p');
+    const buttons = appRoutes.map((item) => {
+      const button = document.createElement('button');
+      button.textContent = item;
+      button.addEventListener('click', () => updateRoute(item));
+      nav.appendChild(button);
+      return button;
+    });
+    Solid.createEffect(() => {
+      const current = route();
+      title.textContent = current;
+      body.textContent = current === 'reports' ? 'Nested report outlet' : current === 'settings' ? 'Nested settings outlet' : 'Nested overview outlet';
+      buttons.forEach((button, index) => {
+        button.toggleAttribute('aria-current', index === (current === 'overview' ? 0 : current === 'reports' ? 1 : 2));
+      });
+    });
+    main.append(title, body);
+    root.append(nav, main);
+    return root;
+  }, routeContainer);
+
+  const asyncContainer = document.createElement('div');
+  let setAsyncStatus!: (value: 'idle' | 'loading' | 'success' | 'error') => void;
+  let setAsyncData!: (value: string) => void;
+  const disposeAsync = SolidWeb.render(() => {
+    const [status, updateStatus] = Solid.createSignal<'idle' | 'loading' | 'success' | 'error'>('idle');
+    const [data, updateData] = Solid.createSignal('none');
+    setAsyncStatus = updateStatus;
+    setAsyncData = updateData;
+    const root = document.createElement('section');
+    const title = document.createElement('h2');
+    const body = document.createElement('p');
+    const button = document.createElement('button');
+    button.textContent = 'Retry';
+    Solid.createEffect(() => {
+      title.textContent = status();
+      body.textContent = status() === 'success' ? data() : status() === 'error' ? 'failed' : 'waiting';
+    });
+    root.append(title, body, button);
+    return root;
+  }, asyncContainer);
+
+  const largeFormValues = Array.from({ length: 75 }, () => '');
+  const largeFormContainer = document.createElement('div');
+  let largeFormInputs: HTMLInputElement[] = [];
+  const disposeLargeForm = SolidWeb.render(() => {
+    const [version, setVersion] = Solid.createSignal(0);
+    const form = document.createElement('form');
+    const fieldset = document.createElement('fieldset');
+    const output = document.createElement('output');
+    largeFormInputs = [];
+    for (let i = 0; i < largeFormValues.length; i++) {
+      const input = document.createElement('input');
+      input.name = `field-${i}`;
+      input.addEventListener('input', () => {
+        largeFormValues[i] = input.value;
+        setVersion((value: number) => value + 1);
+      });
+      largeFormInputs.push(input);
+      fieldset.appendChild(input);
+    }
+    Solid.createEffect(() => {
+      version();
+      output.textContent = String(largeFormValues.filter(Boolean).length);
+    });
+    form.append(fieldset, output);
+    return form;
+  }, largeFormContainer);
+
+  const tableBaseRows = createValueRows(500);
+  let tableCurrentRows = tableBaseRows;
+  const tableContainer = document.createElement('div');
+  let setTableRows!: (value: Array<{ id: number; label: string; value: number }>) => void;
+  let setTableFilter!: (value: string) => void;
+  let setTableSortAsc!: (value: boolean | ((value: boolean) => boolean)) => void;
+  let setTablePage!: (value: number) => void;
+  let setTableSelectedId!: (value: number | null) => void;
+  const disposeTable = SolidWeb.render(() => {
+    const [items, updateItems] = Solid.createSignal(tableBaseRows);
+    const [filter, updateFilter] = Solid.createSignal('');
+    const [sortAsc, updateSortAsc] = Solid.createSignal(true);
+    const [page, updatePage] = Solid.createSignal(0);
+    const [selectedId, updateSelectedId] = Solid.createSignal<number | null>(null);
+    setTableRows = updateItems;
+    setTableFilter = updateFilter;
+    setTableSortAsc = updateSortAsc;
+    setTablePage = updatePage;
+    setTableSelectedId = updateSelectedId;
+    const table = document.createElement('table');
+    const tbody = document.createElement('tbody');
+    Solid.createEffect(() => {
+      const visible = [...items()]
+        .filter((row) => row.label.includes(filter()))
+        .sort((a, b) => sortAsc() ? a.id - b.id : b.id - a.id)
+        .slice(page() * 25, page() * 25 + 25);
+      tbody.replaceChildren(...visible.map((item) => {
+        const tr = document.createElement('tr');
+        tr.toggleAttribute('aria-selected', selectedId() === item.id);
+        tr.addEventListener('click', () => updateSelectedId(item.id));
+        const label = document.createElement('td');
+        const value = document.createElement('td');
+        const id = document.createElement('td');
+        label.textContent = item.label;
+        value.textContent = String(item.value);
+        id.textContent = String(item.id);
+        tr.append(label, value, id);
+        return tr;
+      }));
+    });
+    table.appendChild(tbody);
+    return table;
+  }, tableContainer);
+
+  const overlayContainer = document.createElement('div');
+  let setOverlayOpen!: (value: boolean | ((value: boolean) => boolean)) => void;
+  let overlayCleanups = 0;
+  const disposeOverlay = SolidWeb.render(() => {
+    const [open, updateOpen] = Solid.createSignal(false);
+    setOverlayOpen = updateOpen;
+    const root = document.createElement('section');
+    Solid.createEffect(() => {
+      if (open()) {
+        const dialog = document.createElement('dialog');
+        const button = document.createElement('button');
+        const onKey = () => {};
+        dialog.open = true;
+        button.textContent = 'Close';
+        dialog.appendChild(button);
+        document.addEventListener('keydown', onKey);
+        Solid.onCleanup(() => {
+          document.removeEventListener('keydown', onKey);
+          overlayCleanups++;
+        });
+        root.replaceChildren(dialog);
+      } else {
+        const span = document.createElement('span');
+        span.textContent = 'Closed';
+        root.replaceChildren(span);
+      }
+    });
+    return root;
+  }, overlayContainer);
+
+  const ContextSeed = Solid.createContext<() => number>();
+  const contextContainer = document.createElement('div');
+  let setContextSeed!: (value: number | ((value: number) => number)) => void;
+  function ContextConsumer(props: { offset: number }): HTMLParagraphElement {
+    const seed = Solid.useContext(ContextSeed)!;
+    const p = document.createElement('p');
+    Solid.createEffect(() => {
+      p.textContent = String(seed() + props.offset);
+    });
+    return p;
+  }
+  const disposeContext = SolidWeb.render(() => {
+    const [seed, updateSeed] = Solid.createSignal(0);
+    setContextSeed = updateSeed;
+    const root = document.createElement('section');
+    return Solid.createComponent(ContextSeed.Provider, {
+      value: seed,
+      get children() {
+        root.replaceChildren(...Array.from({ length: 50 }, (_, index) => ContextConsumer({ offset: index })));
+        return root;
+      },
+    });
+  }, contextContainer);
+
+  const fullPageRows = createRows(160);
+  let leakCleanups = 0;
+  const schedulerRoot = Solid.createRoot((dispose: () => void) => {
+    const signals = Array.from({ length: 20 }, () => Solid.createSignal(0));
+    const container = document.createElement('div');
+    const disposeRender = SolidWeb.render(() => {
+      const section = document.createElement('section');
+      const output = document.createElement('output');
+      Solid.createEffect(() => {
+        output.textContent = String(signals.reduce((total, [read]) => total + read(), 0));
+      });
+      section.appendChild(output);
+      return section;
+    }, container);
+    return { dispose: () => { disposeRender(); dispose(); }, signals, container };
+  });
 
   const cases: BenchCase[] = [
     {
@@ -1947,6 +3114,139 @@ async function solidCases(): Promise<BenchCase[]> {
       },
       cleanup: () => chainRoot.dispose(),
     },
+    {
+      framework: 'solid',
+      category: 'routing',
+      name: 'navigate nested app shell 200x',
+      mode: 'realistic',
+      fn: () => {
+        for (let i = 0; i < 200; i++) {
+          setRoute(appRoutes[i % appRoutes.length]);
+        }
+        sink += routeContainer.textContent?.length ?? 0;
+      },
+      cleanup: disposeRoute,
+    },
+    {
+      framework: 'solid',
+      category: 'async',
+      name: 'query lifecycle refetch recovery 100x',
+      mode: 'realistic',
+      fn: () => {
+        for (let i = 0; i < 100; i++) {
+          setAsyncStatus('loading');
+          setAsyncData(`row-${i}`);
+          setAsyncStatus('success');
+          setAsyncStatus('error');
+          setAsyncData(`retry-${i}`);
+          setAsyncStatus('success');
+        }
+        sink += asyncContainer.textContent?.length ?? 0;
+      },
+      cleanup: disposeAsync,
+    },
+    {
+      framework: 'solid',
+      category: 'forms',
+      name: 'large validated form flow 20x',
+      mode: 'realistic',
+      fn: () => {
+        for (let round = 0; round < 20; round++) {
+          for (let i = 0; i < largeFormInputs.length; i++) {
+            dispatchInput(largeFormInputs[i]!, `v-${round}-${i}`);
+          }
+          for (let i = 0; i < largeFormInputs.length; i += 3) {
+            dispatchInput(largeFormInputs[i]!, '');
+          }
+        }
+        sink += largeFormContainer.textContent?.length ?? 0;
+      },
+      cleanup: disposeLargeForm,
+    },
+    {
+      framework: 'solid',
+      category: 'table',
+      name: 'sort filter paginate edit select 50x',
+      mode: 'realistic',
+      fn: () => {
+        for (let i = 0; i < 50; i++) {
+          tableCurrentRows = tableCurrentRows.map((row, index) => index === i ? { ...row, value: row.value + i + 1 } : row);
+          setTableRows(tableCurrentRows);
+          setTableFilter(i % 3 === 0 ? '1' : '');
+          setTableSortAsc((value: boolean) => !value);
+          setTablePage(i % 4);
+          setTableSelectedId(i);
+        }
+        sink += tableContainer.textContent?.length ?? 0;
+      },
+      cleanup: disposeTable,
+    },
+    {
+      framework: 'solid',
+      category: 'lifecycle',
+      name: 'modal listener cleanup 250x',
+      mode: 'realistic',
+      fn: () => {
+        for (let i = 0; i < 250; i++) {
+          setOverlayOpen((value: boolean) => !value);
+        }
+        sink += overlayContainer.textContent?.length ?? 0;
+        sink += overlayCleanups;
+      },
+      cleanup: disposeOverlay,
+    },
+    {
+      framework: 'solid',
+      category: 'context',
+      name: 'deep provider consumers update 250x',
+      mode: 'realistic',
+      fn: () => {
+        for (let i = 0; i < 250; i++) {
+          setContextSeed((value: number) => value + 1);
+        }
+        sink += contextContainer.textContent?.length ?? 0;
+      },
+      cleanup: disposeContext,
+    },
+    {
+      framework: 'solid',
+      category: 'memory',
+      name: 'mount dispose leak sentinel 100x',
+      mode: 'stress',
+      fn: () => {
+        for (let i = 0; i < 100; i++) {
+          const container = document.createElement('div');
+          const dispose = SolidWeb.render(() => {
+            Solid.onCleanup(() => { leakCleanups++; });
+            const section = document.createElement('section');
+            const p = document.createElement('p');
+            p.textContent = 'tracked';
+            section.appendChild(p);
+            return section;
+          }, container);
+          dispose();
+          sink += container.childNodes.length;
+        }
+        sink += leakCleanups;
+      },
+    },
+    {
+      framework: 'solid',
+      category: 'scheduler',
+      name: 'batch 20 signal writes 100x',
+      mode: 'stress',
+      fn: () => {
+        for (let i = 0; i < 100; i++) {
+          Solid.batch(() => {
+            for (const [, write] of schedulerRoot.signals) {
+              write((value: number) => value + 1);
+            }
+          });
+        }
+        sink += schedulerRoot.container.textContent?.length ?? 0;
+      },
+      cleanup: () => schedulerRoot.dispose(),
+    },
   ];
 
   if (SolidServer) {
@@ -1973,6 +3273,22 @@ async function solidCases(): Promise<BenchCase[]> {
           [`<main class="dashboard" data-count="${rows.length}"><section><h1>Revenue</h1><p>Regional performance</p></section><form><input name="q" value="north"><button disabled>Search</button></form><ul>`, '</ul><aside>Loaded</aside></main>'],
           rows.map((item) => SolidServer.ssr(
             [`<li data-id="${item.id}"><a href="/rows/${item.id}" title="${item.label}">`, '</a></li>'],
+            SolidServer.escape(item.label),
+          )),
+        ));
+        sink += html.length;
+      },
+    });
+    cases.push({
+      framework: 'solid',
+      category: 'ssr',
+      name: 'render full app page',
+      mode: 'realistic',
+      fn: () => {
+        const html = SolidServer.renderToString(() => SolidServer.ssr(
+          ['<main class="app-shell" data-route="reports"><header><h1>Ops dashboard</h1><nav><a class="active" href="/reports">Reports</a><a href="/settings">Settings</a></nav></header><section class="summary"><h2>Revenue</h2><p>Regional performance</p><output>ready</output></section><form><label>Search<input name="q" value="north"></label><button disabled>Search</button></form><table><tbody>', '</tbody></table><aside>Loaded</aside></main>'],
+          fullPageRows.slice(0, 80).map((item) => SolidServer.ssr(
+            [`<tr data-id="${item.id}"><td>`, `</td><td><a href="/rows/${item.id}" title="${item.label}">Open</a></td></tr>`],
             SolidServer.escape(item.label),
           )),
         ));
@@ -2047,6 +3363,10 @@ async function svelteCases(): Promise<BenchCase[]> {
       'MixedPage',
       '<script>let { rows = [] } = $props();</script><main class="dashboard" data-count={rows.length}><section><h1>Revenue</h1><p>Regional performance</p></section><form><input name="q" value="north"><button disabled>Search</button></form><ul>{#each rows as row (row.id)}<li data-id={row.id}><a href={`/rows/${row.id}`} title={row.label}>{row.label}</a></li>{/each}</ul>{#if rows.length > 0}<aside>Loaded</aside>{:else}<aside>Empty</aside>{/if}</main>',
     );
+    const FullPage = await compileSvelteServerComponent(
+      'FullPage',
+      '<script>let { rows = [] } = $props();</script><main class="app-shell" data-route="reports"><header><h1>Ops dashboard</h1><nav><a class="active" href="/reports">Reports</a><a href="/settings">Settings</a></nav></header><section class="summary"><h2>Revenue</h2><p>Regional performance</p><output>ready</output></section><form><label>Search<input name="q" value="north"></label><button disabled>Search</button></form><table><tbody>{#each rows.slice(0, 80) as row (row.id)}<tr data-id={row.id}><td>{row.label}</td><td><a href={`/rows/${row.id}`} title={row.label}>Open</a></td></tr>{/each}</tbody></table><aside>Loaded</aside></main>',
+    );
     if (KeyedList) {
       cases.push({
         framework: 'svelte',
@@ -2067,6 +3387,18 @@ async function svelteCases(): Promise<BenchCase[]> {
         mode: 'realistic',
         fn: () => {
           const { body } = SvelteServer.render(MixedPage, { props: { rows } });
+          sink += body.length;
+        },
+      });
+    }
+    if (FullPage) {
+      cases.push({
+        framework: 'svelte',
+        category: 'ssr',
+        name: 'render full app page',
+        mode: 'realistic',
+        fn: () => {
+          const { body } = SvelteServer.render(FullPage, { props: { rows } });
           sink += body.length;
         },
       });

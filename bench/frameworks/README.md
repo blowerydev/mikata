@@ -22,6 +22,7 @@ The Mikata adapter imports the built package output from `packages/*/dist`, whic
 
 ```sh
 pnpm bench:frameworks
+pnpm bench:frameworks:all
 pnpm bench:frameworks:quick
 pnpm bench:frameworks:json
 ```
@@ -52,12 +53,22 @@ The suite favors workloads that mirror real app pressure:
 - SSR-to-client hydration where the harness can use real SSR markup
 - server rendering where a framework exposes a simple server renderer
 - mixed SSR pages with attributes, forms, links, lists, and conditionals
+- route-style navigation through a persistent app shell with nested outlet text
+- async data lifecycle: loading, success, refetch, error, and recovery states
+- large validated forms with 75 fields
+- table flows that sort, filter, paginate, edit one row, and select rows
+- modal/popover-style mount disposal with document listener cleanup
+- deep provider/context consumer updates
+- full SSR app pages with shell, nav, form, table, links, and status regions
+- hydration of full app pages where the framework harness can use real SSR markup
+- mount/dispose leak sentinels that exercise cleanup paths
+- scheduler/batching pressure from many state writes in one action
 - fanout and dependency-chain stress tests for reactive systems
 - UI fanout stress where the framework model is component-render driven
 
 Some coverage is intentionally framework-specific:
 
-- Svelte DOM and hydration cases need a compiled client-component harness. The current suite covers Svelte stores and compiled server rendering.
+- Svelte DOM and hydration cases need a compiled client-component harness. The current suite covers Svelte stores and compiled server rendering, including the full app-page SSR flow.
 - Solid DOM cases use direct DOM construction to approximate compiled output in Node. Hydration is left out until the harness compiles Solid templates with hydration markers.
 - React's reactivity fanout case uses 1k child component consumers because React does not expose signal-style subscriber primitives.
 

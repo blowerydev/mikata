@@ -16,6 +16,7 @@
     "bench:i18n": "vitest bench --run --config bench/vitest.config.ts bench/i18n.bench.ts",
     "bench:icons": "vitest bench --run --config bench/vitest.config.ts bench/icons.bench.ts",
     "bench:frameworks": "tsx bench/frameworks/run.ts",
+    "bench:frameworks:all": "tsx bench/frameworks/run.ts --json bench/frameworks/results/latest-all.json",
     "bench:frameworks:quick": "tsx bench/frameworks/run.ts --quick",
     "bench:frameworks:json": "tsx bench/frameworks/run.ts --json bench/frameworks/results/latest.json",
     "bench:kit": "vitest bench --run --config bench/vitest.config.ts bench/kit.bench.ts",
