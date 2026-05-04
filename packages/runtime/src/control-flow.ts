@@ -198,7 +198,7 @@ export function each<T>(
   list: () => readonly T[],
   render: (item: T, index: () => number) => Node,
   fallback?: () => Node,
-  options?: { key?: (item: T) => unknown }
+  options?: { key?: (item: T) => unknown; static?: boolean }
 ): Node {
   // During hydration the caller's `_insert` has already pushed a frame
   // for the real parent, so rendering each item inline lets its JSX
@@ -251,6 +251,31 @@ export function each<T>(
     });
     return { node: node!, scope, item, setIndex };
   };
+
+  if (options?.static && !hydrating) {
+    const createStaticNode = (item: T, i: number): Node => {
+      let node: Node;
+      const index = () => i;
+      createLazyScope(() => {
+        node = render(item, index);
+      });
+      return node!;
+    };
+    const items = list();
+    const frag = document.createDocumentFragment();
+    if (items.length === 0 && fallback) {
+      let fallbackNode: Node;
+      createLazyScope(() => {
+        fallbackNode = fallback();
+      });
+      frag.appendChild(fallbackNode!);
+      return frag;
+    }
+    for (let i = 0; i < items.length; i++) {
+      frag.appendChild(createStaticNode(items[i], i));
+    }
+    return frag;
+  }
 
   const disposeEntry = (entry: ItemEntry): void => {
     if (entry.node.parentNode) {

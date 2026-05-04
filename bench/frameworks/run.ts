@@ -547,7 +547,7 @@ async function mikataCases(): Promise<BenchCase[]> {
       const li = runtime._template('<li> </li>').cloneNode(true) as HTMLElement;
       li.firstChild!.textContent = item.label;
       return li;
-    }, undefined, { key: (item: { id: number }) => item.id }));
+    }, undefined, { key: (item: { id: number }) => item.id, static: true }));
     return root;
   };
   const { html: mikataHydrateHtml } = await server.renderToString(buildHydrateList, { skipQueryCollection: true });

@@ -334,6 +334,29 @@ describe('each()', () => {
     expect(container.textContent).toBe('empty');
   });
 
+  it('renders static lists once without reconciling later source changes', () => {
+    const container = _createElement('div');
+    const [items, setItems] = signal(['a', 'b']);
+
+    const node = each(
+      items,
+      (item) => {
+        const el = _createElement('span');
+        el.textContent = item;
+        return el;
+      },
+      undefined,
+      { static: true },
+    );
+    container.appendChild(node);
+    flushSync();
+    expect(container.textContent).toBe('ab');
+
+    setItems(['c', 'd']);
+    flushSync();
+    expect(container.textContent).toBe('ab');
+  });
+
   it('updates index accessors when keyed rows are reused', () => {
     const container = _createElement('div');
     const [items, setItems] = signal([

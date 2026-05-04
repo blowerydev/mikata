@@ -29,6 +29,20 @@ const eachExample = await highlight(
   'tsx',
 );
 
+const staticEachExample = await highlight(
+  `import { each } from 'mikata';
+
+<ul>
+  {each(
+    () => menuItems,
+    (item) => <li>{item.label}</li>,
+    undefined,
+    { key: (item) => item.id, static: true }
+  )}
+</ul>`,
+  'tsx',
+);
+
 const switchExample = await highlight(
   `import { switchMatch, Dynamic } from 'mikata';
 
@@ -84,6 +98,12 @@ export default function ControlFlow() {
         The second argument receives an index signal. Call <code>index()</code>
         inside JSX when the visible row number should update after moves.
       </p>
+      <p>
+        Pass <code>{'{ static: true }'}</code> for lists that are mounted once
+        and never reconciled. Static lists keep row cleanup scopes, but they do
+        not subscribe to the list source or update when it changes.
+      </p>
+      <CodeBlock html={staticEachExample} />
 
       <h2>Switches and dynamic components</h2>
       <p>
