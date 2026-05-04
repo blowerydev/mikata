@@ -16,6 +16,9 @@ export interface Disposable {
 
 let nextScopeId = 1;
 
+const EMPTY_CHILDREN: (Disposable | Scope)[] = [];
+const EMPTY_CLEANUPS: (() => void)[] = [];
+
 export class Scope {
   /** Unique numeric ID for devtools. */
   id: number;
@@ -25,8 +28,8 @@ export class Scope {
    * created inside can be attributed back to their owning component.
    */
   label?: string;
-  children: (Disposable | Scope)[] = [];
-  cleanups: (() => void)[] = [];
+  children: (Disposable | Scope)[] = EMPTY_CHILDREN;
+  cleanups: (() => void)[] = EMPTY_CLEANUPS;
   parent: Scope | null;
   disposed = false;
   /**
@@ -39,14 +42,16 @@ export class Scope {
   constructor(parent: Scope | null, attach = true) {
     this.id = nextScopeId++;
     this.parent = parent;
-    if (attach) parent?.children.push(this);
+    if (attach) parent?.addChild(this);
   }
 
   addChild(node: Disposable | Scope): void {
+    if (this.children === EMPTY_CHILDREN) this.children = [];
     this.children.push(node);
   }
 
   addCleanup(fn: () => void): void {
+    if (this.cleanups === EMPTY_CLEANUPS) this.cleanups = [];
     this.cleanups.push(fn);
   }
 
@@ -74,17 +79,20 @@ export class Scope {
         child._dispose();
       }
     }
-    this.children = [];
+    this.children = EMPTY_CHILDREN;
 
     // Run cleanup functions
     for (const cleanup of this.cleanups) {
       cleanup();
     }
-    this.cleanups = [];
+    this.cleanups = EMPTY_CLEANUPS;
 
     if (this.parent && !this.parent.disposed) {
-      const index = this.parent.children.indexOf(this);
-      if (index >= 0) this.parent.children.splice(index, 1);
+      const siblings = this.parent.children;
+      if (siblings !== EMPTY_CHILDREN) {
+        const index = siblings.indexOf(this);
+        if (index >= 0) siblings.splice(index, 1);
+      }
     }
     this.parent = null;
   }
@@ -146,7 +154,7 @@ export function createLazyScope(fn: () => void): Scope | null {
     return null;
   }
 
-  if (parent && !parent.disposed) parent.children.push(scope);
+  if (parent && !parent.disposed) parent.addChild(scope);
   return scope;
 }
 

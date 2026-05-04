@@ -221,6 +221,7 @@ export function _template(html: string): Node {
   const t = document.createElement('template');
   t.innerHTML = html;
   const root = t.content.firstChild!;
+  const fastClone = createSimpleTemplateClone(root);
   // Swap the per-instance `cloneNode` so that during hydration it pops the
   // next unclaimed node from the adoption cursor instead of creating a
   // fresh deep clone. Non-hydrating callers go through the native path and
@@ -231,10 +232,37 @@ export function _template(html: string): Node {
       const adopted = adoptNext();
       if (adopted) return adopted;
     }
+    if (fastClone) return fastClone(deep !== false);
     return nativeClone(deep);
   };
   cache.set(html, root);
   return root;
+}
+
+function createSimpleTemplateClone(root: Node): ((deep: boolean) => Node) | null {
+  if (
+    root.nodeType !== 1 ||
+    (root as Element).namespaceURI !== 'http://www.w3.org/1999/xhtml' ||
+    (root as Element).attributes.length !== 0
+  ) {
+    return null;
+  }
+
+  const element = root as HTMLElement;
+  const tagName = element.localName;
+  const first = element.firstChild;
+  if (!first) {
+    return () => document.createElement(tagName);
+  }
+  if (first.nodeType === 3 && first.nextSibling === null) {
+    const text = (first as Text).data;
+    return (deep: boolean) => {
+      const clone = document.createElement(tagName);
+      if (deep) clone.appendChild(document.createTextNode(text));
+      return clone;
+    };
+  }
+  return null;
 }
 
 /**

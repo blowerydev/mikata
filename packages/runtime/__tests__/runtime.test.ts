@@ -17,12 +17,25 @@ import {
   inject,
   onMount,
   createDerivedSignal,
+  _template,
 } from '../src/index';
 
 describe('DOM helpers', () => {
   it('_createElement creates an element', () => {
     const el = _createElement('div');
     expect(el.tagName).toBe('DIV');
+  });
+
+  it('_template clones simple elements with deep clone semantics', () => {
+    const template = _template('<li> </li>') as HTMLElement;
+    const deep = template.cloneNode(true) as HTMLElement;
+    const shallow = template.cloneNode(false) as HTMLElement;
+
+    expect(deep.tagName).toBe('LI');
+    expect(deep.childNodes).toHaveLength(1);
+    expect(deep.textContent).toBe(' ');
+    expect(shallow.tagName).toBe('LI');
+    expect(shallow.childNodes).toHaveLength(0);
   });
 
   it('_setProp sets class', () => {

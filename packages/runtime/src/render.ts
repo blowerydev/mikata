@@ -2,7 +2,7 @@
  * Entry point for mounting a Mikata application to the DOM.
  */
 
-import { createScope, type Scope } from '@mikata/reactivity';
+import { createLazyScope, createScope, type Scope } from '@mikata/reactivity';
 import { installDevTools } from './devtools';
 import { installErrorOverlay } from './error-overlay';
 import { isSSR } from './env';
@@ -67,13 +67,13 @@ export function render(
   // Clear container
   container.textContent = '';
 
-  const scope = createScope(() => {
+  const scope = createLazyScope(() => {
     const el = component();
     container.appendChild(el);
   });
 
   return () => {
-    scope.dispose();
+    scope?.dispose();
     container.textContent = '';
   };
 }
