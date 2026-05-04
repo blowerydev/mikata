@@ -89,6 +89,23 @@ describe('effect', () => {
     expect(fn).toHaveBeenCalledTimes(1); // no re-run after dispose
   });
 
+  it('does not run a queued effect after it is disposed', () => {
+    const [count, setCount] = signal(0);
+    const fn = vi.fn();
+
+    const dispose = effect(() => {
+      count();
+      fn();
+    });
+
+    expect(fn).toHaveBeenCalledTimes(1);
+
+    setCount(1);
+    dispose();
+    flushSync();
+    expect(fn).toHaveBeenCalledTimes(1);
+  });
+
   it('runs cleanup on dispose', () => {
     const cleanup = vi.fn();
     const dispose = effect(() => cleanup);

@@ -701,6 +701,7 @@ async function mikataCases(): Promise<BenchCase[]> {
   const [tableSortAsc, setTableSortAsc] = reactivity.signal(true);
   const [tablePage, setTablePage] = reactivity.signal(0);
   const [tableSelectedId, setTableSelectedId] = reactivity.signal<number | null>(null);
+  const tableIsSelected = reactivity.createSelector(tableSelectedId);
   const tableVisibleRows = reactivity.computed(() => {
     const needle = tableFilter();
     const sorted = [...tableRows()].filter((row: { label: string }) => row.label.includes(needle));
@@ -715,7 +716,7 @@ async function mikataCases(): Promise<BenchCase[]> {
       const tr = runtime._template('<tr><td> </td><td> </td><td> </td></tr>').cloneNode(true) as HTMLTableRowElement;
       tr.addEventListener('click', () => setTableSelectedId(item.id));
       reactivity.renderEffect(() => {
-        tr.toggleAttribute('aria-selected', tableSelectedId() === item.id);
+        tr.toggleAttribute('aria-selected', tableIsSelected(item.id));
       });
       tr.childNodes[0]!.textContent = item.label;
       tr.childNodes[1]!.textContent = String(item.value);

@@ -23,6 +23,7 @@ export default tseslint.config(
       'mikata/require-signal-call': 'error',
       'mikata/no-signal-assignment': 'error',
       'mikata/no-stale-signal-read-in-effect': 'error',
+      'mikata/prefer-selector-in-each': 'warn',
     },
   },
 );`,
@@ -52,8 +53,8 @@ export default function EslintTooling() {
       <p>
         <code>@mikata/eslint-plugin</code> catches mistakes that TypeScript
         cannot see: setup APIs called from the wrong place, signals read without
-        calling them, effects without cleanup, async components, and Kit route
-        mistakes.
+        calling them, effects without cleanup, async components, list-wide
+        selection subscriptions, and Kit route mistakes.
       </p>
 
       <h2>Flat config</h2>
@@ -84,6 +85,7 @@ export default function EslintTooling() {
             ['require-signal-call', 'Using signal functions as values where a signal read was intended.'],
             ['no-signal-assignment', 'Assigning to signal variables instead of calling setters.'],
             ['no-stale-signal-read-in-effect', 'Capturing signal values outside the effect that should track them.'],
+            ['prefer-selector-in-each', 'Comparing a shared signal to each() row keys instead of using createSelector().'],
           ].map(([rule, catches]) => (
             <tr>
               <td>

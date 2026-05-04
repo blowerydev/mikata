@@ -33,6 +33,7 @@ import { noStaleSignalReadInEffect } from './rules/no-stale-signal-read-in-effec
 import { noDiscardedRedirect } from './rules/no-discarded-redirect';
 import { noApiRouteDefaultExport } from './rules/no-api-route-default-export';
 import { noImperativeDomInUi } from './rules/no-imperative-dom-in-ui';
+import { preferSelectorInEach } from './rules/prefer-selector-in-each';
 
 const rules: Record<string, Rule.RuleModule> = {
   'rules-of-setup': rulesOfSetup,
@@ -46,6 +47,7 @@ const rules: Record<string, Rule.RuleModule> = {
   'no-discarded-redirect': noDiscardedRedirect,
   'no-api-route-default-export': noApiRouteDefaultExport,
   'no-imperative-dom-in-ui': noImperativeDomInUi,
+  'prefer-selector-in-each': preferSelectorInEach,
 };
 
 const plugin: ESLint.Plugin = {
@@ -71,6 +73,7 @@ const recommendedFlat: Linter.FlatConfig = {
     '@mikata/require-signal-call': 'error',
     '@mikata/no-signal-assignment': 'error',
     '@mikata/no-stale-signal-read-in-effect': 'error',
+    '@mikata/prefer-selector-in-each': 'warn',
   },
 };
 

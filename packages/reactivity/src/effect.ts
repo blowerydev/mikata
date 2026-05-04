@@ -160,6 +160,8 @@ function createEffectNode(
 
     _dispose() {
       unregisterNode(node);
+      node._run = undefined;
+      node._dirty = false;
       if (node._cleanup) {
         node._cleanup();
         node._cleanup = undefined;

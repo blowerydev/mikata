@@ -638,6 +638,7 @@ it('increments on click', async () => {
       { name: 'rules', kind: 'Rules', description: 'Named rule modules for custom ESLint config composition.' },
       { name: 'rules-of-setup', kind: 'Rule', description: 'Ensures setup-only APIs run in valid component/scope positions.' },
       { name: 'require-effect-cleanup', kind: 'Rule', description: 'Flags effects/listeners/timers without cleanup.' },
+      { name: 'prefer-selector-in-each', kind: 'Rule', description: 'Warns when repeated rows compare a shared signal to each item key instead of using createSelector().' },
     ],
     example: `import mikata from '@mikata/eslint-plugin';
 
