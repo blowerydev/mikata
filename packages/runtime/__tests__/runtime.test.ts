@@ -293,6 +293,37 @@ describe('show()', () => {
     flushSync();
     expect(container.textContent).toBe('login');
   });
+
+  it('supports static branches without branch cleanup scopes', () => {
+    const [open, setOpen] = signal(false);
+    const container = _createElement('div');
+
+    const node = show(
+      () => open(),
+      () => {
+        const el = _createElement('strong');
+        el.textContent = 'expanded';
+        return el;
+      },
+      () => {
+        const el = _createElement('em');
+        el.textContent = 'collapsed';
+        return el;
+      },
+      { static: true },
+    );
+    container.appendChild(node);
+    flushSync();
+    expect(container.textContent).toBe('collapsed');
+
+    setOpen(true);
+    flushSync();
+    expect(container.textContent).toBe('expanded');
+
+    setOpen(false);
+    flushSync();
+    expect(container.textContent).toBe('collapsed');
+  });
 });
 
 describe('each()', () => {

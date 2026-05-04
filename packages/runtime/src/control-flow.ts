@@ -34,7 +34,7 @@ export function show<T>(
   when: () => T | null | undefined | false | 0 | '',
   render: (value: NonNullable<T>) => Node,
   fallback?: () => Node,
-  options?: { keepAlive?: boolean },
+  options?: { keepAlive?: boolean; static?: boolean },
 ): Node {
   if (options?.keepAlive) {
     return showKeepAlive(when, render, fallback);
@@ -43,6 +43,7 @@ export function show<T>(
   let currentNode: Node = document.createComment('show');
   let currentScope: Scope | null = null;
   let currentBranch: 'render' | 'fallback' | 'none' = 'none';
+  const scoped = !options?.static;
 
   renderEffect(() => {
     const value = when();
@@ -60,13 +61,15 @@ export function show<T>(
     let newNode: Node;
 
     if (value) {
-      currentScope = createLazyScope(() => {
+      if (scoped) currentScope = createLazyScope(() => {
         newNode = render(value as NonNullable<T>);
       });
+      else newNode = render(value as NonNullable<T>);
     } else if (fallback) {
-      currentScope = createLazyScope(() => {
+      if (scoped) currentScope = createLazyScope(() => {
         newNode = fallback();
       });
+      else newNode = fallback();
     } else {
       newNode = document.createComment('show:empty');
     }

@@ -258,7 +258,7 @@ function createSimpleTemplateClone(root: Node): ((deep: boolean) => Node) | null
     const text = (first as Text).data;
     return (deep: boolean) => {
       const clone = document.createElement(tagName);
-      if (deep) clone.appendChild(document.createTextNode(text));
+      if (deep) clone.textContent = text;
       return clone;
     };
   }

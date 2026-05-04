@@ -15,6 +15,18 @@ const showExample = await highlight(
   'tsx',
 );
 
+const staticShowExample = await highlight(
+  `import { show } from 'mikata';
+
+{show(
+  () => expanded(),
+  () => <strong>Expanded content</strong>,
+  () => <em>Collapsed content</em>,
+  { static: true }
+)}`,
+  'tsx',
+);
+
 const eachExample = await highlight(
   `import { each } from 'mikata';
 
@@ -86,6 +98,12 @@ export default function ControlFlow() {
         Pass <code>{'{ keepAlive: true }'}</code> when you want visited branches
         to stay mounted and toggle visibility instead of remounting.
       </p>
+      <p>
+        Pass <code>{'{ static: true }'}</code> only for hot branches that return
+        plain static DOM with no components, effects, or cleanup. Static
+        branches still remount on each swap, but skip branch cleanup scopes.
+      </p>
+      <CodeBlock html={staticShowExample} />
 
       <h2>Lists</h2>
       <p>

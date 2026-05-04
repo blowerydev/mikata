@@ -419,6 +419,7 @@ async function mikataCases(): Promise<BenchCase[]> {
         visible,
         () => runtime._template('<strong>Expanded content</strong>').cloneNode(true),
         () => runtime._template('<em>Collapsed content</em>').cloneNode(true),
+        { static: true },
       ),
     );
     return root;
