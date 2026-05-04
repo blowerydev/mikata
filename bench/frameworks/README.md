@@ -42,9 +42,25 @@ The suite favors workloads that mirror real app pressure:
 - static component mount/unmount
 - dynamic text updates
 - keyed list reversal
+- append/remove/clear list churn
+- partial keyed list updates inside a 1k-row table
 - conditional branch toggles, including Mikata's retained `keepAlive` mode
+- stateful branch setup/disposal
+- controlled text, checkbox, and select input interaction
+- nested component/context-style updates
+- event dispatch across 1k buttons
+- SSR-to-client hydration where the harness can use real SSR markup
 - server rendering where a framework exposes a simple server renderer
+- mixed SSR pages with attributes, forms, links, lists, and conditionals
 - fanout and dependency-chain stress tests for reactive systems
 - UI fanout stress where the framework model is component-render driven
+
+Some coverage is intentionally framework-specific:
+
+- Svelte DOM and hydration cases need a compiled client-component harness. The current suite covers Svelte stores and compiled server rendering.
+- Solid DOM cases use direct DOM construction to approximate compiled output in Node. Hydration is left out until the harness compiles Solid templates with hydration markers.
+- React's reactivity fanout case uses 1k child component consumers because React does not expose signal-style subscriber primitives.
+
+Temporary generated benchmark modules live in `bench/frameworks/.generated/`, and result JSON goes under `bench/frameworks/results/`; both are ignored by Git.
 
 Treat the numbers as directional. They are useful for finding suspicious gaps, validating optimizations, and tracking broad movement over time. They should not be used as a release gate or as marketing copy without a more controlled benchmark environment.

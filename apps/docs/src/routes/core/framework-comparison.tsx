@@ -88,6 +88,24 @@ export default function FrameworkComparison() {
         model are the thing your product needs most.
       </p>
 
+      <h2>Performance checks</h2>
+      <p>
+        Mikata keeps the cross-framework benchmark suite outside the normal
+        build so contributors can compare real app pressures without making
+        every test run depend on optional framework packages. The suite covers
+        static mounts, text updates, keyed list reorders, list churn, partial
+        row updates, conditional branch disposal, controlled forms, event
+        dispatch, nested updates, hydration where the framework harness can use
+        real SSR markup, server rendering, and reactive fanout stress.
+      </p>
+      <p>
+        Run <code>pnpm bench:frameworks:quick</code> for a smoke comparison or
+        <code>pnpm bench:frameworks</code> for the fuller run after installing
+        the optional packages in <code>bench/frameworks</code>. Treat the
+        results as diagnostic signals for finding gaps, not as release-gate
+        numbers or marketing claims.
+      </p>
+
       <h2>Where next</h2>
       <ul>
         <li>
