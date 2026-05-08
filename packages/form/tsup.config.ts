@@ -13,5 +13,7 @@ export default defineConfig({
   dts: true,
   clean: true,
   treeshake: true,
-  define: { __DEV__: 'false' },
+  esbuildOptions(options) {
+    options.inject = [...(options.inject ?? []), '../../scripts/tsup-dev.ts'];
+  },
 });
