@@ -13,4 +13,5 @@ export default defineConfig({
   dts: true,
   clean: true,
   treeshake: true,
+  define: { __DEV__: 'false' },
 });
