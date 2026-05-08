@@ -1,4 +1,5 @@
-import { _mergeProps, adoptElement, onCleanup } from '@mikata/runtime';
+import { _mergeProps, adoptElement } from '@mikata/runtime';
+import { copyText } from '../../utils/create-clipboard';
 import type { CopyButtonProps } from './CopyButton.types';
 
 /**
@@ -33,25 +34,7 @@ export function CopyButton(userProps: CopyButtonProps): HTMLElement {
         props.onCopy?.(props.value);
         render();
       };
-      if (navigator.clipboard?.writeText) {
-        navigator.clipboard.writeText(props.value).then(done).catch(() => {
-          fallback();
-        });
-      } else {
-        fallback();
-      }
-      function fallback() {
-        const ta = document.createElement('textarea');
-        ta.value = props.value;
-        ta.setAttribute('readonly', '');
-        ta.style.position = 'fixed';
-        ta.style.top = '-1000px';
-        document.body.appendChild(ta);
-        ta.select();
-        try { document.execCommand('copy'); } catch { /* ignored */ }
-        document.body.removeChild(ta);
-        done();
-      }
+      void copyText(props.value).then(done, () => {});
     };
 
     // Initial render only when empty. On hydration the SSR already

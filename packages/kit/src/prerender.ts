@@ -36,7 +36,7 @@
 
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
-import type { RouteDefinition } from '@mikata/router';
+import { joinPaths, type RouteDefinition } from '@mikata/router';
 import { installShim } from '@mikata/server';
 import {
   createFetchHandler,
@@ -426,16 +426,6 @@ function flattenRoutes(routes: readonly RouteDefinition[]): RouteLeaf[] {
   };
   for (const route of routes) walk(route, '');
   return leaves;
-}
-
-function joinPaths(parent: string, child: string): string {
-  if (!child || child === '/') return parent || '/';
-  if (!parent || parent === '/') {
-    return child.startsWith('/') ? child : '/' + child;
-  }
-  const base = parent.endsWith('/') ? parent.slice(0, -1) : parent;
-  const segment = child.startsWith('/') ? child : '/' + child;
-  return base + segment;
 }
 
 // ---------------------------------------------------------------------------

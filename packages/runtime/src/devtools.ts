@@ -11,163 +11,24 @@ import {
   getGraphSnapshot,
   getStats,
   findNodeById,
-  traceDependencies,
-  traceSubscribers,
-  getNodesByKind,
-  findNodesByLabel,
-  type ReactiveGraphSnapshot,
   type DebugNodeSnapshot,
-  type NodeKind,
 } from '@mikata/reactivity';
+import { createDevToolsAPI, type MikataDevTools } from './devtools/api';
+import {
+  countComponents,
+  findComponentForElement,
+  getComponentTree,
+  trackComponent,
+  untrackComponent,
+  type ComponentTreeSnapshot,
+} from './devtools/component-tree';
+import { escapeHtml, formatMs, formatValue, formatValueFull, timeSince } from './devtools/format';
+import { openSource, parseStackFrames, shortenFrame, type ParsedFrame } from './devtools/stack';
 
 declare const __DEV__: boolean;
 
-// ---------------------------------------------------------------------------
-// Component tree tracking
-// ---------------------------------------------------------------------------
-
-export interface ComponentTreeNode {
-  name: string;
-  node: Node;
-  children: ComponentTreeNode[];
-  parent: ComponentTreeNode | null;
-  /** performance.now() at mount. */
-  mountedAt: number;
-}
-
-let rootComponents: ComponentTreeNode[] = [];
-const nodeToComponent = new WeakMap<Node, ComponentTreeNode>();
-
-/**
- * Register a component instance in the tree. Called by _createComponent.
- */
-export function trackComponent(name: string, domNode: Node, parentNode?: Node): void {
-  const entry: ComponentTreeNode = {
-    name,
-    node: domNode,
-    children: [],
-    parent: null,
-    mountedAt: typeof performance !== 'undefined' ? performance.now() : Date.now(),
-  };
-
-  if (parentNode) {
-    const parentComp = nodeToComponent.get(parentNode);
-    if (parentComp) {
-      entry.parent = parentComp;
-      parentComp.children.push(entry);
-    } else {
-      rootComponents.push(entry);
-    }
-  } else {
-    rootComponents.push(entry);
-  }
-
-  nodeToComponent.set(domNode, entry);
-}
-
-/**
- * Unregister a component when disposed.
- */
-export function untrackComponent(domNode: Node): void {
-  const entry = nodeToComponent.get(domNode);
-  if (!entry) return;
-
-  if (entry.parent) {
-    const idx = entry.parent.children.indexOf(entry);
-    if (idx !== -1) entry.parent.children.splice(idx, 1);
-  } else {
-    const idx = rootComponents.indexOf(entry);
-    if (idx !== -1) rootComponents.splice(idx, 1);
-  }
-
-  nodeToComponent.delete(domNode);
-}
-
-interface ComponentTreeSnapshot {
-  name: string;
-  children: ComponentTreeSnapshot[];
-  inDOM: boolean;
-  /** Live reference to the DOM node - used for hover/highlight. */
-  domNode: Node;
-  mountedAt: number;
-}
-
-function getComponentTree(): ComponentTreeSnapshot[] {
-  return rootComponents.map(snapshotComponentTree);
-}
-
-function snapshotComponentTree(entry: ComponentTreeNode): ComponentTreeSnapshot {
-  return {
-    name: entry.name,
-    inDOM: !!entry.node.parentNode || (entry.node as ChildNode).isConnected,
-    children: entry.children.map(snapshotComponentTree),
-    domNode: entry.node,
-    mountedAt: entry.mountedAt,
-  };
-}
-
-/** Walk up from any DOM node looking for a tracked component root. */
-function findComponentForElement(el: Node | null): ComponentTreeNode | null {
-  let cur: Node | null = el;
-  while (cur) {
-    const entry = nodeToComponent.get(cur);
-    if (entry) return entry;
-    cur = cur.parentNode;
-  }
-  return null;
-}
-
-// ---------------------------------------------------------------------------
-// Console API - window.__MIKATA_DEVTOOLS__
-// ---------------------------------------------------------------------------
-
-export interface MikataDevTools {
-  /** Snapshot the full reactive dependency graph */
-  graph(): ReactiveGraphSnapshot;
-  /** Quick stats: signal/computed/effect counts, how many dirty */
-  stats(): ReturnType<typeof getStats>;
-  /** Inspect a specific node by ID */
-  inspect(id: number): DebugNodeSnapshot | undefined;
-  /** Trace what a node depends on (transitively) */
-  why(id: number): DebugNodeSnapshot[];
-  /** Trace what depends on a node (transitively) */
-  subscribers(id: number): DebugNodeSnapshot[];
-  /** Get all nodes of a specific kind */
-  list(kind: NodeKind): DebugNodeSnapshot[];
-  /** Search nodes by label */
-  search(query: string): DebugNodeSnapshot[];
-  /** Get the component tree */
-  components(): ComponentTreeSnapshot[];
-  /** Find the component owning a DOM element (walks up until a tracked node is hit). */
-  findComponent(el: Element): { name: string; node: Node } | null;
-  /** Show/hide the overlay panel */
-  show(): void;
-  hide(): void;
-  toggle(): void;
-  /** Version */
-  version: string;
-}
-
-function createDevToolsAPI(): MikataDevTools {
-  return {
-    graph: getGraphSnapshot,
-    stats: getStats,
-    inspect: findNodeById,
-    why: traceDependencies,
-    subscribers: traceSubscribers,
-    list: getNodesByKind,
-    search: findNodesByLabel,
-    components: getComponentTree,
-    findComponent(el) {
-      const entry = findComponentForElement(el);
-      return entry ? { name: entry.name, node: entry.node } : null;
-    },
-    show: () => showOverlay(),
-    hide: () => hideOverlay(),
-    toggle: () => toggleOverlay(),
-    version: '0.1.0',
-  };
-}
+export { trackComponent, untrackComponent };
+export { parseStackFrames } from './devtools/stack';
 
 // ---------------------------------------------------------------------------
 // Panel state
@@ -491,75 +352,6 @@ const STYLES = `
 // ---------------------------------------------------------------------------
 
 /** @internal - exported for tests. */
-export interface ParsedFrame {
-  /** Original frame line, unchanged. */
-  raw: string;
-  /** URL or file path of the source, or null if the line is not parsable. */
-  file: string | null;
-  line: number;
-  column: number;
-}
-
-const FRAME_URL_RE = /((?:https?:\/\/|file:\/\/|\/)[^\s()]+?):(\d+):(\d+)/;
-
-/** @internal - exported for tests. */
-export function parseStackFrames(stack: string): ParsedFrame[] {
-  if (!stack) return [];
-  return stack.split('\n').map((raw) => {
-    const line = raw.trim();
-    const m = FRAME_URL_RE.exec(line);
-    if (!m) return { raw: line, file: null, line: 0, column: 0 };
-    return { raw: line, file: m[1], line: Number(m[2]), column: Number(m[3]) };
-  });
-}
-
-function shortenFrame(frame: ParsedFrame): string {
-  if (!frame.file) return frame.raw;
-  // Strip origin and query string for compactness.
-  let path = frame.file;
-  try {
-    const u = new URL(frame.file);
-    path = u.pathname;
-  } catch {
-    // Not an absolute URL — keep as-is.
-  }
-  path = path.replace(/\?.*$/, '');
-  // Keep the last 3 segments so the devtools panel isn't dominated by
-  // deep paths from node_modules.
-  const parts = path.split('/').filter(Boolean);
-  const tail = parts.slice(-3).join('/');
-  return `${tail}:${frame.line}:${frame.column}`;
-}
-
-/**
- * Try to open a source location in the user's editor via Vite's
- * `/__open-in-editor` endpoint. Falls back to opening the file URL in a
- * new browser tab, which is enough to inspect source maps in DevTools.
- */
-async function openSource(frame: ParsedFrame): Promise<void> {
-  if (!frame.file) return;
-  const q = new URLSearchParams({
-    file: frame.file,
-    line: String(frame.line),
-    column: String(frame.column),
-  }).toString();
-  try {
-    const res = await fetch(`/__open-in-editor?${q}`, { method: 'GET' });
-    if (res.ok) return;
-  } catch {
-    // Endpoint unavailable — fall through.
-  }
-  // Log the resolved location so the user can click through the DevTools
-  // console (which understands source maps for the in-page URL).
-  // eslint-disable-next-line no-console
-  console.log(`[mikata:devtools] source at ${frame.file}:${frame.line}:${frame.column}`);
-  try {
-    window.open(frame.file, '_blank', 'noopener');
-  } catch {
-    /* noop */
-  }
-}
-
 // ---------------------------------------------------------------------------
 // Overlay construction
 // ---------------------------------------------------------------------------
@@ -1029,15 +821,6 @@ function countOwnedNodes(componentLabel: string): { signals: number; effects: nu
   return { signals, effects };
 }
 
-function countComponents(): number {
-  let count = 0;
-  function walk(nodes: ComponentTreeNode[]) {
-    for (const n of nodes) { count++; walk(n.children); }
-  }
-  walk(rootComponents);
-  return count;
-}
-
 // ---------------------------------------------------------------------------
 // Element highlighting + picker
 // ---------------------------------------------------------------------------
@@ -1121,49 +904,6 @@ function onPickerKey(e: KeyboardEvent): void {
 // Formatting helpers
 // ---------------------------------------------------------------------------
 
-function formatValue(value: unknown): string {
-  if (value === undefined) return '<span style="color:#666">undefined</span>';
-  if (value === null) return '<span style="color:#666">null</span>';
-  if (typeof value === 'string') return `"${escapeHtml(value.length > 40 ? value.slice(0, 40) + '…' : value)}"`;
-  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
-  if (typeof value === 'function') return '<span style="color:#c084fc">ƒ</span>';
-  if (Array.isArray(value)) return `[${value.length}]`;
-  if (typeof value === 'object') return `{${Object.keys(value as object).length}}`;
-  return String(value);
-}
-
-function formatValueFull(value: unknown): string {
-  try {
-    if (typeof value === 'string') return `"${value}"`;
-    if (typeof value === 'function') return String((value as { name?: string }).name ?? 'ƒ');
-    return JSON.stringify(value, null, 2);
-  } catch {
-    return String(value);
-  }
-}
-
-function formatMs(ms: number | undefined): string {
-  if (ms == null) return '-';
-  if (ms < 0.05) return '<0.1ms';
-  if (ms < 10) return `${ms.toFixed(1)}ms`;
-  return `${Math.round(ms)}ms`;
-}
-
-function timeSince(t: number): string {
-  const delta = performance.now() - t;
-  if (delta < 1000) return `${Math.round(delta)}ms`;
-  if (delta < 60_000) return `${(delta / 1000).toFixed(1)}s`;
-  return `${Math.round(delta / 60_000)}m`;
-}
-
-function escapeHtml(str: string): string {
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
-
 // ---------------------------------------------------------------------------
 // Show / hide / toggle
 // ---------------------------------------------------------------------------
@@ -1205,7 +945,11 @@ function toggleOverlay(): void {
 export function installDevTools(options?: { overlay?: boolean }): void {
   if (typeof window === 'undefined') return;
 
-  const api = createDevToolsAPI();
+  const api = createDevToolsAPI({
+    show: showOverlay,
+    hide: hideOverlay,
+    toggle: toggleOverlay,
+  });
   (window as unknown as { __MIKATA_DEVTOOLS__: MikataDevTools }).__MIKATA_DEVTOOLS__ = api;
 
   if (options?.overlay !== false) {

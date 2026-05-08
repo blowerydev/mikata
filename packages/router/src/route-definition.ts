@@ -5,6 +5,7 @@
 
 import type { RouteDefinition, NormalizedRoute } from './types';
 import { parseSegments, compilePath } from './matching';
+import { joinPaths } from './path';
 
 // ---------------------------------------------------------------------------
 // defineRoutes - identity function for type inference
@@ -68,18 +69,6 @@ export function normalizeRoutes(
 /**
  * Join parent and child paths, handling slashes and edge cases.
  */
-function joinPaths(parent: string, child: string): string {
-  // Root path
-  if (child === '/') return parent || '/';
-  if (!parent || parent === '/') {
-    return child.startsWith('/') ? child : '/' + child;
-  }
-
-  const base = parent.endsWith('/') ? parent.slice(0, -1) : parent;
-  const segment = child.startsWith('/') ? child : '/' + child;
-  return base + segment;
-}
-
 /**
  * Collect all guards from root to the matched route (for a match chain).
  */

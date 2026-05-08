@@ -34,6 +34,7 @@ import {
   createMemoryHistory,
   provideRouter,
   routeOutlet,
+  joinPaths,
   type RouteDefinition,
   type Router,
   type RouterOptions,
@@ -377,16 +378,6 @@ function wrapLazyRoutes(
       : undefined;
     return { ...route, lazy: wrappedLazy, children: wrappedChildren };
   });
-}
-
-function joinPaths(parent: string, child: string): string {
-  if (child === '/' || !child) return parent || '/';
-  if (!parent || parent === '/') {
-    return child.startsWith('/') ? child : '/' + child;
-  }
-  const base = parent.endsWith('/') ? parent.slice(0, -1) : parent;
-  const segment = child.startsWith('/') ? child : '/' + child;
-  return base + segment;
 }
 
 function resolveHistory(

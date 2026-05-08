@@ -14,6 +14,7 @@ export type { TestRouterOptions } from './testing';
 
 // Route definition
 export { defineRoutes } from './route-definition';
+export { joinPaths } from './path';
 export { searchParam } from './search-params';
 
 // Rendering

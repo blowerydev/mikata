@@ -24,7 +24,7 @@ export { onFocusTrap } from './utils/on-focus-trap';
 export { onScrollLock } from './utils/on-scroll-lock';
 export { createMediaQuery } from './utils/create-media-query';
 export { createLocalStorage } from './utils/create-local-storage';
-export { createClipboard } from './utils/create-clipboard';
+export { createClipboard, copyText } from './utils/create-clipboard';
 export type { ClipboardReturn } from './utils/create-clipboard';
 export { createToggle } from './utils/create-toggle';
 export type { ToggleReturn } from './utils/create-toggle';

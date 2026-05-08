@@ -7,6 +7,26 @@ export interface ClipboardReturn {
   reset: () => void;
 }
 
+export async function copyText(text: string): Promise<void> {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.setAttribute('readonly', '');
+  ta.style.position = 'absolute';
+  ta.style.left = '-9999px';
+  document.body.appendChild(ta);
+  ta.select();
+  try {
+    document.execCommand('copy');
+  } finally {
+    document.body.removeChild(ta);
+  }
+}
+
 /**
  * Copy text to the clipboard. `copied` flips true for `timeout` ms after a successful copy.
  *
@@ -28,20 +48,7 @@ export function createClipboard(timeout: number = 2000): ClipboardReturn {
 
   const copy = async (text: string) => {
     try {
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(text);
-      } else {
-        // Fallback for non-secure contexts
-        const ta = document.createElement('textarea');
-        ta.value = text;
-        ta.setAttribute('readonly', '');
-        ta.style.position = 'absolute';
-        ta.style.left = '-9999px';
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand('copy');
-        document.body.removeChild(ta);
-      }
+      await copyText(text);
       setError(null);
       setCopied(true);
       clearTimer();
