@@ -1,5 +1,6 @@
-import { Link } from '@mikata/router';
+import { Link, useRouter } from '@mikata/router';
 import { each, onCleanup, onMount } from '@mikata/runtime';
+import { renderEffect } from '@mikata/reactivity';
 import { nav as navEntries } from 'virtual:mikata-nav';
 import { sections } from '../sections';
 
@@ -37,9 +38,37 @@ function writeSidebarScroll(value: number): void {
 }
 
 export function Sidebar() {
+  const router = useRouter();
   let aside: HTMLElement | null = null;
   let pendingScrollTop = 0;
   let restoringScroll = false;
+  let revealedPath = '';
+
+  const revealCurrentLink = (): void => {
+    if (!aside) return;
+    const current = aside.querySelector<HTMLAnchorElement>('a[aria-current="page"]');
+    if (!current) return;
+
+    const sidebarRect = aside.getBoundingClientRect();
+    const currentRect = current.getBoundingClientRect();
+    const margin = 12;
+    const above = currentRect.top < sidebarRect.top + margin;
+    const below = currentRect.bottom > sidebarRect.bottom - margin;
+
+    if (above || below) {
+      current.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      writeSidebarScroll(aside.scrollTop);
+    }
+  };
+
+  const scheduleRevealCurrentLink = (): void => {
+    if (!aside) return;
+    if (typeof globalThis.requestAnimationFrame === 'function') {
+      globalThis.requestAnimationFrame(revealCurrentLink);
+    } else {
+      globalThis.setTimeout(revealCurrentLink, 0);
+    }
+  };
 
   const setAside = (el: HTMLElement): void => {
     aside = el;
@@ -59,6 +88,14 @@ export function Sidebar() {
     if (!aside) return;
     aside.scrollTop = pendingScrollTop;
     restoringScroll = false;
+    scheduleRevealCurrentLink();
+  });
+
+  renderEffect(() => {
+    const path = router.path();
+    if (path === revealedPath) return;
+    revealedPath = path;
+    scheduleRevealCurrentLink();
   });
 
   onCleanup(() => {
