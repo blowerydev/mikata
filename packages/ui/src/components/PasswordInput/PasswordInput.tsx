@@ -93,7 +93,6 @@ export function PasswordInput(userProps: PasswordInputProps = {}): HTMLDivElemen
     adoptElement<HTMLButtonElement>('button', (toggleBtn) => {
       toggleBtnEl = toggleBtn;
       toggleBtn.setAttribute('type', 'button');
-      toggleBtn.tabIndex = -1;
       renderEffect(() => {
         toggleBtn.className = mergeClasses('mkt-password-input__toggle', props.classNames?.toggleButton);
       });

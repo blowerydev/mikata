@@ -474,8 +474,26 @@ function resolveOutputFile(outDir: string, url: string): string {
   const pathname = url.split('?')[0]!.split('#')[0]!;
   const clean = pathname.replace(/\/+$/, '') || '/';
   if (clean === '/') return path.join(outDir, 'index.html');
-  const decoded = clean.split('/').map((s) => decodeURIComponent(s));
-  return path.join(outDir, ...decoded, 'index.html');
+  const decoded = clean
+    .split('/')
+    .filter(Boolean)
+    .map((s) => decodeURIComponent(s));
+  for (const segment of decoded) {
+    if (
+      segment === '.' ||
+      segment === '..' ||
+      segment.includes('/') ||
+      segment.includes('\\')
+    ) {
+      throw new Error(`[mikata/kit prerender] unsafe output path segment "${segment}" in ${url}`);
+    }
+  }
+  const file = path.resolve(outDir, ...decoded, 'index.html');
+  const rel = path.relative(outDir, file);
+  if (rel.startsWith('..') || path.isAbsolute(rel)) {
+    throw new Error(`[mikata/kit prerender] output path escapes outDir for ${url}`);
+  }
+  return file;
 }
 
 // ---------------------------------------------------------------------------

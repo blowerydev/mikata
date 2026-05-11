@@ -6,7 +6,7 @@
  * user code that wants to guard a custom route.
  */
 
-import { randomBytes, timingSafeEqual } from 'node:crypto';
+import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import type { Cookies, CookieOptions } from './cookies';
 import {
   CSRF_COOKIE_NAME,
@@ -23,6 +23,8 @@ import {
 export function generateCsrfToken(): string {
   return randomBytes(32).toString('base64url');
 }
+
+const CSRF_SIGNING_SECRET = randomBytes(32);
 
 /**
  * Read the CSRF token from the request cookies, or mint + queue a new
@@ -41,9 +43,8 @@ export function ensureCsrfToken(
 ): string {
   const name = options.cookieName ?? CSRF_COOKIE_NAME;
   const existing = cookies.get(name);
-  // Require a reasonable minimum length so junk values (`""`, short
-  // strings from other codepaths) don't bypass regeneration.
-  if (existing && existing.length >= 16) return existing;
+  const verified = existing ? verifySignedToken(existing) : null;
+  if (verified) return verified;
 
   const token = generateCsrfToken();
   const cookieOptions: CookieOptions = {
@@ -52,7 +53,7 @@ export function ensureCsrfToken(
     sameSite: 'lax',
     ...options.cookie,
   };
-  cookies.set(name, token, cookieOptions);
+  cookies.set(name, signToken(token), cookieOptions);
   return token;
 }
 
@@ -71,7 +72,8 @@ export async function verifyCsrfFromRequest(
   options: CsrfTokenOptions = {},
 ): Promise<boolean> {
   const name = options.cookieName ?? CSRF_COOKIE_NAME;
-  const expected = cookies.get(name);
+  const raw = cookies.get(name);
+  const expected = raw ? verifySignedToken(raw) : null;
   if (!expected) return false;
 
   const submitted = await extractSubmittedToken(request);
@@ -116,4 +118,16 @@ function safeCompare(a: string, b: string): boolean {
   } catch {
     return false;
   }
+}
+
+function signToken(token: string): string {
+  return `${token}.${createHmac('sha256', CSRF_SIGNING_SECRET).update(token).digest('base64url')}`;
+}
+
+function verifySignedToken(value: string): string | null {
+  const dot = value.lastIndexOf('.');
+  if (dot <= 0) return null;
+  const token = value.slice(0, dot);
+  const sig = value.slice(dot + 1);
+  return safeCompare(signToken(token).slice(dot + 1), sig) ? token : null;
 }

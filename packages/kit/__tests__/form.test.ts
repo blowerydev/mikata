@@ -131,6 +131,14 @@ describe('<Form>', () => {
       h.dispose();
     });
 
+    it('renders non-post methods as native POST with a method override field', async () => {
+      const h = mountForm({ method: 'delete', reloadDocument: true });
+      const form = await waitForForm(h.container);
+      expect(form.getAttribute('method')).toBe('post');
+      expect(form.querySelector<HTMLInputElement>('input[name="_method"]')?.value).toBe('delete');
+      h.dispose();
+    });
+
     it('forwards arbitrary attributes (class, id, aria-*) to the <form>', async () => {
       const h = mountForm({
         class: 'contact-form',
@@ -169,6 +177,20 @@ describe('<Form>', () => {
       expect(init.body).toBeInstanceOf(FormData);
       expect((init.body as FormData).get('name')).toBe('ada');
 
+      h.dispose();
+    });
+
+    it('uses the intended method for enhanced non-post submissions', async () => {
+      fetchMock.mockResolvedValue(mockJsonResponse({}));
+      const h = mountForm({ method: 'delete', action: '/submit' });
+      const form = await waitForForm(h.container);
+
+      form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+      await waitUntil(() => fetchMock.mock.calls.length === 1);
+
+      const [, init] = fetchMock.mock.calls[0];
+      expect(init.method).toBe('DELETE');
+      expect((init.body as FormData).get('_method')).toBe('delete');
       h.dispose();
     });
 

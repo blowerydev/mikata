@@ -687,7 +687,9 @@ describe('PasswordInput', () => {
     const el = PasswordInput({ label: 'Password' });
     const input = el.querySelector('input')!;
     expect(input.type).toBe('password');
-    expect(el.querySelector('.mkt-password-input__toggle')).not.toBeNull();
+    const toggle = el.querySelector('.mkt-password-input__toggle') as HTMLButtonElement;
+    expect(toggle).not.toBeNull();
+    expect(toggle.tabIndex).not.toBe(-1);
   });
 
   it('toggle flips type to text and back', () => {

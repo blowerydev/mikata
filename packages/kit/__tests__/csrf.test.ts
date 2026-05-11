@@ -34,18 +34,27 @@ describe('ensureCsrfToken', () => {
 
     const [setCookie] = cookies.outgoing();
     expect(setCookie).toBeDefined();
-    expect(setCookie).toContain(`${CSRF_COOKIE_NAME}=${token}`);
+    expect(setCookie).toContain(`${CSRF_COOKIE_NAME}=${token}.`);
     expect(setCookie).toContain('HttpOnly');
     expect(setCookie).toContain('SameSite=Lax');
     expect(setCookie).toContain('Path=/');
   });
 
-  it('returns the existing cookie value without re-issuing', () => {
+  it('returns an existing signed cookie value without re-issuing', () => {
+    const outgoing = createCookies(null);
+    const existing = ensureCsrfToken(outgoing);
+    const inbound = createCookies(cookieNameValuePair(outgoing.outgoing()[0]!));
+    const token = ensureCsrfToken(inbound);
+    expect(token).toBe(existing);
+    expect(inbound.outgoing()).toHaveLength(0);
+  });
+
+  it('regenerates attacker-chosen unsigned cookie values', () => {
     const existing = 'a'.repeat(32);
     const cookies = createCookies(`${CSRF_COOKIE_NAME}=${existing}`);
     const token = ensureCsrfToken(cookies);
-    expect(token).toBe(existing);
-    expect(cookies.outgoing()).toHaveLength(0);
+    expect(token).not.toBe(existing);
+    expect(cookies.outgoing()).toHaveLength(1);
   });
 
   it('regenerates when the stored value is too short to be a real token', () => {
@@ -60,7 +69,7 @@ describe('ensureCsrfToken', () => {
     const cookies = createCookies(null);
     const token = ensureCsrfToken(cookies, { cookieName: 'my_csrf' });
     const [setCookie] = cookies.outgoing();
-    expect(setCookie).toContain(`my_csrf=${token}`);
+    expect(setCookie).toContain(`my_csrf=${token}.`);
   });
 
   it('merges caller-supplied cookie options over the defaults', () => {
@@ -75,8 +84,6 @@ describe('ensureCsrfToken', () => {
 });
 
 describe('verifyCsrfFromRequest', () => {
-  const token = 'b'.repeat(32);
-
   function formRequest(body: string): Request {
     return new Request('http://x/post', {
       method: 'POST',
@@ -85,8 +92,15 @@ describe('verifyCsrfFromRequest', () => {
     });
   }
 
+  function signedCookie(): { token: string; header: string } {
+    const cookies = createCookies(null);
+    const token = ensureCsrfToken(cookies);
+    return { token, header: cookieNameValuePair(cookies.outgoing()[0]!) };
+  }
+
   it('returns true when header token matches the cookie', async () => {
-    const cookies = createCookies(`${CSRF_COOKIE_NAME}=${token}`);
+    const { token, header } = signedCookie();
+    const cookies = createCookies(header);
     const req = new Request('http://x/post', {
       method: 'POST',
       headers: { [CSRF_HEADER]: token },
@@ -95,12 +109,14 @@ describe('verifyCsrfFromRequest', () => {
   });
 
   it('returns true when form field token matches the cookie', async () => {
-    const cookies = createCookies(`${CSRF_COOKIE_NAME}=${token}`);
+    const { token, header } = signedCookie();
+    const cookies = createCookies(header);
     const body = `${CSRF_FORM_FIELD}=${token}&name=ada`;
     expect(await verifyCsrfFromRequest(formRequest(body), cookies)).toBe(true);
   });
 
   it('returns false when the cookie is missing entirely', async () => {
+    const token = 'b'.repeat(32);
     const cookies = createCookies(null);
     const req = new Request('http://x/post', {
       method: 'POST',
@@ -110,7 +126,8 @@ describe('verifyCsrfFromRequest', () => {
   });
 
   it('returns false when the header token does not match', async () => {
-    const cookies = createCookies(`${CSRF_COOKIE_NAME}=${token}`);
+    const { header } = signedCookie();
+    const cookies = createCookies(header);
     const req = new Request('http://x/post', {
       method: 'POST',
       headers: { [CSRF_HEADER]: 'c'.repeat(32) },
@@ -119,13 +136,15 @@ describe('verifyCsrfFromRequest', () => {
   });
 
   it('returns false when neither header nor form field is supplied', async () => {
-    const cookies = createCookies(`${CSRF_COOKIE_NAME}=${token}`);
+    const { header } = signedCookie();
+    const cookies = createCookies(header);
     const body = 'name=ada';
     expect(await verifyCsrfFromRequest(formRequest(body), cookies)).toBe(false);
   });
 
   it('prefers header over form field (avoids touching the body)', async () => {
-    const cookies = createCookies(`${CSRF_COOKIE_NAME}=${token}`);
+    const { token, header } = signedCookie();
+    const cookies = createCookies(header);
     // Header matches cookie; form field would *not* — header must win.
     const req = new Request('http://x/post', {
       method: 'POST',
@@ -142,7 +161,8 @@ describe('verifyCsrfFromRequest', () => {
   });
 
   it('leaves the request body readable after verifying via form field', async () => {
-    const cookies = createCookies(`${CSRF_COOKIE_NAME}=${token}`);
+    const { token, header } = signedCookie();
+    const cookies = createCookies(header);
     const body = `${CSRF_FORM_FIELD}=${token}&name=ada`;
     const req = formRequest(body);
     await verifyCsrfFromRequest(req, cookies);
@@ -151,7 +171,8 @@ describe('verifyCsrfFromRequest', () => {
   });
 
   it('returns false for a non-form content type without a header', async () => {
-    const cookies = createCookies(`${CSRF_COOKIE_NAME}=${token}`);
+    const { token, header } = signedCookie();
+    const cookies = createCookies(header);
     const req = new Request('http://x/post', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -161,11 +182,17 @@ describe('verifyCsrfFromRequest', () => {
   });
 
   it('differentiates same-length mismatched tokens (constant-time)', async () => {
-    const cookies = createCookies(`${CSRF_COOKIE_NAME}=${token}`);
+    const { token, header } = signedCookie();
+    const cookies = createCookies(header);
+    const mismatch = `${token[0] === 'a' ? 'b' : 'a'}${token.slice(1)}`;
     const req = new Request('http://x/post', {
       method: 'POST',
-      headers: { [CSRF_HEADER]: token.replace(/b/g, 'c') },
+      headers: { [CSRF_HEADER]: mismatch },
     });
     expect(await verifyCsrfFromRequest(req, cookies)).toBe(false);
   });
 });
+
+function cookieNameValuePair(setCookie: string): string {
+  return setCookie.split(';')[0]!;
+}

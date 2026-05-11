@@ -6,6 +6,7 @@ import { ThemeToggle } from '../components/ThemeToggle';
 export default function Layout() {
   return (
     <div class="docs-shell">
+      <a class="skip-link" href="#main-content">Skip to content</a>
       <header class="docs-topbar">
         <Link to="/" class="brand">
           Mikata
@@ -25,7 +26,7 @@ export default function Layout() {
         </div>
       </header>
       <Sidebar />
-      <main class="docs-content">{routeOutlet()}</main>
+      <main id="main-content" class="docs-content" tabindex="-1">{routeOutlet()}</main>
     </div>
   );
 }

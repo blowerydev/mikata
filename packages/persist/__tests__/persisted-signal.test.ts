@@ -200,6 +200,52 @@ describe('persistedSignal - ready promise', () => {
     await handle.ready;
     expect(handle[0]()).toBe(99);
   });
+
+  it('does not let late async hydration overwrite a local write', async () => {
+    let resolveGet!: (v: string | null) => void;
+    const writes: string[] = [];
+    const adapter: StorageAdapter = {
+      async: true,
+      getItem: () =>
+        new Promise<string | null>((r) => {
+          resolveGet = r;
+        }),
+      setItem: (_k, v) => {
+        writes.push(v);
+        return Promise.resolve();
+      },
+      removeItem: () => Promise.resolve(),
+    };
+    const handle = persistedSignal('k', 0, { storage: adapter, sync: false });
+    handle[1](42);
+    resolveGet(JSON.stringify(99));
+    await handle.ready;
+    expect(handle[0]()).toBe(42);
+    expect(writes.at(-1)).toBe('42');
+  });
+
+  it('uses custom deserializers for versioned values', () => {
+    const raw = 'v2|dark';
+    const adapter: StorageAdapter = {
+      getItem: () => raw,
+      setItem: () => undefined,
+      removeItem: () => undefined,
+    };
+    const [theme] = persistedSignal('theme', 'light', {
+      storage: adapter,
+      sync: false,
+      version: 2,
+      serialize: (value) => {
+        const wrapped = value as unknown as { v: number; d: string };
+        return `v${wrapped.v}|${wrapped.d}`;
+      },
+      deserialize: (value) => {
+        const [, v, d] = /^v(\d+)\|(.*)$/.exec(value)!;
+        return { v: Number(v), d } as unknown as string;
+      },
+    });
+    expect(theme()).toBe('dark');
+  });
 });
 
 describe('persistedSignal - adapter smoke', () => {

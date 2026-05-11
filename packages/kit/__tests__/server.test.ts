@@ -9,6 +9,8 @@ import {
   useActionData,
   type ActionContext,
 } from '../src/action';
+import { ensureCsrfToken } from '../src/csrf-server';
+import { createCookies } from '../src/cookies';
 
 // Construct components the way the compiler would emit them — no JSX
 // here, so these tests exercise the full @mikata/kit/server → renderToString
@@ -383,21 +385,29 @@ describe('renderRoute', () => {
   });
 
   describe('actions', () => {
-    // Fixed token used for every POST in this block. `postRequest` sets
-    // `X-Mikata-CSRF` and `CSRF_COOKIE_HEADER` pairs them with the
-    // inbound cookie so kit's double-submit check passes.
-    const CSRF_TOKEN = 'a'.repeat(32);
-    const CSRF_COOKIE_HEADER = `mikata_csrf=${CSRF_TOKEN}`;
+    function csrfPair(): { token: string; cookieHeader: string } {
+      const cookies = createCookies(null);
+      const token = ensureCsrfToken(cookies);
+      return { token, cookieHeader: cookieNameValuePair(cookies.outgoing()[0]!) };
+    }
+
+    function postWithCsrf(url: string, body = 'name=ada') {
+      const csrf = csrfPair();
+      return {
+        request: postRequest(url, body, csrf.token),
+        cookieHeader: csrf.cookieHeader,
+      };
+    }
 
     // Build a mutation Request the same way a real adapter would — fetch's
     // Request is fine in jsdom and matches the shape server.ts expects.
-    function postRequest(url: string, body = 'name=ada'): Request {
+    function postRequest(url: string, body = 'name=ada', csrfToken = ''): Request {
       return new Request(`http://x${url}`, {
         method: 'POST',
         body,
         headers: {
           'content-type': 'application/x-www-form-urlencoded',
-          'X-Mikata-CSRF': CSRF_TOKEN,
+          ...(csrfToken ? { 'X-Mikata-CSRF': csrfToken } : {}),
         },
       });
     }
@@ -418,10 +428,10 @@ describe('renderRoute', () => {
           }),
         },
       ];
+      const csrf = postWithCsrf('/contact');
       const { actionData, stateScript, status } = await renderRoute(routes, {
         url: '/contact',
-        request: postRequest('/contact'),
-        cookieHeader: CSRF_COOKIE_HEADER,
+        ...csrf,
       });
       expect(actionCalls).toBe(1);
       expect(actionData['/contact']).toEqual({
@@ -430,6 +440,33 @@ describe('renderRoute', () => {
       expect(status).toBe(200);
       expect(stateScript).toContain(ACTION_DATA_GLOBAL);
       expect(stateScript).toContain('"ok":true');
+    });
+
+    it('applies native form method overrides before invoking action()', async () => {
+      let seenMethod = '';
+      const Page = staticNode('<p>p</p>', '');
+      const routes = [
+        {
+          path: '/contact',
+          lazy: async () => ({
+            default: () => _createComponent(Page, {}),
+            action: async ({ request }: ActionContext) => {
+              seenMethod = request.method;
+              const form = await request.formData();
+              return { method: request.method, override: form.get('_method') };
+            },
+          }),
+        },
+      ];
+      const csrf = postWithCsrf('/contact', '_method=delete&name=ada');
+      const { actionData } = await renderRoute(routes, {
+        url: '/contact',
+        ...csrf,
+      });
+      expect(seenMethod).toBe('DELETE');
+      expect(actionData['/contact']).toEqual({
+        data: { method: 'DELETE', override: 'delete' },
+      });
     });
 
     it('does not invoke action() on GET requests', async () => {
@@ -494,10 +531,10 @@ describe('renderRoute', () => {
           }),
         },
       ];
+      const csrf = postWithCsrf('/c');
       const result = await renderRoute(routes, {
         url: '/c',
-        request: postRequest('/c'),
-        cookieHeader: CSRF_COOKIE_HEADER,
+        ...csrf,
       });
       expect(result.redirect).toEqual({ url: '/thanks', status: 303 });
       expect(result.status).toBe(303);
@@ -522,10 +559,10 @@ describe('renderRoute', () => {
           }),
         },
       ];
+      const csrf = postWithCsrf('/c');
       const { actionData, status, stateScript } = await renderRoute(routes, {
         url: '/c',
-        request: postRequest('/c'),
-        cookieHeader: CSRF_COOKIE_HEADER,
+        ...csrf,
       });
       expect(status).toBe(500);
       expect(actionData['/c']).toEqual({
@@ -554,10 +591,10 @@ describe('renderRoute', () => {
           }),
         },
       ];
+      const csrf = postWithCsrf('/c');
       const { html } = await renderRoute(routes, {
         url: '/c',
-        request: postRequest('/c'),
-        cookieHeader: CSRF_COOKIE_HEADER,
+        ...csrf,
       });
       expect(html).toContain('status saved');
     });
@@ -591,10 +628,10 @@ describe('renderRoute', () => {
           }),
         },
       ];
+      const csrf = postWithCsrf('/c');
       const { html, status } = await renderRoute(routes, {
         url: '/c',
-        request: postRequest('/c'),
-        cookieHeader: CSRF_COOKIE_HEADER,
+        ...csrf,
       });
       expect(status).toBe(500);
       expect(html).toContain('rip');
@@ -620,10 +657,10 @@ describe('renderRoute', () => {
           }),
         },
       ];
+      const csrf = postWithCsrf('/c');
       await renderRoute(routes, {
         url: '/c',
-        request: postRequest('/c'),
-        cookieHeader: CSRF_COOKIE_HEADER,
+        ...csrf,
       });
       expect(order).toEqual(['action', 'load']);
     });
@@ -658,10 +695,10 @@ describe('renderRoute', () => {
           ],
         },
       ];
+      const csrf = postWithCsrf('/app/edit');
       const { actionData } = await renderRoute(routes, {
         url: '/app/edit',
-        request: postRequest('/app/edit'),
-        cookieHeader: CSRF_COOKIE_HEADER,
+        ...csrf,
       });
       expect(childActions).toBe(1);
       expect(parentActions).toBe(0);
@@ -715,7 +752,7 @@ describe('renderRoute', () => {
             }),
           },
         ];
-        const cookieToken = 'a'.repeat(32);
+        const { cookieHeader } = csrfPair();
         const submittedToken = 'b'.repeat(32);
         const req = new Request('http://x/c', {
           method: 'POST',
@@ -728,7 +765,7 @@ describe('renderRoute', () => {
         const { status } = await renderRoute(routes, {
           url: '/c',
           request: req,
-          cookieHeader: `mikata_csrf=${cookieToken}`,
+          cookieHeader,
         });
         expect(status).toBe(403);
         expect(actionCalls).toBe(0);
@@ -842,3 +879,7 @@ describe('renderRoute', () => {
     expect(html).not.toContain('manifest 404');
   });
 });
+
+function cookieNameValuePair(setCookie: string): string {
+  return setCookie.split(';')[0]!;
+}

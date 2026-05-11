@@ -159,6 +159,7 @@ export function Link(props: LinkProps): Node {
           e.preventDefault();
           return;
         }
+        if (!isRoutableHref(href())) return;
         e.preventDefault();
         router.navigate(to, { replace });
       });
@@ -197,6 +198,12 @@ function applyBase(base: string, path: string): string {
 
 function isSafeHref(value: string): boolean {
   return SAFE_SCHEME.test(value);
+}
+
+function isRoutableHref(value: string): boolean {
+  if (value.startsWith('#') || value.startsWith('//')) return false;
+  if (/^[a-z][a-z0-9+.-]*:/i.test(value)) return false;
+  return true;
 }
 
 function isEventProp(key: string): boolean {

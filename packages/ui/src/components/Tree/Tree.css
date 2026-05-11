@@ -26,7 +26,7 @@
   background: var(--mkt-color-bg-hover);
 }
 
-.mkt-tree__node-label:focus-visible {
+.mkt-tree__node:focus-visible > .mkt-tree__node-label {
   outline: 2px solid var(--mkt-color-focus-ring);
   outline-offset: -2px;
 }

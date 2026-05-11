@@ -158,7 +158,7 @@ function generateDemoModule(
     : [`import { signal } from 'mikata';`];
   if (hasPersist) imports.push(`import { persistedSignal } from '@mikata/persist';`);
   if (hasUi) imports.push(`import { Button, Card, Group, Stack, Text, Title } from '@mikata/ui';`);
-  if (hasIcons) imports.push(`import { IconSparkles } from '@mikata/icons';`);
+  if (hasIcons) imports.push(`import { createIcon, Star } from '@mikata/icons';`);
   if (hasStore) imports.push(`import { createQuery } from 'mikata';`);
   if (hasForm) imports.push(`import { ContactForm } from '${opts.contactFormPath}';`);
   if (hasI18n) imports.push(`import { useI18n } from 'mikata';`);
@@ -185,7 +185,9 @@ function generateDemoModule(
   const introText = hasI18n ? `{t('intro' as any)}` : 'Edit src/App.tsx and save to reload.';
 
   const sections: string[] = [];
-  const iconBit = hasIcons ? `<IconSparkles size={28}${hasUi ? ' color="var(--mkt-color-primary)"' : ''} /> ` : '';
+  const iconBit = hasIcons
+    ? `{createIcon(Star, { size: 28${hasUi ? `, color: 'var(--mkt-color-primary)'` : ''} })} `
+    : '';
   sections.push(
     hasUi
       ? `      <Group>\n        ${iconBit}<Title order={1}>${titleText}</Title>\n      </Group>`

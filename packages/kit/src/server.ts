@@ -66,6 +66,9 @@ import { _getVerifyHydration } from './verify-flag';
 // runtime deps) but the setter is safe to re-export here.
 export { _setVerifyHydration } from './verify-flag';
 
+const METHOD_OVERRIDE_FIELD = '_method';
+const ALLOWED_METHOD_OVERRIDES = new Set(['PUT', 'PATCH', 'DELETE']);
+
 export interface RenderRouteOptions extends Omit<RouterOptions, 'routes' | 'history' | 'notFound'> {
   /**
    * Full request URL (including pathname + search + hash). Only the
@@ -303,8 +306,9 @@ async function renderRouteUnlocked(
       const action = actions.get(leaf.route.fullPath);
       if (action) {
         try {
+          const actionRequest = await applyFormMethodOverride(request!);
           const result = await action({
-            request: request!,
+            request: actionRequest,
             params: leaf.params,
             url,
             cookies,
@@ -454,6 +458,35 @@ async function tryReadResponseBody(res: Response): Promise<unknown> {
   } catch {
     return undefined;
   }
+}
+
+async function applyFormMethodOverride(request: Request): Promise<Request> {
+  if (request.method !== 'POST') return request;
+  const contentType = request.headers.get('content-type') ?? '';
+  const isForm =
+    contentType.includes('application/x-www-form-urlencoded') ||
+    contentType.includes('multipart/form-data');
+  if (!isForm) return request;
+
+  let override: FormDataEntryValue | null = null;
+  try {
+    override = (await request.clone().formData()).get(METHOD_OVERRIDE_FIELD);
+  } catch {
+    return request;
+  }
+  if (typeof override !== 'string') return request;
+
+  const method = override.toUpperCase();
+  if (!ALLOWED_METHOD_OVERRIDES.has(method)) return request;
+
+  const headers = new Headers(request.headers);
+  headers.delete('content-length');
+  return new Request(request.url, {
+    method,
+    headers,
+    body: await request.clone().arrayBuffer(),
+    signal: request.signal,
+  });
 }
 
 /**

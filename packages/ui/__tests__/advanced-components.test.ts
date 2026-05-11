@@ -476,6 +476,19 @@ describe('Tree', () => {
     (labels[labels.length - 1] as HTMLElement).click();
     expect(onSelect).toHaveBeenCalledWith('veggies', expect.objectContaining({ value: 'veggies' }));
   });
+
+  it('uses roving focus for arrow-key navigation', () => {
+    const el = Tree({ data: sample, defaultExpanded: ['fruits'] });
+    document.body.appendChild(el);
+    const items = el.querySelectorAll<HTMLElement>('[role="treeitem"]');
+    expect(items[0].tabIndex).toBe(0);
+    items[0].focus();
+    items[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+    expect(document.activeElement).toBe(items[1]);
+    expect(items[0].tabIndex).toBe(-1);
+    expect(items[1].tabIndex).toBe(0);
+    el.remove();
+  });
 });
 
 // ─── Stepper ─────────────────────────────────────────────
@@ -849,6 +862,18 @@ describe('FileInput', () => {
     const native = el.querySelector('input[type="file"]') as HTMLInputElement;
     expect(trigger.disabled).toBe(true);
     expect(native.disabled).toBe(true);
+  });
+
+  it('renders clear as a native button outside the trigger', () => {
+    const file = new File(['x'], 'a.txt');
+    const onChange = vi.fn();
+    const el = FileInput({ clearable: true, value: file, onChange });
+    const trigger = el.querySelector('.mkt-file-input__input')!;
+    const clear = el.querySelector('.mkt-file-input__clear') as HTMLButtonElement;
+    expect(clear.tagName).toBe('BUTTON');
+    expect(trigger.contains(clear)).toBe(false);
+    clear.click();
+    expect(onChange).toHaveBeenCalledWith(null);
   });
 });
 

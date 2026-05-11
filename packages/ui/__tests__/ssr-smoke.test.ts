@@ -113,6 +113,18 @@ describe('@mikata/ui SSR surface', () => {
       const { Container } = await import('../src/components/Container');
       return renderToString(() => Container({ children: document.createTextNode('c') as unknown as Node }));
     }],
+    ['Modal', async () => {
+      const { Modal } = await import('../src/components/Modal');
+      return renderToString(() =>
+        Modal({ children: document.createTextNode('m') as unknown as Node, onClose: () => {} }),
+      );
+    }],
+    ['Drawer', async () => {
+      const { Drawer } = await import('../src/components/Drawer');
+      return renderToString(() =>
+        Drawer({ children: document.createTextNode('d') as unknown as Node, onClose: () => {} }),
+      );
+    }],
 
     // Theme / provider — the one that broke in the docs session.
     ['ThemeProvider', async () => {

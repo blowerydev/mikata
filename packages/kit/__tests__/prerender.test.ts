@@ -162,6 +162,29 @@ describe('prerender — parametric routes via getStaticPaths', () => {
     ).toBe(true);
   });
 
+  it('rejects decoded path traversal from static params', async () => {
+    const outDir = await mkTempDir();
+    const routes: RouteDefinition[] = [
+      {
+        path: '/posts/:slug',
+        lazy: async () => ({
+          default: () => null,
+          getStaticPaths: () => [{ slug: '../outside' }],
+        }),
+      },
+    ];
+
+    const result = await prerender({
+      template: TEMPLATE,
+      outDir,
+      routes,
+      serverEntry: makeEntry(),
+    });
+
+    expect(result.errors.some((e) => e.url.includes('..%2Foutside'))).toBe(true);
+    expect(await exists(path.join(outDir, '..', 'outside', 'index.html'))).toBe(false);
+  });
+
   it('awaits an async getStaticPaths', async () => {
     const outDir = await mkTempDir();
     const routes: RouteDefinition[] = [

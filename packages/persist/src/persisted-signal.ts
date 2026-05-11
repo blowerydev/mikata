@@ -81,6 +81,7 @@ export function persistedSignal<T>(
   const deserialize = (options.deserialize ?? JSON.parse) as (raw: string) => T;
   const version = options.version;
   const migrate = options.migrate;
+  let localWriteGeneration = 0;
 
   const [get, setRaw] = signal<T>(initialValue);
 
@@ -92,7 +93,7 @@ export function persistedSignal<T>(
 
   function decode(raw: string): T {
     if (version === undefined) return deserialize(raw);
-    const parsed = JSON.parse(raw) as { v?: number; d?: unknown };
+    const parsed = deserialize(raw) as unknown as { v?: number; d?: unknown };
     if (parsed && typeof parsed === 'object' && 'v' in parsed && 'd' in parsed) {
       if (parsed.v === version) return parsed.d as T;
       return migrate ? migrate(parsed.d, parsed.v) : initialValue;
@@ -151,9 +152,11 @@ export function persistedSignal<T>(
   // --- Initial load -------------------------------------------------------
 
   const rawOrPromise = adapter.getItem(key);
+  const initialLoadGeneration = localWriteGeneration;
   const ready: Promise<void> =
     rawOrPromise && typeof (rawOrPromise as Promise<unknown>).then === 'function'
       ? (rawOrPromise as Promise<string | null>).then((raw) => {
+          if (localWriteGeneration !== initialLoadGeneration) return;
           if (raw !== null) applyRemote(safeDecode(raw));
         })
       : (() => {
@@ -167,6 +170,7 @@ export function persistedSignal<T>(
   const set = ((next: T | ((prev: T) => T)) => {
     setRaw(next as T);
     if (applyingRemote) return;
+    localWriteGeneration++;
     const current = get();
     const encoded = encode(current);
     const writeResult = adapter.setItem(key, encoded);
@@ -179,6 +183,7 @@ export function persistedSignal<T>(
   }) as WriteSignal<T>;
 
   function clear(): void {
+    localWriteGeneration++;
     const removeResult = adapter.removeItem(key);
     if (removeResult && typeof (removeResult as Promise<unknown>).then === 'function') {
       (removeResult as Promise<unknown>).catch(() => { /* ignore */ });

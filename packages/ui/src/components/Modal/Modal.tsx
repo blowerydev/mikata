@@ -1,6 +1,6 @@
 import { createIcon, Close } from '../../internal/icons';
 import { renderEffect } from '@mikata/reactivity';
-import { _mergeProps, createRef, onCleanup } from '@mikata/runtime';
+import { _mergeProps, createRef, isSSR, onCleanup } from '@mikata/runtime';
 import { mergeClasses } from '../../utils/class-merge';
 import { onFocusTrap } from '../../utils/on-focus-trap';
 import { onScrollLock } from '../../utils/on-scroll-lock';
@@ -26,6 +26,10 @@ export function Modal(userProps: ModalProps): Comment {
   const contentRef = createRef<HTMLElement>();
   const id = uniqueId('modal');
   const labels = useUILabels();
+
+  if (isSSR() || !document.body) {
+    return document.createComment('mkt-modal');
+  }
 
   // Portaled component: the visible tree (overlay + content) is
   // appended to document.body. Only the returned Comment lives in the

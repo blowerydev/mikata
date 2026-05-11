@@ -649,6 +649,20 @@ describe('Autocomplete keyed reconciliation', () => {
     expect(dropdown.querySelectorAll('li').length).toBe(1);
     expect(dropdown.querySelector('li')?.textContent).toBe('apple');
   });
+
+  it('updates aria-activedescendant while arrowing options', () => {
+    const el = Autocomplete({ data: ['apple', 'banana'] });
+    document.body.appendChild(el);
+    const input = el.querySelector('input')!;
+
+    input.dispatchEvent(new Event('focus'));
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+
+    const activeId = input.getAttribute('aria-activedescendant');
+    expect(activeId).toBeTruthy();
+    expect(document.getElementById(activeId!)?.textContent).toBe('apple');
+    el.remove();
+  });
 });
 
 describe('MultiSelect keyed reconciliation', () => {
@@ -694,5 +708,24 @@ describe('MultiSelect keyed reconciliation', () => {
     clear.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
     expect(el.querySelectorAll('.mkt-multi-select__pill').length).toBe(1);
     expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('updates aria-activedescendant while arrowing options', () => {
+    const el = MultiSelect({
+      data: [
+        { value: 'a', label: 'Apple' },
+        { value: 'b', label: 'Banana' },
+      ],
+    });
+    document.body.appendChild(el);
+    const input = el.querySelector('input')!;
+
+    input.dispatchEvent(new Event('focus'));
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+
+    const activeId = input.getAttribute('aria-activedescendant');
+    expect(activeId).toBeTruthy();
+    expect(document.getElementById(activeId!)?.textContent).toBe('Apple');
+    el.remove();
   });
 });

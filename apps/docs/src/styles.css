@@ -88,6 +88,23 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+.skip-link {
+  position: fixed;
+  top: 0.5rem;
+  left: 0.5rem;
+  z-index: 1000;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--mkt-radius-sm);
+  background: var(--mkt-color-primary-6);
+  color: var(--mkt-color-text-inverse);
+  transform: translateY(-150%);
+  transition: transform 120ms ease;
+}
+
+.skip-link:focus-visible {
+  transform: translateY(0);
+}
+
 * {
   box-sizing: border-box;
 }

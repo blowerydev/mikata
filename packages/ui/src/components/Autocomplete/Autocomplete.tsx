@@ -35,6 +35,7 @@ export function Autocomplete(userProps: AutocompleteProps): HTMLDivElement {
   const close = () => {
     dropdownEl.hidden = true;
     inputEl.setAttribute('aria-expanded', 'false');
+    inputEl.removeAttribute('aria-activedescendant');
     activeIdx = -1;
   };
 
@@ -76,6 +77,8 @@ export function Autocomplete(userProps: AutocompleteProps): HTMLDivElement {
     }
 
     if (loading && !current.length) {
+      activeIdx = -1;
+      inputEl.removeAttribute('aria-activedescendant');
       for (const li of liByOption.values()) li.remove();
       liByOption.clear();
       const l = ensureLoadingLi();
@@ -120,6 +123,11 @@ export function Autocomplete(userProps: AutocompleteProps): HTMLDivElement {
 
     dropdownEl.hidden = false;
     inputEl.setAttribute('aria-expanded', 'true');
+    if (activeIdx >= 0 && current[activeIdx]) {
+      inputEl.setAttribute('aria-activedescendant', `${id}-opt-${activeIdx}`);
+    } else {
+      inputEl.removeAttribute('aria-activedescendant');
+    }
   };
 
   const asyncController = fetcher

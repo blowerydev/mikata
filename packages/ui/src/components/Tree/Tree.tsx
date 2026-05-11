@@ -35,6 +35,7 @@ export function Tree(userProps: TreeProps): HTMLElement {
       const li = document.createElement('li');
       li.className = mergeClasses('mkt-tree__node', props.classNames?.node);
       li.setAttribute('role', 'treeitem');
+      li.tabIndex = -1;
       const hasChildren = !!(node.children && node.children.length);
       if (hasChildren) li.setAttribute('aria-expanded', expanded.has(node.value) ? 'true' : 'false');
       if (props.selected === node.value) li.dataset.selected = '';
@@ -42,7 +43,6 @@ export function Tree(userProps: TreeProps): HTMLElement {
 
       const label = document.createElement('div');
       label.className = mergeClasses('mkt-tree__node-label', props.classNames?.nodeLabel);
-      label.setAttribute('tabindex', '0');
 
       const expander = document.createElement('span');
       expander.className = mergeClasses('mkt-tree__expander', props.classNames?.expander);
@@ -73,7 +73,7 @@ export function Tree(userProps: TreeProps): HTMLElement {
         childrenEl.style.display = expanded.has(node.value) ? '' : 'none';
       };
 
-      attachHandlers(label, node, hasChildren, toggle);
+      attachHandlers(li, label, node, hasChildren, toggle);
 
       li.appendChild(label);
       if (hasChildren) {
@@ -83,16 +83,36 @@ export function Tree(userProps: TreeProps): HTMLElement {
       return li;
     }
 
-    function attachHandlers(label: HTMLElement, node: TreeNode, hasChildren: boolean, toggle: () => void) {
+    function attachHandlers(
+      item: HTMLElement,
+      label: HTMLElement,
+      node: TreeNode,
+      hasChildren: boolean,
+      toggle: () => void,
+    ) {
       label.addEventListener('click', () => {
+        focusItem(item);
         if (hasChildren) toggle();
         props.onSelect?.(node.value, node);
       });
-      label.addEventListener('keydown', (e) => {
+      item.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
           if (hasChildren) toggle();
           props.onSelect?.(node.value, node);
+        } else if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          focusSibling(item, 1);
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          focusSibling(item, -1);
+        } else if (e.key === 'Home') {
+          e.preventDefault();
+          focusItem(visibleItems()[0]);
+        } else if (e.key === 'End') {
+          e.preventDefault();
+          const items = visibleItems();
+          focusItem(items[items.length - 1]);
         } else {
           const isRtl = direction() === 'rtl';
           const expandKey = isRtl ? 'ArrowLeft' : 'ArrowRight';
@@ -100,9 +120,11 @@ export function Tree(userProps: TreeProps): HTMLElement {
           if (e.key === expandKey && hasChildren && !expanded.has(node.value)) {
             e.preventDefault();
             toggle();
+            syncTabStop();
           } else if (e.key === collapseKey && hasChildren && expanded.has(node.value)) {
             e.preventDefault();
             toggle();
+            syncTabStop();
           }
         }
       });
@@ -138,9 +160,45 @@ export function Tree(userProps: TreeProps): HTMLElement {
           }
           if (childrenEl) childrenEl.style.display = expanded.has(node.value) ? '' : 'none';
         };
-        attachHandlers(label, node, hasChildren, toggle);
+        li.tabIndex = -1;
+        attachHandlers(li, label, node, hasChildren, toggle);
       });
     }
+
+    function visibleItems(): HTMLElement[] {
+      return Array.from(root.querySelectorAll<HTMLElement>('li.mkt-tree__node')).filter((item) => {
+        let cur: HTMLElement | null = item;
+        while (cur && cur !== root) {
+          if (cur.style.display === 'none') return false;
+          cur = cur.parentElement;
+        }
+        return true;
+      });
+    }
+
+    function syncTabStop(): void {
+      const items = visibleItems();
+      if (!items.length) return;
+      const current = items.includes(document.activeElement as HTMLElement)
+        ? document.activeElement as HTMLElement
+        : items.find((item) => item.dataset.selected !== undefined) ?? items[0];
+      for (const item of items) item.tabIndex = item === current ? 0 : -1;
+    }
+
+    function focusItem(item: HTMLElement | undefined): void {
+      if (!item) return;
+      for (const other of visibleItems()) other.tabIndex = other === item ? 0 : -1;
+      item.focus();
+    }
+
+    function focusSibling(item: HTMLElement, delta: number): void {
+      const items = visibleItems();
+      const index = items.indexOf(item);
+      if (index < 0) return;
+      focusItem(items[(index + delta + items.length) % items.length]);
+    }
+
+    syncTabStop();
 
     const ref = props.ref;
     if (ref) {

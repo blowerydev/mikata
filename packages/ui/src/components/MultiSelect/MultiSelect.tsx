@@ -83,6 +83,7 @@ export function MultiSelect(userProps: MultiSelectProps): HTMLDivElement {
   const close = () => {
     dropdownEl.hidden = true;
     inputEl.setAttribute('aria-expanded', 'false');
+    inputEl.removeAttribute('aria-activedescendant');
     activeIdx = -1;
   };
 
@@ -109,6 +110,8 @@ export function MultiSelect(userProps: MultiSelectProps): HTMLDivElement {
     }
 
     if (loading) {
+      activeIdx = -1;
+      inputEl.removeAttribute('aria-activedescendant');
       for (const li of liByValue.values()) li.remove();
       liByValue.clear();
       if (emptyLi && emptyLi.parentNode === dropdownEl) emptyLi.remove();
@@ -127,6 +130,8 @@ export function MultiSelect(userProps: MultiSelectProps): HTMLDivElement {
     if (loadingLi && loadingLi.parentNode === dropdownEl) loadingLi.remove();
 
     if (!currentFiltered.length) {
+      activeIdx = -1;
+      inputEl.removeAttribute('aria-activedescendant');
       for (const li of liByValue.values()) li.remove();
       liByValue.clear();
       if (!emptyLi) {
@@ -160,6 +165,7 @@ export function MultiSelect(userProps: MultiSelectProps): HTMLDivElement {
         liByValue.set(opt.value, li);
       }
       const isSel = selected.has(opt.value);
+      li.id = `${id}-opt-${i}`;
       li.setAttribute('aria-selected', isSel ? 'true' : 'false');
       if (isSel) li.dataset.selected = '';
       else delete li.dataset.selected;
@@ -179,6 +185,11 @@ export function MultiSelect(userProps: MultiSelectProps): HTMLDivElement {
 
     dropdownEl.hidden = false;
     inputEl.setAttribute('aria-expanded', 'true');
+    if (activeIdx >= 0 && currentFiltered[activeIdx]) {
+      inputEl.setAttribute('aria-activedescendant', `${id}-opt-${activeIdx}`);
+    } else {
+      inputEl.removeAttribute('aria-activedescendant');
+    }
   };
 
   const asyncController = fetcher

@@ -115,6 +115,7 @@ export function provideFormContext(value: FormContextValue): void {
  * adapters can branch on it.
  */
 export const FORM_SUBMIT_HEADER = 'X-Mikata-Form';
+const METHOD_OVERRIDE_FIELD = '_method';
 
 export function Form(props: FormProps): HTMLFormElement {
   // Pull the kit context at render time — the submit listener fires
@@ -141,8 +142,11 @@ export function Form(props: FormProps): HTMLFormElement {
   // Use setAttribute rather than assigning the DOM properties so these
   // show up in the SSR serialised markup — the shim only serializes
   // attributes, not the `method` / `enctype` getters.
-  form.setAttribute('method', method);
+  form.setAttribute('method', 'post');
   form.setAttribute('enctype', encType);
+  if (method !== 'post') {
+    form.dataset.mikataMethod = method;
+  }
   if (props.action) form.setAttribute('action', props.action);
 
   // Forward any extra attributes (e.g. class, id, aria-*). Skip the
@@ -179,6 +183,14 @@ export function Form(props: FormProps): HTMLFormElement {
     form.appendChild(hidden);
   }
 
+  if (method !== 'post') {
+    const hidden = document.createElement('input');
+    hidden.setAttribute('type', 'hidden');
+    hidden.setAttribute('name', METHOD_OVERRIDE_FIELD);
+    hidden.setAttribute('value', method);
+    form.appendChild(hidden);
+  }
+
   appendChildren(form, props.children);
 
   // Only install the enhancement hook when a live `window.fetch` is
@@ -212,7 +224,7 @@ async function enhancedSubmit(
   event.preventDefault();
 
   const { router, actionStore, loaderStore } = ctx;
-  const method = (form.method || 'post').toUpperCase();
+  const method = (form.dataset.mikataMethod || form.method || 'post').toUpperCase();
   const actionUrl = form.getAttribute('action') || router.route().path;
 
   // Build the body from the form itself so the encoding matches what

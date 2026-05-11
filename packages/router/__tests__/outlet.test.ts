@@ -388,6 +388,17 @@ describe('Link event props', () => {
     warn.mockRestore();
   });
 
+  it('lets external safe-scheme links use native browser navigation', async () => {
+    const a = renderLink({ to: 'https://example.com' });
+    const event = new MouseEvent('click', { button: 0, bubbles: true, cancelable: true });
+
+    a.dispatchEvent(event);
+    await Promise.resolve();
+
+    expect(event.defaultPrevented).toBe(false);
+    expect(router.path()).toBe('/');
+  });
+
   it('hydrates the visible anchor so clicks use client routing', async () => {
     container.innerHTML = '<a href="/about">About</a>';
     const ssrAnchor = container.querySelector('a')!;

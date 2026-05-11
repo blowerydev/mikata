@@ -26,11 +26,15 @@ export function FileInput(userProps: FileInputProps = {}): HTMLDivElement {
 
   let fileInputEl: HTMLInputElement | null = null;
   let triggerEl: HTMLButtonElement | null = null;
+  let wrapperEl: HTMLDivElement | null = null;
+  let clearEl: HTMLButtonElement | null = null;
 
   const renderValue = (files: File | File[] | null | undefined) => {
     if (!triggerEl) return;
     const trigger = triggerEl;
     trigger.replaceChildren();
+    clearEl?.remove();
+    clearEl = null;
 
     if (leftSection) {
       const section = document.createElement('span');
@@ -53,11 +57,10 @@ export function FileInput(userProps: FileInputProps = {}): HTMLDivElement {
     trigger.appendChild(text);
 
     if (props.clearable && files && !(Array.isArray(files) && files.length === 0)) {
-      const clear = document.createElement('span');
+      const clear = document.createElement('button');
+      clear.type = 'button';
       clear.className = 'mkt-file-input__clear';
-      clear.setAttribute('role', 'button');
       clear.setAttribute('aria-label', 'Clear');
-      clear.tabIndex = 0;
       clear.appendChild(createIcon(Close, { size: 12, strokeWidth: 1.5 }));
       clear.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -65,13 +68,15 @@ export function FileInput(userProps: FileInputProps = {}): HTMLDivElement {
         renderValue(null);
         props.onChange?.(null);
       });
-      trigger.appendChild(clear);
+      clearEl = clear;
+      wrapperEl?.appendChild(clear);
     }
   };
 
   let current: File | File[] | null | undefined = props.value;
 
   const buildChildren = () => adoptElement<HTMLDivElement>('div', (wrapper) => {
+    wrapperEl = wrapper;
     renderEffect(() => {
       wrapper.className = mergeClasses(
         'mkt-file-input',

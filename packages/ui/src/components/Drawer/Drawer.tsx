@@ -1,6 +1,6 @@
 import { createIcon, Close } from '../../internal/icons';
 import { renderEffect } from '@mikata/reactivity';
-import { _mergeProps, createRef, onCleanup } from '@mikata/runtime';
+import { _mergeProps, createRef, isSSR, onCleanup } from '@mikata/runtime';
 import { mergeClasses } from '../../utils/class-merge';
 import { onFocusTrap } from '../../utils/on-focus-trap';
 import { onScrollLock } from '../../utils/on-scroll-lock';
@@ -28,6 +28,10 @@ export function Drawer(userProps: DrawerProps): Comment {
   const contentRef = createRef<HTMLElement>();
   const id = uniqueId('drawer');
   const labels = useUILabels();
+
+  if (isSSR() || !document.body) {
+    return document.createComment('mkt-drawer');
+  }
 
   // Portaled component — same pattern as Modal. The visible overlay +
   // panel live under document.body, and the component returns a
