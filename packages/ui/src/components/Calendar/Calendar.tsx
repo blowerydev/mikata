@@ -84,6 +84,22 @@ export function Calendar(userProps: CalendarProps = {}): HTMLElement {
     onDateChange?.(next);
   }
 
+  effect(() => {
+    if (props.value !== undefined) setSelected(props.value ?? null);
+  });
+
+  effect(() => {
+    if (props.multipleValue !== undefined) setMulti(props.multipleValue);
+  });
+
+  effect(() => {
+    if (props.rangeValue !== undefined) setRange(props.rangeValue);
+  });
+
+  effect(() => {
+    if (props.date !== undefined) setViewDate(startOfMonth(props.date));
+  });
+
   const isSelectedCell = (d: Date): boolean => {
     if (type === 'default') {
       const s = selected();
@@ -216,6 +232,10 @@ export function Calendar(userProps: CalendarProps = {}): HTMLElement {
         dayButtons.length = 0;
 
         for (const row of matrix) {
+          const rowEl = document.createElement('div');
+          rowEl.className = 'mkt-calendar__week';
+          rowEl.setAttribute('role', 'row');
+          grid.appendChild(rowEl);
           for (const day of row) {
             const inMonth = isSameMonth(day, viewMonth);
             if (!inMonth && hideOutsideDates) {
@@ -223,12 +243,13 @@ export function Calendar(userProps: CalendarProps = {}): HTMLElement {
               placeholder.className = 'mkt-calendar__day';
               placeholder.setAttribute('aria-hidden', 'true');
               placeholder.style.visibility = 'hidden';
-              grid.appendChild(placeholder);
+              rowEl.appendChild(placeholder);
               continue;
             }
 
             const btn = document.createElement('button');
             btn.type = 'button';
+            btn.setAttribute('role', 'gridcell');
             btn.className = mergeClasses('mkt-calendar__day', props.classNames?.day);
             btn.textContent = String(day.getDate());
             btn.dataset.date = `${day.getFullYear()}-${day.getMonth()}-${day.getDate()}`;
@@ -238,7 +259,7 @@ export function Calendar(userProps: CalendarProps = {}): HTMLElement {
             if (day.getDay() === 0 || day.getDay() === 6) btn.dataset.weekend = '';
             if (dateDisabled(day)) btn.disabled = true;
 
-            grid.appendChild(btn);
+            rowEl.appendChild(btn);
             dayButtons.push({ day, btn });
           }
         }
@@ -253,7 +274,7 @@ export function Calendar(userProps: CalendarProps = {}): HTMLElement {
             btn.setAttribute('aria-selected', 'true');
           } else {
             delete btn.dataset.selected;
-            btn.removeAttribute('aria-selected');
+            btn.setAttribute('aria-selected', 'false');
           }
           if (isInSelectedRange(day)) btn.dataset.inRange = '';
           else delete btn.dataset.inRange;

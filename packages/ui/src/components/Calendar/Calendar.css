@@ -71,6 +71,10 @@
   gap: 2px;
 }
 
+.mkt-calendar__week {
+  display: contents;
+}
+
 .mkt-calendar__weekday {
   display: inline-flex;
   align-items: center;

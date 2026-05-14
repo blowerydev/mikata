@@ -66,6 +66,14 @@ export function DatePicker(userProps: DatePickerProps = {}): HTMLElement {
     onLevelChange?.(next);
   }
 
+  effect(() => {
+    if (props.value !== undefined) setSelected(props.value);
+  });
+
+  effect(() => {
+    if (props.date !== undefined) setViewDate(startOfMonth(props.date));
+  });
+
   function canClimb(from: Level): Level | null {
     const order: Level[] = ['day', 'month', 'year'];
     const cap = order.indexOf(maxLevel);
@@ -146,17 +154,23 @@ export function DatePicker(userProps: DatePickerProps = {}): HTMLElement {
     const viewMonth = viewDate();
 
     for (const row of matrix) {
+      const rowEl = document.createElement('div');
+      rowEl.className = 'mkt-calendar__week';
+      rowEl.setAttribute('role', 'row');
+      bodyEl.appendChild(rowEl);
       for (const day of row) {
         const inMonth = isSameMonth(day, viewMonth);
         if (!inMonth && hideOutsideDates) {
           const ph = document.createElement('span');
           ph.className = 'mkt-calendar__day';
+          ph.setAttribute('aria-hidden', 'true');
           ph.style.visibility = 'hidden';
-          bodyEl.appendChild(ph);
+          rowEl.appendChild(ph);
           continue;
         }
         const btn = document.createElement('button');
         btn.type = 'button';
+        btn.setAttribute('role', 'gridcell');
         btn.className = mergeClasses('mkt-calendar__day', classNamesNow?.day);
         btn.textContent = String(day.getDate());
         btn.dataset.date = `${day.getFullYear()}-${day.getMonth()}-${day.getDate()}`;
@@ -164,7 +178,7 @@ export function DatePicker(userProps: DatePickerProps = {}): HTMLElement {
         if (isSameDay(day, today)) btn.dataset.today = '';
         if (day.getDay() === 0 || day.getDay() === 6) btn.dataset.weekend = '';
         if (dateDisabled(day)) btn.disabled = true;
-        bodyEl.appendChild(btn);
+        rowEl.appendChild(btn);
         dayButtons.push({ day, btn });
       }
     }
@@ -179,7 +193,7 @@ export function DatePicker(userProps: DatePickerProps = {}): HTMLElement {
         btn.setAttribute('aria-selected', 'true');
       } else {
         delete btn.dataset.selected;
-        btn.removeAttribute('aria-selected');
+        btn.setAttribute('aria-selected', 'false');
       }
       if (isInSelectedRange(day)) btn.dataset.inRange = '';
       else delete btn.dataset.inRange;
@@ -200,8 +214,16 @@ export function DatePicker(userProps: DatePickerProps = {}): HTMLElement {
     const minDate = props.minDate;
     const maxDate = props.maxDate;
     for (let m = 0; m < 12; m++) {
+      if (m % 3 === 0) {
+        const rowEl = document.createElement('div');
+        rowEl.className = 'mkt-month-picker__row';
+        rowEl.setAttribute('role', 'row');
+        bodyEl.appendChild(rowEl);
+      }
+      const rowEl = bodyEl.lastElementChild as HTMLDivElement;
       const btn = document.createElement('button');
       btn.type = 'button';
+      btn.setAttribute('role', 'gridcell');
       btn.className = mergeClasses('mkt-month-picker__month');
       btn.textContent = labels[m];
       btn.dataset.month = `${y}-${m}`;
@@ -210,7 +232,7 @@ export function DatePicker(userProps: DatePickerProps = {}): HTMLElement {
       if ((minDate && isBefore(monthEnd, minDate)) || (maxDate && isAfter(monthStart, maxDate))) {
         btn.disabled = true;
       }
-      bodyEl.appendChild(btn);
+      rowEl.appendChild(btn);
     }
   }
 
@@ -221,9 +243,17 @@ export function DatePicker(userProps: DatePickerProps = {}): HTMLElement {
     const minDate = props.minDate;
     const maxDate = props.maxDate;
     for (let offset = -1; offset <= 10; offset++) {
+      if ((offset + 1) % 3 === 0) {
+        const rowEl = document.createElement('div');
+        rowEl.className = 'mkt-year-picker__row';
+        rowEl.setAttribute('role', 'row');
+        bodyEl.appendChild(rowEl);
+      }
+      const rowEl = bodyEl.lastElementChild as HTMLDivElement;
       const y = start + offset;
       const btn = document.createElement('button');
       btn.type = 'button';
+      btn.setAttribute('role', 'gridcell');
       btn.className = mergeClasses('mkt-year-picker__year');
       btn.textContent = String(y);
       btn.dataset.year = String(y);
@@ -231,7 +261,7 @@ export function DatePicker(userProps: DatePickerProps = {}): HTMLElement {
       if ((minDate && isBefore(new Date(y, 11, 31), minDate)) || (maxDate && isAfter(new Date(y, 0, 1), maxDate))) {
         btn.disabled = true;
       }
-      bodyEl.appendChild(btn);
+      rowEl.appendChild(btn);
     }
   }
 

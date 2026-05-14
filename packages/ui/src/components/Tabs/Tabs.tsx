@@ -24,7 +24,8 @@ export function Tabs(userProps: TabsProps): HTMLElement {
   const tabButtons: HTMLButtonElement[] = [];
   const panels: HTMLElement[] = [];
 
-  function activate(index: number) {
+  function activate(index: number, emit = true) {
+    if (!items[index]) return;
     tabButtons.forEach((btn, i) => {
       const active = i === index;
       btn.setAttribute('aria-selected', String(active));
@@ -36,7 +37,7 @@ export function Tabs(userProps: TabsProps): HTMLElement {
       panel.hidden = i !== index;
     });
     activeValue = items[index].value;
-    props.onChange?.(activeValue);
+    if (emit) props.onChange?.(activeValue);
   }
 
   return adoptElement<HTMLElement>('div', (root) => {
@@ -167,6 +168,13 @@ export function Tabs(userProps: TabsProps): HTMLElement {
           panels.push(panel);
         });
       });
+    });
+
+    renderEffect(() => {
+      const controlled = props.value;
+      if (controlled === undefined || controlled === activeValue) return;
+      const nextIndex = items.findIndex((item) => item.value === controlled);
+      if (nextIndex >= 0) activate(nextIndex, false);
     });
 
     const ref = props.ref;

@@ -118,6 +118,27 @@ describe('Tabs', () => {
     expect(tabs[0].getAttribute('aria-controls')).toBe(panels[0].id);
     expect(panels[0].getAttribute('aria-labelledby')).toBe(tabs[0].id);
   });
+
+  it('syncs controlled value changes without firing onChange', () => {
+    const [value, setValue] = signal('a');
+    const onChange = vi.fn();
+    const el = Tabs({
+      items,
+      get value() { return value(); },
+      onChange,
+    });
+    const tabs = el.querySelectorAll('[role="tab"]');
+    const panels = el.querySelectorAll('[role="tabpanel"]');
+
+    setValue('b');
+    flushSync();
+
+    expect(tabs[0].getAttribute('aria-selected')).toBe('false');
+    expect(tabs[1].getAttribute('aria-selected')).toBe('true');
+    expect((panels[0] as HTMLElement).hidden).toBe(true);
+    expect((panels[1] as HTMLElement).hidden).toBe(false);
+    expect(onChange).not.toHaveBeenCalled();
+  });
 });
 
 // ── Menu ──────────────────────────────────────────
@@ -663,6 +684,34 @@ describe('Autocomplete keyed reconciliation', () => {
     expect(document.getElementById(activeId!)?.textContent).toBe('apple');
     el.remove();
   });
+
+  it('links description and error text to the combobox', () => {
+    const el = Autocomplete({
+      data: ['apple'],
+      label: 'Fruit',
+      description: 'Pick one',
+      error: 'Required',
+    });
+    const input = el.querySelector('input')!;
+    const describedBy = input.getAttribute('aria-describedby')!;
+
+    expect(describedBy).toContain('-description');
+    expect(describedBy).toContain('-error');
+  });
+
+  it('syncs controlled input value changes', () => {
+    const [value, setValue] = signal('apple');
+    const el = Autocomplete({
+      data: ['apple', 'banana'],
+      get value() { return value(); },
+    });
+    const input = el.querySelector('input')!;
+
+    expect(input.value).toBe('apple');
+    setValue('banana');
+    flushSync();
+    expect(input.value).toBe('banana');
+  });
 });
 
 describe('MultiSelect keyed reconciliation', () => {
@@ -727,5 +776,41 @@ describe('MultiSelect keyed reconciliation', () => {
     expect(activeId).toBeTruthy();
     expect(document.getElementById(activeId!)?.textContent).toBe('Apple');
     el.remove();
+  });
+
+  it('links description and error text to the input', () => {
+    const el = MultiSelect({
+      data: [{ value: 'a', label: 'Apple' }],
+      label: 'Fruit',
+      description: 'Pick many',
+      error: 'Required',
+    });
+    const input = el.querySelector('input')!;
+    const describedBy = input.getAttribute('aria-describedby')!;
+
+    expect(describedBy).toContain('-description');
+    expect(describedBy).toContain('-error');
+  });
+
+  it('syncs controlled selected values without firing onChange', () => {
+    const [value, setValue] = signal<string[]>(['a']);
+    const onChange = vi.fn();
+    const el = MultiSelect({
+      data: [
+        { value: 'a', label: 'Apple' },
+        { value: 'b', label: 'Banana' },
+      ],
+      get value() { return value(); },
+      onChange,
+    });
+
+    expect(el.querySelector('.mkt-multi-select__pill')?.textContent).toContain('Apple');
+    setValue(['b']);
+    flushSync();
+
+    const pills = el.querySelectorAll('.mkt-multi-select__pill');
+    expect(pills.length).toBe(1);
+    expect(pills[0].textContent).toContain('Banana');
+    expect(onChange).not.toHaveBeenCalled();
   });
 });

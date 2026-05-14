@@ -4,6 +4,10 @@
   gap: var(--mkt-space-1);
 }
 
+.mkt-year-picker__row {
+  display: contents;
+}
+
 .mkt-year-picker__year {
   display: inline-flex;
   align-items: center;

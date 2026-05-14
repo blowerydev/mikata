@@ -1,6 +1,7 @@
 import { getCurrentScope, onCleanup, renderEffect } from '@mikata/reactivity';
 import { _mergeProps, adoptElement } from '@mikata/runtime';
 import { mergeClasses } from '../../utils/class-merge';
+import { clampFloatingElement } from '../../utils/clamp-floating';
 import { uniqueId } from '../../utils/unique-id';
 import type { TooltipProps } from './Tooltip.types';
 import './Tooltip.css';
@@ -15,6 +16,7 @@ export function Tooltip(userProps: TooltipProps): HTMLSpanElement {
   const tooltipId = uniqueId('tooltip');
   let timer: ReturnType<typeof setTimeout> | null = null;
   let tooltipEl: HTMLDivElement | null = null;
+  let disposeClamp: (() => void) | null = null;
 
   return adoptElement<HTMLSpanElement>('span', (wrapper) => {
     renderEffect(() => {
@@ -35,6 +37,7 @@ export function Tooltip(userProps: TooltipProps): HTMLSpanElement {
         tooltipEl.textContent = props.label;
 
         wrapper.appendChild(tooltipEl);
+        disposeClamp = clampFloatingElement(tooltipEl);
         if (children instanceof HTMLElement) {
           children.setAttribute('aria-describedby', tooltipId);
         }
@@ -47,6 +50,8 @@ export function Tooltip(userProps: TooltipProps): HTMLSpanElement {
         timer = null;
       }
       if (tooltipEl) {
+        disposeClamp?.();
+        disposeClamp = null;
         tooltipEl.remove();
         tooltipEl = null;
         if (children instanceof HTMLElement) {

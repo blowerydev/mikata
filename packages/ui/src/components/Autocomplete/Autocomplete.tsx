@@ -180,7 +180,18 @@ export function Autocomplete(userProps: AutocompleteProps): HTMLDivElement {
           if (props.error) input.setAttribute('aria-invalid', 'true');
           else input.removeAttribute('aria-invalid');
         });
+        renderEffect(() => {
+          const parts: string[] = [];
+          if (props.description) parts.push(`${id}-description`);
+          if (props.error) parts.push(`${id}-error`);
+          if (parts.length) input.setAttribute('aria-describedby', parts.join(' '));
+          else input.removeAttribute('aria-describedby');
+        });
         input.value = props.value ?? props.defaultValue ?? '';
+        renderEffect(() => {
+          const controlled = props.value;
+          if (controlled !== undefined && input.value !== controlled) input.value = controlled;
+        });
 
         input.addEventListener('input', () => {
           props.onChange?.(input.value);

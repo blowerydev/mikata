@@ -20,6 +20,14 @@ export function RangeSlider(userProps: RangeSliderProps = {}): HTMLElement {
   v1 = clamp(v1, min, max);
   if (v1 < v0) [v0, v1] = [v1, v0];
 
+  const normalizeValues = (value: [number, number]): [number, number] => {
+    let [a, b] = value;
+    a = clamp(a, min, max);
+    b = clamp(b, min, max);
+    if (b < a) [a, b] = [b, a];
+    return [a, b];
+  };
+
   const pct = (n: number) => ((n - min) / (max - min)) * 100;
   const snap = (n: number) => {
     const snapped = Math.round((n - min) / step) * step + min;
@@ -141,6 +149,15 @@ export function RangeSlider(userProps: RangeSliderProps = {}): HTMLElement {
     renderEffect(() => {
       if (props.disabled) root.dataset.disabled = '';
       else delete root.dataset.disabled;
+    });
+    renderEffect(() => {
+      const controlled = props.value;
+      if (controlled === undefined) return;
+      const [next0, next1] = normalizeValues(controlled);
+      if (next0 === v0 && next1 === v1) return;
+      v0 = next0;
+      v1 = next1;
+      paint();
     });
 
     if (label) {

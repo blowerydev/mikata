@@ -96,6 +96,21 @@ function createPickerInputShell<TValue>({
         renderEffect(() => { trigger.dataset.size = props.size ?? 'md'; });
         renderEffect(() => { trigger.disabled = !!props.disabled; });
         trigger.setAttribute('aria-haspopup', 'dialog');
+        renderEffect(() => {
+          if (props.required) trigger.setAttribute('aria-required', 'true');
+          else trigger.removeAttribute('aria-required');
+        });
+        renderEffect(() => {
+          if (props.error) trigger.setAttribute('aria-invalid', 'true');
+          else trigger.removeAttribute('aria-invalid');
+        });
+        renderEffect(() => {
+          const parts: string[] = [];
+          if (props.description) parts.push(`${id}-description`);
+          if (props.error) parts.push(`${id}-error`);
+          if (parts.length) trigger.setAttribute('aria-describedby', parts.join(' '));
+          else trigger.removeAttribute('aria-describedby');
+        });
         trigger.addEventListener('click', () => { if (!props.disabled) setOpen(!open()); });
 
         effect(() => {

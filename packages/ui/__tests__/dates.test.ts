@@ -121,6 +121,40 @@ describe('Calendar', () => {
     });
   });
 
+  it('renders day cells inside grid rows with selectable gridcell semantics', () => {
+    createScope(() => {
+      const el = Calendar({
+        defaultDate: new Date(2026, 3, 1),
+        value: new Date(2026, 3, 15),
+      });
+      document.body.appendChild(el);
+      const grid = el.querySelector('[role="grid"]')!;
+      const rows = grid.querySelectorAll('[role="row"]');
+      const cells = grid.querySelectorAll('[role="gridcell"]');
+      const selected = grid.querySelector('[aria-selected="true"]') as HTMLElement;
+
+      expect(rows.length).toBe(6);
+      expect(cells.length).toBe(42);
+      expect(selected.textContent).toBe('15');
+    });
+  });
+
+  it('syncs controlled selected date changes', () => {
+    createScope(() => {
+      const [value, setValue] = signal<Date | null>(new Date(2026, 3, 10));
+      const el = Calendar({
+        defaultDate: new Date(2026, 3, 1),
+        get value() { return value(); },
+      });
+      document.body.appendChild(el);
+
+      expect((el.querySelector('[aria-selected="true"]') as HTMLElement).textContent).toBe('10');
+      setValue(new Date(2026, 3, 20));
+      flushSync();
+      expect((el.querySelector('[aria-selected="true"]') as HTMLElement).textContent).toBe('20');
+    });
+  });
+
   it('fires onChange with selected date', () => {
     createScope(() => {
       let picked: Date | null = null;
@@ -193,6 +227,43 @@ describe('DatePicker', () => {
       expect(range).not.toBeNull();
       expect(range![0]).toBeInstanceOf(Date);
       expect(range![1]).toBeInstanceOf(Date);
+    });
+  });
+
+  it('renders day/month/year views as grids with row children', () => {
+    createScope(() => {
+      const el = DatePicker({ defaultDate: new Date(2026, 3, 1) });
+      document.body.appendChild(el);
+      const grid = el.querySelector('[role="grid"]')!;
+      expect(grid.querySelectorAll('[role="row"]').length).toBe(6);
+      expect(grid.querySelectorAll('[role="gridcell"]').length).toBe(42);
+
+      const label = el.querySelector('.mkt-calendar__header-label') as HTMLButtonElement;
+      label.click();
+      flushSync();
+      expect(grid.querySelectorAll('[role="row"]').length).toBe(4);
+      expect(grid.querySelectorAll('[role="gridcell"]').length).toBe(12);
+
+      label.click();
+      flushSync();
+      expect(grid.querySelectorAll('[role="row"]').length).toBe(4);
+      expect(grid.querySelectorAll('[role="gridcell"]').length).toBe(12);
+    });
+  });
+
+  it('syncs controlled value changes', () => {
+    createScope(() => {
+      const [value, setValue] = signal<Date | null>(new Date(2026, 3, 5));
+      const el = DatePicker({
+        defaultDate: new Date(2026, 3, 1),
+        get value() { return value(); },
+      });
+      document.body.appendChild(el);
+
+      expect((el.querySelector('[aria-selected="true"]') as HTMLElement).textContent).toBe('5');
+      setValue(new Date(2026, 3, 25));
+      flushSync();
+      expect((el.querySelector('[aria-selected="true"]') as HTMLElement).textContent).toBe('25');
     });
   });
 });
@@ -269,6 +340,23 @@ describe('DatePickerInput', () => {
       setValue(new Date(2026, 1, 2));
       flushSync();
       expect(trigger.textContent).toContain('2');
+    });
+  });
+
+  it('links description and error text to the trigger', () => {
+    createScope(() => {
+      const el = DatePickerInput({
+        label: 'Date',
+        description: 'Choose a date',
+        error: 'Required',
+      });
+      document.body.appendChild(el);
+      const trigger = el.querySelector('.mkt-picker-input__trigger') as HTMLButtonElement;
+      const describedBy = trigger.getAttribute('aria-describedby')!;
+
+      expect(trigger.getAttribute('aria-invalid')).toBe('true');
+      expect(describedBy).toContain('-description');
+      expect(describedBy).toContain('-error');
     });
   });
 

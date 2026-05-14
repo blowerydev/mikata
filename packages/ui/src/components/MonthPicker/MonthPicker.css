@@ -11,6 +11,10 @@
   gap: var(--mkt-space-1);
 }
 
+.mkt-month-picker__row {
+  display: contents;
+}
+
 .mkt-month-picker__month {
   display: inline-flex;
   align-items: center;

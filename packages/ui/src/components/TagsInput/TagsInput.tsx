@@ -1,5 +1,5 @@
 import { createIcon, Close } from '../../internal/icons';
-import { renderEffect } from '@mikata/reactivity';
+import { effect, getCurrentScope, onCleanup, renderEffect } from '@mikata/reactivity';
 import { _mergeProps, adoptElement } from '@mikata/runtime';
 import { mergeClasses } from '../../utils/class-merge';
 import { uniqueId } from '../../utils/unique-id';
@@ -28,6 +28,13 @@ export function TagsInput(userProps: TagsInputProps): HTMLDivElement {
   let filtered: string[] = [];
 
   const emit = () => props.onChange?.(tags.slice());
+
+  const tagsEqual = (next: string[]) =>
+    tags.length === next.length && next.every((tag, index) => tags[index] === tag);
+
+  const syncTags = (next: string[]) => {
+    tags.splice(0, tags.length, ...next);
+  };
 
   const removeTag = (i: number) => {
     tags.splice(i, 1);
@@ -60,12 +67,8 @@ export function TagsInput(userProps: TagsInputProps): HTMLDivElement {
       rm.type = 'button';
       rm.className = mergeClasses('mkt-tags-input__pill-remove', props.classNames?.pillRemove);
       rm.setAttribute('aria-label', `${labels.remove}: ${t}`);
+      rm.dataset.index = String(i);
       rm.appendChild(createIcon(Close, { size: 10, strokeWidth: 1.5 }));
-      rm.addEventListener('mousedown', (e) => {
-        e.preventDefault();
-        if (props.disabled) return;
-        removeTag(i);
-      });
       pill.appendChild(rm);
       pillsContainerEl.appendChild(pill);
     });
@@ -129,6 +132,20 @@ export function TagsInput(userProps: TagsInputProps): HTMLDivElement {
         adoptElement<HTMLDivElement>('div', (pillsContainer) => {
           pillsContainerEl = pillsContainer;
           pillsContainer.className = 'mkt-tags-input__pills';
+          const handlePillMouseDown = (e: MouseEvent) => {
+            const target = e.target instanceof Element
+              ? e.target.closest<HTMLButtonElement>('.mkt-tags-input__pill-remove')
+              : null;
+            if (!target || !pillsContainer.contains(target)) return;
+            e.preventDefault();
+            if (props.disabled) return;
+            const index = Number(target.dataset.index);
+            if (!Number.isNaN(index)) removeTag(index);
+          };
+          pillsContainer.addEventListener('mousedown', handlePillMouseDown);
+          if (getCurrentScope()) {
+            onCleanup(() => pillsContainer.removeEventListener('mousedown', handlePillMouseDown));
+          }
         });
 
         adoptElement<HTMLInputElement>('input', (input) => {
@@ -152,6 +169,13 @@ export function TagsInput(userProps: TagsInputProps): HTMLDivElement {
           renderEffect(() => {
             if (props.error) input.setAttribute('aria-invalid', 'true');
             else input.removeAttribute('aria-invalid');
+          });
+          renderEffect(() => {
+            const parts: string[] = [];
+            if (props.description) parts.push(`${id}-description`);
+            if (props.error) parts.push(`${id}-error`);
+            if (parts.length) input.setAttribute('aria-describedby', parts.join(' '));
+            else input.removeAttribute('aria-describedby');
           });
           if (listId) {
             input.setAttribute('role', 'combobox');
@@ -219,6 +243,13 @@ export function TagsInput(userProps: TagsInputProps): HTMLDivElement {
       }
 
       renderPills();
+      effect(() => {
+        const controlled = props.value;
+        if (controlled === undefined || tagsEqual(controlled)) return;
+        syncTags(controlled);
+        renderPills();
+        if (dropdownEl) renderDropdown();
+      });
     });
 
   return InputWrapper({

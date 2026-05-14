@@ -1,6 +1,7 @@
 import { getCurrentScope, onCleanup, renderEffect } from '@mikata/reactivity';
 import { _mergeProps, adoptElement, createRef } from '@mikata/runtime';
 import { mergeClasses } from '../../utils/class-merge';
+import { clampFloatingElement } from '../../utils/clamp-floating';
 import { onClickOutside } from '../../utils/on-click-outside';
 import type { PopoverProps } from './Popover.types';
 import './Popover.css';
@@ -40,6 +41,11 @@ export function Popover(userProps: PopoverProps): HTMLSpanElement {
       }
 
       if (children.parentNode !== dropdown) dropdown.appendChild(children);
+
+      const disposeClamp = clampFloatingElement(dropdown);
+      if (getCurrentScope()) {
+        onCleanup(disposeClamp);
+      }
     });
 
     if (closeOnClickOutside && onClose) {

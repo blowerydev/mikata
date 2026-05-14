@@ -1,6 +1,6 @@
 import { createIcon, Close } from '../../internal/icons';
-import { onCleanup, _mergeProps, adoptElement } from '@mikata/runtime';
-import { renderEffect } from '@mikata/reactivity';
+import { _mergeProps, adoptElement } from '@mikata/runtime';
+import { effect, getCurrentScope, onCleanup, renderEffect } from '@mikata/reactivity';
 import { mergeClasses } from '../../utils/class-merge';
 import { uniqueId } from '../../utils/unique-id';
 import { useUILabels } from '../../utils/use-i18n-optional';
@@ -49,6 +49,16 @@ export function MultiSelect(userProps: MultiSelectProps): HTMLDivElement {
 
   const labelFor = (v: string): string => optionByValue.get(v)?.label ?? v;
 
+  const syncSelected = (next: string[]) => {
+    selected.clear();
+    for (const v of next) selected.add(v);
+  };
+
+  const selectedEquals = (next: string[]) => {
+    if (selected.size !== next.length) return false;
+    return next.every((v) => selected.has(v));
+  };
+
   const removePill = (v: string) => {
     selected.delete(v);
     renderPills();
@@ -69,12 +79,8 @@ export function MultiSelect(userProps: MultiSelectProps): HTMLDivElement {
       rm.type = 'button';
       rm.className = mergeClasses('mkt-multi-select__pill-remove', props.classNames?.pillRemove);
       rm.setAttribute('aria-label', `${labels.remove}: ${lbl}`);
+      rm.dataset.value = v;
       rm.appendChild(createIcon(Close, { size: 10, strokeWidth: 1.5 }));
-      rm.addEventListener('mousedown', (e) => {
-        e.preventDefault();
-        if (props.disabled) return;
-        removePill(v);
-      });
       pill.appendChild(rm);
       pillsContainerEl.appendChild(pill);
     }
@@ -157,13 +163,11 @@ export function MultiSelect(userProps: MultiSelectProps): HTMLDivElement {
         li.className = mergeClasses('mkt-multi-select__option', props.classNames?.option);
         li.setAttribute('role', 'option');
         li.textContent = opt.label;
-        if (opt.disabled) li.dataset.disabled = '';
-        li.addEventListener('mousedown', (e) => {
-          e.preventDefault();
-          toggleOption(opt);
-        });
         liByValue.set(opt.value, li);
       }
+      li.dataset.value = opt.value;
+      if (opt.disabled) li.dataset.disabled = '';
+      else delete li.dataset.disabled;
       const isSel = selected.has(opt.value);
       li.id = `${id}-opt-${i}`;
       li.setAttribute('aria-selected', isSel ? 'true' : 'false');
@@ -209,7 +213,7 @@ export function MultiSelect(userProps: MultiSelectProps): HTMLDivElement {
       })
     : null;
 
-  if (asyncController) onCleanup(() => asyncController.dispose());
+  if (asyncController && getCurrentScope()) onCleanup(() => asyncController.dispose());
 
   const buildWrapper = () =>
     adoptElement<HTMLDivElement>('div', (wrapper) => {
@@ -237,6 +241,20 @@ export function MultiSelect(userProps: MultiSelectProps): HTMLDivElement {
         adoptElement<HTMLDivElement>('div', (pillsContainer) => {
           pillsContainerEl = pillsContainer;
           pillsContainer.className = 'mkt-multi-select__pills';
+          const handlePillMouseDown = (e: MouseEvent) => {
+            const target = e.target instanceof Element
+              ? e.target.closest<HTMLButtonElement>('.mkt-multi-select__pill-remove')
+              : null;
+            if (!target || !pillsContainer.contains(target)) return;
+            e.preventDefault();
+            if (props.disabled) return;
+            const value = target.dataset.value;
+            if (value != null) removePill(value);
+          };
+          pillsContainer.addEventListener('mousedown', handlePillMouseDown);
+          if (getCurrentScope()) {
+            onCleanup(() => pillsContainer.removeEventListener('mousedown', handlePillMouseDown));
+          }
         });
 
         adoptElement<HTMLInputElement>('input', (input) => {
@@ -266,6 +284,13 @@ export function MultiSelect(userProps: MultiSelectProps): HTMLDivElement {
           renderEffect(() => {
             if (props.error) input.setAttribute('aria-invalid', 'true');
             else input.removeAttribute('aria-invalid');
+          });
+          renderEffect(() => {
+            const parts: string[] = [];
+            if (props.description) parts.push(`${id}-description`);
+            if (props.error) parts.push(`${id}-error`);
+            if (parts.length) input.setAttribute('aria-describedby', parts.join(' '));
+            else input.removeAttribute('aria-describedby');
           });
 
           input.addEventListener('focus', () => {
@@ -345,9 +370,31 @@ export function MultiSelect(userProps: MultiSelectProps): HTMLDivElement {
         });
         dropdown.setAttribute('role', 'listbox');
         dropdown.hidden = true;
+        const handleOptionMouseDown = (e: MouseEvent) => {
+          const target = e.target instanceof Element
+            ? e.target.closest<HTMLLIElement>('.mkt-multi-select__option')
+            : null;
+          if (!target || !dropdown.contains(target)) return;
+          e.preventDefault();
+          const value = target.dataset.value;
+          const opt = value == null ? undefined : optionByValue.get(value);
+          if (opt) toggleOption(opt);
+        };
+        dropdown.addEventListener('mousedown', handleOptionMouseDown);
+        if (getCurrentScope()) {
+          onCleanup(() => dropdown.removeEventListener('mousedown', handleOptionMouseDown));
+        }
       });
 
       renderPills();
+
+      effect(() => {
+        const controlled = props.value;
+        if (controlled === undefined || selectedEquals(controlled)) return;
+        syncSelected(controlled);
+        renderPills();
+        renderDropdown();
+      });
     });
 
   return InputWrapper({

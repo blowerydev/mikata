@@ -28,6 +28,7 @@ import { Input } from '../src/components/Input';
 import { Indicator } from '../src/components/Indicator';
 import { AppShell } from '../src/components/AppShell';
 import { Spoiler } from '../src/components/Spoiler';
+import { clampFloatingElement } from '../src/utils/clamp-floating';
 
 beforeEach(() => {
   _resetIdCounter();
@@ -202,6 +203,36 @@ describe('Popover', () => {
       document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
       expect(onClose).toHaveBeenCalled();
     });
+  });
+});
+
+describe('floating positioning', () => {
+  it('writes viewport clamp shifts for overflowing floating content', async () => {
+    const el = document.createElement('div');
+    document.body.appendChild(el);
+    Object.defineProperty(window, 'innerWidth', { value: 200, configurable: true });
+    Object.defineProperty(window, 'innerHeight', { value: 100, configurable: true });
+    const rectSpy = vi.spyOn(el, 'getBoundingClientRect').mockReturnValue({
+      x: -10,
+      y: -5,
+      left: -10,
+      top: -5,
+      right: 180,
+      bottom: 90,
+      width: 190,
+      height: 95,
+      toJSON: () => ({}),
+    } as DOMRect);
+
+    const dispose = clampFloatingElement(el);
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+
+    expect(el.style.getPropertyValue('--mkt-floating-shift-x')).toBe('18px');
+    expect(el.style.getPropertyValue('--mkt-floating-shift-y')).toBe('13px');
+
+    dispose();
+    rectSpy.mockRestore();
+    el.remove();
   });
 });
 
@@ -639,6 +670,23 @@ describe('RangeSlider', () => {
     lowThumb.dispatchEvent(ev);
     expect(onValueChange).toHaveBeenCalledWith([21, 80]);
   });
+
+  it('syncs controlled value changes', () => {
+    const [value, setValue] = signal<[number, number]>([20, 80]);
+    const el = RangeSlider({
+      min: 0,
+      max: 100,
+      get value() { return value(); },
+    });
+    const thumbs = el.querySelectorAll('.mkt-range-slider__thumb');
+
+    expect(thumbs[0].getAttribute('aria-valuenow')).toBe('20');
+    expect(thumbs[1].getAttribute('aria-valuenow')).toBe('80');
+    setValue([30, 60]);
+    flushSync();
+    expect(thumbs[0].getAttribute('aria-valuenow')).toBe('30');
+    expect(thumbs[1].getAttribute('aria-valuenow')).toBe('60');
+  });
 });
 
 // ─── Select ─────────────────────────────────────────────
@@ -785,6 +833,38 @@ describe('TagsInput', () => {
     const input = el.querySelector('input') as HTMLInputElement;
     input.value = 'c';
     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('links description and error text to the input', () => {
+    const el = TagsInput({
+      label: 'Tags',
+      description: 'Add labels',
+      error: 'Required',
+    });
+    const input = el.querySelector('input')!;
+    const describedBy = input.getAttribute('aria-describedby')!;
+
+    expect(describedBy).toContain('-description');
+    expect(describedBy).toContain('-error');
+  });
+
+  it('syncs controlled tag values without firing onChange', () => {
+    const [value, setValue] = signal<string[]>(['one']);
+    const onChange = vi.fn();
+    const el = TagsInput({
+      get value() { return value(); },
+      onChange,
+    });
+
+    expect(el.querySelector('.mkt-tags-input__pill')?.textContent).toContain('one');
+    setValue(['two', 'three']);
+    flushSync();
+
+    const pills = el.querySelectorAll('.mkt-tags-input__pill');
+    expect(pills.length).toBe(2);
+    expect(pills[0].textContent).toContain('two');
+    expect(pills[1].textContent).toContain('three');
     expect(onChange).not.toHaveBeenCalled();
   });
 });
