@@ -23,6 +23,15 @@ export function PinInput(userProps: PinInputProps = {}): HTMLElement {
   const inputs: HTMLInputElement[] = [];
   const pattern = type === 'number' ? /^[0-9]$/ : /^[a-zA-Z0-9]$/;
 
+  const syncInputs = (value: string | undefined) => {
+    const chars = (value ?? '').split('');
+    for (let i = 0; i < length; i++) {
+      inputs[i].value = chars[i] ?? '';
+      if (chars[i]) inputs[i].setAttribute('value', chars[i]);
+      else inputs[i].removeAttribute('value');
+    }
+  };
+
   const emit = () => {
     const v = inputs.map((i) => i.value).join('');
     props.onChange?.(v);
@@ -102,6 +111,10 @@ export function PinInput(userProps: PinInputProps = {}): HTMLElement {
         inputs[i] = input;
       });
     }
+
+    renderEffect(() => {
+      if (props.value !== undefined) syncInputs(props.value);
+    });
 
     if (autoFocus) requestAnimationFrame(() => inputs[0]?.focus());
 

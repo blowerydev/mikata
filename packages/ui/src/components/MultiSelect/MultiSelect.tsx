@@ -5,6 +5,7 @@ import { mergeClasses } from '../../utils/class-merge';
 import { uniqueId } from '../../utils/unique-id';
 import { useUILabels } from '../../utils/use-i18n-optional';
 import { createAsyncDataController } from '../../utils/async-data';
+import { clampFloatingElement } from '../../utils/clamp-floating';
 import { InputWrapper } from '../_internal/InputWrapper';
 import type { MultiSelectProps, MultiSelectOption, MultiSelectFetcher } from './MultiSelect.types';
 import './MultiSelect.css';
@@ -41,6 +42,7 @@ export function MultiSelect(userProps: MultiSelectProps): HTMLDivElement {
   let activeIdx = -1;
   let currentFiltered: MultiSelectOption[] = [];
   let loading = false;
+  let disposeClamp: (() => void) | undefined;
   const liByValue = new Map<string, HTMLLIElement>();
   let emptyLi: HTMLLIElement | null = null;
   let loadingLi: HTMLLIElement | null = null;
@@ -88,9 +90,17 @@ export function MultiSelect(userProps: MultiSelectProps): HTMLDivElement {
 
   const close = () => {
     dropdownEl.hidden = true;
+    disposeClamp?.();
+    disposeClamp = undefined;
     inputEl.setAttribute('aria-expanded', 'false');
     inputEl.removeAttribute('aria-activedescendant');
     activeIdx = -1;
+  };
+
+  const openDropdown = () => {
+    dropdownEl.hidden = false;
+    disposeClamp?.();
+    disposeClamp = clampFloatingElement(dropdownEl);
   };
 
   const toggleOption = (opt: MultiSelectOption) => {
@@ -128,7 +138,7 @@ export function MultiSelect(userProps: MultiSelectProps): HTMLDivElement {
         loadingLi.textContent = resolvedLoadingLabel;
       }
       if (loadingLi.parentNode !== dropdownEl) dropdownEl.appendChild(loadingLi);
-      dropdownEl.hidden = false;
+      openDropdown();
       inputEl.setAttribute('aria-expanded', 'true');
       return;
     }
@@ -146,7 +156,7 @@ export function MultiSelect(userProps: MultiSelectProps): HTMLDivElement {
         emptyLi.textContent = labels.noResults;
       }
       if (emptyLi.parentNode !== dropdownEl) dropdownEl.appendChild(emptyLi);
-      dropdownEl.hidden = false;
+      openDropdown();
       inputEl.setAttribute('aria-expanded', 'true');
       return;
     }
@@ -187,7 +197,7 @@ export function MultiSelect(userProps: MultiSelectProps): HTMLDivElement {
       }
     }
 
-    dropdownEl.hidden = false;
+    openDropdown();
     inputEl.setAttribute('aria-expanded', 'true');
     if (activeIdx >= 0 && currentFiltered[activeIdx]) {
       inputEl.setAttribute('aria-activedescendant', `${id}-opt-${activeIdx}`);
@@ -214,6 +224,7 @@ export function MultiSelect(userProps: MultiSelectProps): HTMLDivElement {
     : null;
 
   if (asyncController && getCurrentScope()) onCleanup(() => asyncController.dispose());
+  if (getCurrentScope()) onCleanup(() => disposeClamp?.());
 
   const buildWrapper = () =>
     adoptElement<HTMLDivElement>('div', (wrapper) => {

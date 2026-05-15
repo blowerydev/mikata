@@ -277,11 +277,50 @@ describe('MonthPicker / YearPicker', () => {
     });
   });
 
+  it('MonthPicker renders months inside grid rows and syncs controlled values', () => {
+    createScope(() => {
+      const [value, setValue] = signal<Date | null>(new Date(2026, 0, 1));
+      const el = MonthPicker({
+        locale: 'en-US',
+        get value() { return value(); },
+      });
+      document.body.appendChild(el);
+      const grid = el.querySelector('[role="grid"]')!;
+
+      expect(grid.querySelectorAll('[role="row"]').length).toBe(4);
+      expect(grid.querySelectorAll('[role="gridcell"]').length).toBe(12);
+      expect((grid.querySelector('[aria-selected="true"]') as HTMLElement).textContent).toBe('Jan');
+
+      setValue(new Date(2026, 1, 1));
+      flushSync();
+      expect((grid.querySelector('[aria-selected="true"]') as HTMLElement).textContent).toBe('Feb');
+    });
+  });
+
   it('YearPicker renders 12 year cells (decade + padding)', () => {
     createScope(() => {
       const el = YearPicker({ defaultDate: new Date(2026, 0, 1) });
       document.body.appendChild(el);
       expect(el.querySelectorAll('.mkt-year-picker__year').length).toBe(12);
+    });
+  });
+
+  it('YearPicker renders years inside grid rows and syncs controlled values', () => {
+    createScope(() => {
+      const [value, setValue] = signal<Date | null>(new Date(2026, 0, 1));
+      const el = YearPicker({
+        get value() { return value(); },
+      });
+      document.body.appendChild(el);
+      const grid = el.querySelector('[role="grid"]')!;
+
+      expect(grid.querySelectorAll('[role="row"]').length).toBe(4);
+      expect(grid.querySelectorAll('[role="gridcell"]').length).toBe(12);
+      expect((grid.querySelector('[aria-selected="true"]') as HTMLElement).textContent).toBe('2026');
+
+      setValue(new Date(2027, 0, 1));
+      flushSync();
+      expect((grid.querySelector('[aria-selected="true"]') as HTMLElement).textContent).toBe('2027');
     });
   });
 });
@@ -307,6 +346,31 @@ describe('DateInput', () => {
       input.focus();
       flushSync();
       expect(dropdown.hidden).toBe(false);
+    });
+  });
+
+  it('syncs controlled value changes and links wrapper text to the input', () => {
+    createScope(() => {
+      const [value, setValue] = signal<Date | null>(new Date(2026, 0, 1));
+      const el = DateInput({
+        locale: 'en-US',
+        label: 'Date',
+        description: 'Choose a date',
+        error: 'Required',
+        get value() { return value(); },
+      });
+      document.body.appendChild(el);
+      const input = el.querySelector('input') as HTMLInputElement;
+
+      flushSync();
+      expect(input.value).toContain('1');
+      expect(input.getAttribute('aria-invalid')).toBe('true');
+      expect(input.getAttribute('aria-describedby')).toContain('-description');
+      expect(input.getAttribute('aria-describedby')).toContain('-error');
+
+      setValue(new Date(2026, 1, 2));
+      flushSync();
+      expect(input.value).toContain('2');
     });
   });
 });
@@ -427,6 +491,23 @@ describe('TimeInput', () => {
       document.body.appendChild(el);
       const input = el.querySelector('input') as HTMLInputElement;
       expect(input.step).toBe('1');
+    });
+  });
+
+  it('links description and error text to the native input', () => {
+    createScope(() => {
+      const el = TimeInput({
+        label: 'Time',
+        description: 'Local time',
+        error: 'Required',
+      });
+      document.body.appendChild(el);
+      const input = el.querySelector('input') as HTMLInputElement;
+
+      expect(input.getAttribute('aria-invalid')).toBe('true');
+      expect(input.getAttribute('aria-describedby')).toContain('-description');
+      expect(input.getAttribute('aria-describedby')).toContain('-error');
+      expect(input.getAttribute('aria-errormessage')).toContain('-error');
     });
   });
 });

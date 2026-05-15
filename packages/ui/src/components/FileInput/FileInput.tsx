@@ -131,10 +131,31 @@ export function FileInput(userProps: FileInputProps = {}): HTMLDivElement {
         if (props.error) trigger.setAttribute('aria-invalid', 'true');
         else trigger.removeAttribute('aria-invalid');
       });
+      renderEffect(() => {
+        if (hasError(props.error)) {
+          trigger.setAttribute('aria-errormessage', `${id}-error`);
+        } else {
+          trigger.removeAttribute('aria-errormessage');
+        }
+      });
+      renderEffect(() => {
+        const parts: string[] = [];
+        if (props.description) parts.push(`${id}-description`);
+        if (hasError(props.error)) parts.push(`${id}-error`);
+        if (parts.length) trigger.setAttribute('aria-describedby', parts.join(' '));
+        else trigger.removeAttribute('aria-describedby');
+      });
 
       // Only build the initial display when the trigger is empty.
       // On hydration the server already rendered the value/placeholder.
       if (!trigger.firstChild) renderValue(current);
+      renderEffect(() => {
+        const controlled = props.value;
+        if (controlled !== undefined && controlled !== current) {
+          current = controlled;
+          renderValue(current);
+        }
+      });
 
       trigger.addEventListener('click', () => {
         if (!props.disabled && fileInputEl) fileInputEl.click();
@@ -159,4 +180,8 @@ export function FileInput(userProps: FileInputProps = {}): HTMLDivElement {
     get classNames() { return props.classNames; },
     children: buildChildren,
   });
+}
+
+function hasError(err: unknown): boolean {
+  return err != null && err !== false && err !== '';
 }

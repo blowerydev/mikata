@@ -31,6 +31,7 @@ export function Popover(userProps: PopoverProps): HTMLSpanElement {
       });
       renderEffect(() => { dropdown.dataset.position = props.position ?? 'bottom'; });
       dropdown.setAttribute('role', 'dialog');
+      renderEffect(() => { dropdown.hidden = props.opened === false; });
 
       if (withArrow) {
         adoptElement<HTMLDivElement>('div', (arrow) => {

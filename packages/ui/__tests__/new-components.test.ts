@@ -166,6 +166,35 @@ describe('Menu', () => {
     expect((el.querySelector('[role="menu"]') as HTMLElement).hidden).toBe(false);
   });
 
+  it('clamps opened dropdowns inside the viewport', async () => {
+    const btn = document.createElement('button');
+    const el = Menu({
+      target: btn,
+      items: [{ label: 'Edit' }],
+    });
+    document.body.appendChild(el);
+    const dropdown = el.querySelector('[role="menu"]') as HTMLElement;
+    Object.defineProperty(window, 'innerWidth', { value: 200, configurable: true });
+    Object.defineProperty(window, 'innerHeight', { value: 100, configurable: true });
+    const rectSpy = vi.spyOn(dropdown, 'getBoundingClientRect').mockReturnValue({
+      x: -10,
+      y: 0,
+      left: -10,
+      top: 0,
+      right: 180,
+      bottom: 90,
+      width: 190,
+      height: 90,
+      toJSON: () => ({}),
+    } as DOMRect);
+
+    btn.click();
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+
+    expect(dropdown.style.getPropertyValue('--mkt-floating-shift-x')).toBe('18px');
+    rectSpy.mockRestore();
+  });
+
   it('renders dividers and labels', () => {
     const btn = document.createElement('button');
     const el = Menu({
@@ -408,6 +437,19 @@ describe('Pagination', () => {
     (buttons[3] as HTMLButtonElement).click();
     expect(onChange).toHaveBeenCalledWith(3);
   });
+
+  it('syncs controlled page changes', () => {
+    const [page, setPage] = signal(2);
+    const el = Pagination({
+      total: 5,
+      get value() { return page(); },
+    });
+
+    expect(el.querySelector('[aria-current="page"]')?.textContent).toBe('2');
+    setPage(4);
+    flushSync();
+    expect(el.querySelector('[aria-current="page"]')?.textContent).toBe('4');
+  });
 });
 
 // ── SegmentedControl ──────────────────────────────
@@ -589,6 +631,23 @@ describe('NavLink', () => {
     const btn = wrapper.querySelector('.mkt-navlink') as HTMLButtonElement;
     btn.click();
     expect((wrapper.querySelector('.mkt-navlink__children') as HTMLElement).hidden).toBe(false);
+    expect(btn.getAttribute('aria-expanded')).toBe('true');
+  });
+
+  it('syncs controlled opened changes', () => {
+    const [opened, setOpened] = signal(false);
+    const wrapper = NavLink({
+      label: 'Parent',
+      get opened() { return opened(); },
+      children: [NavLink({ label: 'Child' })],
+    });
+    const btn = wrapper.querySelector('.mkt-navlink') as HTMLButtonElement;
+    const children = wrapper.querySelector('.mkt-navlink__children') as HTMLElement;
+
+    expect(children.hidden).toBe(true);
+    setOpened(true);
+    flushSync();
+    expect(children.hidden).toBe(false);
     expect(btn.getAttribute('aria-expanded')).toBe('true');
   });
 });

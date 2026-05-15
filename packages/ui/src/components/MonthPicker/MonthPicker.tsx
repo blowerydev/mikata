@@ -30,6 +30,17 @@ export function MonthPicker(userProps: MonthPickerProps = {}): HTMLElement {
   );
   const [selected, setSelected] = signal<Date | null>(value !== undefined ? value : defaultValue);
 
+  effect(() => {
+    if (props.value !== undefined) {
+      setSelected(props.value);
+      if (props.value) setYear(props.value.getFullYear());
+    }
+  });
+
+  effect(() => {
+    if (props.date !== undefined) setYear(props.date.getFullYear());
+  });
+
   function updateYear(next: number) {
     setYear(next);
     onDateChange?.(new Date(next, 0, 1));
@@ -125,17 +136,27 @@ export function MonthPicker(userProps: MonthPickerProps = {}): HTMLElement {
         const sel = selected();
         const classNamesNow = props.classNames;
         for (let m = 0; m < 12; m++) {
+          if (m % 3 === 0) {
+            const rowEl = document.createElement('div');
+            rowEl.className = 'mkt-month-picker__row';
+            rowEl.setAttribute('role', 'row');
+            grid.appendChild(rowEl);
+          }
+          const rowEl = grid.lastElementChild as HTMLDivElement;
           const btn = document.createElement('button');
           btn.type = 'button';
+          btn.setAttribute('role', 'gridcell');
           btn.className = mergeClasses('mkt-month-picker__month', classNamesNow?.month);
           btn.textContent = labels[m];
           btn.dataset.month = `${y}-${m}`;
           if (sel && sel.getFullYear() === y && sel.getMonth() === m) {
             btn.dataset.selected = '';
             btn.setAttribute('aria-selected', 'true');
+          } else {
+            btn.setAttribute('aria-selected', 'false');
           }
           if (monthDisabled(y, m)) btn.disabled = true;
-          grid.appendChild(btn);
+          rowEl.appendChild(btn);
         }
       });
 

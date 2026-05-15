@@ -23,6 +23,17 @@ export function NavLink(userProps: NavLinkProps): HTMLElement {
 
   let chevronRef: HTMLSpanElement | null = null;
   let controlRef: HTMLElement | null = null;
+  let childContainerEl: HTMLDivElement | null = null;
+
+  const setOpenState = (next: boolean) => {
+    isOpen = next;
+    if (controlRef) controlRef.setAttribute('aria-expanded', String(isOpen));
+    if (chevronRef) {
+      if (isOpen) chevronRef.dataset.rotated = '';
+      else delete chevronRef.dataset.rotated;
+    }
+    if (childContainerEl) childContainerEl.hidden = !isOpen;
+  };
 
   const buildControl = () =>
     adoptElement<HTMLElement>(href ? 'a' : 'button', (control) => {
@@ -103,6 +114,9 @@ export function NavLink(userProps: NavLinkProps): HTMLElement {
           if (isOpen) chevron.dataset.rotated = '';
         });
         control.setAttribute('aria-expanded', String(isOpen));
+        renderEffect(() => {
+          if (props.opened !== undefined) setOpenState(!!props.opened);
+        });
       }
 
       const ref = props.ref;
@@ -121,7 +135,6 @@ export function NavLink(userProps: NavLinkProps): HTMLElement {
 
     const controlLink = buildControl();
 
-    let childContainerEl: HTMLDivElement | null = null;
     adoptElement<HTMLDivElement>('div', (childContainer) => {
       childContainerEl = childContainer;
       renderEffect(() => {
@@ -135,13 +148,7 @@ export function NavLink(userProps: NavLinkProps): HTMLElement {
 
     controlLink.addEventListener('click', (e) => {
       if (props.disabled) return;
-      isOpen = !isOpen;
-      if (controlRef) controlRef.setAttribute('aria-expanded', String(isOpen));
-      if (chevronRef) {
-        if (isOpen) chevronRef.dataset.rotated = '';
-        else delete chevronRef.dataset.rotated;
-      }
-      if (childContainerEl) childContainerEl.hidden = !isOpen;
+      if (props.opened === undefined) setOpenState(!isOpen);
       props.onClick?.(e as MouseEvent);
     });
   });

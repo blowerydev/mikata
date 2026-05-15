@@ -46,6 +46,22 @@ export function TimeInput(userProps: TimeInputProps = {}): HTMLDivElement {
           if (props.required) input.setAttribute('aria-required', 'true');
           else input.removeAttribute('aria-required');
         });
+        renderEffect(() => {
+          const parts: string[] = [];
+          if (props.description) parts.push(`${id}-description`);
+          if (hasError(props.error)) parts.push(`${id}-error`);
+          if (parts.length) input.setAttribute('aria-describedby', parts.join(' '));
+          else input.removeAttribute('aria-describedby');
+        });
+        renderEffect(() => {
+          if (hasError(props.error)) {
+            input.setAttribute('aria-invalid', 'true');
+            input.setAttribute('aria-errormessage', `${id}-error`);
+          } else {
+            input.removeAttribute('aria-invalid');
+            input.removeAttribute('aria-errormessage');
+          }
+        });
         renderEffect(() => { input.min = props.min ?? ''; });
         renderEffect(() => { input.max = props.max ?? ''; });
         renderEffect(() => {
@@ -79,4 +95,13 @@ export function TimeInput(userProps: TimeInputProps = {}): HTMLDivElement {
     get classNames() { return props.classNames; },
     children: buildWrapper,
   });
+}
+
+function hasError(err: unknown): boolean {
+  if (err == null || err === false || err === '') return false;
+  if (typeof err === 'function') {
+    const v = (err as () => unknown)();
+    return v != null && v !== false && v !== '';
+  }
+  return true;
 }

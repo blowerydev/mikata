@@ -1,10 +1,11 @@
-import { signal, effect, renderEffect } from '@mikata/reactivity';
+import { signal, effect, renderEffect, getCurrentScope, onCleanup } from '@mikata/reactivity';
 import { _mergeProps, createRef, adoptElement } from '@mikata/runtime';
 import { mergeClasses } from '../../utils/class-merge';
 import { onClickOutside } from '../../utils/on-click-outside';
 import { useComponentDefaults } from '../../theme/component-defaults';
 import { uniqueId } from '../../utils/unique-id';
 import { useUILabels } from '../../utils/use-i18n-optional';
+import { clampFloatingElement } from '../../utils/clamp-floating';
 import { createIcon, Close } from '../../internal/icons';
 import { InputWrapper } from '../_internal/InputWrapper';
 import { DatePicker } from '../DatePicker';
@@ -79,7 +80,15 @@ function createPickerInputShell<TValue>({
 }: PickerInputShellOptions<TValue>): HTMLDivElement {
   const labels = useUILabels();
   const [open, setOpen] = signal(false);
-  const close = () => setOpen(false);
+  let dropdownEl: HTMLDivElement | null = null;
+  let disposeClamp: (() => void) | undefined;
+  const setOpenState = (next: boolean) => {
+    setOpen(next);
+    if (dropdownEl) dropdownEl.hidden = !next;
+    disposeClamp?.();
+    disposeClamp = next && dropdownEl ? clampFloatingElement(dropdownEl) : undefined;
+  };
+  const close = () => setOpenState(false);
 
   const buildContainer = () =>
     adoptElement<HTMLDivElement>('div', (container) => {
@@ -111,7 +120,7 @@ function createPickerInputShell<TValue>({
           if (parts.length) trigger.setAttribute('aria-describedby', parts.join(' '));
           else trigger.removeAttribute('aria-describedby');
         });
-        trigger.addEventListener('click', () => { if (!props.disabled) setOpen(!open()); });
+        trigger.addEventListener('click', () => { if (!props.disabled) setOpenState(!open()); });
 
         effect(() => {
           const str = renderValue(selected());
@@ -150,6 +159,7 @@ function createPickerInputShell<TValue>({
       }
 
       adoptElement<HTMLDivElement>('div', (dropdown) => {
+        dropdownEl = dropdown;
         renderEffect(() => {
           dropdown.className = mergeClasses('mkt-picker-input__dropdown', props.classNames?.dropdown);
         });
@@ -162,6 +172,9 @@ function createPickerInputShell<TValue>({
       const containerRef = createRef<HTMLElement>();
       containerRef(container);
       onClickOutside(containerRef, close);
+      if (getCurrentScope()) {
+        onCleanup(() => disposeClamp?.());
+      }
 
       const ref = props.ref;
       if (ref) {

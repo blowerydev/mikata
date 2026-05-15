@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { flushSync, signal } from '@mikata/reactivity';
 import { _resetIdCounter } from '../src/utils/unique-id';
 
 import { ActionIcon } from '../src/components/ActionIcon';
@@ -322,6 +323,24 @@ describe('ChipGroup', () => {
     expect(el.classList.contains('mkt-chip-group')).toBe(true);
     expect(el.classList.contains('custom-chip-group')).toBe(true);
     expect(el.style.gap).toBe('var(--mkt-space-4)');
+  });
+
+  it('syncs controlled selected values', () => {
+    const [value, setValue] = signal<string | string[]>('a');
+    const el = ChipGroup({
+      get value() { return value(); },
+      children: [
+        Chip({ value: 'a', children: 'A' }),
+        Chip({ value: 'b', children: 'B' }),
+      ],
+    });
+    const inputs = el.querySelectorAll('input') as NodeListOf<HTMLInputElement>;
+
+    expect(inputs[0].checked).toBe(true);
+    setValue('b');
+    flushSync();
+    expect(inputs[0].checked).toBe(false);
+    expect(inputs[1].checked).toBe(true);
   });
 });
 
@@ -742,6 +761,16 @@ describe('Radio', () => {
     expect(alert!.textContent).toBe('Required');
   });
 
+  it('links description and error text to the radio input', () => {
+    const el = Radio({ label: 'X', description: 'Pick one', error: 'Required' });
+    const input = el.querySelector('input') as HTMLInputElement;
+    const describedBy = input.getAttribute('aria-describedby')!;
+
+    expect(describedBy).toContain('-description');
+    expect(describedBy).toContain('-error');
+    expect(input.getAttribute('aria-errormessage')).toContain('-error');
+  });
+
   it('calls onChange', () => {
     const fn = vi.fn();
     const el = Radio({ label: 'X', onChange: fn });
@@ -785,6 +814,21 @@ describe('Rating', () => {
     inputs[1].dispatchEvent(new Event('change'));
     expect(fn).toHaveBeenCalledWith(2);
   });
+
+  it('syncs controlled value changes', () => {
+    const [value, setValue] = signal(1);
+    const el = Rating({
+      count: 3,
+      get value() { return value(); },
+    });
+    const inputs = el.querySelectorAll('input') as NodeListOf<HTMLInputElement>;
+
+    expect(inputs[0].checked).toBe(true);
+    setValue(3);
+    flushSync();
+    expect(inputs[0].checked).toBe(false);
+    expect(inputs[2].checked).toBe(true);
+  });
 });
 
 // ─── RingProgress ───────────────────────────────────────────
@@ -819,6 +863,19 @@ describe('RingProgress', () => {
   it('renders label when provided', () => {
     const el = RingProgress({ value: 10, label: '10%' });
     expect(el.querySelector('.mkt-ring-progress__label')!.textContent).toBe('10%');
+  });
+
+  it('syncs controlled value changes into the SVG segment', () => {
+    const [value, setValue] = signal(25);
+    const el = RingProgress({
+      get value() { return value(); },
+    });
+    const segment = () => el.querySelectorAll('circle')[1];
+
+    expect(segment().getAttribute('stroke-dasharray')!).toContain('84.');
+    setValue(50);
+    flushSync();
+    expect(segment().getAttribute('stroke-dasharray')!).toContain('169.');
   });
 });
 

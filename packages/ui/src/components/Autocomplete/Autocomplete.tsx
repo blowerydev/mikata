@@ -1,8 +1,9 @@
-import { onCleanup, _mergeProps, adoptElement } from '@mikata/runtime';
-import { renderEffect } from '@mikata/reactivity';
+import { _mergeProps, adoptElement } from '@mikata/runtime';
+import { getCurrentScope, onCleanup, renderEffect } from '@mikata/reactivity';
 import { mergeClasses } from '../../utils/class-merge';
 import { uniqueId } from '../../utils/unique-id';
 import { createAsyncDataController } from '../../utils/async-data';
+import { clampFloatingElement } from '../../utils/clamp-floating';
 import { InputWrapper } from '../_internal/InputWrapper';
 import type { AutocompleteProps, AutocompleteFetcher } from './Autocomplete.types';
 import './Autocomplete.css';
@@ -29,11 +30,20 @@ export function Autocomplete(userProps: AutocompleteProps): HTMLDivElement {
   let current: string[] = [];
   let remoteItems: string[] = [];
   let loading = false;
+  let disposeClamp: (() => void) | undefined;
   const liByOption = new Map<string, HTMLLIElement>();
   let loadingLi: HTMLLIElement | null = null;
 
+  const openDropdown = () => {
+    dropdownEl.hidden = false;
+    disposeClamp?.();
+    disposeClamp = clampFloatingElement(dropdownEl);
+  };
+
   const close = () => {
     dropdownEl.hidden = true;
+    disposeClamp?.();
+    disposeClamp = undefined;
     inputEl.setAttribute('aria-expanded', 'false');
     inputEl.removeAttribute('aria-activedescendant');
     activeIdx = -1;
@@ -83,7 +93,7 @@ export function Autocomplete(userProps: AutocompleteProps): HTMLDivElement {
       liByOption.clear();
       const l = ensureLoadingLi();
       if (l.parentNode !== dropdownEl) dropdownEl.appendChild(l);
-      dropdownEl.hidden = false;
+      openDropdown();
       inputEl.setAttribute('aria-expanded', 'true');
       return;
     }
@@ -121,7 +131,7 @@ export function Autocomplete(userProps: AutocompleteProps): HTMLDivElement {
       }
     }
 
-    dropdownEl.hidden = false;
+    openDropdown();
     inputEl.setAttribute('aria-expanded', 'true');
     if (activeIdx >= 0 && current[activeIdx]) {
       inputEl.setAttribute('aria-activedescendant', `${id}-opt-${activeIdx}`);
@@ -145,7 +155,10 @@ export function Autocomplete(userProps: AutocompleteProps): HTMLDivElement {
       })
     : null;
 
-  if (asyncController) onCleanup(() => asyncController.dispose());
+  if (getCurrentScope()) {
+    if (asyncController) onCleanup(() => asyncController.dispose());
+    onCleanup(() => disposeClamp?.());
+  }
 
   const buildContainer = () =>
     adoptElement<HTMLDivElement>('div', (container) => {

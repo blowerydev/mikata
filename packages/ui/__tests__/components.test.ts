@@ -462,6 +462,9 @@ describe('Switch', () => {
     expect(el.querySelector('.mkt-switch__description')!.textContent).toBe('Send product updates');
     expect(el.querySelector('[role="alert"]')!.textContent).toBe('Required');
     expect(input.getAttribute('aria-invalid')).toBe('true');
+    expect(input.getAttribute('aria-describedby')).toContain('-description');
+    expect(input.getAttribute('aria-describedby')).toContain('-error');
+    expect(input.getAttribute('aria-errormessage')).toContain('-error');
   });
 
   it('calls onChange when toggled', () => {

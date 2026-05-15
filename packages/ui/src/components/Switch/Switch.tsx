@@ -40,8 +40,20 @@ export function Switch(userProps: SwitchProps = {}): HTMLLabelElement {
       });
       renderEffect(() => { input.disabled = !!props.disabled; });
       renderEffect(() => {
-        if (props.error) input.setAttribute('aria-invalid', 'true');
-        else input.removeAttribute('aria-invalid');
+        if (hasError(props.error)) {
+          input.setAttribute('aria-invalid', 'true');
+          input.setAttribute('aria-errormessage', `${id}-error`);
+        } else {
+          input.removeAttribute('aria-invalid');
+          input.removeAttribute('aria-errormessage');
+        }
+      });
+      renderEffect(() => {
+        const parts: string[] = [];
+        if (props.description) parts.push(`${id}-description`);
+        if (hasError(props.error)) parts.push(`${id}-error`);
+        if (parts.length) input.setAttribute('aria-describedby', parts.join(' '));
+        else input.removeAttribute('aria-describedby');
       });
       const onChange = props.onChange;
       if (onChange) input.addEventListener('change', onChange as EventListener);
@@ -88,6 +100,7 @@ export function Switch(userProps: SwitchProps = {}): HTMLLabelElement {
 
       adoptElement<HTMLParagraphElement>('p', (descEl) => {
         descEl.className = 'mkt-switch__description';
+        descEl.id = `${id}-description`;
         renderEffect(() => {
           const d = props.description;
           descEl.textContent = d == null ? '' : d;
@@ -97,6 +110,7 @@ export function Switch(userProps: SwitchProps = {}): HTMLLabelElement {
 
       adoptElement<HTMLParagraphElement>('p', (errorEl) => {
         errorEl.className = 'mkt-switch__error';
+        errorEl.id = `${id}-error`;
         errorEl.setAttribute('role', 'alert');
         renderEffect(() => {
           const e = props.error;
@@ -106,4 +120,8 @@ export function Switch(userProps: SwitchProps = {}): HTMLLabelElement {
       });
     });
   });
+}
+
+function hasError(err: unknown): boolean {
+  return err != null && err !== false && err !== '';
 }

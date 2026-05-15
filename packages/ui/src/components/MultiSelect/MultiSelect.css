@@ -115,6 +115,7 @@
   inset-inline: 0;
   z-index: var(--mkt-z-dropdown);
   margin: var(--mkt-space-1) 0 0 0;
+  transform: translate(var(--mkt-floating-shift-x, 0px), var(--mkt-floating-shift-y, 0px));
   padding: var(--mkt-space-1);
   list-style: none;
   background: var(--mkt-color-bg);

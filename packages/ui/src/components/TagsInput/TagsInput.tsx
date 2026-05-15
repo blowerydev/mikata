@@ -4,6 +4,7 @@ import { _mergeProps, adoptElement } from '@mikata/runtime';
 import { mergeClasses } from '../../utils/class-merge';
 import { uniqueId } from '../../utils/unique-id';
 import { useUILabels } from '../../utils/use-i18n-optional';
+import { clampFloatingElement } from '../../utils/clamp-floating';
 import { InputWrapper } from '../_internal/InputWrapper';
 import type { TagsInputProps } from './TagsInput.types';
 import './TagsInput.css';
@@ -26,6 +27,7 @@ export function TagsInput(userProps: TagsInputProps): HTMLDivElement {
   let dropdownEl: HTMLUListElement | undefined;
   let activeIdx = -1;
   let filtered: string[] = [];
+  let disposeClamp: (() => void) | undefined;
 
   const emit = () => props.onChange?.(tags.slice());
 
@@ -77,8 +79,17 @@ export function TagsInput(userProps: TagsInputProps): HTMLDivElement {
   const closeDropdown = () => {
     if (!dropdownEl) return;
     dropdownEl.hidden = true;
+    disposeClamp?.();
+    disposeClamp = undefined;
     inputEl.setAttribute('aria-expanded', 'false');
     activeIdx = -1;
+  };
+
+  const openDropdown = () => {
+    if (!dropdownEl) return;
+    dropdownEl.hidden = false;
+    disposeClamp?.();
+    disposeClamp = clampFloatingElement(dropdownEl);
   };
 
   const renderDropdown = () => {
@@ -105,7 +116,7 @@ export function TagsInput(userProps: TagsInputProps): HTMLDivElement {
       });
       dropdownEl!.appendChild(li);
     });
-    dropdownEl.hidden = false;
+    openDropdown();
     inputEl.setAttribute('aria-expanded', 'true');
   };
 
@@ -250,6 +261,7 @@ export function TagsInput(userProps: TagsInputProps): HTMLDivElement {
         renderPills();
         if (dropdownEl) renderDropdown();
       });
+      if (getCurrentScope()) onCleanup(() => disposeClamp?.());
     });
 
   return InputWrapper({

@@ -1,9 +1,10 @@
-import { signal, effect, renderEffect } from '@mikata/reactivity';
+import { signal, effect, renderEffect, getCurrentScope, onCleanup } from '@mikata/reactivity';
 import { _mergeProps, createRef, adoptElement } from '@mikata/runtime';
 import { mergeClasses } from '../../utils/class-merge';
 import { onClickOutside } from '../../utils/on-click-outside';
 import { useComponentDefaults } from '../../theme/component-defaults';
 import { uniqueId } from '../../utils/unique-id';
+import { clampFloatingElement } from '../../utils/clamp-floating';
 import { InputWrapper } from '../_internal/InputWrapper';
 import { DatePicker } from '../DatePicker';
 import { formatISODate, parseISODate, formatDisplayDate, isBefore, isAfter } from '../_internal/dates';
@@ -27,6 +28,21 @@ export function DateInput(userProps: DateInputProps = {}): HTMLDivElement {
   const id = uniqueId('date-input');
   const [selected, setSelected] = signal<Date | null>(value !== undefined ? value : defaultValue);
   const [open, setOpen] = signal(false);
+  let dropdownEl: HTMLDivElement | null = null;
+  let disposeClamp: (() => void) | undefined;
+
+  const setOpenState = (next: boolean) => {
+    setOpen(next);
+    if (dropdownEl) dropdownEl.hidden = !next;
+    disposeClamp?.();
+    disposeClamp = next && dropdownEl ? clampFloatingElement(dropdownEl) : undefined;
+  };
+
+  effect(() => {
+    if (props.value !== undefined && !isSameNullableDate(props.value, selected())) {
+      setSelected(props.value);
+    }
+  });
 
   function displayValue(d: Date | null): string {
     if (!d) return '';
@@ -83,14 +99,30 @@ export function DateInput(userProps: DateInputProps = {}): HTMLDivElement {
           if (props.required) input.setAttribute('aria-required', 'true');
           else input.removeAttribute('aria-required');
         });
+        renderEffect(() => {
+          const parts: string[] = [];
+          if (props.description) parts.push(`${id}-description`);
+          if (hasError(props.error)) parts.push(`${id}-error`);
+          if (parts.length) input.setAttribute('aria-describedby', parts.join(' '));
+          else input.removeAttribute('aria-describedby');
+        });
+        renderEffect(() => {
+          if (hasError(props.error)) {
+            input.setAttribute('aria-invalid', 'true');
+            input.setAttribute('aria-errormessage', `${id}-error`);
+          } else {
+            input.removeAttribute('aria-invalid');
+            input.removeAttribute('aria-errormessage');
+          }
+        });
 
         effect(() => { input.value = displayValue(selected()); });
 
-        input.addEventListener('focus', () => { if (!props.disabled) setOpen(true); });
+        input.addEventListener('focus', () => { if (!props.disabled) setOpenState(true); });
         input.addEventListener('keydown', (e) => {
-          if (e.key === 'Escape') { setOpen(false); input.blur(); }
-          else if (e.key === 'Enter') { commitTyped(input); setOpen(false); }
-          else if (e.key === 'ArrowDown' && !open()) { e.preventDefault(); setOpen(true); }
+          if (e.key === 'Escape') { setOpenState(false); input.blur(); }
+          else if (e.key === 'Enter') { commitTyped(input); setOpenState(false); }
+          else if (e.key === 'ArrowDown' && !open()) { e.preventDefault(); setOpenState(true); }
         });
         input.addEventListener('blur', () => {
           commitTyped(input);
@@ -98,6 +130,7 @@ export function DateInput(userProps: DateInputProps = {}): HTMLDivElement {
       });
 
       adoptElement<HTMLDivElement>('div', (dropdown) => {
+        dropdownEl = dropdown;
         renderEffect(() => {
           dropdown.className = mergeClasses('mkt-date-input__dropdown', props.classNames?.dropdown);
         });
@@ -121,7 +154,7 @@ export function DateInput(userProps: DateInputProps = {}): HTMLDivElement {
               const d = v as Date;
               setSelected(d);
               onChange?.(d);
-              if (closeOnChange) setOpen(false);
+              if (closeOnChange) setOpenState(false);
             },
           });
           dropdown.appendChild(picker);
@@ -132,7 +165,10 @@ export function DateInput(userProps: DateInputProps = {}): HTMLDivElement {
 
       const containerRef = createRef<HTMLElement>();
       containerRef(container);
-      onClickOutside(containerRef, () => setOpen(false));
+      onClickOutside(containerRef, () => setOpenState(false));
+      if (getCurrentScope()) {
+        onCleanup(() => disposeClamp?.());
+      }
 
       const ref = props.ref;
       if (ref) {
@@ -152,4 +188,18 @@ export function DateInput(userProps: DateInputProps = {}): HTMLDivElement {
     get classNames() { return props.classNames; },
     children: buildContainer,
   });
+}
+
+function isSameNullableDate(a: Date | null | undefined, b: Date | null): boolean {
+  if (a == null || b == null) return a == null && b == null;
+  return a.getTime() === b.getTime();
+}
+
+function hasError(err: unknown): boolean {
+  if (err == null || err === false || err === '') return false;
+  if (typeof err === 'function') {
+    const v = (err as () => unknown)();
+    return v != null && v !== false && v !== '';
+  }
+  return true;
 }

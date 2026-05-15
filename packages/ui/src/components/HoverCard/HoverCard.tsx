@@ -1,6 +1,7 @@
 import { getCurrentScope, onCleanup, renderEffect } from '@mikata/reactivity';
 import { _mergeProps, adoptElement } from '@mikata/runtime';
 import { mergeClasses } from '../../utils/class-merge';
+import { clampFloatingElement } from '../../utils/clamp-floating';
 import type { HoverCardProps } from './HoverCard.types';
 import './HoverCard.css';
 
@@ -36,6 +37,7 @@ export function HoverCard(userProps: HoverCardProps): HTMLElement {
 
     let openT: ReturnType<typeof setTimeout> | undefined;
     let closeT: ReturnType<typeof setTimeout> | undefined;
+    let disposeClamp: (() => void) | undefined;
     let visible = false;
 
     const show = () => {
@@ -43,6 +45,8 @@ export function HoverCard(userProps: HoverCardProps): HTMLElement {
       if (visible) return;
       openT = setTimeout(() => {
         wrapper.appendChild(dropdown);
+        disposeClamp?.();
+        disposeClamp = clampFloatingElement(dropdown);
         visible = true;
       }, openDelay);
     };
@@ -51,6 +55,8 @@ export function HoverCard(userProps: HoverCardProps): HTMLElement {
       clearTimeout(openT);
       if (!visible) return;
       closeT = setTimeout(() => {
+        disposeClamp?.();
+        disposeClamp = undefined;
         dropdown.remove();
         visible = false;
       }, closeDelay);
@@ -65,6 +71,7 @@ export function HoverCard(userProps: HoverCardProps): HTMLElement {
       onCleanup(() => {
         clearTimeout(openT);
         clearTimeout(closeT);
+        disposeClamp?.();
         dropdown.remove();
         wrapper.removeEventListener('mouseenter', show);
         wrapper.removeEventListener('mouseleave', hide);

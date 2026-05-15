@@ -27,18 +27,32 @@ export function ChipGroup(userProps: ChipGroupProps = {}): HTMLElement {
   const selected = new Set<string>(
     resolved == null ? [] : Array.isArray(resolved) ? resolved : [resolved],
   );
+  const inputs: HTMLInputElement[] = [];
+
+  const syncSelected = (value: string | string[] | null | undefined) => {
+    selected.clear();
+    if (value != null) {
+      const values = Array.isArray(value) ? value : [value];
+      for (const item of values) selected.add(item);
+    }
+    for (const input of inputs) input.checked = selected.has(input.value);
+  };
 
   const applyToChipInput = (input: HTMLInputElement) => {
     input.type = multiple ? 'checkbox' : 'radio';
     if (!multiple) input.name = name;
-    if (input.value && selected.has(input.value)) input.checked = true;
+    if (!inputs.includes(input)) inputs.push(input);
+    input.checked = input.value ? selected.has(input.value) : false;
     input.addEventListener('change', () => {
       if (multiple) {
         if (input.checked) selected.add(input.value);
         else selected.delete(input.value);
         onChange?.(Array.from(selected));
       } else {
-        if (input.checked) onChange?.(input.value);
+        if (input.checked) {
+          syncSelected(input.value);
+          onChange?.(input.value);
+        }
       }
     });
   };
@@ -50,6 +64,9 @@ export function ChipGroup(userProps: ChipGroupProps = {}): HTMLElement {
     el.setAttribute('role', multiple ? 'group' : 'radiogroup');
     el.style.display = 'flex';
     el.style.flexWrap = 'wrap';
+    renderEffect(() => {
+      if (props.value !== undefined) syncSelected(props.value);
+    });
     renderEffect(() => {
       const gap = props.gap ?? 'sm';
       el.style.gap = sizeMap[gap] ?? gap;

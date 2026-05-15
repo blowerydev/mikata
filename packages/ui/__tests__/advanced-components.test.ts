@@ -204,6 +204,23 @@ describe('Popover', () => {
       expect(onClose).toHaveBeenCalled();
     });
   });
+
+  it('hides and shows from controlled opened changes', () => {
+    createScope(() => {
+      const [opened, setOpened] = signal(false);
+      const el = Popover({
+        target: document.createElement('button'),
+        children: document.createElement('div'),
+        get opened() { return opened(); },
+      });
+      const dropdown = el.querySelector('.mkt-popover__dropdown') as HTMLElement;
+
+      expect(dropdown.hidden).toBe(true);
+      setOpened(true);
+      flushSync();
+      expect(dropdown.hidden).toBe(false);
+    });
+  });
 });
 
 describe('floating positioning', () => {
@@ -913,6 +930,20 @@ describe('PinInput', () => {
     expect(inputs[1].value).toBe('2');
     expect(inputs[2].value).toBe('');
   });
+
+  it('syncs controlled value changes across cells', () => {
+    const [value, setValue] = signal('12');
+    const el = PinInput({
+      length: 4,
+      get value() { return value(); },
+    });
+    const inputs = Array.from(el.querySelectorAll('input')) as HTMLInputElement[];
+
+    expect(inputs.map((input) => input.value).join('')).toBe('12');
+    setValue('9876');
+    flushSync();
+    expect(inputs.map((input) => input.value).join('')).toBe('9876');
+  });
 });
 
 // ─── FileInput ─────────────────────────────────────────────
@@ -954,6 +985,28 @@ describe('FileInput', () => {
     expect(trigger.contains(clear)).toBe(false);
     clear.click();
     expect(onChange).toHaveBeenCalledWith(null);
+  });
+
+  it('syncs controlled value text and links helper text to the trigger', () => {
+    const first = new File(['x'], 'a.txt');
+    const second = new File(['y'], 'b.txt');
+    const [value, setValue] = signal<File | File[] | null>(first);
+    const el = FileInput({
+      label: 'File',
+      description: 'Upload one',
+      error: 'Required',
+      get value() { return value(); },
+    });
+    const trigger = el.querySelector('.mkt-file-input__input') as HTMLButtonElement;
+
+    expect(trigger.textContent).toContain('a.txt');
+    expect(trigger.getAttribute('aria-describedby')).toContain('-description');
+    expect(trigger.getAttribute('aria-describedby')).toContain('-error');
+    expect(trigger.getAttribute('aria-errormessage')).toContain('-error');
+
+    setValue(second);
+    flushSync();
+    expect(trigger.textContent).toContain('b.txt');
   });
 });
 

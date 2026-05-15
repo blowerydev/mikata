@@ -1,4 +1,4 @@
-import { renderEffect } from '@mikata/reactivity';
+import { getCurrentScope, onCleanup, renderEffect, untrack } from '@mikata/reactivity';
 import { _mergeProps, adoptElement } from '@mikata/runtime';
 import { mergeClasses } from '../../utils/class-merge';
 import type { PaginationProps } from './Pagination.types';
@@ -67,20 +67,20 @@ export function Pagination(userProps: PaginationProps): HTMLElement {
         renderItems();
       }
 
-      function createButton(text: string, ariaLabel: string, onClick: () => void): HTMLButtonElement {
+      function createButton(text: string, ariaLabel: string): HTMLButtonElement {
         const btn = document.createElement('button');
         btn.className = mergeClasses('mkt-pagination__item', props.classNames?.item);
         btn.setAttribute('type', 'button');
         btn.textContent = text;
         btn.setAttribute('aria-label', ariaLabel);
-        btn.addEventListener('click', onClick);
         return btn;
       }
 
       function renderItems() {
         list.innerHTML = '';
 
-        const prev = createButton('‹', 'Previous page', () => setPage(currentPage - 1));
+        const prev = createButton('‹', 'Previous page');
+        prev.dataset.action = 'prev';
         if (currentPage === 1) {
           prev.disabled = true;
           prev.setAttribute('aria-disabled', 'true');
@@ -96,7 +96,8 @@ export function Pagination(userProps: PaginationProps): HTMLElement {
             dots.setAttribute('aria-hidden', 'true');
             list.appendChild(dots);
           } else {
-            const btn = createButton(String(item), `Page ${item}`, () => setPage(item));
+            const btn = createButton(String(item), `Page ${item}`);
+            btn.dataset.page = String(item);
             if (item === currentPage) {
               btn.dataset.active = '';
               btn.setAttribute('aria-current', 'page');
@@ -105,7 +106,8 @@ export function Pagination(userProps: PaginationProps): HTMLElement {
           }
         });
 
-        const next = createButton('›', 'Next page', () => setPage(currentPage + 1));
+        const next = createButton('›', 'Next page');
+        next.dataset.action = 'next';
         if (currentPage === total) {
           next.disabled = true;
           next.setAttribute('aria-disabled', 'true');
@@ -113,27 +115,44 @@ export function Pagination(userProps: PaginationProps): HTMLElement {
         list.appendChild(next);
       }
 
-      // On fresh render we build the item list once. On hydration the
-      // SSR already populated the list so we instead find the existing
-      // buttons and wire click handlers to drive setPage.
-      if (list.firstChild) {
-        const buttons = list.querySelectorAll<HTMLButtonElement>('.mkt-pagination__item');
-        // The first button is "previous", the last is "next". Everything
-        // between is a numeric page (skipping any .mkt-pagination__dots).
-        buttons.forEach((btn, idx) => {
-          const label = btn.getAttribute('aria-label') ?? '';
-          if (idx === 0) {
-            btn.addEventListener('click', () => setPage(currentPage - 1));
-          } else if (idx === buttons.length - 1) {
-            btn.addEventListener('click', () => setPage(currentPage + 1));
-          } else {
-            const num = parseInt(label.replace(/^Page\s+/, ''), 10);
-            if (!isNaN(num)) btn.addEventListener('click', () => setPage(num));
+      const handleClick = (event: MouseEvent) => {
+        const btn = event.target instanceof Element
+          ? event.target.closest<HTMLButtonElement>('.mkt-pagination__item')
+          : null;
+        if (!btn || btn.disabled || !list.contains(btn)) return;
+        if (btn.dataset.action === 'prev') setPage(currentPage - 1);
+        else if (btn.dataset.action === 'next') setPage(currentPage + 1);
+        else {
+          const buttons = Array.from(list.querySelectorAll<HTMLButtonElement>('.mkt-pagination__item'));
+          const index = buttons.indexOf(btn);
+          if (index === 0) {
+            setPage(currentPage - 1);
+            return;
           }
-        });
-      } else {
-        renderItems();
-      }
+          if (index === buttons.length - 1) {
+            setPage(currentPage + 1);
+            return;
+          }
+          const raw = btn.dataset.page ?? btn.getAttribute('aria-label')?.replace(/^Page\s+/, '');
+          const page = raw == null ? NaN : parseInt(raw, 10);
+          if (!Number.isNaN(page)) setPage(page);
+        }
+      };
+      list.addEventListener('click', handleClick);
+      if (getCurrentScope()) onCleanup(() => list.removeEventListener('click', handleClick));
+
+      // On fresh render we build the item list once. On hydration the
+      // SSR already populated the list, and the delegated click handler
+      // above can drive it without per-button listeners.
+      if (!list.firstChild) renderItems();
+
+      renderEffect(() => {
+        const controlled = props.value;
+        if (controlled != null && controlled !== currentPage) {
+          currentPage = controlled;
+          untrack(renderItems);
+        }
+      });
     });
 
     const ref = props.ref;

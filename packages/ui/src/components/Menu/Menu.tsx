@@ -2,6 +2,7 @@ import { getCurrentScope, onCleanup, renderEffect } from '@mikata/reactivity';
 import { _mergeProps, adoptElement } from '@mikata/runtime';
 import { mergeClasses } from '../../utils/class-merge';
 import { uniqueId } from '../../utils/unique-id';
+import { clampFloatingElement } from '../../utils/clamp-floating';
 import type { MenuProps, MenuItem, MenuItemDef } from './Menu.types';
 import './Menu.css';
 
@@ -19,11 +20,16 @@ export function Menu(userProps: MenuProps): HTMLElement {
 
   let targetWrapperRef: HTMLDivElement | null = null;
   let dropdownRef: HTMLDivElement | null = null;
+  let disposeClamp: (() => void) | undefined;
 
   function open() {
     if (isOpen) return;
     isOpen = true;
-    if (dropdownRef) dropdownRef.hidden = false;
+    if (dropdownRef) {
+      dropdownRef.hidden = false;
+      disposeClamp?.();
+      disposeClamp = clampFloatingElement(dropdownRef);
+    }
     targetWrapperRef?.querySelector('button')?.setAttribute('aria-expanded', 'true');
     const first = menuItems.find((el) => !el.hasAttribute('disabled'));
     first?.focus();
@@ -33,6 +39,8 @@ export function Menu(userProps: MenuProps): HTMLElement {
     if (!isOpen) return;
     isOpen = false;
     if (dropdownRef) dropdownRef.hidden = true;
+    disposeClamp?.();
+    disposeClamp = undefined;
     targetWrapperRef?.querySelector('button')?.setAttribute('aria-expanded', 'false');
     const targetBtn = targetWrapperRef?.querySelector('button')
       || (targetWrapperRef?.firstElementChild as HTMLElement | null);
@@ -207,6 +215,7 @@ export function Menu(userProps: MenuProps): HTMLElement {
     document.addEventListener('click', onDocClick);
     if (getCurrentScope()) {
       onCleanup(() => document.removeEventListener('click', onDocClick));
+      onCleanup(() => disposeClamp?.());
     }
 
     const ref = props.ref;

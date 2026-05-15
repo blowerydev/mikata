@@ -70,6 +70,7 @@
   z-index: var(--mkt-z-popover);
   margin-top: var(--mkt-space-1);
   inset-inline-start: 0;
+  transform: translate(var(--mkt-floating-shift-x, 0px), var(--mkt-floating-shift-y, 0px));
   background: var(--mkt-color-bg);
   border: 1px solid var(--mkt-color-border);
   border-radius: var(--mkt-radius-md);

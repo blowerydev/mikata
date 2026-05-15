@@ -24,28 +24,28 @@
 .mkt-hover-card__dropdown[data-position="top"] {
   bottom: 100%;
   left: 50%;
-  transform: translateX(-50%);
+  transform: translate(calc(-50% + var(--mkt-floating-shift-x, 0px)), var(--mkt-floating-shift-y, 0px));
   margin-bottom: var(--mkt-space-2);
 }
 
 .mkt-hover-card__dropdown[data-position="bottom"] {
   top: 100%;
   left: 50%;
-  transform: translateX(-50%);
+  transform: translate(calc(-50% + var(--mkt-floating-shift-x, 0px)), var(--mkt-floating-shift-y, 0px));
   margin-top: var(--mkt-space-2);
 }
 
 .mkt-hover-card__dropdown[data-position="left"] {
   right: 100%;
   top: 50%;
-  transform: translateY(-50%);
+  transform: translate(var(--mkt-floating-shift-x, 0px), calc(-50% + var(--mkt-floating-shift-y, 0px)));
   margin-right: var(--mkt-space-2);
 }
 
 .mkt-hover-card__dropdown[data-position="right"] {
   left: 100%;
   top: 50%;
-  transform: translateY(-50%);
+  transform: translate(var(--mkt-floating-shift-x, 0px), calc(-50% + var(--mkt-floating-shift-y, 0px)));
   margin-left: var(--mkt-space-2);
 }
 

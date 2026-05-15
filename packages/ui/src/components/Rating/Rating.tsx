@@ -50,11 +50,18 @@ export function Rating(userProps: RatingProps = {}): HTMLElement {
     // hydration the SSR already has it. We still need references to
     // the fill spans so post-hydrate interaction can update them.
     const fillSpans: HTMLElement[] = [];
+    const inputs: HTMLInputElement[] = [];
 
     const paint = (v: number) => {
       for (let i = 0; i < fillSpans.length; i++) {
         const pct = Math.max(0, Math.min(1, v - i)) * 100;
         fillSpans[i].style.width = `${pct}%`;
+      }
+    };
+    const syncChecked = () => {
+      for (const input of inputs) {
+        const value = Number(input.value);
+        input.checked = Math.abs(current - value) < 1e-6;
       }
     };
 
@@ -72,9 +79,11 @@ export function Rating(userProps: RatingProps = {}): HTMLElement {
           const inputId = `${name}-${i}-${f}`;
           const input = root.querySelector(`#${CSS.escape(inputId)}`) as HTMLInputElement | null;
           if (!input) continue;
+          inputs.push(input);
           input.addEventListener('change', () => {
             current = fracVal;
             paint(current);
+            syncChecked();
             props.onChange?.(fracVal);
           });
           const label = root.querySelector(`label[for="${inputId}"]`);
@@ -119,10 +128,12 @@ export function Rating(userProps: RatingProps = {}): HTMLElement {
           input.setAttribute('value', String(fracVal));
           if (readOnly) input.disabled = true;
           if (Math.abs(current - fracVal) < 1e-6) input.checked = true;
+          inputs.push(input);
 
           input.addEventListener('change', () => {
             current = fracVal;
             paint(current);
+            syncChecked();
             props.onChange?.(fracVal);
           });
 
@@ -156,6 +167,14 @@ export function Rating(userProps: RatingProps = {}): HTMLElement {
     });
 
     paint(current);
+    renderEffect(() => {
+      const controlled = props.value;
+      if (controlled != null && controlled !== current) {
+        current = controlled;
+        paint(current);
+        syncChecked();
+      }
+    });
 
     const ref = props.ref;
     if (ref) {

@@ -31,6 +31,17 @@ export function YearPicker(userProps: YearPickerProps = {}): HTMLElement {
   );
   const [selected, setSelected] = signal<Date | null>(value !== undefined ? value : defaultValue);
 
+  effect(() => {
+    if (props.value !== undefined) {
+      setSelected(props.value);
+      if (props.value) setDecadeStart(getDecadeRange(props.value.getFullYear())[0]);
+    }
+  });
+
+  effect(() => {
+    if (props.date !== undefined) setDecadeStart(getDecadeRange(props.date.getFullYear())[0]);
+  });
+
   function updateDecade(start: number) {
     setDecadeStart(start);
     onDateChange?.(new Date(start, 0, 1));
@@ -124,9 +135,17 @@ export function YearPicker(userProps: YearPickerProps = {}): HTMLElement {
         const classNamesNow = props.classNames;
         // Show 12 years: one leading, a decade, one trailing (4x3 grid).
         for (let offset = -1; offset <= 10; offset++) {
+          if ((offset + 1) % 3 === 0) {
+            const rowEl = document.createElement('div');
+            rowEl.className = 'mkt-year-picker__row';
+            rowEl.setAttribute('role', 'row');
+            grid.appendChild(rowEl);
+          }
+          const rowEl = grid.lastElementChild as HTMLDivElement;
           const y = start + offset;
           const btn = document.createElement('button');
           btn.type = 'button';
+          btn.setAttribute('role', 'gridcell');
           btn.className = mergeClasses('mkt-year-picker__year', classNamesNow?.year);
           btn.textContent = String(y);
           btn.dataset.year = String(y);
@@ -134,9 +153,11 @@ export function YearPicker(userProps: YearPickerProps = {}): HTMLElement {
           if (sel && sel.getFullYear() === y) {
             btn.dataset.selected = '';
             btn.setAttribute('aria-selected', 'true');
+          } else {
+            btn.setAttribute('aria-selected', 'false');
           }
           if (yearDisabled(y)) btn.disabled = true;
-          grid.appendChild(btn);
+          rowEl.appendChild(btn);
         }
       });
 
